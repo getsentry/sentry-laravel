@@ -14,7 +14,7 @@
     "require": {
         "php": ">=5.2.4",
         "illuminate/support": "4.*|5.*",
-        "raven/raven": "*"
+        "sentry/sentry": "*"
     },
     "require-dev": {
         "fabpot/php-cs-fixer": "^1.8.0",
