@@ -54,7 +54,7 @@ class SentryLaravelServiceProvider extends ServiceProvider
 
             $config = array_merge(array(
                 'environment' => $app->environment(),
-                'base_path' => base_path(),
+                'prefixes' => array(base_path()),
                 'app_path' => app_path(),
             ), $user_config);
 

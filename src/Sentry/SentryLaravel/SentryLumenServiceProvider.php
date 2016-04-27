@@ -35,7 +35,7 @@ class SentryLumenServiceProvider extends ServiceProvider
 
             $config = array_merge(array(
                 'environment' => $app->environment(),
-                'base_path' => base_path(),
+                'prefixes' => array(base_path()),
                 'app_path' => base_path() . '/app',
             ), $user_config);
 
