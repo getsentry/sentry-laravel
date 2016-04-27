@@ -60,7 +60,7 @@ Add the Sentry service provider and facade in ``config/app.php``:
 'aliases' => array(
     // ...
     'Sentry' => 'Sentry\SentryLaravel\SentryFacade',
-    )
+)
 ```
 
 Create the Sentry configuration file (``config/sentry.php``):
