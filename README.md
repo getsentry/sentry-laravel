@@ -8,7 +8,7 @@ Laravel integration for [Sentry](https://getsentry.com/).
 Install the ``sentry/sentry-laravel`` package:
 
 ```bash
-$ composer require sentry/sentry-laravel:*
+$ composer require sentry/sentry-laravel
 ```
 
 Add the Sentry service provider and facade in ``config/app.php``:
@@ -46,7 +46,7 @@ $ php artisan vendor:publish --provider="Sentry\SentryLaravel\SentryLaravelServi
 Install the ``sentry/sentry-laravel`` package:
 
 ```bash
-$ composer require sentry/sentry-laravel:*
+$ composer require sentry/sentry-laravel
 ```
 
 Add the Sentry service provider and facade in ``config/app.php``:
@@ -74,7 +74,7 @@ $ php artisan config:publish sentry/sentry-laravel
 Install the ``sentry/sentry-laravel`` package:
 
 ```bash
-$ composer require sentry/sentry-laravel:*
+$ composer require sentry/sentry-laravel
 ```
 
 Register Sentry in ``bootstrap/app.php``:
