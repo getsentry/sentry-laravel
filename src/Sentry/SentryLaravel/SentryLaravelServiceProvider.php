@@ -68,7 +68,8 @@ class SentryLaravelServiceProvider extends ServiceProvider
                         'id' => $user->getAuthIdentifier(),
                     ));
                 }
-            } catch (\Exception $e) { }
+            } catch (\Exception $e) {
+            }
 
             return $client;
         });
