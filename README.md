@@ -30,7 +30,9 @@ Add Sentry reporting to ``App/Exceptions/Handler.php``:
 ```php
 public function report(Exception $e)
 {
-    app('sentry')->captureException($e);
+    if ($this->shouldReport($e)) {
+        app('sentry')->captureException($e);
+    }
     parent::report($e);
 }
 ```
@@ -91,7 +93,9 @@ Add Sentry reporting to ``app/Exceptions/Handler.php``:
 ```php
 public function report(Exception $e)
 {
-    app('sentry')->captureException($e);
+    if ($this->shouldReport($e)) {
+        app('sentry')->captureException($e);
+    }
     parent::report($e);
 }
 ```
