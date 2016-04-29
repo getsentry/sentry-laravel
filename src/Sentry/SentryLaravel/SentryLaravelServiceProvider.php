@@ -2,6 +2,7 @@
 
 namespace Sentry\SentryLaravel;
 
+use Log;
 use Illuminate\Support\ServiceProvider;
 
 class SentryLaravelServiceProvider extends ServiceProvider
@@ -70,6 +71,8 @@ class SentryLaravelServiceProvider extends ServiceProvider
                 }
             } catch (\Exception $e) {
             }
+
+            Log::info('Sentry SDK configured to report to ' . $client->server);
 
             return $client;
         });
