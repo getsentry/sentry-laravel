@@ -43,6 +43,12 @@ Create the Sentry configuration file (``config/sentry.php``):
 $ php artisan vendor:publish --provider="Sentry\SentryLaravel\SentryLaravelServiceProvider"
 ```
 
+Add your DSN to ``.env``:
+
+```
+SENTRY_DSN=https://public:secret@sentry.example.com/1
+```
+
 ## Laravel 4.x
 
 Install the ``sentry/sentry-laravel`` package:
