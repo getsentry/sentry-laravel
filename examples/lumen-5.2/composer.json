@@ -7,7 +7,7 @@
     "require": {
         "php": ">=5.5.9",
         "laravel/lumen-framework": "5.2.*",
-        "raven/raven": "dev-master",
+        "sentry/sentry": "dev-master",
         "sentry/sentry-laravel": "dev-master",
         "vlucas/phpdotenv": "~2.2"
     },
@@ -33,7 +33,7 @@
         },
         {
             "type": "vcs",
-            "url": "../../../raven-php"
+            "url": "../../../sentry-php"
         }
 
     ]

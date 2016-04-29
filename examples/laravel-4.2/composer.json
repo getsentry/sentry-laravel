@@ -5,7 +5,7 @@
 	"license": "MIT",
 	"require": {
 		"laravel/framework": "4.2.*",
-		"raven/raven": "dev-master",
+		"sentry/sentry": "dev-master",
 		"sentry/sentry-laravel": "dev-master"
 	},
 	"autoload": {
@@ -42,8 +42,7 @@
         },
         {
             "type": "vcs",
-            "url": "../../../raven-php"
+            "url": "../../../sentry-php"
         }
-
     ]
 }
