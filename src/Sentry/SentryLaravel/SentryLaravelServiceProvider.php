@@ -34,12 +34,24 @@ class SentryLaravelServiceProvider extends ServiceProvider
             $app->fatal(function ($e) use ($app) {
                 $app['sentry']->captureException($e);
             });
+
+            $this->bindLogger($app['sentry']);
         } else {
             // the default configuration file
             $this->publishes(array(
                 __DIR__ . '/config.php' => config_path('sentry.php'),
             ), 'config');
+
+            $this->bindLogger(app('sentry'));
         }
+    }
+
+    public function bindLogger($client)
+    {
+        $handler = new \Raven_Breadcrumbs_MonologHandler($client);
+
+        $logger = Log::getMonolog();
+        $logger->pushHandler($handler);
     }
 
     /**
@@ -72,7 +84,10 @@ class SentryLaravelServiceProvider extends ServiceProvider
             } catch (\Exception $e) {
             }
 
-            Log::info('Sentry SDK configured to report to ' . $client->server);
+            // TODO(dcramer): this needs filtered out
+            Log::info('Sentry SDK configured to report to ' . $client->server, array(
+                'nobreadcrumb' => true,
+            ));
 
             return $client;
         });
