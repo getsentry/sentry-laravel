@@ -13,10 +13,6 @@
 
 Route::get('/', function()
 {
-	return View::make('hello');
-});
-
-Route::get('/error-example', function ()
-{
+    Log::info('Rendering a page thats about to error');
     throw new Exception('An unhandled exception');
 });

@@ -12,9 +12,6 @@
 */
 
 Route::get('/', function () {
-    return view('welcome');
-});
-
-Route::get('/error-example', function () {
+    Log::info('Rendering a page thats about to error');
     throw new Exception('An unhandled exception');
 });
