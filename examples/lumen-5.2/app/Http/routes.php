@@ -12,9 +12,6 @@
 */
 
 $app->get('/', function () use ($app) {
-    return $app->version();
-});
-
-$app->get('/error-example', function () use ($app) {
+    Log::info('Rendering a page thats about to error');
     throw new Exception('An unhandled exception');
 });
