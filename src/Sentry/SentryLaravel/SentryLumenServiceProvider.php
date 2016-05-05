@@ -32,6 +32,11 @@ class SentryLumenServiceProvider extends ServiceProvider
     {
         $this->app->singleton('sentry', function ($app) {
             $user_config = $app['config']['sentry'];
+            
+            // Make sure we don't crash when we did not publish the config file
+            if (is_null($user_config)) {
+                $user_config = [];
+            }
 
             $config = array_merge(array(
                 'environment' => $app->environment(),
