@@ -84,11 +84,6 @@ class SentryLaravelServiceProvider extends ServiceProvider
             } catch (\Exception $e) {
             }
 
-            // TODO(dcramer): this needs filtered out
-            Log::info('Sentry SDK configured to report to ' . $client->server, array(
-                'nobreadcrumb' => true,
-            ));
-
             return $client;
         });
     }
