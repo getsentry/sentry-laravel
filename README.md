@@ -119,6 +119,50 @@ return array(
 );
 ```
 
+## Adding Context
+
+The mechanism to add context will vary depending on which version of Laravel you're using, but the general approach is the same. Find a good entry point to your application in which the context you want to add is available, ideally early in the process.
+
+In the following example, we'll use a middleware:
+
+```php
+namespace App\Http\Middleware;
+
+use Context;
+use Closure;
+
+class SentryContext
+{
+    /**
+     * Handle an incoming request.
+     *
+     * @param  \Illuminate\Http\Request $request
+     * @param  \Closure                 $next
+     *
+     * @return mixed
+     */
+    public function handle($request, Closure $next)
+    {
+        if (app()->bound('sentry')) {
+            /** @var \Raven_Client $sentry */
+            $sentry = app('sentry');
+
+            // Add user context
+            if (auth()->check()) {
+                $sentry->user_context([...]);
+            } else {
+                $sentry->user_context(['id' => null]);
+            }
+
+            // Add tags context
+            $sentry->tags_context([...]);
+        }
+
+        return $next($request);
+    }
+}
+```
+
 ## Contributing
 
 First, make sure you can run the test suite. Install development dependencies :
