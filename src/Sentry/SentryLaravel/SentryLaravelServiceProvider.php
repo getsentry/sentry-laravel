@@ -64,19 +64,17 @@ class SentryLaravelServiceProvider extends ServiceProvider
         $this->app->singleton('sentry', function ($app) {
             // sentry::config is Laravel 4.x
             $user_config = $app['config']['sentry'] ?: $app['config']['sentry::config'];
-            
+
             // Make sure we don't crash when we did not publish the config file
             if (is_null($user_config)) {
                 $user_config = [];
             }
 
-            $config = array_merge(array(
+            $client = SentryLaravel::getClient(array_merge(array(
                 'environment' => $app->environment(),
                 'prefixes' => array(base_path()),
                 'app_path' => app_path(),
-            ), $user_config);
-
-            $client = new \Raven_Client($config);
+            ), $user_config));
 
             // bind user context if available
             try {
