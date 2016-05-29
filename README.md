@@ -128,7 +128,6 @@ In the following example, we'll use a middleware:
 ```php
 namespace App\Http\Middleware;
 
-use Context;
 use Closure;
 
 class SentryContext
