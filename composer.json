@@ -17,7 +17,7 @@
         "sentry/sentry": ">=0.16.0"
     },
     "require-dev": {
-        "fabpot/php-cs-fixer": "^1.8.0",
+        "friendsofphp/php-cs-fixer": "^1.8.0",
         "phpunit/phpunit": "^4.6.6"
     },
     "autoload": {
