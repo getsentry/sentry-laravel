@@ -11,7 +11,21 @@
 |
 */
 
+function verifyCredentials()
+{
+    Log::info('Verifying credentials');
+    throw new Exception('No credentials passed!');
+}
+
+
+function authenticateUser()
+{
+    Log::info('Authenticating the current user');
+    verifyCredentials();
+}
+
+
 Route::get('/', function () {
     Log::info('Rendering a page thats about to error');
-    throw new Exception('An unhandled exception');
+    authenticateUser();
 });
