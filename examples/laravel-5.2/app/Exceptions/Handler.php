@@ -23,6 +23,8 @@ class Handler extends ExceptionHandler
         ValidationException::class,
     ];
 
+    private $sentryID;
+
     /**
      * Report or log an exception.
      *
@@ -34,7 +36,7 @@ class Handler extends ExceptionHandler
     public function report(Exception $e)
     {
         if ($this->shouldReport($e)) {
-            app('sentry')->captureException($e);
+            $this->sentryID = app('sentry')->captureException($e);
         }
         parent::report($e);
     }
@@ -48,9 +50,8 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Exception $e)
     {
-        // return parent::render($request, $e);
         return response()->view('errors.500', [
-            'sentryID' => app('sentry')->getLastEventID(),
+            'sentryID' => $this->sentryID,
         ], 500);
     }
 }
