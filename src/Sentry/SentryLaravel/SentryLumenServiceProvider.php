@@ -2,6 +2,7 @@
 
 namespace Sentry\SentryLaravel;
 
+use Exception;
 use Illuminate\Support\ServiceProvider;
 
 class SentryLumenServiceProvider extends ServiceProvider
@@ -38,21 +39,21 @@ class SentryLumenServiceProvider extends ServiceProvider
                 $user_config = [];
             }
 
-            $client = SentryLaravel::getClient(array_merge(array(
+            $client = SentryLaravel::getClient(array_merge([
                 'environment' => $app->environment(),
-                'prefixes' => array(base_path()),
-                'app_path' => base_path() . '/app',
-            ), $user_config));
+                'prefixes'    => [base_path()],
+                'app_path'    => base_path() . '/app',
+            ], $user_config));
 
             // bind user context if available
             try {
                 if ($app['auth']->check()) {
                     $user = $app['auth']->user();
-                    $client->user_context(array(
+                    $client->user_context([
                         'id' => $user->getAuthIdentifier(),
-                    ));
+                    ]);
                 }
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
             }
 
             return $client;
@@ -66,6 +67,6 @@ class SentryLumenServiceProvider extends ServiceProvider
      */
     public function provides()
     {
-        return array('sentry');
+        return ['sentry'];
     }
 }
