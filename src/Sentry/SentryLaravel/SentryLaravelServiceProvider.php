@@ -2,8 +2,10 @@
 
 namespace Sentry\SentryLaravel;
 
-use Log;
+use Exception;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
+use Raven_Breadcrumbs_MonologHandler;
 
 class SentryLaravelServiceProvider extends ServiceProvider
 {
@@ -27,7 +29,7 @@ class SentryLaravelServiceProvider extends ServiceProvider
         if (version_compare($app::VERSION, '5.0') < 0) {
             $this->package('sentry/sentry-laravel', 'sentry');
 
-            $app->error(function (\Exception $e) use ($app) {
+            $app->error(function (Exception $e) use ($app) {
                 $app['sentry']->captureException($e);
             });
 
@@ -38,9 +40,9 @@ class SentryLaravelServiceProvider extends ServiceProvider
             $this->bindLogger($app['sentry']);
         } else {
             // the default configuration file
-            $this->publishes(array(
+            $this->publishes([
                 __DIR__ . '/config.php' => config_path('sentry.php'),
-            ), 'config');
+            ], 'config');
 
             $this->bindLogger(app('sentry'));
         }
@@ -48,7 +50,7 @@ class SentryLaravelServiceProvider extends ServiceProvider
 
     public function bindLogger($client)
     {
-        $handler = new \Raven_Breadcrumbs_MonologHandler($client);
+        $handler = new Raven_Breadcrumbs_MonologHandler($client);
 
         $logger = Log::getMonolog();
         $logger->pushHandler($handler);
@@ -70,21 +72,21 @@ class SentryLaravelServiceProvider extends ServiceProvider
                 $user_config = [];
             }
 
-            $client = SentryLaravel::getClient(array_merge(array(
+            $client = SentryLaravel::getClient(array_merge([
                 'environment' => $app->environment(),
-                'prefixes' => array(base_path()),
-                'app_path' => app_path(),
-            ), $user_config));
+                'prefixes'    => [base_path()],
+                'app_path'    => app_path(),
+            ], $user_config));
 
             // bind user context if available
             try {
                 if ($app['auth']->check()) {
                     $user = $app['auth']->user();
-                    $client->user_context(array(
+                    $client->user_context([
                         'id' => $user->getAuthIdentifier(),
-                    ));
+                    ]);
                 }
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
             }
 
             return $client;
@@ -98,6 +100,6 @@ class SentryLaravelServiceProvider extends ServiceProvider
      */
     public function provides()
     {
-        return array('sentry');
+        return ['sentry'];
     }
 }
