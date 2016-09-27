@@ -11,7 +11,22 @@
 |
 */
 
+function verifyCredentials()
+{
+    Log::info('Verifying credentials');
+    $user = DB::table('migrations')->where('migration', 'a migration')->first();
+    throw new Exception('No credentials passed!');
+}
+
+
+function authenticateUser()
+{
+    Log::info('Authenticating the current user');
+    verifyCredentials();
+}
+
+
 $app->get('/', function () use ($app) {
     Log::info('Rendering a page thats about to error');
-    throw new Exception('An unhandled exception');
+    authenticateUser();
 });

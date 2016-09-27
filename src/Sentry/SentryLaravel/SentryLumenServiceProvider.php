@@ -21,6 +21,13 @@ class SentryLumenServiceProvider extends ServiceProvider
     public function boot()
     {
         $this->app->configure('sentry');
+        $this->bindEvents($this->app);
+    }
+
+    protected function bindEvents($app)
+    {
+        $handler = new SentryLaravelEventHandler($app['sentry'], $app['sentry.config']);
+        $handler->subscribe($app->events);
     }
 
     /**
@@ -30,13 +37,19 @@ class SentryLumenServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        $this->app->singleton('sentry', function ($app) {
+        $this->app->singleton('sentry.config', function ($app) {
             $user_config = $app['config']['sentry'];
 
             // Make sure we don't crash when we did not publish the config file
             if (is_null($user_config)) {
                 $user_config = [];
             }
+
+            return $user_config;
+        });
+
+        $this->app->singleton('sentry', function ($app) {
+            $user_config = $app['sentry.config'];
 
             $client = SentryLaravel::getClient(array_merge(array(
                 'environment' => $app->environment(),
