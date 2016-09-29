@@ -1,6 +1,10 @@
 <?php
 
-class HomeController extends BaseController {
+namespace App\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+
+class HomeController extends Controller {
 
     /*
     |--------------------------------------------------------------------------
@@ -17,23 +21,23 @@ class HomeController extends BaseController {
 
     public function verifyCredentials()
     {
-        Log::info('Verifying credentials');
-        $user = DB::table('migrations')->where('migration', 'a migration')->first();
+        \Log::info('Verifying credentials');
+        $user = DB::table('users')->where('name', 'John')->first();
         throw new Exception('No credentials passed!');
     }
 
 
     public function authenticateUser()
     {
-        Log::info('Authenticating the current user');
+        \Log::info('Authenticating the current user');
         $this->verifyCredentials();
     }
 
     public function showWelcome($id)
     {
-        Log::info('Rendering a page thats about to error');
-        $this->authenticateUser();
-        return View::make('hello');
+        \Log::info('Rendering a page thats about to error');
+        // $this->authenticateUser();
+        return view('hello');
     }
 
 }

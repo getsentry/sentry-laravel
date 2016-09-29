@@ -30,6 +30,20 @@ class SentryLaravelEventHandler
         $args = func_get_args();
         $data = null;
         $level = 'info';
+        if ($name === 'Illuminate\Routing\Events\RouteMatched') {
+            $route = $args[0]->route;
+            $routeName = $route->getActionName();
+            if ($routeName && $routeName !== 'Closure') {
+                $this->client->transaction->push($routeName);
+            }
+        } elseif ($name === 'router.matched') {
+            $route = $args[0];
+            $routeName = $route->getActionName();
+            if ($routeName && $routeName !== 'Closure') {
+                $this->client->transaction->push($routeName);
+            }
+        }
+
         if ($name === 'Illuminate\Database\Events\QueryExecuted') {
             $name = 'sql.query';
             $message = $args[0]->sql;
