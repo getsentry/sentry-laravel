@@ -30,3 +30,5 @@ Route::get('/', function () {
     Log::info('Rendering a page thats about to error');
     authenticateUser();
 });
+
+Route::get('/welcome/{id}', 'HomeController@showWelcome');

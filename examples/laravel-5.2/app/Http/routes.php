@@ -29,4 +29,6 @@ function authenticateUser()
 Route::get('/', function () {
     Log::info('Rendering a page thats about to error');
     authenticateUser();
-});
+})->name('index');
+
+Route::get('/welcome/{id}', 'HomeController@showWelcome')->name('welcome');
