@@ -14,6 +14,7 @@
 function verifyCredentials()
 {
     Log::info('Verifying credentials');
+    $user = DB::table('users')->where('name', 'John')->first();
     throw new Exception('No credentials passed!');
 }
 

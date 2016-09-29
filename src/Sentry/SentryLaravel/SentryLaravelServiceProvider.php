@@ -21,6 +21,8 @@ class SentryLaravelServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        parent::boot();
+
         $app = $this->app;
 
         // Laravel 4.x compatibility
@@ -35,23 +37,21 @@ class SentryLaravelServiceProvider extends ServiceProvider
                 $app['sentry']->captureException($e);
             });
 
-            $this->bindLogger($app['sentry']);
+            $this->bindEvents($app);
         } else {
             // the default configuration file
             $this->publishes(array(
                 __DIR__ . '/config.php' => config_path('sentry.php'),
             ), 'config');
 
-            $this->bindLogger(app('sentry'));
+            $this->bindEvents($app);
         }
     }
 
-    public function bindLogger($client)
+    protected function bindEvents($app)
     {
-        $handler = new \Raven_Breadcrumbs_MonologHandler($client);
-
-        $logger = Log::getMonolog();
-        $logger->pushHandler($handler);
+        $handler = new SentryLaravelEventHandler($app['sentry'], $app['sentry.config']);
+        $handler->subscribe($app->events);
     }
 
     /**
@@ -61,7 +61,7 @@ class SentryLaravelServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        $this->app->singleton('sentry', function ($app) {
+        $this->app->singleton('sentry.config', function ($app) {
             // sentry::config is Laravel 4.x
             $user_config = $app['config']['sentry'] ?: $app['config']['sentry::config'];
 
@@ -69,6 +69,12 @@ class SentryLaravelServiceProvider extends ServiceProvider
             if (is_null($user_config)) {
                 $user_config = [];
             }
+
+            return $user_config;
+        });
+
+        $this->app->singleton('sentry', function ($app) {
+            $user_config = $app['sentry.config'];
 
             $client = SentryLaravel::getClient(array_merge(array(
                 'environment' => $app->environment(),
