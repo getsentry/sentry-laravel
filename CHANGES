@@ -1,0 +1,7 @@
+0.4.0
+-----
+
+- Require sentry/sentry >= 1.5.0.
+- Added support for Illuminate SQL queries in breadcrumbs.
+- Replaced Monolog breadcrumb handler with Illuminate log handler.
+- Added route transaction names.
