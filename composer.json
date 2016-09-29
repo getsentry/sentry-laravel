@@ -1,9 +1,9 @@
 {
     "name": "sentry/sentry-laravel",
     "type": "library",
-    "description": "Laravel integration for Sentry (http://getsentry.com)",
+    "description": "Laravel integration for Sentry (https://sentry.io)",
     "keywords": ["logging", "errors", "laravel", "sentry"],
-    "homepage": "http://getsentry.com",
+    "homepage": "https://sentry.io",
     "license": "Apache-2.0",
     "authors": [
         {

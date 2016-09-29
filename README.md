@@ -1,6 +1,6 @@
 # sentry-laravel
 
-Laravel integration for [Sentry](https://getsentry.com/).
+Laravel integration for [Sentry](https://sentry.io/).
 
 
 ## Laravel 5.x
