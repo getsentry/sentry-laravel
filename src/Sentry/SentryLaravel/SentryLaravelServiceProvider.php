@@ -21,8 +21,6 @@ class SentryLaravelServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        parent::boot();
-
         $app = $this->app;
 
         // Laravel 4.x compatibility
