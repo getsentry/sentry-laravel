@@ -50,6 +50,7 @@ class SentryLaravelServiceProvider extends ServiceProvider
     {
         $handler = new SentryLaravelEventHandler($app['sentry'], $app['sentry.config']);
         $handler->subscribe($app->events);
+        $handler->subscribeLog($app->log);
     }
 
     /**
