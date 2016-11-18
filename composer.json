@@ -1,5 +1,5 @@
 {
-    "name": "rsands2801/sentry-laravel",
+    "name": "sentry/sentry-laravel",
     "type": "library",
     "description": "Laravel integration for Sentry (https://sentry.io)",
     "keywords": ["logging", "errors", "laravel", "sentry"],
@@ -7,8 +7,8 @@
     "license": "Apache-2.0",
     "authors": [
         {
-            "name": "Richard Sands",
-            "email": "rsands2801@gmail.com"
+            "name": "David Cramer",
+            "email": "dcramer@gmail.com"
         }
     ],
     "require": {
