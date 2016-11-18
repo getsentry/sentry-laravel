@@ -3,6 +3,8 @@
 namespace Sentry\SentryLaravel;
 
 use Illuminate\Events\Dispatcher;
+use Illuminate\Foundation\Application;
+use Illuminate\Log\Writer;
 
 // Event handling inspired by the ``laravel-debugbar`` project:
 //   https://github.com/barryvdh/laravel-debugbar
@@ -85,5 +87,60 @@ class SentryLaravelEventHandler
             'data' => $data,
             'level' => $level,
         ));
+    }
+    
+    public function subscribeLog(Writer $log, Application $app)
+    {
+        $this->app = $app;
+        $log->listen(function () {
+            $this->onLogEvent(func_get_args());
+        });
+    }
+
+    public function onLogEvent($args)
+    {
+        $context = $this->buildContext($args[0], $args[2]);
+        $this->client->captureMessage($args[1], [], $context);
+    }
+
+    public function buildContext($level, $options)
+    {
+        $context = [];
+        $context['level'] = $level;
+
+        // Add session data if available.
+        if (isset($this->app['session']) && $session = $this->app['session']->all()) {
+            if (empty($context['user']) or !is_array($context['user'])) {
+                $context['user'] = [];
+            }
+            if (!isset($context['user']['id'])) {
+                $context['user']['id'] = $this->app->session->getId();
+            }
+            if (isset($context['user']['data'])) {
+                $context['user']['data'] = array_merge($session, $context['user']['data']);
+            } else {
+                $context['user']['data'] = $session;
+            }
+        }
+
+        $context['tags'] = [
+            'environment' => $this->app->environment(),
+            'server' => $this->app->request->server('HTTP_HOST'),
+            'php_version' => phpversion(),
+        ];
+
+        $extra = [
+            'ip' => $this->app->request->getClientIp(),
+        ];
+
+        $extra = array_merge($extra, array_except($options, ['user', 'tags', 'level', 'extra']));
+
+        if (isset($context['extra'])) {
+            $context['extra'] = array_merge($extra, $context['extra']);
+        } else {
+            $context['extra'] = $extra;
+        }
+
+        return array_only($context, ['user', 'tags', 'level', 'extra']);
     }
 }
