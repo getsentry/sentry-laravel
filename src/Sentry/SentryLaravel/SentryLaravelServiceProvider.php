@@ -2,7 +2,6 @@
 
 namespace Sentry\SentryLaravel;
 
-use Log;
 use Illuminate\Support\ServiceProvider;
 
 class SentryLaravelServiceProvider extends ServiceProvider
@@ -50,7 +49,7 @@ class SentryLaravelServiceProvider extends ServiceProvider
     {
         $handler = new SentryLaravelEventHandler($app['sentry'], $app['sentry.config']);
         $handler->subscribe($app->events);
-        $handler->subscribeLog($app->log);
+        $handler->subscribeLog($app->log, $app);
     }
 
     /**
