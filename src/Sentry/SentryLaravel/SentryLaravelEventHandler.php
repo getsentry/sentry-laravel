@@ -18,6 +18,11 @@ class SentryLaravelEventHandler
             ? $config['breadcrumbs.sql_bindings']
             : true
         );
+        $this->logMessages = (
+            isset($config['log_messages'])
+            ? $config['log_messages']
+            : false
+        );
     }
 
     public function subscribe(Dispatcher $events)
@@ -88,9 +93,13 @@ class SentryLaravelEventHandler
             'level' => $level,
         ));
     }
-    
+
     public function subscribeLog(Writer $log, Application $app)
     {
+        if (!$this->logMessages) {
+            return;
+        }
+
         $this->app = $app;
         $log->listen(function () {
             $this->onLogEvent(func_get_args());
