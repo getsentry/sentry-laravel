@@ -31,7 +31,7 @@ class SentryLaravelServiceProvider extends ServiceProvider
 
         // Laravel 4.x compatibility
         if (version_compare($app::VERSION, '5.0') < 0) {
-            $this->package('sentry/sentry-laravel', 'sentry');
+            $this->package('sentry/sentry-laravel', static::$abstract);
 
             $app->error(function (\Exception $e) use ($app) {
                 $app[static::$abstract]->captureException($e);
@@ -45,7 +45,7 @@ class SentryLaravelServiceProvider extends ServiceProvider
         } else {
             // the default configuration file
             $this->publishes(array(
-                __DIR__ . '/config.php' => config_path('sentry.php'),
+                __DIR__ . '/config.php' => config_path(static::$abstract . '.php'),
             ), 'config');
 
             $this->bindEvents($app);
@@ -67,7 +67,7 @@ class SentryLaravelServiceProvider extends ServiceProvider
     {
         $this->app->singleton(static::$abstract . '.config', function ($app) {
             // sentry::config is Laravel 4.x
-            $user_config = $app['config']['sentry'] ?: $app['config']['sentry::config'];
+            $user_config = $app['config'][static::$abstract] ?: $app['config'][static::$abstract . '::config'];
 
             // Make sure we don't crash when we did not publish the config file
             if (is_null($user_config)) {
