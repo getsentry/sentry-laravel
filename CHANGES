@@ -1,3 +1,9 @@
+0.5.0
+-----
+
+- Require sentry/sentry >= 1.6.0.
+- Allow overriding abstract type Sentry is bound to in service container.
+
 0.4.0
 -----
 
