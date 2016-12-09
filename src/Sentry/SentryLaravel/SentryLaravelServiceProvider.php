@@ -2,11 +2,17 @@
 
 namespace Sentry\SentryLaravel;
 
-use Log;
 use Illuminate\Support\ServiceProvider;
 
 class SentryLaravelServiceProvider extends ServiceProvider
 {
+    /**
+     * Abstract type to bind Sentry as in the Service Container.
+     *
+     * @var string
+     */
+    public static $abstract = 'sentry';
+
     /**
      * Indicates if loading of the provider is deferred.
      *
@@ -25,21 +31,21 @@ class SentryLaravelServiceProvider extends ServiceProvider
 
         // Laravel 4.x compatibility
         if (version_compare($app::VERSION, '5.0') < 0) {
-            $this->package('sentry/sentry-laravel', 'sentry');
+            $this->package('sentry/sentry-laravel', static::$abstract);
 
             $app->error(function (\Exception $e) use ($app) {
-                $app['sentry']->captureException($e);
+                $app[static::$abstract]->captureException($e);
             });
 
             $app->fatal(function ($e) use ($app) {
-                $app['sentry']->captureException($e);
+                $app[static::$abstract]->captureException($e);
             });
 
             $this->bindEvents($app);
         } else {
             // the default configuration file
             $this->publishes(array(
-                __DIR__ . '/config.php' => config_path('sentry.php'),
+                __DIR__ . '/config.php' => config_path(static::$abstract . '.php'),
             ), 'config');
 
             $this->bindEvents($app);
@@ -48,7 +54,7 @@ class SentryLaravelServiceProvider extends ServiceProvider
 
     protected function bindEvents($app)
     {
-        $handler = new SentryLaravelEventHandler($app['sentry'], $app['sentry.config']);
+        $handler = new SentryLaravelEventHandler($app[static::$abstract], $app[static::$abstract . '.config']);
         $handler->subscribe($app->events);
     }
 
@@ -59,9 +65,9 @@ class SentryLaravelServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        $this->app->singleton('sentry.config', function ($app) {
+        $this->app->singleton(static::$abstract . '.config', function ($app) {
             // sentry::config is Laravel 4.x
-            $user_config = $app['config']['sentry'] ?: $app['config']['sentry::config'];
+            $user_config = $app['config'][static::$abstract] ?: $app['config'][static::$abstract . '::config'];
 
             // Make sure we don't crash when we did not publish the config file
             if (is_null($user_config)) {
@@ -71,8 +77,8 @@ class SentryLaravelServiceProvider extends ServiceProvider
             return $user_config;
         });
 
-        $this->app->singleton('sentry', function ($app) {
-            $user_config = $app['sentry.config'];
+        $this->app->singleton(static::$abstract, function ($app) {
+            $user_config = $app[static::$abstract . '.config'];
 
             $client = SentryLaravel::getClient(array_merge(array(
                 'environment' => $app->environment(),
@@ -102,6 +108,6 @@ class SentryLaravelServiceProvider extends ServiceProvider
      */
     public function provides()
     {
-        return array('sentry');
+        return array(static::$abstract);
     }
 }
