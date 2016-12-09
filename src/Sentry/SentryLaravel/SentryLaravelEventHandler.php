@@ -26,8 +26,16 @@ class SentryLaravelEventHandler
 
     public function onWildcardEvent()
     {
-        $name = $this->events->firing();
         $args = func_get_args();
+        try {
+            $this->_onWildcardEvent($args);
+        } catch (\Exception $e) {
+        }
+    }
+
+    protected function _onWildcardEvent($args)
+    {
+        $name = $this->events->firing();
         $data = null;
         $level = 'info';
         if ($name === 'Illuminate\Routing\Events\RouteMatched') {
