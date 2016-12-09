@@ -4,7 +4,7 @@ namespace Sentry\SentryLaravel;
 
 class SentryLaravel
 {
-    const VERSION = '0.5.0.dev0';
+    const VERSION = '0.6.x-dev';
 
     public static function getClient($user_config)
     {
