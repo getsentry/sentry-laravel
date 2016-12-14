@@ -95,6 +95,7 @@ class SentryLaravelServiceProvider extends ServiceProvider
                     ));
                 }
             } catch (\Exception $e) {
+                error_log(sprintf('sentry.breadcrumbs error=%s', $e->getMessage()));
             }
 
             return $client;
