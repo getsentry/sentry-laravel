@@ -25,15 +25,15 @@ Add the Sentry service provider and facade in ``config/app.php``:
 )
 ```
 
-Add Sentry reporting to ``App/Exceptions/Handler.php``:
+Add Sentry reporting to ``app/Exceptions/Handler.php``:
 
 ```php
-public function report(Exception $e)
+public function report(Exception $exception)
 {
-    if ($this->shouldReport($e)) {
-        app('sentry')->captureException($e);
+    if ($this->shouldReport($exception)) {
+        app('sentry')->captureException($exception);
     }
-    parent::report($e);
+    parent::report($exception);
 }
 ```
 
