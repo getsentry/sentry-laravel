@@ -2,96 +2,191 @@
 
 namespace Sentry\SentryLaravel;
 
+use Exception;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Events\Dispatcher;
+use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Routing\Events\RouteMatched;
+use Illuminate\Routing\Route;
+use Raven_Client;
 
-// Event handling inspired by the ``laravel-debugbar`` project:
-//   https://github.com/barryvdh/laravel-debugbar
 class SentryLaravelEventHandler
 {
-    public function __construct(\Raven_Client $client, array $config)
+
+    /**
+     * Maps event handler function to event names.
+     *
+     * @var array
+     */
+    protected static $eventHandlerMap = [
+        'router.matched'                           => 'routerMatched', // Until Laravel 5.1
+        'Illuminate\Routing\Events\RouteMatched'   => 'routeMatched',  // Since Laravel 5.2
+
+        'illuminate.query'                         => 'query',         // Until Laravel 5.1
+        'Illuminate\Database\Events\QueryExecuted' => 'queryExecuted', // Since Laravel 5.2
+
+        'illuminate.log'                           => 'log',           // Until Laravel 5.3
+        'Illuminate\Log\Events\MessageLogged'      => 'messageLogged', // Since Laravel 5.4
+    ];
+
+    /**
+     * Event recorder.
+     *
+     * @var Raven_Client
+     */
+    protected $client;
+
+    /**
+     * @param Raven_Client $client
+     * @param array        $config
+     */
+    public function __construct(Raven_Client $client, array $config)
     {
         $this->client = $client;
-        $this->sqlBindings = (
-            isset($config['breadcrumbs.sql_bindings'])
+        $this->sqlBindings = isset($config['breadcrumbs.sql_bindings'])
             ? $config['breadcrumbs.sql_bindings']
-            : true
-        );
+            : true;
     }
 
+    /**
+     * Attach all event handlers.
+     *
+     * @param Dispatcher $events
+     */
     public function subscribe(Dispatcher $events)
     {
-        $this->events = $events;
-        $events->listen('*', [$this, 'onWildcardEvent']);
+        foreach (static::$eventHandlerMap as $eventName => $handler) {
+            $events->listen($eventName, [$this, $handler]);
+        }
     }
 
-    public function onWildcardEvent()
+    /**
+     * Pass through the event and capture any errors.
+     *
+     * @param $method
+     * @param $arguments
+     */
+    public function __call($method, $arguments)
     {
-        $args = func_get_args();
         try {
-            $this->_onWildcardEvent($args);
-        } catch (\Exception $e) {
+            call_user_func_array([$this, $method . 'handler'], $arguments);
+        } catch (Exception $exception) {
+            // Ignore
         }
     }
 
-    protected function _onWildcardEvent($args)
+    /**
+     * Record the event with default values.
+     *
+     * @param array $payload
+     */
+    protected function record($payload)
     {
-        $name = $this->events->firing();
-        $data = null;
-        $level = 'info';
-        if ($name === 'Illuminate\Routing\Events\RouteMatched') {
-            $route = $args[0]->route;
-            $routeName = $route->getActionName();
-            if ($routeName && $routeName !== 'Closure') {
-                $this->client->transaction->push($routeName);
-            }
-        } elseif ($name === 'router.matched') {
-            $route = $args[0];
-            $routeName = $route->getActionName();
-            if ($routeName && $routeName !== 'Closure') {
-                $this->client->transaction->push($routeName);
-            }
+        $this->client->breadcrumbs->record(array_merge([
+            'data'  => null,
+            'level' => 'info',
+        ], $payload));
+    }
+
+    /**
+     * Until Laravel 5.1
+     *
+     * @param Route $route
+     */
+    protected function routerMatchedHandler(Route $route)
+    {
+        $routeName = $route->getActionName();
+
+        if ($routeName && $routeName !== 'Closure') {
+            $this->client->transaction->push($routeName);
+        }
+    }
+
+    /**
+     * Since Laravel 5.2
+     *
+     * @param RouteMatched $match
+     */
+    protected function routeMatchedHandler(RouteMatched $match)
+    {
+        $this->routerMatchedHandler($match->route);
+    }
+
+    /**
+     * Until Laravel 5.1
+     *
+     * @param $query
+     * @param $bindings
+     * @param $time
+     * @param $connectionName
+     */
+    protected function queryHandler($query, $bindings, $time, $connectionName)
+    {
+        $data = [
+            'connectionName' => $connectionName,
+        ];
+
+        if ($this->sqlBindings && !empty($bindings)) {
+            $data['bindings'] = $bindings;
         }
 
-        if ($name === 'Illuminate\Database\Events\QueryExecuted') {
-            $name = 'sql.query';
-            $message = $args[0]->sql;
-            $data = array(
-                'connectionName' => $args[0]->connectionName,
-            );
-            if ($this->sqlBindings) {
-                $bindings = $args[0]->bindings;
-                if (!empty($bindings)) {
-                    $data['bindings'] = $bindings;
-                }
-            }
-        } elseif ($name === 'illuminate.query') {
-            // $args = array(sql, bindings, ...)
-            $name = 'sql.query';
-            $message = $args[0];
-            $data = array(
-                'connectionName' => $args[3],
-            );
-            if ($this->sqlBindings) {
-                $bindings = $args[1];
-                if (!empty($bindings)) {
-                    $data['bindings'] = $bindings;
-                }
-            }
-        } elseif ($name === 'illuminate.log') {
-            $name = 'log.' . $args[0];
-            $level = $args[0];
-            $message = $args[1];
-            if (!empty($args[2])) {
-                $data = array('params' => $args[2]);
-            }
-        } else {
-            return;
+        $this->record([
+            'message'  => $query,
+            'category' => 'sql.query',
+        ]);
+    }
+
+    /**
+     * Since Laravel 5.2
+     *
+     * @param QueryExecuted $query
+     */
+    protected function queryExecutedHandler(QueryExecuted $query)
+    {
+        $data = [
+            'connectionName' => $query->connectionName,
+        ];
+
+        if ($this->sqlBindings && !empty($bindings)) {
+            $data['bindings'] = $query->bindings;
         }
-        $this->client->breadcrumbs->record(array(
-            'message' => $message,
-            'category' => $name,
-            'data' => $data,
-            'level' => $level,
-        ));
+
+        $this->client->breadcrumbs->record([
+            'message'  => $query->sql,
+            'category' => 'sql.query',
+            'data'     => $data,
+        ]);
+    }
+
+    /**
+     * Until Laravel 5.3
+     *
+     * @param $level
+     * @param $message
+     * @param $context
+     */
+    protected function logHandler($level, $message, $context)
+    {
+        $this->client->breadcrumbs->record([
+            'message'  => $message,
+            'category' => 'log.' . $level,
+            'data'     => empty($context) ? null : ['params' => $context],
+            'level'    => $level,
+        ]);
+    }
+
+    /**
+     * Since Laravel 5.4
+     *
+     * @param MessageLogged $logEntry
+     */
+    protected function messageLoggedHandler(MessageLogged $logEntry)
+    {
+        $this->client->breadcrumbs->record([
+            'message'  => $logEntry->message,
+            'category' => 'log.' . $logEntry->level,
+            'data'     => empty($logEntry->context) ? null : ['params' => $logEntry->context],
+            'level'    => $logEntry->level,
+        ]);
     }
 }
