@@ -148,7 +148,7 @@ class SentryLaravelEventHandler
             'connectionName' => $query->connectionName,
         ];
 
-        if ($this->sqlBindings && !empty($bindings)) {
+        if ($this->sqlBindings && !empty($query->bindings)) {
             $data['bindings'] = $query->bindings;
         }
 
