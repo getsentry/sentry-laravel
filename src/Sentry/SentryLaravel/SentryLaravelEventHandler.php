@@ -133,6 +133,7 @@ class SentryLaravelEventHandler
         $this->record([
             'message'  => $query,
             'category' => 'sql.query',
+            'data'     => $data
         ]);
     }
 
