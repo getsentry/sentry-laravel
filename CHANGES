@@ -1,3 +1,8 @@
+0.6.1
+-----
+
+- Various fixes for query event breadcrumbs. (#54)
+
 0.6.0
 -----
 
