@@ -5,4 +5,7 @@ return array(
 
     // capture release as git sha
     // 'release' => trim(exec('git --git-dir ' . base_path('.git') . ' log --pretty="%h" -n1 HEAD')),
+    
+    // capture user context for breadcrumbs
+    'breadcrumbs.user_context' => true,
 );
