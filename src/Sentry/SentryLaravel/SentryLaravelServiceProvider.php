@@ -86,16 +86,18 @@ class SentryLaravelServiceProvider extends ServiceProvider
                 'app_path' => app_path(),
             ), $user_config));
 
-            // bind user context if available
-            try {
-                if ($app['auth']->check()) {
-                    $user = $app['auth']->user();
-                    $client->user_context(array(
-                        'id' => $user->getAuthIdentifier(),
-                    ));
+            if($user_config['breadcrumbs.user_context']) {
+                // bind user context if available
+                try {
+                    if ($app['auth']->check()) {
+                        $user = $app['auth']->user();
+                        $client->user_context(array(
+                            'id' => $user->getAuthIdentifier(),
+                        ));
+                    }
+                } catch (\Exception $e) {
+                    error_log(sprintf('sentry.breadcrumbs error=%s', $e->getMessage()));
                 }
-            } catch (\Exception $e) {
-                error_log(sprintf('sentry.breadcrumbs error=%s', $e->getMessage()));
             }
 
             return $client;
