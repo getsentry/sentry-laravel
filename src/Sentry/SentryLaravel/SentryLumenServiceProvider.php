@@ -58,7 +58,7 @@ class SentryLumenServiceProvider extends ServiceProvider
             ), $user_config));
 
             // bind user context if available
-            if ($user_config['user_context'] !== false) {
+            if (isset($user_config['user_context']) && $user_config['user_context'] !== false) {
                 try {
                     if ($app['auth']->check()) {
                         $user = $app['auth']->user();
