@@ -8,4 +8,7 @@ return array(
 
     // Capture bindings on SQL queries
     'breadcrumbs.sql_bindings' => true,
+
+    // Capture default user context
+    'user_context' => true,
 );

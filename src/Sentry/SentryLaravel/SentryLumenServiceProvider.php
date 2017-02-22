@@ -58,14 +58,16 @@ class SentryLumenServiceProvider extends ServiceProvider
             ), $user_config));
 
             // bind user context if available
-            try {
-                if ($app['auth']->check()) {
-                    $user = $app['auth']->user();
-                    $client->user_context(array(
-                        'id' => $user->getAuthIdentifier(),
-                    ));
+            if ($user_config['user_context'] !== false) {
+                try {
+                    if ($app['auth']->check()) {
+                        $user = $app['auth']->user();
+                        $client->user_context(array(
+                            'id' => $user->getAuthIdentifier(),
+                        ));
+                    }
+                } catch (\Exception $e) {
                 }
-            } catch (\Exception $e) {
             }
 
             return $client;

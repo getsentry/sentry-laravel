@@ -86,7 +86,7 @@ class SentryLaravelServiceProvider extends ServiceProvider
                 'app_path' => app_path(),
             ), $user_config));
 
-            if($user_config['breadcrumbs.user_context']) {
+            if ($user_config['user_context'] !== false) {
                 // bind user context if available
                 try {
                     if ($app['auth']->check()) {
