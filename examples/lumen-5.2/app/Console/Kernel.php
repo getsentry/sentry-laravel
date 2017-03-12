@@ -4,9 +4,12 @@ namespace App\Console;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Laravel\Lumen\Console\Kernel as ConsoleKernel;
+use Sentry\SentryLaravel\SentryLaravelConsole;
 
 class Kernel extends ConsoleKernel
 {
+    use SentryLaravelConsole;
+
     /**
      * The Artisan commands provided by your application.
      *
