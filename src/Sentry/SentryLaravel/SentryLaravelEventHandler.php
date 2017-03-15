@@ -21,7 +21,7 @@ class SentryLaravelEventHandler
     public function subscribe(Dispatcher $events)
     {
         $this->events = $events;
-        $events->listen('*', [$this, 'onWildcardEvent']);
+        $events->listen('*', array($this, 'onWildcardEvent'));
     }
 
     public function onWildcardEvent()

@@ -65,7 +65,7 @@ class SentryLaravelServiceProvider extends ServiceProvider
 
             // Make sure we don't crash when we did not publish the config file
             if (is_null($user_config)) {
-                $user_config = [];
+                $user_config = array();
             }
 
             return $user_config;
