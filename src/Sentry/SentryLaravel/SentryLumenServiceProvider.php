@@ -22,6 +22,16 @@ class SentryLumenServiceProvider extends ServiceProvider
     {
         $this->app->configure('sentry');
         $this->bindEvents($this->app);
+        if ($this->app->runningInConsole()) {
+            $this->registerArtisanCommands();
+        }
+    }
+
+    protected function registerArtisanCommands()
+    {
+        $this->commands([
+            SentryTestCommand::class,
+        ]);
     }
 
     protected function bindEvents($app)
