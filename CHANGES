@@ -1,6 +1,9 @@
 0.7.0
 -----
 
+- Added 'sentry:test' to Artisan. (#65)
+- Added 'user_context' configuration to disable automatic collection. (#55)
+
 0.6.1
 -----
 
