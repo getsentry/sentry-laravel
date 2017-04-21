@@ -50,6 +50,16 @@ class SentryLaravelServiceProvider extends ServiceProvider
 
             $this->bindEvents($app);
         }
+        if ($this->app->runningInConsole()) {
+            $this->registerArtisanCommands();
+        }
+    }
+
+    protected function registerArtisanCommands()
+    {
+        $this->commands([
+            SentryTestCommand::class,
+        ]);
     }
 
     protected function bindEvents($app)

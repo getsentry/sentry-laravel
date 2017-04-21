@@ -125,6 +125,21 @@ return array(
 );
 ```
 
+## Testing with Artisan
+
+You can test your configuration using the provided ``artisan`` command:
+
+```bash
+$ php artisan sentry:test
+[sentry] Client configuration:
+-> server: https://app.getsentry.com/api/3235/store/
+-> project: 3235
+-> public_key: e9ebbd88548a441288393c457ec90441
+-> secret_key: 399aaee02d454e2ca91351f29bdc3a07
+[sentry] Generating test event
+[sentry] Sending test event with ID: 5256614438cf4e0798dc9688e9545d94
+```
+
 ## Adding Context
 
 The mechanism to add context will vary depending on which version of Laravel you're using, but the general approach is the same. Find a good entry point to your application in which the context you want to add is available, ideally early in the process.
