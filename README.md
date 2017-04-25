@@ -185,6 +185,47 @@ class SentryContext
 }
 ```
 
+## Adding to console
+
+You can logging every exception in artisan console with this trait.
+
+In the following example, we'll use laravel sentry console exception handler to Console Kernel file:
+
+```php
+namespace App\Console;
+
+use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use Sentry\SentryLaravel\SentryLaravelConsole;
+
+class Kernel extends ConsoleKernel
+{
+    use SentryLaravelConsole;
+
+    /**
+     * The Artisan commands provided by your application.
+     *
+     * @var array
+     */
+    protected $commands = [
+        // Commands\Inspire::class,
+    ];
+
+    /**
+     * Define the application's command schedule.
+     *
+     * @param  \Illuminate\Console\Scheduling\Schedule  $schedule
+     * @return void
+     */
+    protected function schedule(Schedule $schedule)
+    {
+        // $schedule->command('inspire')
+        //          ->hourly();
+    }
+}
+
+```
+
 ## Contributing
 
 First, make sure you can run the test suite. Install development dependencies :
