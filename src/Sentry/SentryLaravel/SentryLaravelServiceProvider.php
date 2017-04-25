@@ -100,9 +100,8 @@ class SentryLaravelServiceProvider extends ServiceProvider
                 // bind user context if available
                 try {
                     if ($app['auth']->check()) {
-                        $user = $app['auth']->user();
                         $client->user_context(array(
-                            'id' => $user->getAuthIdentifier(),
+                            'id' => $app['auth']->id(),
                         ));
                     }
                 } catch (\Exception $e) {
