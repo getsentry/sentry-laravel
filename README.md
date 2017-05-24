@@ -185,6 +185,61 @@ class SentryContext
 }
 ```
 
+## Send Logging messages to Sentry
+
+In order to capture Laravel Log messages and send these messages to Sentry you may register log listener in the boot method of one of your service providers. In this example, we'll register the observer in the AppServiceProvider.
+
+```php
+
+namespace App\Providers;
+
+use Log;
+use App\Observers\UserObserver;
+use Illuminate\Support\ServiceProvider;
+
+class AppServiceProvider extends ServiceProvider
+{
+    /**
+     * Bootstrap any application services.
+     *
+     * @return void
+     */
+    public function boot()
+    {
+        Log::listen(function ($level, $message, $context) {
+            if ($level == 'debug') {
+                $level = 'info';
+            }
+            $context['level'] = $level;
+            if ($message instanceof \Exception) {
+                app('sentry')->captureException($message, [], $context);
+            } else {
+                app('sentry')->captureMessage($message, [], $context);
+            }
+        });
+    }
+
+    /**
+     * Register the service provider.
+     *
+     * @return void
+     */
+    public function register()
+    {
+        //
+    }
+}
+```
+
+In order for Sentry to group similar log messages you may define a static message text and provide additional information in second parameter.
+
+```php
+  Log::error('Error sending Email ', [
+    'additional_information' => $info
+  ]);
+```
+
+
 ## Contributing
 
 First, make sure you can run the test suite. Install development dependencies :
