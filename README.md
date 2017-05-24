@@ -194,7 +194,7 @@ In order to capture Laravel Log messages and send these messages to Sentry you m
 namespace App\Providers;
 
 use Log;
-use App\Observers\UserObserver;
+use Exception;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -211,22 +211,12 @@ class AppServiceProvider extends ServiceProvider
                 $level = 'info';
             }
             $context['level'] = $level;
-            if ($message instanceof \Exception) {
+            if ($message instanceof Exception) {
                 app('sentry')->captureException($message, [], $context);
             } else {
                 app('sentry')->captureMessage($message, [], $context);
             }
         });
-    }
-
-    /**
-     * Register the service provider.
-     *
-     * @return void
-     */
-    public function register()
-    {
-        //
     }
 }
 ```
