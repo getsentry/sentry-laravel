@@ -207,8 +207,16 @@ class AppServiceProvider extends ServiceProvider
     public function boot()
     {
         Log::listen(function ($level, $message, $context) {
-            if ($level == 'debug') {
-                $level = 'info';
+            switch ($level) {
+                case 'debug':
+                    $level = 'info';
+                    break;
+                case 'notice':
+                case 'alert':
+                    $level = 'warning';
+                    break;
+                case 'critical':
+                    $level = 'error';
             }
             $context['level'] = $level;
             if ($message instanceof Exception) {
@@ -221,11 +229,16 @@ class AppServiceProvider extends ServiceProvider
 }
 ```
 
-In order for Sentry to group similar log messages you may define a static message text and provide additional information in second parameter.
+In order for Sentry to group similar log messages you may define a static message text and provide additional information in second parameter as tags and extra tags. Read more about these in [Context Documentation](https://docs.sentry.io/learn/context/)
 
 ```php
-  Log::error('Error sending Email ', [
-    'additional_information' => $info
+  Log::error('Error sending an email', [
+    'tags'  => [
+        'error_code' => 99
+    ],
+    'extra' => [
+        'additional_information' => $info
+    ]
   ]);
 ```
 
