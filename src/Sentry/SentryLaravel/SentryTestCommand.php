@@ -55,13 +55,14 @@ class SentryTestCommand extends Command
             $config = get_object_vars($client);
             $required_keys = array('server', 'project', 'public_key', 'secret_key');
 
-            $output = "";
+            $output = '';
             foreach ($required_keys as $key) {
                 if (empty($config[$key])) {
                     $this->error("[sentry] ERROR: Missing configuration for $key");
                 }
+
                 if (is_array($config[$key])) {
-                    $output .= "-> $key: [".implode(", ", $config[$key])."]\n";
+                    $output .= "-> $key: [" . implode(', ', $config[$key]) . "]\n";
                 } else {
                     $output .= "-> $key: $config[$key]\n";
                 }
@@ -71,7 +72,7 @@ class SentryTestCommand extends Command
 
             $this->info('[sentry] Generating test event');
 
-            $ex = $this->generateTestException("command name", array("foo" => "bar"));
+            $ex = $this->generateTestException('command name', array('foo' => 'bar'));
 
             $event_id = $client->captureException($ex);
 
@@ -81,11 +82,21 @@ class SentryTestCommand extends Command
             if (!empty($last_error)) {
                 $this->error("[sentry] There was an error sending the test event:\n $last_error");
             }
-        } finally {
-            error_reporting($old_error_reporting);
+        } catch (\Exception $e) {
+            // Ignore any exceptions
         }
+
+        error_reporting($old_error_reporting);
     }
 
+    /**
+     * Generate a test exception to send to Sentry.
+     *
+     * @param $command
+     * @param $arg
+     *
+     * @return \Exception
+     */
     protected function generateTestException($command, $arg)
     {
         // Do something silly
