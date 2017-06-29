@@ -7,13 +7,6 @@ use Illuminate\Support\ServiceProvider;
 class SentryLumenServiceProvider extends ServiceProvider
 {
     /**
-     * Indicates if loading of the provider is deferred.
-     *
-     * @var bool
-     */
-    protected $defer = false;
-
-    /**
      * Bootstrap the application events.
      *
      * @return void
@@ -27,17 +20,17 @@ class SentryLumenServiceProvider extends ServiceProvider
         }
     }
 
-    protected function registerArtisanCommands()
-    {
-        $this->commands([
-            SentryTestCommand::class,
-        ]);
-    }
-
     protected function bindEvents($app)
     {
         $handler = new SentryLaravelEventHandler($app['sentry'], $app['sentry.config']);
         $handler->subscribe($app->events);
+    }
+
+    protected function registerArtisanCommands()
+    {
+        $this->commands(array(
+            'Sentry\SentryLaravel\SentryTestCommand',
+        ));
     }
 
     /**
@@ -52,7 +45,7 @@ class SentryLumenServiceProvider extends ServiceProvider
 
             // Make sure we don't crash when we did not publish the config file
             if (is_null($user_config)) {
-                $user_config = [];
+                $user_config = array();
             }
 
             return $user_config;

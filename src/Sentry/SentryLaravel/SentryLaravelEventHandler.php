@@ -12,22 +12,21 @@ use Raven_Client;
 
 class SentryLaravelEventHandler
 {
-
     /**
      * Maps event handler function to event names.
      *
      * @var array
      */
-    protected static $eventHandlerMap = [
-        'router.matched'                           => 'routerMatched', // Until Laravel 5.1
-        'Illuminate\Routing\Events\RouteMatched'   => 'routeMatched',  // Since Laravel 5.2
+    protected static $eventHandlerMap = array(
+        'router.matched' => 'routerMatched', // Until Laravel 5.1
+        'Illuminate\Routing\Events\RouteMatched' => 'routeMatched',  // Since Laravel 5.2
 
-        'illuminate.query'                         => 'query',         // Until Laravel 5.1
+        'illuminate.query' => 'query',         // Until Laravel 5.1
         'Illuminate\Database\Events\QueryExecuted' => 'queryExecuted', // Since Laravel 5.2
 
-        'illuminate.log'                           => 'log',           // Until Laravel 5.3
-        'Illuminate\Log\Events\MessageLogged'      => 'messageLogged', // Since Laravel 5.4
-    ];
+        'illuminate.log' => 'log',           // Until Laravel 5.3
+        'Illuminate\Log\Events\MessageLogged' => 'messageLogged', // Since Laravel 5.4
+    );
 
     /**
      * Event recorder.
@@ -43,9 +42,7 @@ class SentryLaravelEventHandler
     public function __construct(Raven_Client $client, array $config)
     {
         $this->client = $client;
-        $this->sqlBindings = isset($config['breadcrumbs.sql_bindings'])
-            ? $config['breadcrumbs.sql_bindings']
-            : true;
+        $this->sqlBindings = isset($config['breadcrumbs.sql_bindings']) ? $config['breadcrumbs.sql_bindings'] : true;
     }
 
     /**
@@ -56,7 +53,7 @@ class SentryLaravelEventHandler
     public function subscribe(Dispatcher $events)
     {
         foreach (static::$eventHandlerMap as $eventName => $handler) {
-            $events->listen($eventName, [$this, $handler]);
+            $events->listen($eventName, array($this, $handler));
         }
     }
 
@@ -69,23 +66,20 @@ class SentryLaravelEventHandler
     public function __call($method, $arguments)
     {
         try {
-            call_user_func_array([$this, $method . 'handler'], $arguments);
+            call_user_func_array(array($this, $method . 'handler'), $arguments);
         } catch (Exception $exception) {
             // Ignore
         }
     }
 
     /**
-     * Record the event with default values.
+     * Since Laravel 5.2
      *
-     * @param array $payload
+     * @param RouteMatched $match
      */
-    protected function record($payload)
+    protected function routeMatchedHandler(RouteMatched $match)
     {
-        $this->client->breadcrumbs->record(array_merge([
-            'data'  => null,
-            'level' => 'info',
-        ], $payload));
+        $this->routerMatchedHandler($match->route);
     }
 
     /**
@@ -103,16 +97,6 @@ class SentryLaravelEventHandler
     }
 
     /**
-     * Since Laravel 5.2
-     *
-     * @param RouteMatched $match
-     */
-    protected function routeMatchedHandler(RouteMatched $match)
-    {
-        $this->routerMatchedHandler($match->route);
-    }
-
-    /**
      * Until Laravel 5.1
      *
      * @param $query
@@ -122,19 +106,30 @@ class SentryLaravelEventHandler
      */
     protected function queryHandler($query, $bindings, $time, $connectionName)
     {
-        $data = [
-            'connectionName' => $connectionName,
-        ];
+        $data = array('connectionName' => $connectionName);
 
         if ($this->sqlBindings && !empty($bindings)) {
             $data['bindings'] = $bindings;
         }
 
-        $this->record([
-            'message'  => $query,
+        $this->record(array(
+            'message' => $query,
             'category' => 'sql.query',
-            'data'     => $data
-        ]);
+            'data' => $data,
+        ));
+    }
+
+    /**
+     * Record the event with default values.
+     *
+     * @param array $payload
+     */
+    protected function record($payload)
+    {
+        $this->client->breadcrumbs->record(array_merge(array(
+            'data' => null,
+            'level' => 'info',
+        ), $payload));
     }
 
     /**
@@ -144,19 +139,17 @@ class SentryLaravelEventHandler
      */
     protected function queryExecutedHandler(QueryExecuted $query)
     {
-        $data = [
-            'connectionName' => $query->connectionName,
-        ];
+        $data = array('connectionName' => $query->connectionName);
 
         if ($this->sqlBindings && !empty($query->bindings)) {
             $data['bindings'] = $query->bindings;
         }
 
-        $this->client->breadcrumbs->record([
-            'message'  => $query->sql,
+        $this->client->breadcrumbs->record(array(
+            'message' => $query->sql,
             'category' => 'sql.query',
-            'data'     => $data,
-        ]);
+            'data' => $data,
+        ));
     }
 
     /**
@@ -168,12 +161,12 @@ class SentryLaravelEventHandler
      */
     protected function logHandler($level, $message, $context)
     {
-        $this->client->breadcrumbs->record([
-            'message'  => $message,
+        $this->client->breadcrumbs->record(array(
+            'message' => $message,
             'category' => 'log.' . $level,
-            'data'     => empty($context) ? null : ['params' => $context],
-            'level'    => $level,
-        ]);
+            'data' => empty($context) ? null : array('params' => $context),
+            'level' => $level,
+        ));
     }
 
     /**
@@ -183,11 +176,11 @@ class SentryLaravelEventHandler
      */
     protected function messageLoggedHandler(MessageLogged $logEntry)
     {
-        $this->client->breadcrumbs->record([
-            'message'  => $logEntry->message,
+        $this->client->breadcrumbs->record(array(
+            'message' => $logEntry->message,
             'category' => 'log.' . $logEntry->level,
-            'data'     => empty($logEntry->context) ? null : ['params' => $logEntry->context],
-            'level'    => $logEntry->level,
-        ]);
+            'data' => empty($logEntry->context) ? null : array('params' => $logEntry->context),
+            'level' => $logEntry->level,
+        ));
     }
 }
