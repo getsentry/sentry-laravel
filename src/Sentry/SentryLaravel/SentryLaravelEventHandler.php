@@ -3,12 +3,13 @@
 namespace Sentry\SentryLaravel;
 
 use Exception;
-use Illuminate\Database\Events\QueryExecuted;
+use Raven_Client;
+use Illuminate\Routing\Route;
 use Illuminate\Events\Dispatcher;
 use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Auth\Events\Authenticated;
 use Illuminate\Routing\Events\RouteMatched;
-use Illuminate\Routing\Route;
-use Raven_Client;
+use Illuminate\Database\Events\QueryExecuted;
 
 class SentryLaravelEventHandler
 {
@@ -29,26 +30,44 @@ class SentryLaravelEventHandler
     );
 
     /**
-     * Event recorder.
+     * Maps authentication event handler function to event names.
+     *
+     * @var array
+     */
+    protected static $authEventHandlerMap = array(
+        'Illuminate\Auth\Events\Authenticated' => 'authenticated', // Since Laravel 5.3
+    );
+
+    /**
+     * Sentry client.
      *
      * @var Raven_Client
      */
     protected $client;
 
     /**
-     * @param Raven_Client $client
-     * @param array        $config
+     * Indicates if we should we add query bindings to the breadcrumbs.
+     *
+     * @var bool
+     */
+    private $sqlBindings;
+
+    /**
+     * SentryLaravelEventHandler constructor.
+     *
+     * @param \Raven_Client $client
+     * @param array         $config
      */
     public function __construct(Raven_Client $client, array $config)
     {
         $this->client = $client;
-        $this->sqlBindings = isset($config['breadcrumbs.sql_bindings']) ? $config['breadcrumbs.sql_bindings'] : true;
+        $this->sqlBindings = isset($config['breadcrumbs.sql_bindings']) ? $config['breadcrumbs.sql_bindings'] === true : true;
     }
 
     /**
      * Attach all event handlers.
      *
-     * @param Dispatcher $events
+     * @param \Illuminate\Events\Dispatcher $events
      */
     public function subscribe(Dispatcher $events)
     {
@@ -58,10 +77,22 @@ class SentryLaravelEventHandler
     }
 
     /**
+     * Attach all authentication event handlers.
+     *
+     * @param \Illuminate\Events\Dispatcher $events
+     */
+    public function subscribeAuthEvents(Dispatcher $events)
+    {
+        foreach (static::$authEventHandlerMap as $eventName => $handler) {
+            $events->listen($eventName, array($this, $handler));
+        }
+    }
+
+    /**
      * Pass through the event and capture any errors.
      *
-     * @param $method
-     * @param $arguments
+     * @param string $method
+     * @param array  $arguments
      */
     public function __call($method, $arguments)
     {
@@ -73,13 +104,16 @@ class SentryLaravelEventHandler
     }
 
     /**
-     * Since Laravel 5.2
+     * Record the event with default values.
      *
-     * @param RouteMatched $match
+     * @param array $payload
      */
-    protected function routeMatchedHandler(RouteMatched $match)
+    protected function record($payload)
     {
-        $this->routerMatchedHandler($match->route);
+        $this->client->breadcrumbs->record(array_merge(array(
+            'data' => null,
+            'level' => 'info',
+        ), $payload));
     }
 
     /**
@@ -97,6 +131,16 @@ class SentryLaravelEventHandler
     }
 
     /**
+     * Since Laravel 5.2
+     *
+     * @param \Illuminate\Routing\Events\RouteMatched $match
+     */
+    protected function routeMatchedHandler(RouteMatched $match)
+    {
+        $this->routerMatchedHandler($match->route);
+    }
+
+    /**
      * Until Laravel 5.1
      *
      * @param $query
@@ -108,7 +152,7 @@ class SentryLaravelEventHandler
     {
         $data = array('connectionName' => $connectionName);
 
-        if ($this->sqlBindings && !empty($bindings)) {
+        if ($this->sqlBindings) {
             $data['bindings'] = $bindings;
         }
 
@@ -120,28 +164,15 @@ class SentryLaravelEventHandler
     }
 
     /**
-     * Record the event with default values.
-     *
-     * @param array $payload
-     */
-    protected function record($payload)
-    {
-        $this->client->breadcrumbs->record(array_merge(array(
-            'data' => null,
-            'level' => 'info',
-        ), $payload));
-    }
-
-    /**
      * Since Laravel 5.2
      *
-     * @param QueryExecuted $query
+     * @param \Illuminate\Database\Events\QueryExecuted $query
      */
     protected function queryExecutedHandler(QueryExecuted $query)
     {
         $data = array('connectionName' => $query->connectionName);
 
-        if ($this->sqlBindings && !empty($query->bindings)) {
+        if ($this->sqlBindings) {
             $data['bindings'] = $query->bindings;
         }
 
@@ -172,7 +203,7 @@ class SentryLaravelEventHandler
     /**
      * Since Laravel 5.4
      *
-     * @param MessageLogged $logEntry
+     * @param \Illuminate\Log\Events\MessageLogged $logEntry
      */
     protected function messageLoggedHandler(MessageLogged $logEntry)
     {
@@ -181,6 +212,18 @@ class SentryLaravelEventHandler
             'category' => 'log.' . $logEntry->level,
             'data' => empty($logEntry->context) ? null : array('params' => $logEntry->context),
             'level' => $logEntry->level,
+        ));
+    }
+
+    /**
+     * Since Laravel 5.3
+     *
+     * @param \Illuminate\Auth\Events\Authenticated $event
+     */
+    protected function authenticatedHandler(Authenticated $event)
+    {
+        $this->client->user_context(array(
+            'id' => $event->user->getAuthIdentifier(),
         ));
     }
 }

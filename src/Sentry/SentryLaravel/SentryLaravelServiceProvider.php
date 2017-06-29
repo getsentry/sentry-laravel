@@ -48,17 +48,35 @@ class SentryLaravelServiceProvider extends ServiceProvider
         }
     }
 
-    protected function bindEvents($app)
-    {
-        $handler = new SentryLaravelEventHandler($app[static::$abstract], $app[static::$abstract . '.config']);
-        $handler->subscribe($app->events);
-    }
-
+    /**
+     * Register the artisan commands.
+     */
     protected function registerArtisanCommands()
     {
         $this->commands(array(
             'Sentry\SentryLaravel\SentryTestCommand',
         ));
+    }
+
+    /**
+     * Bind to the Laravel event dispatcher to log events.
+     *
+     * @param $app
+     */
+    protected function bindEvents($app)
+    {
+        $user_config = $app[static::$abstract . '.config'];
+
+        $handler = new SentryLaravelEventHandler($app[static::$abstract], $user_config);
+
+        $handler->subscribe($app->events);
+
+        // In Laravel >=5.3 we can get the user context from the auth events
+        if (version_compare($app::VERSION, '5.3') >= 0) {
+            if (isset($user_config['user_context']) && $user_config['user_context'] !== false) {
+                $handler->subscribeAuthEvents($app->events);
+            }
+        }
     }
 
     /**
@@ -72,12 +90,8 @@ class SentryLaravelServiceProvider extends ServiceProvider
             // sentry::config is Laravel 4.x
             $user_config = $app['config'][static::$abstract] ?: $app['config'][static::$abstract . '::config'];
 
-            // Make sure we don't crash when we did not publish the config file
-            if (is_null($user_config)) {
-                $user_config = array();
-            }
-
-            return $user_config;
+            // Make sure we don't crash when we did not publish the config file and the config is null
+            return $user_config ?: array();
         });
 
         $this->app->singleton(static::$abstract, function ($app) {
@@ -89,17 +103,19 @@ class SentryLaravelServiceProvider extends ServiceProvider
                 'app_path' => app_path(),
             ), $user_config));
 
-            if (isset($user_config['user_context']) && $user_config['user_context'] !== false) {
-                // bind user context if available
-                try {
-                    if ($app['auth']->check()) {
-                        $user = $app['auth']->user();
-                        $client->user_context(array(
-                            'id' => $user->getAuthIdentifier(),
-                        ));
+            // In Laravel <5.3 we can get the user context from here
+            if (version_compare($app::VERSION, '5.3') < 0) {
+                if (isset($user_config['user_context']) && $user_config['user_context'] !== false) {
+                    // Bind user context if available
+                    try {
+                        if ($app['auth']->check()) {
+                            $client->user_context(array(
+                                'id' => $app['auth']->user()->getAuthIdentifier(),
+                            ));
+                        }
+                    } catch (\Exception $e) {
+                        error_log(sprintf('sentry.breadcrumbs error=%s', $e->getMessage()));
                     }
-                } catch (\Exception $e) {
-                    error_log(sprintf('sentry.breadcrumbs error=%s', $e->getMessage()));
                 }
             }
 
