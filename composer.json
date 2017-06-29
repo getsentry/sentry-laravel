@@ -25,6 +25,20 @@
             "Sentry\\SentryLaravel\\": "src/"
         }
     },
+    "scripts": {
+        "tests": [
+            "vendor/bin/phpunit --verbose"
+        ],
+        "tests-travis": [
+            "vendor/bin/phpunit --verbose --configuration phpunit.xml --coverage-clover test/clover.xml"
+        ],
+        "tests-report": [
+            "vendor/bin/phpunit --verbose --configuration phpunit.xml --coverage-html test/html-report"
+        ],
+        "phpcs": [
+            "vendor/bin/php-cs-fixer fix --config-file=.php_cs --verbose --diff --dry-run"
+        ]
+    },
     "extra": {
         "branch-alias": {
             "dev-master": "0.8.x-dev"
