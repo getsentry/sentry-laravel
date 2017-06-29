@@ -28,6 +28,14 @@
     "extra": {
         "branch-alias": {
             "dev-master": "0.8.x-dev"
+        },
+        "laravel": {
+            "providers": [
+                "Sentry\\SentryLaravel\\SentryLaravelServiceProvider"
+            ],
+            "aliases": {
+                "Sentry": "Sentry\\SentryLaravel\\SentryFacade"
+            }
         }
     }
 }
