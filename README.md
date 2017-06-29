@@ -1,9 +1,23 @@
-# sentry-laravel
+<p align="center">
+    <a href="https://sentry.io" target="_blank" align="center">
+        <img src="https://sentry.io/_static/getsentry/images/branding/png/sentry-horizontal-black.png" width="280">
+    </a>
+</p>
+
+# Sentry for Laravel
+
+[![Build Status](https://secure.travis-ci.org/getsentry/sentry-laravel.png?branch=master)](http://travis-ci.org/getsentry/sentry-laravel)
+[![Total Downloads](https://img.shields.io/packagist/dt/sentry/sentry-laravel.svg?style=flat-square)](https://packagist.org/packages/sentry/sentry-laravel)
+[![Downloads per month](https://img.shields.io/packagist/dm/sentry/sentry-laravel.svg?style=flat-square)](https://packagist.org/packages/sentry/sentry-laravel)
+[![Latest stable version](https://img.shields.io/packagist/v/sentry/sentry-laravel.svg?style=flat-square)](https://packagist.org/packages/sentry/sentry-laravel)
+[![License](http://img.shields.io/packagist/l/sentry/sentry-laravel.svg?style=flat-square)](https://packagist.org/packages/sentry/sentry-laravel)
 
 Laravel integration for [Sentry](https://sentry.io/).
 
 
-## Laravel 5.x
+## Installation
+
+### Laravel 5.x
 
 Install the ``sentry/sentry-laravel`` package:
 
@@ -50,7 +64,7 @@ Add your DSN to ``.env``:
 SENTRY_DSN=https://public:secret@sentry.example.com/1
 ```
 
-## Laravel 4.x
+### Laravel 4.x
 
 Install the ``sentry/sentry-laravel`` package:
 
@@ -78,7 +92,7 @@ Create the Sentry configuration file (``config/sentry.php``):
 $ php artisan config:publish sentry/sentry-laravel
 ```
 
-## Lumen 5.x
+### Lumen 5.x
 
 Install the ``sentry/sentry-laravel`` package:
 
@@ -185,22 +199,23 @@ class SentryContext
 }
 ```
 
+
 ## Contributing
 
-First, make sure you can run the test suite. Install development dependencies :
+Dependencies are managed through composer:
 
-```bash
+```
 $ composer install
 ```
 
-You may now use phpunit :
+Tests can then be run via phpunit:
 
-```bash
+```
 $ vendor/bin/phpunit
 ```
 
 
-## Resources
+## Community
 
 * [Bug Tracker](http://github.com/getsentry/sentry-laravel/issues)
 * [Code](http://github.com/getsentry/sentry-laravel)
