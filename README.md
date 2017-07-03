@@ -30,7 +30,7 @@ Add the Sentry service provider and facade in ``config/app.php``:
 ```php
 'providers' => array(
     // ...
-    Sentry\SentryLaravel\SentryLaravelServiceProvider::class,
+    \Sentry\SentryLaravel\SentryLaravelServiceProvider::class,
 )
 
 'aliases' => array(
