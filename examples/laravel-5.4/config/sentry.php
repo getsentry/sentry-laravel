@@ -11,4 +11,6 @@ return array(
 
     // Capture default user context
     'user_context' => true,
+
+    'release' => '1.0',
 );
