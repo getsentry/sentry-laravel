@@ -11,18 +11,19 @@
 |
 */
 
-function verifyCredentials()
+function verifyCredentials($username, $password)
 {
     Log::info('Verifying credentials');
-    $user = DB::table('users')->where('name', 'John')->first();
-    throw new Exception('No credentials passed!');
+    $user = DB::table('users')->where('name', $username)->first();
+    // in the real world, we'd have some logic here
+    throw new Exception('Invalid password!');
 }
 
 
 function authenticateUser()
 {
     Log::info('Authenticating the current user');
-    verifyCredentials();
+    verifyCredentials('jane_doe99', 'fizzbuzz');
 }
 
 
