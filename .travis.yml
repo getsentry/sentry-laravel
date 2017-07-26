@@ -1,38 +1,24 @@
-
 language: php
 sudo: false
-
 php:
-  - 5.3
-  - 5.4
-  - 5.5
   - 5.6
-  - 7.0
-  - 7.1
-  - nightly
 env:
-  - REMOVE_XDEBUG="0"
-  - REMOVE_XDEBUG="1"
-
-matrix:
-  allow_failures:
-    - php: hhvm-3.12
-    - php: nightly
-  fast_finish: true
-  include:
-    - php: hhvm-3.12
-      env: REMOVE_XDEBUG="0" HHVM="1"
-      dist: trusty
-
+  matrix:
+  - LARAVEL=5.0 TESTBENCH=3.0.*
+  - LARAVEL=5.1 TESTBENCH=3.1.*
+  - LARAVEL=5.2 TESTBENCH=3.2.*
+  - LARAVEL=5.3 TESTBENCH=3.3.*
+  - LARAVEL=5.4 TESTBENCH=3.4.*
 cache:
   directories:
     - $HOME/.composer/cache
-
 before_install:
-  - if [ "$REMOVE_XDEBUG" = "1" ]; then phpenv config-rm xdebug.ini; fi
   - composer self-update
 
-install: travis_retry composer install --no-interaction --prefer-dist
+install:
+  - composer require -n orchestra/testbench:$TESTBENCH laravel/framework:$LARAVEL
+  - travis_retry composer install --no-interaction --prefer-dist
+  - composer info
 
 script:
   - composer phpcs
