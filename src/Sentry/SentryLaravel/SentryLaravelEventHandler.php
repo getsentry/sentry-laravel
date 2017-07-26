@@ -123,11 +123,19 @@ class SentryLaravelEventHandler
      */
     protected function routerMatchedHandler(Route $route)
     {
-        $routeName = $route->getActionName();
-
-        if ($routeName && $routeName !== 'Closure') {
-            $this->client->transaction->push($routeName);
+        if ($route->getName()) {
+            // someaction (route name/alias)
+            $routeName = $route->getName();
+        } elseif ($route->getActionName()) {
+            // SomeController@someAction (controller action)
+            $routeName = $route->getActionName();
         }
+        if (empty($routeName) || $routeName === 'Closure') {
+            // /someaction // Fallback to the url
+            $routeName = $route->uri();
+        }
+
+        $this->client->transaction->push($routeName);
     }
 
     /**
