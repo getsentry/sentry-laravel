@@ -1,6 +1,9 @@
 Running this example:
 
 ```
+# Setup env
+cp .env.example .env
+
 # Create SQLite database:
 touch database/database.sqlite
 
