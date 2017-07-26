@@ -1,6 +1,8 @@
 0.8.0
 -----
 
+- Improved default app_path to include entire application code, excluding vendor. (#89)
+
 0.7.0
 -----
 

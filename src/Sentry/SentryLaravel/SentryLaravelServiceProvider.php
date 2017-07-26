@@ -96,11 +96,12 @@ class SentryLaravelServiceProvider extends ServiceProvider
 
         $this->app->singleton(static::$abstract, function ($app) {
             $user_config = $app[static::$abstract . '.config'];
-
+            $base_path = base_path();
             $client = SentryLaravel::getClient(array_merge(array(
                 'environment' => $app->environment(),
-                'prefixes' => array(base_path()),
-                'app_path' => app_path(),
+                'prefixes' => array($base_path),
+                'app_path' => $base_path,
+                'excluded_app_paths' => array($base_path . '/vendor'),
             ), $user_config));
 
             // In Laravel <5.3 we can get the user context from here
