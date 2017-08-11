@@ -183,7 +183,7 @@ return array(
 		'Route'           => 'Illuminate\Support\Facades\Route',
 		'Schema'          => 'Illuminate\Support\Facades\Schema',
 		'Seeder'          => 'Illuminate\Database\Seeder',
-        'Sentry'		  => 'Sentry\SentryLaravel\SentryFacade',
+		'Sentry'		  => 'Sentry\SentryLaravel\SentryFacade',
 		'Session'         => 'Illuminate\Support\Facades\Session',
 		'SoftDeletingTrait' => 'Illuminate\Database\Eloquent\SoftDeletingTrait',
 		'SSH'             => 'Illuminate\Support\Facades\SSH',
@@ -191,8 +191,6 @@ return array(
 		'URL'             => 'Illuminate\Support\Facades\URL',
 		'Validator'       => 'Illuminate\Support\Facades\Validator',
 		'View'            => 'Illuminate\Support\Facades\View',
-
-        'Sentry' => 'Sentry\SentryLaravel\SentryFacade',
 
 	),
 
