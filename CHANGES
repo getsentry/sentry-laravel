@@ -2,6 +2,8 @@
 -----
 
 - Improved default app_path to include entire application code, excluding vendor. (#89)
+- Fix for auth context not working properly on Laravel >=5.3. (#81)
+- Support Laravel auto-discovery. (#78)
 
 0.7.0
 -----
