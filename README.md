@@ -199,6 +199,30 @@ class SentryContext
 }
 ```
 
+## Displaying the error ID
+
+When something goes wrong and you get a customer email in your inbox it would be nice if they could give you some kind of identitifier for the error they are seeing.
+
+Luckily Sentry provides you with just that by adding one of the following options to your error view.
+
+```php
+// Using the Sentry facade
+$errorID = Sentry::getLastEventID();
+
+// Or without the Sentry facade (Lumen)
+$errorID = app('sentry')->getLastEventID();
+```
+
+This could look something like this in for example your `resources/views/error/500.blade.php`:
+
+```blade
+@if(!empty(Sentry::getLastEventID()))
+    <p>Please send this ID with your support request: {{ Sentry::getLastEventID() }}.</p>
+@endif
+```
+
+This ID can be searched for in the Sentry interface allowing you to find the error quickly.
+
 
 ## Contributing
 
