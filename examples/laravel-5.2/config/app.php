@@ -205,6 +205,8 @@ return [
         'Validator' => Illuminate\Support\Facades\Validator::class,
         'View' => Illuminate\Support\Facades\View::class,
 
+        'Sentry' => Sentry\SentryLaravel\SentryFacade::class,
+
     ],
 
 ];
