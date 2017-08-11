@@ -41,13 +41,16 @@
         <div class="container">
             <div class="content">
                 <div class="title">Something went wrong.</div>
+                @if(!empty(Sentry::getLastEventID()))
+                    <div class="subtitle">Error ID: {{ Sentry::getLastEventID() }}</div>
+                @endif
                 @unless(empty($sentryID))
                     <!-- Sentry JS SDK 2.1.+ required -->
                     <script src="https://cdn.ravenjs.com/3.3.0/raven.min.js"></script>
 
                     <script>
                     Raven.showReportDialog({
-                        eventId: '{{ $sentryID }}',
+                        eventId: '{{ Sentry::getLastEventID() }}',
 
                         // use the public DSN (dont include your secret!)
                         dsn: 'https://e9ebbd88548a441288393c457ec90441@sentry.io/3235',
