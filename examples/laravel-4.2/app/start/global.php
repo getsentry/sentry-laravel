@@ -49,6 +49,13 @@ Log::useFiles(storage_path().'/logs/laravel.log');
 App::error(function(Exception $exception, $code)
 {
 	Log::error($exception);
+
+	// If we have a custom error page for the code return that
+    // unless we are debugging since then we want to show the
+    // debug screen with the stacktrace and error info etc.
+    if (!Config::get('app.debug') && View::exists("errors.{$code}")) {
+        return Response::view("errors.{$code}", array(), $code);
+    }
 });
 
 /*
@@ -64,7 +71,7 @@ App::error(function(Exception $exception, $code)
 
 App::down(function()
 {
-	return Response::make("Be right back!", 503);
+    return Response::view('errors.503', array(), 503);
 });
 
 /*
