@@ -70,4 +70,7 @@ require $framework.'/Illuminate/Foundation/start.php';
 |
 */
 
+// Ignore deprecated messages on PHP 7+ for the OpenSSL extension.
+error_reporting(E_ALL ^ E_DEPRECATED);
+
 return $app;
