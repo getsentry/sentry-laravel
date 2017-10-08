@@ -5,7 +5,7 @@ namespace Sentry\SentryLaravel;
 use Exception;
 use Raven_Client;
 use Illuminate\Routing\Route;
-use Illuminate\Events\Dispatcher;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Auth\Events\Authenticated;
 use Illuminate\Routing\Events\RouteMatched;
@@ -67,7 +67,7 @@ class SentryLaravelEventHandler
     /**
      * Attach all event handlers.
      *
-     * @param \Illuminate\Events\Dispatcher $events
+     * @param \Illuminate\Contracts\Events\Dispatcher $events
      */
     public function subscribe(Dispatcher $events)
     {
@@ -79,7 +79,7 @@ class SentryLaravelEventHandler
     /**
      * Attach all authentication event handlers.
      *
-     * @param \Illuminate\Events\Dispatcher $events
+     * @param \Illuminate\Contracts\Events\Dispatcher $events
      */
     public function subscribeAuthEvents(Dispatcher $events)
     {
