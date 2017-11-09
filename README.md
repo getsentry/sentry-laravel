@@ -44,8 +44,8 @@ Add Sentry reporting to ``app/Exceptions/Handler.php``:
 ```php
 public function report(Exception $exception)
 {
-    if (app()->bound('sentry') && $this->shouldReport($exception)) {
-        app('sentry')->captureException($exception);
+    if ($this->container->bound('sentry') && $this->shouldReport($exception)) {
+        $this->container->make('sentry')->captureException($exception);
     }
 
     parent::report($exception);
