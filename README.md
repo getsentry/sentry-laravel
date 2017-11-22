@@ -224,6 +224,70 @@ This could look something like this in for example your `resources/views/error/5
 This ID can be searched for in the Sentry interface allowing you to find the error quickly.
 
 
+## Resolve name conflicts with packages also called Sentry
+
+To resolve this you will need to create your own service provider extending ours so we can prevent naming conflicts.
+
+```php
+<?php
+
+namespace App\Support;
+
+class SentryLaravelServiceProvider extends \Sentry\SentryLaravel\SentryLaravelServiceProvider
+{
+    public static $abstract = 'sentry-laravel';
+}
+```
+
+You can then add this service provider to the `config/app.php`.
+
+```php
+'providers' => array(
+    // ...
+    App\Support\SentryLaravelServiceProvider::class,
+)
+```
+
+Optionally if you want to use the facade you also need to extend / create a new facade.
+
+```php
+<?php
+
+namespace App\Support;
+
+class SentryLaravelFacade extends \Sentry\SentryLaravel\SentryFacade
+{
+    protected static function getFacadeAccessor()
+    {
+        return 'sentry-laravel';
+    }
+}
+```
+
+And add that facade to your `config/app.php`.
+
+```php
+'aliases' => array(
+    // ...
+    'SentryLaravel' => App\Support\SentryLaravelFacade::class,
+)
+```
+
+The namespace `\App\Support` can be anything you want in the examples above.
+
+After you added your own service provider, running `php artisan config:publish sentry/sentry-laravel` publishes the Sentry config file to your chosen name (in the example above `config/sentry-laravel.php`) preventing conflicts with a `config/sentry.php` config file that might be used by the other package.
+
+If you are on Laravel 5.5+ the Sentry package is probably auto discovered by Laravel, to solve this add or append to the `extra` section in your `composer.json` file and run composer update/install afterwards:
+
+```json
+"extra": {
+    "laravel": {
+        "dont-discover": "sentry/sentry-laravel"
+    }
+}
+```
+
+
 ## Contributing
 
 Dependencies are managed through composer:
