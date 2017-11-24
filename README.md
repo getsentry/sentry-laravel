@@ -273,11 +273,13 @@ And add that facade to your `config/app.php`.
 )
 ```
 
+After you added your own service provider, running `php artisan vendor:publish --provider="App\Support\SentryLaravelServiceProvider"` publishes the Sentry config file to your chosen name (in the example above `config/sentry-laravel.php`) preventing conflicts with a `config/sentry.php` config file that might be used by the other package.
+
+If you followed the regular installation instructions above (you should), make sure you replace `app('sentry')` with `app('sentry-laravel')`.
+
 The namespace `\App\Support` can be anything you want in the examples above.
 
-After you added your own service provider, running `php artisan config:publish sentry/sentry-laravel` publishes the Sentry config file to your chosen name (in the example above `config/sentry-laravel.php`) preventing conflicts with a `config/sentry.php` config file that might be used by the other package.
-
-If you are on Laravel 5.5+ the Sentry package is probably auto discovered by Laravel, to solve this add or append to the `extra` section in your `composer.json` file and run composer update/install afterwards:
+**Note:** If you are on Laravel 5.5+ the Sentry package is probably auto discovered by Laravel, to solve this add or append to the `extra` section in your `composer.json` file and run composer update/install afterwards:
 
 ```json
 "extra": {
