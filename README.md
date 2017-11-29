@@ -39,12 +39,12 @@ If you're on Laravel 5.4 or earlier, you'll need to add the following to your ``
 )
 ```
 
-Add Sentry reporting to ``app/Exceptions/Handler.php``:
+Add Sentry reporting to ``app/Exceptions/Handler.php`` (be sure ``APP_DEBUG`` isset to ``true`` in your ``.env``):
 
 ```php
 public function report(Exception $exception)
 {
-    if (app()->bound('sentry') && $this->shouldReport($exception)) {
+    if (app()->bound('sentry') && !config('app.debug') && $this->shouldReport($exception)) {
         app('sentry')->captureException($exception);
     }
 
