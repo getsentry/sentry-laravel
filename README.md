@@ -39,7 +39,7 @@ If you're on Laravel 5.4 or earlier, you'll need to add the following to your ``
 )
 ```
 
-Add Sentry reporting to ``app/Exceptions/Handler.php`` (be sure ``APP_DEBUG`` isset to ``true`` in your ``.env``):
+Add Sentry reporting to ``app/Exceptions/Handler.php``:
 
 ```php
 public function report(Exception $exception)
@@ -51,6 +51,7 @@ public function report(Exception $exception)
     parent::report($exception);
 }
 ```
+Exceptions will only be send to Sentry when ``APP_DEBUG`` isset to ``false`` in your ``.env``! Because likely you only want to send errors to Sentry when debugging is disabled which is [adviced for production environments](https://laravel.com/docs/5.5/errors#error-detail).
 
 Create the Sentry configuration file (``config/sentry.php``):
 
