@@ -44,13 +44,14 @@ Add Sentry reporting to ``app/Exceptions/Handler.php``:
 ```php
 public function report(Exception $exception)
 {
-    if (app()->bound('sentry') && $this->shouldReport($exception)) {
+    if (app()->bound('sentry') && !config('app.debug') && $this->shouldReport($exception)) {
         app('sentry')->captureException($exception);
     }
 
     parent::report($exception);
 }
 ```
+Exceptions will only be send to Sentry when ``APP_DEBUG`` isset to ``false`` in your ``.env``! Because likely you only want to send errors to Sentry when debugging is disabled which is [adviced for production environments](https://laravel.com/docs/5.5/errors#error-detail).
 
 Create the Sentry configuration file (``config/sentry.php``):
 
