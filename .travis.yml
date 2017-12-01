@@ -9,6 +9,7 @@ env:
   - LARAVEL=5.2 TESTBENCH=3.2.*
   - LARAVEL=5.3 TESTBENCH=3.3.*
   - LARAVEL=5.4 TESTBENCH=3.4.*
+  - LARAVEL=5.5 TESTBENCH=3.5.*
 cache:
   directories:
     - $HOME/.composer/cache
