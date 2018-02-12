@@ -17,7 +17,7 @@
         "sentry/sentry": ">=1.7.0"
     },
     "require-dev": {
-        "friendsofphp/php-cs-fixer": "^1.8.0",
+        "friendsofphp/php-cs-fixer": "2.*",
         "phpunit/phpunit": "^4.6.6",
         "orchestra/testbench": "3.*"
     },
