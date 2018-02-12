@@ -35,7 +35,7 @@
             "vendor/bin/phpunit --verbose --configuration phpunit.xml --coverage-html test/html-report"
         ],
         "phpcs": [
-            "vendor/bin/php-cs-fixer fix --config-file=.php_cs --verbose --diff --dry-run"
+            "vendor/bin/php-cs-fixer fix --config=.php_cs --verbose --diff --dry-run"
         ]
     },
     "extra": {
