@@ -66,10 +66,10 @@ SENTRY_DSN=https://public:secret@sentry.example.com/1
 
 ### Laravel 4.x
 
-Install the ``sentry/sentry-laravel`` package:
+Install the ``sentry/sentry-laravel`` package on version `0.8.*` since it's the last version to support Laravel 4:
 
 ```bash
-$ composer require sentry/sentry-laravel
+$ composer require "sentry/sentry-laravel:0.8.*"
 ```
 
 Add the Sentry service provider and facade in ``config/app.php``:
