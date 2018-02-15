@@ -17,10 +17,10 @@
         "sentry/sentry": "^1.8.3"
     },
     "require-dev": {
-        "friendsofphp/php-cs-fixer": "2.10.*",
         "phpunit/phpunit": "7.0.*",
+        "laravel/framework": "5.6.*",
         "orchestra/testbench": "3.6.*",
-        "laravel/framework": "5.6.*"
+        "friendsofphp/php-cs-fixer": "2.2.*"
     },
     "autoload": {
         "psr-0": {
