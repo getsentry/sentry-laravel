@@ -284,7 +284,7 @@ The namespace `\App\Support` can be anything you want in the examples above.
 ```json
 "extra": {
     "laravel": {
-        "dont-discover": "sentry/sentry-laravel"
+        "dont-discover": ["sentry/sentry-laravel"]
     }
 }
 ```
