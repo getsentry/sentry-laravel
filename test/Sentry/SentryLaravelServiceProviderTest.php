@@ -2,11 +2,8 @@
 
 use Sentry\SentryLaravel;
 
-
 class SentryLaravelServiceProviderTest extends \Orchestra\Testbench\TestCase
-
 {
-
     protected function getEnvironmentSetUp($app)
     {
         $app['config']->set('sentry.dsn', 'http://public:secret@example.com/1');
@@ -20,7 +17,7 @@ class SentryLaravelServiceProviderTest extends \Orchestra\Testbench\TestCase
     protected function getPackageAliases($app)
     {
         return [
-            'Sentry' => 'Sentry\SentryLaravel\SentryFacade'
+            'Sentry' => 'Sentry\SentryLaravel\SentryFacade',
         ];
     }
 
