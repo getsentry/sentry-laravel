@@ -54,10 +54,12 @@ class SentryLumenServiceProvider extends ServiceProvider
         $this->app->singleton('sentry', function ($app) {
             $user_config = $app['sentry.config'];
 
+            $base_path = base_path();
             $client = SentryLaravel::getClient(array_merge(array(
                 'environment' => $app->environment(),
-                'prefixes' => array(base_path()),
-                'app_path' => base_path() . '/app',
+                'prefixes' => array($base_path),
+                'app_path' => $base_path,
+                'excluded_app_paths' => array($base_path . '/vendor'),
             ), $user_config));
 
             // bind user context if available
