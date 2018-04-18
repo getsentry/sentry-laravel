@@ -1,7 +1,7 @@
 0.9.0 (unreleased)
 -----
 
-- Improved default app_path to include entire application code for Lumen, excluding vendor.
+- Improved default app_path for Lumen to include entire application code, excluding vendor. (#128)
 
 0.8.0
 -----
