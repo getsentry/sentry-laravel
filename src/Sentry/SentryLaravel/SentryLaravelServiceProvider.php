@@ -128,7 +128,7 @@ class SentryLaravelServiceProvider extends ServiceProvider
         // Add a sentry log channel for Laravel 5.6+
         if (version_compare($app::VERSION, '5.6') >= 0) {
             $this->app->make('log')->extend('sentry', function ($app, array $config) {
-                $channel = new CreateSentryLogChannel($app);
+                $channel = new SentryLogChannel($app);
                 return $channel($config);
             });
         }
