@@ -228,6 +228,33 @@ This could look something like this in for example your `resources/views/error/5
 This ID can be searched for in the Sentry interface allowing you to find the error quickly.
 
 
+## Using Laravel 5.6 log channels
+
+To configure Sentry as a log channel add the following config to the `channels` section in `config/logging.php`: 
+
+```php
+'channels' => [
+    // ...
+    'sentry' => [
+        'driver' => 'sentry',
+    ],
+],
+```
+
+After you configured the Sentry log channel you can configure your app to both log to a log file and to Sentry by modifiying the log stack:
+
+```php
+'channels' => [
+    'stack' => [
+        'driver' => 'stack',
+        // Add the Sentry log channel to the stack
+        'channels' => ['single', 'sentry'],
+    ],
+    //...
+],
+```
+
+
 ## Resolve name conflicts with packages also called Sentry
 
 To resolve this you will need to create your own service provider extending ours so we can prevent naming conflicts.
