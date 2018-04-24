@@ -6,7 +6,7 @@ use Illuminate\Log\LogManager;
 use Monolog\Handler\RavenHandler;
 use Monolog\Logger;
 
-class CreateSentryLogChannel extends LogManager
+class SentryLogChannel extends LogManager
 {
     /**
      * @param array $config
