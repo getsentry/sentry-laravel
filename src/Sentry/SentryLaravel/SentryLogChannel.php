@@ -17,8 +17,8 @@ class SentryLogChannel extends LogManager
     {
         $handler = new RavenHandler(
             $this->app->make('sentry'),
-            $config['level'] ?? null,
-            $config['bubble'] ?? true
+            isset($config['level']) ? $config['level'] : null,
+            isset($config['bubble']) ? $config['bubble'] : true
         );
 
         return new Logger($this->parseChannel($config), [$this->prepareHandler($handler)]);
