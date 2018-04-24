@@ -5,10 +5,10 @@ namespace Sentry\SentryLaravel;
 use Exception;
 use Raven_Client;
 use Illuminate\Routing\Route;
-use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Auth\Events\Authenticated;
 use Illuminate\Routing\Events\RouteMatched;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Events\QueryExecuted;
 
 class SentryLaravelEventHandler

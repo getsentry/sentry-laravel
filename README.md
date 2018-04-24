@@ -14,6 +14,10 @@
 
 Laravel integration for [Sentry](https://sentry.io/).
 
+## Laravel Version Compatibility
+
+- Laravel `4.2.x` is supported until version `0.8.x` (`composer require "sentry/sentry-laravel:0.8.*"`)
+- Laravel `5.x.x` is supported in the most recent version (`composer require sentry/sentry-laravel`)
 
 ## Installation
 
@@ -66,10 +70,10 @@ SENTRY_DSN=https://public:secret@sentry.example.com/1
 
 ### Laravel 4.x
 
-Install the ``sentry/sentry-laravel`` package:
+Install the ``sentry/sentry-laravel`` package on version `0.8.*` since it's the last version to support Laravel 4:
 
 ```bash
-$ composer require sentry/sentry-laravel
+$ composer require "sentry/sentry-laravel:0.8.*"
 ```
 
 Add the Sentry service provider and facade in ``config/app.php``:
@@ -284,7 +288,7 @@ The namespace `\App\Support` can be anything you want in the examples above.
 ```json
 "extra": {
     "laravel": {
-        "dont-discover": "sentry/sentry-laravel"
+        "dont-discover": ["sentry/sentry-laravel"]
     }
 }
 ```

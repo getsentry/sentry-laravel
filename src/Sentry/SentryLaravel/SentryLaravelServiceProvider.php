@@ -2,6 +2,7 @@
 
 namespace Sentry\SentryLaravel;
 
+use Exception;
 use Illuminate\Support\ServiceProvider;
 
 class SentryLaravelServiceProvider extends ServiceProvider
@@ -20,29 +21,13 @@ class SentryLaravelServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        $app = $this->app;
+        // Publish the configuration file
+        $this->publishes(array(
+            __DIR__ . '/config.php' => config_path(static::$abstract . '.php'),
+        ), 'config');
 
-        // Laravel 4.x compatibility
-        if (version_compare($app::VERSION, '5.0') < 0) {
-            $this->package('sentry/sentry-laravel', static::$abstract);
+        $this->bindEvents($this->app);
 
-            $app->error(function (\Exception $e) use ($app) {
-                $app[static::$abstract]->captureException($e);
-            });
-
-            $app->fatal(function ($e) use ($app) {
-                $app[static::$abstract]->captureException($e);
-            });
-
-            $this->bindEvents($app);
-        } else {
-            // the default configuration file
-            $this->publishes(array(
-                __DIR__ . '/config.php' => config_path(static::$abstract . '.php'),
-            ), 'config');
-
-            $this->bindEvents($app);
-        }
         if ($this->app->runningInConsole()) {
             $this->registerArtisanCommands();
         }
@@ -72,10 +57,8 @@ class SentryLaravelServiceProvider extends ServiceProvider
         $handler->subscribe($app->events);
 
         // In Laravel >=5.3 we can get the user context from the auth events
-        if (version_compare($app::VERSION, '5.3') >= 0) {
-            if (isset($user_config['user_context']) && $user_config['user_context'] !== false) {
-                $handler->subscribeAuthEvents($app->events);
-            }
+        if (isset($user_config['user_context']) && $user_config['user_context'] !== false && version_compare($app::VERSION, '5.3') >= 0) {
+            $handler->subscribeAuthEvents($app->events);
         }
     }
 
@@ -87,11 +70,8 @@ class SentryLaravelServiceProvider extends ServiceProvider
     public function register()
     {
         $this->app->singleton(static::$abstract . '.config', function ($app) {
-            // sentry::config is Laravel 4.x
-            $user_config = $app['config'][static::$abstract] ?: $app['config'][static::$abstract . '::config'];
-
             // Make sure we don't crash when we did not publish the config file and the config is null
-            return $user_config ?: array();
+            return $app['config'][static::$abstract] ?: array();
         });
 
         $this->app->singleton(static::$abstract, function ($app) {
@@ -105,18 +85,16 @@ class SentryLaravelServiceProvider extends ServiceProvider
             ), $user_config));
 
             // In Laravel <5.3 we can get the user context from here
-            if (version_compare($app::VERSION, '5.3') < 0) {
-                if (isset($user_config['user_context']) && $user_config['user_context'] !== false) {
+            if (isset($user_config['user_context']) && $user_config['user_context'] !== false && version_compare($app::VERSION, '5.3') < 0) {
+                try {
                     // Bind user context if available
-                    try {
-                        if ($app['auth']->check()) {
-                            $client->user_context(array(
-                                'id' => $app['auth']->user()->getAuthIdentifier(),
-                            ));
-                        }
-                    } catch (\Exception $e) {
-                        error_log(sprintf('sentry.breadcrumbs error=%s', $e->getMessage()));
+                    if ($app['auth']->check()) {
+                        $client->user_context(array(
+                            'id' => $app['auth']->user()->getAuthIdentifier(),
+                        ));
                     }
+                } catch (Exception $e) {
+                    error_log(sprintf('sentry.breadcrumbs error=%s', $e->getMessage()));
                 }
             }
 
