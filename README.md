@@ -65,8 +65,10 @@ $ php artisan vendor:publish --provider="Sentry\SentryLaravel\SentryLaravelServi
 Add your DSN to ``.env``:
 
 ```
-SENTRY_DSN=https://public:secret@sentry.example.com/1
+SENTRY_LARAVEL_DSN=https://public:secret@sentry.example.com/1
 ```
+
+_Note:_ If you use `SENTRY_DSN` in your `.env` it will overwrite the DSN value set in the `config/sentry.php` file.
 
 ### Laravel 4.x
 
