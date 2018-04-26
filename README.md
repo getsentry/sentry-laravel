@@ -254,6 +254,20 @@ After you configured the Sentry log channel you can configure your app to both l
 ],
 ```
 
+Optionally you can set the logging level and if events should bubble on the driver:
+
+```php
+'channels' => [
+    // ...
+    'sentry' => [
+        'driver' => 'sentry',
+        'level'  => null, // The minimum monolog logging level at which this handler will be triggered
+                          // For example: `\Monolog\Logger::ERROR`
+        'bubble' => true, // Whether the messages that are handled can bubble up the stack or not
+    ],
+],
+```
+
 
 ## Resolve name conflicts with packages also called Sentry
 
