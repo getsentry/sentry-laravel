@@ -2,6 +2,7 @@
 -----
 
 - Improved default app_path for Lumen to include entire application code, excluding vendor. (#128)
+- Set 'user_context' configuration default to false.
 
 0.8.0
 -----
