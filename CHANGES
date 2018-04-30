@@ -1,8 +1,14 @@
 0.9.0 (unreleased)
 -----
 
+This version no longer supports Laravel 4.x, version `0.8.x` will ofcourse still work for Laravel 4.
+
+- Set 'user_context' configuration default to false. (#132)
+- Update `SENTRY_DSN` env variable name to `SENTRY_LARAVEL_DSN`. (#130)
 - Improved default app_path for Lumen to include entire application code, excluding vendor. (#128)
-- Set 'user_context' configuration default to false.
+- Remove Laravel 4 support. (#123)
+- Add support for Laravel 5.6 log channels. (#122)
+- Type hint Laravel contracts instead of implementation. (#107)
 
 0.8.0
 -----
