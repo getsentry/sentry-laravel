@@ -41,7 +41,7 @@
     },
     "extra": {
         "branch-alias": {
-            "dev-master": "0.9.x-dev"
+            "dev-master": "0.10.x-dev"
         },
         "laravel": {
             "providers": ["Sentry\\SentryLaravel\\SentryLaravelServiceProvider"],
