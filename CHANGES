@@ -1,4 +1,9 @@
-0.9.0 (unreleased)
+0.10.0 (unreleased)
+-----
+
+- ...
+
+0.9.0
 -----
 
 This version no longer supports Laravel 4.x, version `0.8.x` will ofcourse still work for Laravel 4.
