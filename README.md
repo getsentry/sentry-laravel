@@ -68,7 +68,7 @@ Add your DSN to ``.env``:
 SENTRY_LARAVEL_DSN=https://public:secret@sentry.example.com/1
 ```
 
-_Note:_ If you use `SENTRY_DSN` in your `.env` it will overwrite the DSN value set in the `config/sentry.php` file.
+_Note:_ If you use `SENTRY_LARAVEL_DSN` in your `.env` it will overwrite the DSN value set in the `config/sentry.php` file.
 
 ### Laravel 4.x
 
