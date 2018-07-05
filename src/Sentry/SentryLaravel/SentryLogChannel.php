@@ -21,6 +21,6 @@ class SentryLogChannel extends LogManager
             isset($config['bubble']) ? $config['bubble'] : true
         );
 
-        return new Logger($this->parseChannel($config), [$this->prepareHandler($handler)]);
+        return new Logger($this->parseChannel($config), [$this->prepareHandler($handler, $config)]);
     }
 }
