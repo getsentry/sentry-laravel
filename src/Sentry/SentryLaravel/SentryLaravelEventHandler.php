@@ -27,6 +27,8 @@ class SentryLaravelEventHandler
 
         'illuminate.log' => 'log',           // Until Laravel 5.3
         'Illuminate\Log\Events\MessageLogged' => 'messageLogged', // Since Laravel 5.4
+        
+        'Illuminate\Console\Events\CommandStarting' => 'commandStarting', // Since Laravel 5.5
     );
 
     /**
@@ -223,6 +225,18 @@ class SentryLaravelEventHandler
         ));
     }
 
+    /**
+     * Since Laravel 5.5
+     *
+     * @param Illuminate\Console\Events\CommandStarting $event
+     */
+    protected function commandStartingHandler($event)
+    {
+        $this->client->tags_context(array(
+            'command' => $event->command,
+        ));
+    }
+    
     /**
      * Since Laravel 5.3
      *
