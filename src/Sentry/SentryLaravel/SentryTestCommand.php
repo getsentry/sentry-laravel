@@ -6,9 +6,6 @@ use Illuminate\Console\Command;
 
 class SentryTestCommand extends Command
 {
-    // XXX(dcramer): Laravel 4.x compatibility
-    protected $name = 'sentry:test';
-
     /**
      * The name and signature of the console command.
      *
@@ -24,22 +21,6 @@ class SentryTestCommand extends Command
     protected $description = 'Generate a test event and send it to Sentry';
 
     /**
-     * Create a new command instance.
-     *
-     * @return void
-     */
-    public function __construct()
-    {
-        parent::__construct();
-    }
-
-    // XXX(dcramer): Laravel 4.x compatibility
-    public function fire()
-    {
-        $this->handle();
-    }
-
-    /**
      * Execute the console command.
      *
      * @return mixed
@@ -53,7 +34,7 @@ class SentryTestCommand extends Command
             $client = app('sentry');
 
             $config = get_object_vars($client);
-            $required_keys = array('server', 'project', 'public_key', 'secret_key');
+            $required_keys = array('server', 'project', 'public_key');
 
             $output = '';
             foreach ($required_keys as $key) {
