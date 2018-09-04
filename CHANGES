@@ -1,7 +1,12 @@
-0.10.0 (unreleased)
+0.11.0 (unreleased)
 -----
 
 - ...
+
+0.10.0
+-----
+
+- Support for Laravel 5.7.
 
 0.9.2
 -----
