@@ -7,9 +7,7 @@
          convertWarningsToExceptions="true"
          processIsolation="false"
          stopOnFailure="false"
-         syntaxCheck="false"
-         bootstrap="test/bootstrap.php"
->
+         bootstrap="test/bootstrap.php">
   <testsuites>
     <testsuite name="Sentry Test Suite">
       <directory>./test/Sentry/</directory>
