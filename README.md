@@ -247,14 +247,27 @@ After you configured the Sentry log channel you can configure your app to both l
 
 ```php
 'channels' => [
-    'stack' => [
+    'my_stacked_channel' => [
         'driver' => 'stack',
         // Add the Sentry log channel to the stack
         'channels' => ['single', 'sentry'],
+        'name' => 'my-channel'
     ],
     //...
 ],
 ```
+
+You're now able to log errors to your chanel:
+
+```php
+Log::channel('my_stacked_channel')->error('My error');
+```
+
+and sentry's `logger` tag has now the channel's "name" value (that you can easily filter):
+
+![logger-name-screenshot](https://i.imgur.com/n3wc6md.png)
+
+
 
 Optionally you can set the logging level and if events should bubble on the driver:
 
