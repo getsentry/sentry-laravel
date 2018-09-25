@@ -247,27 +247,14 @@ After you configured the Sentry log channel you can configure your app to both l
 
 ```php
 'channels' => [
-    'my_stacked_channel' => [
+    'stack' => [
         'driver' => 'stack',
         // Add the Sentry log channel to the stack
         'channels' => ['single', 'sentry'],
-        'name' => 'my-channel'
     ],
     //...
 ],
 ```
-
-You're now able to log errors to your chanel:
-
-```php
-Log::channel('my_stacked_channel')->error('My error');
-```
-
-and sentry's `logger` tag has now the channel's "name" value (that you can easily filter):
-
-![logger-name-screenshot](https://i.imgur.com/n3wc6md.png)
-
-
 
 Optionally you can set the logging level and if events should bubble on the driver:
 
@@ -282,6 +269,32 @@ Optionally you can set the logging level and if events should bubble on the driv
     ],
 ],
 ```
+
+### Naming you log channels
+
+If you have multiple log channels you would like to filter on inside the Sentry interface you can add the `name` attribute to the log channel, 
+it will show up in Sentry as the `logger` tag which is filterable.
+
+For example:
+
+```php
+'channels' => [
+    'my_stacked_channel' => [
+        'driver' => 'stack',
+        'channels' => ['single', 'sentry'],
+        'name' => 'my-channel'
+    ],
+    //...
+],
+```
+
+You're now able to log errors to your channel:
+
+```php
+\Log::channel('my_stacked_channel')->error('My error');
+```
+
+And sentry's `logger` tag has now the channel's `name` "my-channel" value where you can filter on.
 
 
 ## Resolve name conflicts with packages also called Sentry
