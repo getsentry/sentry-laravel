@@ -7,6 +7,8 @@ use Raven_Client;
 use Illuminate\Routing\Route;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Auth\Events\Authenticated;
+use Illuminate\Queue\Events\JobProcessed;
+use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Events\QueryExecuted;
@@ -27,6 +29,9 @@ class SentryLaravelEventHandler
 
         'illuminate.log' => 'log',           // Until Laravel 5.3
         'Illuminate\Log\Events\MessageLogged' => 'messageLogged', // Since Laravel 5.4
+
+        'Illuminate\Queue\Events\JobProcessed' => 'queueJobProcessed', // since Laravel 5.2
+        'Illuminate\Queue\Events\JobProcessing' => 'queueJobProcessing', // since Laravel 5.2
     );
 
     /**
@@ -233,5 +238,43 @@ class SentryLaravelEventHandler
         $this->client->user_context(array(
             'id' => $event->user->getAuthIdentifier(),
         ));
+    }
+
+    /**
+     * Since Laravel 5.2
+     *
+     * @param \Illuminate\Queue\Events\JobProcessed $event
+     */
+    protected function queueJobProcessedHandler(JobProcessed $event)
+    {
+        $this->client->sendUnsentErrors();
+
+        $this->client->breadcrumbs->reset();
+    }
+
+    /**
+     * Since Laravel 5.2
+     *
+     * @param \Illuminate\Queue\Events\JobProcessing $event
+     */
+    protected function queueJobProcessingHandler(JobProcessing $event)
+    {
+        $job = [
+            'job' => $event->job->getName(),
+            'queue' => $event->job->getQueue(),
+            'attempts' => $event->job->attempts(),
+            'connection' => $event->connectionName,
+        ];
+
+        // Resolve name exists only from Laravel 5.3+
+        if (method_exists($event->job, 'resolveName')) {
+            $job['resolved'] = $event->job->resolveName();
+        }
+
+        $this->client->breadcrumbs->record([
+            'category' => 'queue.job',
+            'message' => 'Processing queue job',
+            'data' => $job,
+        ]);
     }
 }
