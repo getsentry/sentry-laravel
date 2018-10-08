@@ -12,6 +12,8 @@ use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Console\Events\CommandStarting;
+use Illuminate\Console\Events\CommandFinished;
 
 class SentryLaravelEventHandler
 {
@@ -32,6 +34,9 @@ class SentryLaravelEventHandler
 
         'Illuminate\Queue\Events\JobProcessed' => 'queueJobProcessed', // since Laravel 5.2
         'Illuminate\Queue\Events\JobProcessing' => 'queueJobProcessing', // since Laravel 5.2
+
+        'Illuminate\Console\Events\CommandStarting' => 'commandStarting', // Since Laravel 5.5
+        'Illuminate\Console\Events\CommandFinished' => 'commandFinished', // Since Laravel 5.5
     );
 
     /**
@@ -276,5 +281,29 @@ class SentryLaravelEventHandler
             'message' => 'Processing queue job',
             'data' => $job,
         ]);
+    }
+
+    /**
+     * Since Laravel 5.5
+     *
+     * @param \Illuminate\Console\Events\CommandStarting $event
+     */
+    protected function commandStartingHandler(CommandStarting $event)
+    {
+        $this->client->tags_context(array(
+            'command' => $event->command,
+        ));
+    }
+
+    /**
+     * Since Laravel 5.5
+     *
+     * @param \Illuminate\Console\Events\CommandFinished $event
+     */
+    protected function commandFinishedHandler(CommandFinished $event)
+    {
+        $this->client->tags_context(array(
+            'command' => null,
+        ));
     }
 }
