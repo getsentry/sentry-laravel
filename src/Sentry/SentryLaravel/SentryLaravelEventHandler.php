@@ -10,6 +10,8 @@ use Illuminate\Auth\Events\Authenticated;
 use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Console\Events\CommandStarting;
+use Illuminate\Console\Events\CommandFinished;
 
 class SentryLaravelEventHandler
 {
@@ -27,6 +29,9 @@ class SentryLaravelEventHandler
 
         'illuminate.log' => 'log',           // Until Laravel 5.3
         'Illuminate\Log\Events\MessageLogged' => 'messageLogged', // Since Laravel 5.4
+
+        'Illuminate\Console\Events\CommandStarting' => 'commandStarting', // Since Laravel 5.5
+        'Illuminate\Console\Events\CommandFinished' => 'commandFinished', // Since Laravel 5.5
     );
 
     /**
@@ -232,6 +237,30 @@ class SentryLaravelEventHandler
     {
         $this->client->user_context(array(
             'id' => $event->user->getAuthIdentifier(),
+        ));
+    }
+
+    /**
+     * Since Laravel 5.5
+     *
+     * @param \Illuminate\Console\Events\CommandStarting $event
+     */
+    protected function commandStartingHandler(CommandStarting $event)
+    {
+        $this->client->tags_context(array(
+            'command' => $event->command,
+        ));
+    }
+
+    /**
+     * Since Laravel 5.5
+     *
+     * @param \Illuminate\Console\Events\CommandFinished $event
+     */
+    protected function commandFinishedHandler(CommandFinished $event)
+    {
+        $this->client->tags_context(array(
+            'command' => null,
         ));
     }
 }
