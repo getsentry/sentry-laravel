@@ -7,6 +7,13 @@ use Illuminate\Console\Command;
 class SentryTestCommand extends Command
 {
     /**
+     * Laravel 5.0.x: The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $name = 'sentry:test';
+
+    /**
      * The name and signature of the console command.
      *
      * @var string
