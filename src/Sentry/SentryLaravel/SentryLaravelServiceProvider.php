@@ -50,7 +50,7 @@ class SentryLaravelServiceProvider extends ServiceProvider
      */
     protected function bindEvents($app)
     {
-        $user_config = $app[static::$abstract . '.config'];
+        $user_config = $app['config'][static::$abstract];
 
         $handler = new SentryLaravelEventHandler($app[static::$abstract], $user_config);
 
@@ -69,13 +69,10 @@ class SentryLaravelServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        $this->app->singleton(static::$abstract . '.config', function ($app) {
-            // Make sure we don't crash when we did not publish the config file and the config is null
-            return $app['config'][static::$abstract] ?: array();
-        });
+        $this->mergeConfigFrom(__DIR__ . '/config.php', static::$abstract);
 
         $this->app->singleton(static::$abstract, function ($app) {
-            $user_config = $app[static::$abstract . '.config'];
+            $user_config = $app['config'][static::$abstract];
             $base_path = base_path();
             $client = SentryLaravel::getClient(array_merge(array(
                 'environment' => $app->environment(),
@@ -100,7 +97,7 @@ class SentryLaravelServiceProvider extends ServiceProvider
 
             return $client;
         });
-        
+
         $app = $this->app;
 
         // Add a sentry log channel for Laravel 5.6+
