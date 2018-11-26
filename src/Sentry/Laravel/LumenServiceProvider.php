@@ -1,10 +1,8 @@
 <?php
 
-namespace Sentry\SentryLaravel;
+namespace Sentry\Laravel;
 
-use Illuminate\Support\ServiceProvider;
-
-class SentryLumenServiceProvider extends ServiceProvider
+class LumenServiceProvider extends \Illuminate\Support\ServiceProvider
 {
     /**
      * Bootstrap the application events.
@@ -22,14 +20,14 @@ class SentryLumenServiceProvider extends ServiceProvider
 
     protected function bindEvents($app)
     {
-        $handler = new SentryLaravelEventHandler($app['sentry'], $app['sentry.config']);
+        $handler = new EventHandler($app['sentry'], $app['sentry.config']);
         $handler->subscribe($app->events);
     }
 
     protected function registerArtisanCommands()
     {
         $this->commands(array(
-            'Sentry\SentryLaravel\SentryTestCommand',
+            'Sentry\Laravel\TestCommand',
         ));
     }
 
@@ -55,7 +53,7 @@ class SentryLumenServiceProvider extends ServiceProvider
             $user_config = $app['sentry.config'];
 
             $base_path = base_path();
-            $client = SentryLaravel::getClient(array_merge(array(
+            $client = Client::getClient(array_merge(array(
                 'environment' => $app->environment(),
                 'prefixes' => array($base_path),
                 'app_path' => $base_path,

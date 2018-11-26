@@ -93,7 +93,7 @@ $app->singleton(
 |
 */
 
-$app->register('Sentry\SentryLaravel\SentryLumenServiceProvider');
+$app->register('Sentry\SentryLaravel\LumenServiceProvider');
 
 $app->group(['namespace' => 'App\Http\Controllers'], function ($app) {
     require __DIR__.'/../app/Http/routes.php';

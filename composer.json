@@ -12,9 +12,11 @@
         }
     ],
     "require": {
-        "php": "^5.4||^7.0",
-        "illuminate/support": "5.0.*|5.1.*|5.2.*|5.3.*|5.4.*|5.5.*|5.6.*|5.7.*",
-        "sentry/sentry": "^1.9.0"
+        "php": "^7.1",
+        "illuminate/support": "5.6.*|5.7.*",
+        "sentry/sentry": "2.0.x-dev",
+        "php-http/curl-client": "^1.7",
+        "guzzlehttp/psr7": "^1.4"
     },
     "require-dev": {
         "phpunit/phpunit": "7.3.*",
@@ -24,7 +26,7 @@
     },
     "autoload": {
         "psr-0": {
-            "Sentry\\SentryLaravel\\": "src/"
+            "Sentry\\Laravel\\": "src/"
         }
     },
     "scripts": {
@@ -44,9 +46,9 @@
             "dev-master": "0.12.x-dev"
         },
         "laravel": {
-            "providers": ["Sentry\\SentryLaravel\\SentryLaravelServiceProvider"],
+            "providers": ["Sentry\\Laravel\\ServiceProvider"],
             "aliases": {
-                "Sentry": "Sentry\\SentryLaravel\\SentryFacade"
+                "Sentry": "Sentry\\Laravel\\Facade"
             }
         }
     }

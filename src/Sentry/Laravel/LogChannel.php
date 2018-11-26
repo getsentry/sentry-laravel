@@ -1,12 +1,12 @@
 <?php
 
-namespace Sentry\SentryLaravel;
+namespace Sentry\Laravel;
 
 use Illuminate\Log\LogManager;
 use Monolog\Handler\RavenHandler;
 use Monolog\Logger;
 
-class SentryLogChannel extends LogManager
+class LogChannel extends LogManager
 {
     /**
      * @param array $config

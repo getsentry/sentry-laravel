@@ -1,10 +1,10 @@
 <?php
 
-namespace Sentry\SentryLaravel;
+namespace Sentry\Laravel;
 
 use Illuminate\Console\Command;
 
-class SentryTestCommand extends Command
+class TestCommand extends Command
 {
     /**
      * Laravel 5.0.x: The name and signature of the console command.

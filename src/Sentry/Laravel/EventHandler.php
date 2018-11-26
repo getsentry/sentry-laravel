@@ -1,10 +1,8 @@
 <?php
 
-namespace Sentry\SentryLaravel;
+namespace Sentry\Laravel;
 
 use Exception;
-use Raven_Client;
-use Illuminate\Routing\Route;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Auth\Events\Authenticated;
 use Illuminate\Queue\Events\JobProcessed;
@@ -14,8 +12,12 @@ use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Console\Events\CommandFinished;
+use function Sentry\addBreadcrumb;
+use function Sentry\configureScope;
+use Sentry\State\Scope;
+use Sentry\Breadcrumb;
 
-class SentryLaravelEventHandler
+class EventHandler
 {
     /**
      * Maps event handler function to event names.
@@ -23,13 +25,8 @@ class SentryLaravelEventHandler
      * @var array
      */
     protected static $eventHandlerMap = array(
-        'router.matched' => 'routerMatched', // Until Laravel 5.1
         'Illuminate\Routing\Events\RouteMatched' => 'routeMatched',  // Since Laravel 5.2
-
-        'illuminate.query' => 'query',         // Until Laravel 5.1
         'Illuminate\Database\Events\QueryExecuted' => 'queryExecuted', // Since Laravel 5.2
-
-        'illuminate.log' => 'log',           // Until Laravel 5.3
         'Illuminate\Log\Events\MessageLogged' => 'messageLogged', // Since Laravel 5.4
 
         'Illuminate\Queue\Events\JobProcessed' => 'queueJobProcessed', // since Laravel 5.2
@@ -49,13 +46,6 @@ class SentryLaravelEventHandler
     );
 
     /**
-     * Sentry client.
-     *
-     * @var Raven_Client
-     */
-    protected $client;
-
-    /**
      * Indicates if we should we add query bindings to the breadcrumbs.
      *
      * @var bool
@@ -63,14 +53,12 @@ class SentryLaravelEventHandler
     private $sqlBindings;
 
     /**
-     * SentryLaravelEventHandler constructor.
+     * EventHandler constructor.
      *
-     * @param \Raven_Client $client
      * @param array         $config
      */
-    public function __construct(Raven_Client $client, array $config)
+    public function __construct(array $config)
     {
-        $this->client = $client;
         $this->sqlBindings = isset($config['breadcrumbs.sql_bindings']) ? $config['breadcrumbs.sql_bindings'] === true : true;
     }
 
@@ -114,70 +102,29 @@ class SentryLaravelEventHandler
     }
 
     /**
-     * Record the event with default values.
-     *
-     * @param array $payload
-     */
-    protected function record($payload)
-    {
-        $this->client->breadcrumbs->record(array_merge(array(
-            'data' => null,
-            'level' => 'info',
-        ), $payload));
-    }
-
-    /**
-     * Until Laravel 5.1
-     *
-     * @param Route $route
-     */
-    protected function routerMatchedHandler(Route $route)
-    {
-        if ($route->getName()) {
-            // someaction (route name/alias)
-            $routeName = $route->getName();
-        } elseif ($route->getActionName()) {
-            // SomeController@someAction (controller action)
-            $routeName = $route->getActionName();
-        }
-        if (empty($routeName) || $routeName === 'Closure') {
-            // /someaction // Fallback to the url
-            $routeName = $route->uri();
-        }
-
-        $this->client->transaction->push($routeName);
-    }
-
-    /**
      * Since Laravel 5.2
      *
      * @param \Illuminate\Routing\Events\RouteMatched $match
      */
     protected function routeMatchedHandler(RouteMatched $match)
     {
-        $this->routerMatchedHandler($match->route);
-    }
-
-    /**
-     * Until Laravel 5.1
-     *
-     * @param $query
-     * @param $bindings
-     * @param $time
-     * @param $connectionName
-     */
-    protected function queryHandler($query, $bindings, $time, $connectionName)
-    {
-        $data = array('connectionName' => $connectionName);
-
-        if ($this->sqlBindings) {
-            $data['bindings'] = $bindings;
+        if ($match->route->getName()) {
+            // someaction (route name/alias)
+            $routeName = $match->route->getName();
+        } elseif ($match->route->getActionName()) {
+            // SomeController@someAction (controller action)
+            $routeName = $match->route->getActionName();
+        }
+        if (empty($routeName) || $routeName === 'Closure') {
+            // /someaction // Fallback to the url
+            $routeName = $match->route->uri();
         }
 
-        $this->record(array(
-            'message' => $query,
-            'category' => 'sql.query',
-            'data' => $data,
+        addBreadcrumb(new Breadcrumb(
+            Breadcrumb::LEVEL_INFO,
+            Breadcrumb::TYPE_NAVIGATION,
+            'route',
+            $routeName
         ));
     }
 
@@ -194,27 +141,12 @@ class SentryLaravelEventHandler
             $data['bindings'] = $query->bindings;
         }
 
-        $this->client->breadcrumbs->record(array(
-            'message' => $query->sql,
-            'category' => 'sql.query',
-            'data' => $data,
-        ));
-    }
-
-    /**
-     * Until Laravel 5.3
-     *
-     * @param $level
-     * @param $message
-     * @param $context
-     */
-    protected function logHandler($level, $message, $context)
-    {
-        $this->client->breadcrumbs->record(array(
-            'message' => $message,
-            'category' => 'log.' . $level,
-            'data' => empty($context) ? null : array('params' => $context),
-            'level' => $level,
+        addBreadcrumb(new Breadcrumb(
+            Breadcrumb::LEVEL_INFO,
+            Breadcrumb::TYPE_USER,
+            'sql.query',
+            $query->sql,
+            $data
         ));
     }
 
@@ -225,11 +157,12 @@ class SentryLaravelEventHandler
      */
     protected function messageLoggedHandler(MessageLogged $logEntry)
     {
-        $this->client->breadcrumbs->record(array(
-            'message' => $logEntry->message,
-            'category' => 'log.' . $logEntry->level,
-            'data' => empty($logEntry->context) ? null : array('params' => $logEntry->context),
-            'level' => $logEntry->level,
+        addBreadcrumb(new Breadcrumb(
+            $logEntry->level,
+            Breadcrumb::TYPE_USER,
+            'log.' . $logEntry->level,
+            $logEntry->message,
+            empty($logEntry->context) ? null : array('params' => $logEntry->context)
         ));
     }
 
@@ -240,9 +173,11 @@ class SentryLaravelEventHandler
      */
     protected function authenticatedHandler(Authenticated $event)
     {
-        $this->client->user_context(array(
-            'id' => $event->user->getAuthIdentifier(),
-        ));
+        configureScope(function (Scope $scope) use ($event): void {
+            $scope->setUser(array(
+                'id' => $event->user->getAuthIdentifier(),
+            ));
+        });
     }
 
     /**
@@ -252,9 +187,10 @@ class SentryLaravelEventHandler
      */
     protected function queueJobProcessedHandler(JobProcessed $event)
     {
-        $this->client->sendUnsentErrors();
-
-        $this->client->breadcrumbs->reset();
+//        $this->client->sendUnsentErrors();
+//
+//        $this->client->breadcrumbs->reset();
+        // TODO: close
     }
 
     /**
@@ -276,11 +212,13 @@ class SentryLaravelEventHandler
             $job['resolved'] = $event->job->resolveName();
         }
 
-        $this->client->breadcrumbs->record([
-            'category' => 'queue.job',
-            'message' => 'Processing queue job',
-            'data' => $job,
-        ]);
+        addBreadcrumb(new Breadcrumb(
+            Breadcrumb::LEVEL_INFO,
+            Breadcrumb::TYPE_USER,
+            'queue.job',
+            'Processing queue job',
+            $job
+        ));
     }
 
     /**
@@ -290,9 +228,9 @@ class SentryLaravelEventHandler
      */
     protected function commandStartingHandler(CommandStarting $event)
     {
-        $this->client->tags_context(array(
-            'command' => $event->command,
-        ));
+        configureScope(function (Scope $scope) use ($event): void {
+            $scope->setTag('command', $event->command);
+        });
     }
 
     /**
@@ -302,8 +240,8 @@ class SentryLaravelEventHandler
      */
     protected function commandFinishedHandler(CommandFinished $event)
     {
-        $this->client->tags_context(array(
-            'command' => null,
-        ));
+        configureScope(function (Scope $scope) use ($event): void {
+            $scope->setTag('command', null);
+        });
     }
 }
