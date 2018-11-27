@@ -241,7 +241,7 @@ class EventHandler
     protected function commandFinishedHandler(CommandFinished $event)
     {
         configureScope(function (Scope $scope) use ($event): void {
-            $scope->setTag('command', null);
+            $scope->setTag('command', '');
         });
     }
 }

@@ -38,36 +38,24 @@ class TestCommand extends Command
         $old_error_reporting = error_reporting(E_ALL | E_STRICT);
 
         try {
-            $client = app('sentry');
+            $hub = app('sentry');
 
-            $config = get_object_vars($client);
-            $required_keys = array('server', 'project', 'public_key');
+            $config = get_object_vars($hub);
 
-            $output = '';
-            foreach ($required_keys as $key) {
-                if (empty($config[$key])) {
-                    $this->error("[sentry] ERROR: Missing configuration for $key");
-                }
+            $this->info("[sentry] Client configuration:");
 
-                if (is_array($config[$key])) {
-                    $output .= "-> $key: [" . implode(', ', $config[$key]) . "]\n";
-                } else {
-                    $output .= "-> $key: $config[$key]\n";
-                }
-            }
-
-            $this->info("[sentry] Client configuration:\n" . trim($output));
+            $this->info(var_dump($config));
 
             $this->info('[sentry] Generating test event');
 
             $ex = $this->generateTestException('command name', array('foo' => 'bar'));
 
-            $event_id = $client->captureException($ex);
+            $hub->captureException($ex);
 
-            $this->info("[sentry] Sending test event with ID: $event_id");
+            $this->info("[sentry] Sending test event with ID: " . $hub->getLastEventId());
 
-            $last_error = $client->getLastError();
-            if (!empty($last_error)) {
+            $last_error = $hub->getLastEventId();
+            if (!$last_error) {
                 $this->error("[sentry] There was an error sending the test event:\n $last_error");
             }
         } catch (\Exception $e) {
@@ -89,7 +77,7 @@ class TestCommand extends Command
     {
         // Do something silly
         try {
-            throw new \Exception('This is a test exception sent from the Raven CLI.');
+            throw new \Exception('This is a test exception sent from the Sentry Laravel SDK.');
         } catch (\Exception $ex) {
             return $ex;
         }
