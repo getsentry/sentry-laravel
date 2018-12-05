@@ -2,6 +2,11 @@
 
 namespace Sentry\Laravel;
 
+use Sentry\ClientBuilder;
+use function Sentry\configureScope;
+use Sentry\State\Hub;
+use Sentry\State\Scope;
+
 class LumenServiceProvider extends \Illuminate\Support\ServiceProvider
 {
     /**
@@ -20,7 +25,7 @@ class LumenServiceProvider extends \Illuminate\Support\ServiceProvider
 
     protected function bindEvents($app)
     {
-        $handler = new EventHandler($app['sentry'], $app['sentry.config']);
+        $handler = new EventHandler($app['sentry.config']);
         $handler->subscribe($app->events);
     }
 
@@ -39,41 +44,49 @@ class LumenServiceProvider extends \Illuminate\Support\ServiceProvider
     public function register()
     {
         $this->app->singleton('sentry.config', function ($app) {
-            $user_config = $app['config']['sentry'];
+            $userConfig = $app['config']['sentry'];
 
             // Make sure we don't crash when we did not publish the config file
-            if (is_null($user_config)) {
-                $user_config = array();
+            if (is_null($userConfig)) {
+                $userConfig = array();
             }
 
-            return $user_config;
+            return $userConfig;
         });
 
         $this->app->singleton('sentry', function ($app) {
-            $user_config = $app['sentry.config'];
+            $userConfig = $app['sentry.config'];
+            $basePath = base_path();
 
-            $base_path = base_path();
-            $client = Client::getClient(array_merge(array(
-                'environment' => $app->environment(),
-                'prefixes' => array($base_path),
-                'app_path' => $base_path,
-                'excluded_app_paths' => array($base_path . '/vendor'),
-            ), $user_config));
+            // We do not want this setting to hit our main client
+            unset($userConfig['breadcrumbs.sql_bindings']);
+            Hub::setCurrent(new Hub((new ClientBuilder(\array_merge(
+                [
+                    'environment' => $app->environment(),
+                    'prefixes' => array($basePath),
+                    'project_root' => $basePath,
+                    'excluded_app_paths' => array($basePath . '/vendor'),
+                    'integrations' => [new Integration()]
+                ],
+                $userConfig
+            )))->getClient()));
 
-            // bind user context if available
-            if (isset($user_config['user_context']) && $user_config['user_context'] !== false) {
+            if (isset($userConfig['send_default_pii']) && $userConfig['send_default_pii'] !== false && version_compare($app::VERSION, '5.3') < 0) {
                 try {
+                    // Bind user context if available
                     if ($app['auth']->check()) {
                         $user = $app['auth']->user();
-                        $client->user_context(array(
-                            'id' => $user->getAuthIdentifier(),
-                        ));
+                        configureScope(function (Scope $scope) use ($app, $user): void {
+                            $scope->setUser(['id' => $user->getAuthIdentifier()]);
+                        });
+
                     }
                 } catch (\Exception $e) {
+                    error_log(sprintf('sentry.breadcrumbs error=%s', $e->getMessage()));
                 }
             }
 
-            return $client;
+            return Hub::getCurrent();
         });
     }
 

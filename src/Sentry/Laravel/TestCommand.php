@@ -52,12 +52,16 @@ class TestCommand extends Command
 
             $hub->captureException($ex);
 
-            $this->info("[sentry] Sending test event with ID: " . $hub->getLastEventId());
+            $this->info("[sentry] Sending test event");
 
-            $last_error = $hub->getLastEventId();
-            if (!$last_error) {
-                $this->error("[sentry] There was an error sending the test event:\n $last_error");
+            $lastEventId = $hub->getLastEventId();
+            if (!$lastEventId) {
+                $this->error("[sentry] There was an error sending the test event.");
+                $this->error("[sentry] Please check if you dsn is set properly in your config. SENTRY_LARAVEL_DSN");
+            } else {
+                $this->info("[sentry] Event sent: " . $lastEventId);
             }
+
         } catch (\Exception $e) {
             // Ignore any exceptions
         }

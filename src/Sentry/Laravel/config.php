@@ -7,5 +7,5 @@ return array(
     // 'release' => trim(exec('git log --pretty="%h" -n1 HEAD')),
 
     // Capture bindings on SQL queries
-    'sql_breadcrumbs' => true,
+    'breadcrumbs.sql_bindings' => true,
 );

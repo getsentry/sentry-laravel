@@ -3,6 +3,7 @@
 namespace Sentry\Laravel;
 
 use Sentry\ClientBuilder;
+use function Sentry\configureScope;
 use Sentry\State\Hub;
 
 class ServiceProvider extends \Illuminate\Support\ServiceProvider
@@ -50,14 +51,14 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
      */
     protected function bindEvents($app)
     {
-        $user_config = $app['config'][static::$abstract];
+        $userConfig = $app['config'][static::$abstract];
 
-        $handler = new EventHandler($user_config);
+        $handler = new EventHandler($userConfig);
 
         $handler->subscribe($app->events);
 
         // In Laravel >=5.3 we can get the user context from the auth events
-        if (isset($user_config['send_default_pii']) && $user_config['send_default_pii'] !== false && version_compare($app::VERSION, '5.3') >= 0) {
+        if (isset($userConfig['send_default_pii']) && $userConfig['send_default_pii'] !== false && version_compare($app::VERSION, '5.3') >= 0) {
             $handler->subscribeAuthEvents($app->events);
         }
     }
@@ -72,18 +73,37 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
         $this->mergeConfigFrom(__DIR__ . '/../../../config/sentry.php', static::$abstract);
 
         $app = $this->app;
-        $this->app->singleton(static::$abstract, function ($app) {
-            $user_config = $app['config'][static::$abstract];
-            $base_path = base_path();
 
-            // This is our init
-            $options = new Options(array_merge(array(
-                'environment' => $app->environment(),
-                'prefixes' => array($base_path),
-                'project_root' => $base_path,
-                'excluded_app_paths' => array($base_path . '/vendor'),
-            ), $user_config));
-            Hub::setCurrent(new Hub(ClientBuilder::createClient(Client::class, $options)->getClient()));
+        $this->app->singleton(static::$abstract, function ($app) {
+            $userConfig = $app['config'][static::$abstract];
+            $basePath = base_path();
+
+            // We do not want this setting to hit our main client
+            unset($userConfig['breadcrumbs.sql_bindings']);
+            Hub::setCurrent(new Hub((new ClientBuilder(\array_merge(
+                [
+                    'environment' => $app->environment(),
+                    'prefixes' => array($basePath),
+                    'project_root' => $basePath,
+                    'excluded_app_paths' => array($basePath . '/vendor'),
+                    'integrations' => [new Integration()]
+                ],
+                $userConfig
+            )))->getClient()));
+
+            if (isset($userConfig['send_default_pii']) && $userConfig['send_default_pii'] !== false && version_compare($app::VERSION, '5.3') < 0) {
+                try {
+                    // Bind user context if available
+                    if ($app['auth']->check()) {
+                        configureScope(function (Scope $scope) use ($app): void {
+                            $scope->setUser(['id' => $app['auth']->user()->getAuthIdentifier()]);
+                        });
+
+                    }
+                } catch (Exception $e) {
+                    error_log(sprintf('sentry.breadcrumbs error=%s', $e->getMessage()));
+                }
+            }
 
             return Hub::getCurrent();
         });

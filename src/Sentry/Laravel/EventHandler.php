@@ -12,8 +12,7 @@ use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Console\Events\CommandFinished;
-use function Sentry\addBreadcrumb;
-use function Sentry\configureScope;
+use Illuminate\Routing\Route;
 use Sentry\State\Scope;
 use Sentry\Breadcrumb;
 
@@ -25,8 +24,13 @@ class EventHandler
      * @var array
      */
     protected static $eventHandlerMap = array(
+        'router.matched' => 'routerMatched', // Until Laravel 5.1
         'Illuminate\Routing\Events\RouteMatched' => 'routeMatched',  // Since Laravel 5.2
+
+        'illuminate.query' => 'query',         // Until Laravel 5.1
         'Illuminate\Database\Events\QueryExecuted' => 'queryExecuted', // Since Laravel 5.2
+
+        'illuminate.log' => 'log',           // Until Laravel 5.3
         'Illuminate\Log\Events\MessageLogged' => 'messageLogged', // Since Laravel 5.4
 
         'Illuminate\Queue\Events\JobProcessed' => 'queueJobProcessed', // since Laravel 5.2
@@ -102,31 +106,41 @@ class EventHandler
     }
 
     /**
-     * Since Laravel 5.2
+     * Until Laravel 5.1
      *
-     * @param \Illuminate\Routing\Events\RouteMatched $match
+     * @param Route $route
      */
-    protected function routeMatchedHandler(RouteMatched $match)
+    protected function routerMatchedHandler(Route $route)
     {
-        if ($match->route->getName()) {
+        if ($route->getName()) {
             // someaction (route name/alias)
-            $routeName = $match->route->getName();
-        } elseif ($match->route->getActionName()) {
+            $routeName = $route->getName();
+        } elseif ($route->getActionName()) {
             // SomeController@someAction (controller action)
-            $routeName = $match->route->getActionName();
+            $routeName = $route->getActionName();
         }
         if (empty($routeName) || $routeName === 'Closure') {
             // /someaction // Fallback to the url
-            $routeName = $match->route->uri();
+            $routeName = $route->uri();
         }
 
-        addBreadcrumb(new Breadcrumb(
+        Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,
             Breadcrumb::TYPE_NAVIGATION,
             'route',
             $routeName
         ));
     }
+    /**
+     * Since Laravel 5.2
+     *
+     * @param \Illuminate\Routing\Events\RouteMatched $match
+     */
+    protected function routeMatchedHandler(RouteMatched $match)
+    {
+        $this->routerMatchedHandler($match->route);
+    }
+
 
     /**
      * Since Laravel 5.2
@@ -141,7 +155,7 @@ class EventHandler
             $data['bindings'] = $query->bindings;
         }
 
-        addBreadcrumb(new Breadcrumb(
+        Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,
             Breadcrumb::TYPE_USER,
             'sql.query',
@@ -157,7 +171,7 @@ class EventHandler
      */
     protected function messageLoggedHandler(MessageLogged $logEntry)
     {
-        addBreadcrumb(new Breadcrumb(
+        Integration::addBreadcrumb(new Breadcrumb(
             $logEntry->level,
             Breadcrumb::TYPE_USER,
             'log.' . $logEntry->level,
@@ -173,7 +187,7 @@ class EventHandler
      */
     protected function authenticatedHandler(Authenticated $event)
     {
-        configureScope(function (Scope $scope) use ($event): void {
+        Integration::configureScope(function (Scope $scope) use ($event): void {
             $scope->setUser(array(
                 'id' => $event->user->getAuthIdentifier(),
             ));
@@ -212,7 +226,7 @@ class EventHandler
             $job['resolved'] = $event->job->resolveName();
         }
 
-        addBreadcrumb(new Breadcrumb(
+        Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,
             Breadcrumb::TYPE_USER,
             'queue.job',
@@ -228,7 +242,7 @@ class EventHandler
      */
     protected function commandStartingHandler(CommandStarting $event)
     {
-        configureScope(function (Scope $scope) use ($event): void {
+        Integration::configureScope(function (Scope $scope) use ($event): void {
             $scope->setTag('command', $event->command);
         });
     }
@@ -240,7 +254,7 @@ class EventHandler
      */
     protected function commandFinishedHandler(CommandFinished $event)
     {
-        configureScope(function (Scope $scope) use ($event): void {
+        Integration::configureScope(function (Scope $scope) use ($event): void {
             $scope->setTag('command', '');
         });
     }
