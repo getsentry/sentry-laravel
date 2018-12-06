@@ -80,7 +80,7 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
 
             // We do not want this setting to hit our main client
             unset($userConfig['breadcrumbs.sql_bindings']);
-            Hub::setCurrent(new Hub((new ClientBuilder(\array_merge(
+            $options = \array_merge(
                 [
                     'environment' => $app->environment(),
                     'prefixes' => array($basePath),
@@ -89,7 +89,11 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
                     'integrations' => [new Integration()]
                 ],
                 $userConfig
-            )))->getClient()));
+            );
+            $clientBuilder = ClientBuilder::create($options);
+            $clientBuilder->setSdkIdentifier('sentry.php.laravel');
+            $clientBuilder->setSdkVersion('2.1.2');
+            Hub::setCurrent(new Hub($clientBuilder->getClient()));
 
             if (isset($userConfig['send_default_pii']) && $userConfig['send_default_pii'] !== false && version_compare($app::VERSION, '5.3') < 0) {
                 try {
@@ -98,7 +102,6 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
                         configureScope(function (Scope $scope) use ($app): void {
                             $scope->setUser(['id' => $app['auth']->user()->getAuthIdentifier()]);
                         });
-
                     }
                 } catch (Exception $e) {
                     error_log(sprintf('sentry.breadcrumbs error=%s', $e->getMessage()));

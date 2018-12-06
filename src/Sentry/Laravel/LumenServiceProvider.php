@@ -79,7 +79,6 @@ class LumenServiceProvider extends \Illuminate\Support\ServiceProvider
                         configureScope(function (Scope $scope) use ($app, $user): void {
                             $scope->setUser(['id' => $user->getAuthIdentifier()]);
                         });
-
                     }
                 } catch (\Exception $e) {
                     error_log(sprintf('sentry.breadcrumbs error=%s', $e->getMessage()));
