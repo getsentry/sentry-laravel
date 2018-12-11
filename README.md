@@ -232,6 +232,9 @@ This ID can be searched for in the Sentry interface allowing you to find the err
 
 ## Using Laravel 5.6 log channels
 
+**Note:** If you are using log channels to log your exceptions and also are logging exceptions to Sentry in your
+exception handler (as you would have configured above) exceptions might end up twice in Sentry.
+
 To configure Sentry as a log channel add the following config to the `channels` section in `config/logging.php`: 
 
 ```php
