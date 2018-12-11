@@ -23,7 +23,7 @@ class SentryLaravelServiceProvider extends ServiceProvider
     {
         // Publish the configuration file
         $this->publishes(array(
-            __DIR__ . '/config.php' => config_path(static::$abstract . '.php'),
+            __DIR__ . '/../../../config/sentry.php' => config_path(static::$abstract . '.php'),
         ), 'config');
 
         $this->bindEvents($this->app);
@@ -69,7 +69,7 @@ class SentryLaravelServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        $this->mergeConfigFrom(__DIR__ . '/config.php', static::$abstract);
+        $this->mergeConfigFrom(__DIR__ . '/../../../config/sentry.php', static::$abstract);
 
         $this->app->singleton(static::$abstract, function ($app) {
             $user_config = $app['config'][static::$abstract];
