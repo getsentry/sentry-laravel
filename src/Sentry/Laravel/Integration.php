@@ -13,6 +13,11 @@ use Sentry\State\Scope;
 class Integration implements IntegrationInterface
 {
     /**
+     * @var null|string
+     */
+    private static $transaction;
+
+    /**
      * {@inheritdoc}
      */
     public function setupOnce(): void
@@ -24,7 +29,7 @@ class Integration implements IntegrationInterface
                 return $event;
             }
 
-            // TODO: set sdk identifier and version here
+            $event->setTransaction($self->getTransaction());
 
             return $event;
         });
@@ -60,5 +65,21 @@ class Integration implements IntegrationInterface
         }
 
         configureScope($callback);
+    }
+
+    /**
+     * @return null|string
+     */
+    public static function getTransaction()
+    {
+        return self::$transaction;
+    }
+
+    /**
+     * @param null|string $transaction
+     */
+    public static function setTransaction($transaction): void
+    {
+        self::$transaction = $transaction;
     }
 }

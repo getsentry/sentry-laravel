@@ -130,6 +130,7 @@ class EventHandler
             'route',
             $routeName
         ));
+        Integration::setTransaction($routeName);
     }
     /**
      * Since Laravel 5.2

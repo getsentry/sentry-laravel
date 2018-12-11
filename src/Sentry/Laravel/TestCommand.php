@@ -40,11 +40,14 @@ class TestCommand extends Command
         try {
             $hub = app('sentry');
 
-            $config = get_object_vars($hub);
+            /** @var \Sentry\Client $client */
+            $client = $hub->getClient();
 
-            $this->info("[sentry] Client configuration:");
-
-            $this->info(var_dump($config));
+            if ($client->getOptions()->getDsn()) {
+                $this->info("[sentry] Client DSN discovered!");
+            } else {
+                $this->warn('[sentry] Could not discover DSN! Check your config or .env file');
+            }
 
             $this->info('[sentry] Generating test event');
 

@@ -2,8 +2,8 @@
 
 namespace Sentry\Laravel;
 
-use Sentry\ClientBuilder;
 use function Sentry\configureScope;
+use Sentry\ClientBuilder;
 use Sentry\State\Hub;
 
 class ServiceProvider extends \Illuminate\Support\ServiceProvider
@@ -91,8 +91,8 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
                 $userConfig
             );
             $clientBuilder = ClientBuilder::create($options);
-            $clientBuilder->setSdkIdentifier('sentry.php.laravel');
-            $clientBuilder->setSdkVersion('2.1.2');
+            $clientBuilder->setSdkIdentifier(Version::SDK_IDENTIFIER);
+            $clientBuilder->setSdkVersion(Version::SDK_VERSION);
             Hub::setCurrent(new Hub($clientBuilder->getClient()));
 
             if (isset($userConfig['send_default_pii']) && $userConfig['send_default_pii'] !== false && version_compare($app::VERSION, '5.3') < 0) {
