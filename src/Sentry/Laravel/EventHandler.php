@@ -198,19 +198,6 @@ class EventHandler
     /**
      * Since Laravel 5.2
      *
-     * @param \Illuminate\Queue\Events\JobProcessed $event
-     */
-    protected function queueJobProcessedHandler(JobProcessed $event)
-    {
-//        $this->client->sendUnsentErrors();
-//
-//        $this->client->breadcrumbs->reset();
-        // TODO: close
-    }
-
-    /**
-     * Since Laravel 5.2
-     *
      * @param \Illuminate\Queue\Events\JobProcessing $event
      */
     protected function queueJobProcessingHandler(JobProcessing $event)

@@ -3,7 +3,7 @@
 namespace Sentry\Laravel;
 
 use Illuminate\Log\LogManager;
-use Monolog\Handler\RavenHandler;
+use Monolog\Handler\SentryHandler;
 use Monolog\Logger;
 
 class LogChannel extends LogManager
@@ -15,7 +15,7 @@ class LogChannel extends LogManager
      */
     public function __invoke(array $config)
     {
-        $handler = new RavenHandler(
+        $handler = new SentryHandler(
             $this->app->make('sentry'),
             isset($config['level']) ? $config['level'] : null,
             isset($config['bubble']) ? $config['bubble'] : true
