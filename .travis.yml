@@ -39,7 +39,7 @@ matrix:
 before_install:
   - composer self-update --stable --no-interaction
   - composer remove friendsofphp/php-cs-fixer --dev --no-update
-  - composer require laravel/framework:$LARAVEL illuminate/support:$LARAVEL orchestra/testbench:$TESTBENCH phpunit/phpunit:$PHPUNIT --no-update --no-interaction --dev
+  - composer require laravel/framework:$LARAVEL illuminate/support:$LARAVEL orchestra/testbench:$TESTBENCH phpunit/phpunit:$PHPUNIT php-http/curl-client guzzlehttp/psr7 --no-update --no-interaction --dev
 
 install:
   - travis_retry composer install --no-suggest --no-interaction
