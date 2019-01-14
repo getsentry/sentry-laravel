@@ -211,7 +211,6 @@ class SentryHandler extends AbstractProcessingHandler
                 }
             }
         );
-
     }
 
     /**
