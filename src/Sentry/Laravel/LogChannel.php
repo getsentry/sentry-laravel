@@ -3,7 +3,6 @@
 namespace Sentry\Laravel;
 
 use Illuminate\Log\LogManager;
-use Monolog\Handler\SentryHandler;
 use Monolog\Logger;
 
 class LogChannel extends LogManager

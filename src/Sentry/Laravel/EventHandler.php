@@ -177,7 +177,7 @@ class EventHandler
             Breadcrumb::TYPE_USER,
             'log.' . $logEntry->level,
             $logEntry->message,
-            empty($logEntry->context) ? null : array('params' => $logEntry->context)
+            empty($logEntry->context) ? array() : array('params' => $logEntry->context)
         ));
     }
 

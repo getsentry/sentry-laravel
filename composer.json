@@ -7,14 +7,13 @@
     "license": "Apache-2.0",
     "authors": [
         {
-            "name": "David Cramer",
-            "email": "dcramer@gmail.com"
+            "name": "Sentry"
         }
     ],
     "require": {
         "php": "^7.1",
         "illuminate/support": "5.0.*|5.1.*|5.2.*|5.3.*|5.4.*|5.5.*|5.6.*|5.7.*",
-        "sentry/sentry": "2.0.x-dev"
+        "sentry/sentry": "2.0.0-beta1"
     },
     "require-dev": {
         "phpunit/phpunit": "7.3.*",
@@ -41,7 +40,7 @@
     },
     "extra": {
         "branch-alias": {
-            "dev-master": "1.0.x-dev"
+            "dev-master": "2.0.x-dev"
         },
         "laravel": {
             "providers": ["Sentry\\Laravel\\ServiceProvider"],
