@@ -122,7 +122,7 @@ return array(
 		'Illuminate\View\ViewServiceProvider',
 		'Illuminate\Workbench\WorkbenchServiceProvider',
 
-		'Sentry\SentryLaravel\SentryLaravelServiceProvider',
+        'Sentry\SentryLaravel\ServiceProvider',
 
 	),
 
@@ -183,7 +183,7 @@ return array(
 		'Route'           => 'Illuminate\Support\Facades\Route',
 		'Schema'          => 'Illuminate\Support\Facades\Schema',
 		'Seeder'          => 'Illuminate\Database\Seeder',
-		'Sentry'		  => 'Sentry\SentryLaravel\SentryFacade',
+		'Sentry'		  => 'Sentry\SentryLaravel\Facade',
 		'Session'         => 'Illuminate\Support\Facades\Session',
 		'SoftDeletingTrait' => 'Illuminate\Database\Eloquent\SoftDeletingTrait',
 		'SSH'             => 'Illuminate\Support\Facades\SSH',
