@@ -3,6 +3,7 @@ github:
   owner: getsentry
   repo: sentry-laravel
 changelogPolicy: simple
+preReleaseCommand: bash scripts/craft-pre-release.sh
 targets:
 - name: github
 - name: registry
