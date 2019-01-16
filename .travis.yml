@@ -49,3 +49,13 @@ script:
   - composer tests-travis
   - composer require friendsofphp/php-cs-fixer ^2.2 --dev
   - composer phpcs
+
+notifications:
+  webhooks:
+    urls:
+      - https://zeus.ci/hooks/128fe032-1997-11e9-ac0e-0a580a280305/public/provider/travis/webhook
+    on_success: always
+    on_failure: always
+    on_start: always
+    on_cancel: always
+    on_error: always
