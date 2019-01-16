@@ -1,38 +1,37 @@
-0.12.0 (unreleased)
------
+# Changelog
+
+## 1.0.0 (unreleased)
 
 - ...
 
-0.11.0
------
+## 0.12.0 (unreleased)
+
+- ...
+
+## 0.11.0
 
 - Correctly merge the user config with the default configuration file (#163)
 - Listen for queue events and flush the send queue and breadcrum queue (#153)
 - Add tag with the console command name to the event (#146)
 
-0.10.1
------
+## 0.10.1
 
 - Fix support for Laravel 5.0.
 
-0.10.0
------
+## 0.10.0
 
 - Support for Laravel 5.7.
 
-0.9.2
------
+## 0.9.2
 
 - The `sentry:test` artisan command no longer requires the secret key in the DSN (secret key in DSN deprecated since Sentry 9).
 
 
-0.9.1
------
+## 0.9.1
 
 - Allow setting custom formatter for the log channel. (#145)
 
-0.9.0
------
+## 0.9.0
 
 This version no longer supports Laravel 4.x, version `0.8.x` will ofcourse still work for Laravel 4.
 
@@ -43,37 +42,31 @@ This version no longer supports Laravel 4.x, version `0.8.x` will ofcourse still
 - Add support for Laravel 5.6 log channels. (#122)
 - Type hint Laravel contracts instead of implementation. (#107)
 
-0.8.0
------
+## 0.8.0
 
 - Improved default app_path to include entire application code, excluding vendor. (#89)
 - Fix for auth context not working properly on Laravel >=5.3. (#81)
 - Support Laravel auto-discovery. (#78)
 
-0.7.0
------
+## 0.7.0
 
 - Added 'sentry:test' to Artisan. (#65)
 - Added 'user_context' configuration to disable automatic collection. (#55)
 
-0.6.1
------
+## 0.6.1
 
 - Various fixes for query event breadcrumbs. (#54)
 
-0.6.0
------
+## 0.6.0
 
 - Support for Laravel 5.4.
 
-0.5.0
------
+## 0.5.0
 
 - Require sentry/sentry >= 1.6.0.
 - Allow overriding abstract type Sentry is bound to in service container.
 
-0.4.0
------
+## 0.4.0
 
 - Require sentry/sentry >= 1.5.0.
 - Added support for Illuminate SQL queries in breadcrumbs.
