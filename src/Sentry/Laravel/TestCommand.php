@@ -65,7 +65,7 @@ class TestCommand extends Command
                 $this->info("[sentry] Event sent: " . $lastEventId);
             }
         } catch (\Exception $e) {
-            // Ignore any exceptions
+            $this->error("[sentry] " . $e->getMessage());
         }
 
         error_reporting($old_error_reporting);
