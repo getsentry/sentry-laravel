@@ -13,6 +13,7 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Routing\Route;
+use RuntimeException;
 use Sentry\State\Scope;
 use Sentry\Breadcrumb;
 
@@ -98,6 +99,10 @@ class EventHandler
      */
     public function __call($method, $arguments)
     {
+        if (!method_exists($this, $method . 'handler')) {
+            throw new RuntimeException('Missing event handler:' . $method . 'handler');
+        }
+
         try {
             call_user_func_array(array($this, $method . 'handler'), $arguments);
         } catch (Exception $exception) {
@@ -202,8 +207,6 @@ class EventHandler
      */
     protected function queueJobProcessedHandler(JobProcessed $event)
     {
-        // $this->client->sendUnsentErrors();
-
         // $this->client->breadcrumbs->reset();
     }
 
