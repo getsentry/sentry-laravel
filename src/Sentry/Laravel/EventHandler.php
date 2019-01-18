@@ -132,6 +132,7 @@ class EventHandler
         ));
         Integration::setTransaction($routeName);
     }
+
     /**
      * Since Laravel 5.2
      *
@@ -141,7 +142,6 @@ class EventHandler
     {
         $this->routerMatchedHandler($match->route);
     }
-
 
     /**
      * Since Laravel 5.2
@@ -193,6 +193,18 @@ class EventHandler
                 'id' => $event->user->getAuthIdentifier(),
             ));
         });
+    }
+
+    /**
+     * Since Laravel 5.2
+     *
+     * @param \Illuminate\Queue\Events\JobProcessed $event
+     */
+    protected function queueJobProcessedHandler(JobProcessed $event)
+    {
+        // $this->client->sendUnsentErrors();
+
+        // $this->client->breadcrumbs->reset();
     }
 
     /**
