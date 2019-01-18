@@ -224,6 +224,34 @@ class EventHandler
     }
 
     /**
+     * Since Laravel 5.2
+     *
+     * @param \Illuminate\Queue\Events\JobProcessed $event
+     */
+    protected function queueJobProcessedHandler(JobProcessed $event)
+    {
+        $job = [
+            'job' => $event->job->getName(),
+            'queue' => $event->job->getQueue(),
+            'attempts' => $event->job->attempts(),
+            'connection' => $event->connectionName,
+        ];
+
+        // Resolve name exists only from Laravel 5.3+
+        if (method_exists($event->job, 'resolveName')) {
+            $job['resolved'] = $event->job->resolveName();
+        }
+
+        Integration::addBreadcrumb(new Breadcrumb(
+            Breadcrumb::LEVEL_INFO,
+            Breadcrumb::TYPE_USER,
+            'queue.job',
+            'Processed queue job',
+            $job
+        ));
+    }
+
+    /**
      * Since Laravel 5.5
      *
      * @param \Illuminate\Console\Events\CommandStarting $event
