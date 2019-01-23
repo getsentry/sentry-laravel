@@ -16,6 +16,7 @@ use Illuminate\Routing\Route;
 use RuntimeException;
 use Sentry\State\Scope;
 use Sentry\Breadcrumb;
+use Sentry\State\Hub;
 
 class EventHandler
 {
@@ -203,20 +204,13 @@ class EventHandler
     /**
      * Since Laravel 5.2
      *
-     * @param \Illuminate\Queue\Events\JobProcessed $event
-     */
-    protected function queueJobProcessedHandler(JobProcessed $event)
-    {
-        // $this->client->breadcrumbs->reset();
-    }
-
-    /**
-     * Since Laravel 5.2
-     *
      * @param \Illuminate\Queue\Events\JobProcessing $event
      */
     protected function queueJobProcessingHandler(JobProcessing $event)
     {
+        // When a job starts, we want to push a new scope
+        Hub::getCurrent()->pushScope();
+
         $job = [
             'job' => $event->job->getName(),
             'queue' => $event->job->getQueue(),
@@ -236,6 +230,18 @@ class EventHandler
             'Processing queue job',
             $job
         ));
+    }
+
+
+    /**
+     * Since Laravel 5.2
+     *
+     * @param \Illuminate\Queue\Events\JobProcessed $event
+     */
+    protected function queueJobProcessedHandler(JobProcessed $event)
+    {
+        // When a job finished, we want to pop the scope
+        Hub::getCurrent()->popScope();
     }
 
     /**
