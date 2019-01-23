@@ -13,8 +13,10 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Routing\Route;
+use RuntimeException;
 use Sentry\State\Scope;
 use Sentry\Breadcrumb;
+use Sentry\State\Hub;
 
 class EventHandler
 {
@@ -98,6 +100,10 @@ class EventHandler
      */
     public function __call($method, $arguments)
     {
+        if (!method_exists($this, $method . 'handler')) {
+            throw new RuntimeException('Missing event handler:' . $method . 'handler');
+        }
+
         try {
             call_user_func_array(array($this, $method . 'handler'), $arguments);
         } catch (Exception $exception) {
@@ -132,6 +138,7 @@ class EventHandler
         ));
         Integration::setTransaction($routeName);
     }
+
     /**
      * Since Laravel 5.2
      *
@@ -141,7 +148,6 @@ class EventHandler
     {
         $this->routerMatchedHandler($match->route);
     }
-
 
     /**
      * Since Laravel 5.2
@@ -202,6 +208,9 @@ class EventHandler
      */
     protected function queueJobProcessingHandler(JobProcessing $event)
     {
+        // When a job starts, we want to push a new scope
+        Hub::getCurrent()->pushScope();
+
         $job = [
             'job' => $event->job->getName(),
             'queue' => $event->job->getQueue(),
@@ -221,6 +230,18 @@ class EventHandler
             'Processing queue job',
             $job
         ));
+    }
+
+
+    /**
+     * Since Laravel 5.2
+     *
+     * @param \Illuminate\Queue\Events\JobProcessed $event
+     */
+    protected function queueJobProcessedHandler(JobProcessed $event)
+    {
+        // When a job finished, we want to pop the scope
+        Hub::getCurrent()->popScope();
     }
 
     /**
