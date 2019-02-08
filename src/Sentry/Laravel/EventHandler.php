@@ -165,10 +165,12 @@ class EventHandler
             $data['bindings'] = $bindings;
         }
 
-        $this->record(array(
-            'message' => $query,
-            'category' => 'sql.query',
-            'data' => $data,
+        Integration::addBreadcrumb(new Breadcrumb(
+            Breadcrumb::LEVEL_INFO,
+            Breadcrumb::TYPE_USER,
+            'sql.query',
+            $query,
+            $data
         ));
     }
 
@@ -203,11 +205,12 @@ class EventHandler
      */
     protected function logHandler($level, $message, $context)
     {
-        $this->client->breadcrumbs->record(array(
-            'message' => $message,
-            'category' => 'log.' . $level,
-            'data' => empty($context) ? null : array('params' => $context),
-            'level' => $level,
+        Integration::addBreadcrumb(new Breadcrumb(
+            $level,
+            Breadcrumb::TYPE_USER,
+            'log.' . $level,
+            $message,
+            empty($context) ? array() : array('params' => $context)
         ));
     }
 
