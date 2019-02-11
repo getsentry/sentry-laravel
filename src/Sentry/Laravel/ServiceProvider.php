@@ -85,7 +85,7 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
                     'environment' => $app->environment(),
                     'prefixes' => array($basePath),
                     'project_root' => $basePath,
-                    'excluded_app_paths' => array($basePath . '/vendor'),
+                    'in_app_exclude' => array($basePath . '/vendor'),
                     'integrations' => [new Integration()]
                 ],
                 $userConfig
