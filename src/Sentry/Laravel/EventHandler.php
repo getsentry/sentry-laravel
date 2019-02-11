@@ -61,7 +61,7 @@ class EventHandler
     /**
      * EventHandler constructor.
      *
-     * @param array         $config
+     * @param array $config
      */
     public function __construct(array $config)
     {
@@ -150,6 +150,31 @@ class EventHandler
     }
 
     /**
+     * Until Laravel 5.1
+     *
+     * @param string $query
+     * @param array  $bindings
+     * @param int    $time
+     * @param string $connectionName
+     */
+    protected function queryHandler($query, $bindings, $time, $connectionName)
+    {
+        $data = array('connectionName' => $connectionName);
+
+        if ($this->sqlBindings) {
+            $data['bindings'] = $bindings;
+        }
+
+        Integration::addBreadcrumb(new Breadcrumb(
+            Breadcrumb::LEVEL_INFO,
+            Breadcrumb::TYPE_USER,
+            'sql.query',
+            $query,
+            $data
+        ));
+    }
+
+    /**
      * Since Laravel 5.2
      *
      * @param \Illuminate\Database\Events\QueryExecuted $query
@@ -168,6 +193,24 @@ class EventHandler
             'sql.query',
             $query->sql,
             $data
+        ));
+    }
+
+    /**
+     * Until Laravel 5.3
+     *
+     * @param string     $level
+     * @param string     $message
+     * @param array|null $context
+     */
+    protected function logHandler($level, $message, $context)
+    {
+        Integration::addBreadcrumb(new Breadcrumb(
+            $level,
+            Breadcrumb::TYPE_USER,
+            'log.' . $level,
+            $message,
+            empty($context) ? array() : array('params' => $context)
         ));
     }
 
@@ -231,7 +274,6 @@ class EventHandler
             $job
         ));
     }
-
 
     /**
      * Since Laravel 5.2
