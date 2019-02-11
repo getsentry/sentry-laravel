@@ -1,52 +1,66 @@
 {
-    "name": "sentry/sentry-laravel",
-    "type": "library",
-    "description": "Laravel integration for Sentry (https://sentry.io)",
-    "keywords": ["logging", "errors", "laravel", "sentry"],
-    "homepage": "https://sentry.io",
-    "license": "Apache-2.0",
-    "authors": [
-        {
-            "name": "Sentry"
-        }
-    ],
-    "require": {
-        "php": "^7.1",
-        "illuminate/support": "5.0.*|5.1.*|5.2.*|5.3.*|5.4.*|5.5.*|5.6.*|5.7.*",
-        "sentry/sentry": "2.0.0-beta1"
+  "name": "sentry/sentry-laravel",
+  "type": "library",
+  "description": "Laravel integration for Sentry (https://sentry.io)",
+  "keywords": [
+    "logging",
+    "errors",
+    "laravel",
+    "sentry"
+  ],
+  "homepage": "https://sentry.io",
+  "license": "Apache-2.0",
+  "authors": [
+    {
+      "name": "David Cramer",
+      "email": "dcramer@gmail.com"
     },
-    "require-dev": {
-        "phpunit/phpunit": "7.3.*",
-        "laravel/framework": "5.7.*",
-        "orchestra/testbench": "3.7.*",
-        "friendsofphp/php-cs-fixer": "2.7.*"
-    },
-    "autoload": {
-        "psr-0": {
-            "Sentry\\Laravel\\": "src/"
-        }
-    },
-    "scripts": {
-        "tests": ["vendor/bin/phpunit --verbose"],
-        "tests-travis": [
-            "vendor/bin/phpunit --verbose --configuration phpunit.xml --coverage-clover test/clover.xml"
-        ],
-        "tests-report": [
-            "vendor/bin/phpunit --verbose --configuration phpunit.xml --coverage-html test/html-report"
-        ],
-        "phpcs": [
-            "vendor/bin/php-cs-fixer fix --config=.php_cs --verbose --diff --dry-run"
-        ]
-    },
-    "extra": {
-        "branch-alias": {
-            "dev-master": "1.0.x-dev"
-        },
-        "laravel": {
-            "providers": ["Sentry\\Laravel\\ServiceProvider"],
-            "aliases": {
-                "Sentry": "Sentry\\Laravel\\Facade"
-            }
-        }
+    {
+      "name": "Daniel Griesser",
+      "email": "daniel.griesser.86@gmail.com"
     }
+  ],
+  "require": {
+    "php": "^7.1",
+    "illuminate/support": "5.0.*|5.1.*|5.2.*|5.3.*|5.4.*|5.5.*|5.6.*|5.7.*",
+    "sentry/sentry": "2.0.0-beta2"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "7.3.*",
+    "laravel/framework": "5.7.*",
+    "orchestra/testbench": "3.7.*",
+    "friendsofphp/php-cs-fixer": "2.7.*"
+  },
+  "autoload": {
+    "psr-0": {
+      "Sentry\\Laravel\\": "src/"
+    }
+  },
+  "scripts": {
+    "tests": [
+      "vendor/bin/phpunit --verbose"
+    ],
+    "tests-travis": [
+      "vendor/bin/phpunit --verbose --configuration phpunit.xml --coverage-clover test/clover.xml"
+    ],
+    "tests-report": [
+      "vendor/bin/phpunit --verbose --configuration phpunit.xml --coverage-html test/html-report"
+    ],
+    "phpcs": [
+      "vendor/bin/php-cs-fixer fix --config=.php_cs --verbose --diff --dry-run"
+    ]
+  },
+  "extra": {
+    "branch-alias": {
+      "dev-master": "1.0.x-dev"
+    },
+    "laravel": {
+      "providers": [
+        "Sentry\\Laravel\\ServiceProvider"
+      ],
+      "aliases": {
+        "Sentry": "Sentry\\Laravel\\Facade"
+      }
+    }
+  }
 }

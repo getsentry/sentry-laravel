@@ -26,7 +26,6 @@
 
 - The `sentry:test` artisan command no longer requires the secret key in the DSN (secret key in DSN deprecated since Sentry 9).
 
-
 ## 0.9.1
 
 - Allow setting custom formatter for the log channel. (#145)
