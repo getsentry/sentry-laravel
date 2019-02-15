@@ -26,7 +26,10 @@ class SentryLaravelServiceProvider extends ServiceProvider
             __DIR__ . '/../../../config/sentry.php' => config_path(static::$abstract . '.php'),
         ), 'config');
 
-        $this->bindEvents($this->app);
+        // Do not register events if there is no DSN set
+        if ($this->hasDSNSet()) {
+            $this->bindEvents($this->app);
+        }
 
         if ($this->app->runningInConsole()) {
             $this->registerArtisanCommands();
@@ -117,5 +120,15 @@ class SentryLaravelServiceProvider extends ServiceProvider
     public function provides()
     {
         return array(static::$abstract);
+    }
+
+    /**
+     * Check if a DSN was set in the config.
+     *
+     * @return bool
+     */
+    private function hasDSNSet()
+    {
+        return !empty(array_get($this->app[static::$abstract . '.config'], 'dsn'));
     }
 }

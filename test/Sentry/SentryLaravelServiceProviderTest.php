@@ -1,7 +1,5 @@
 <?php
 
-use Sentry\SentryLaravel;
-
 class SentryLaravelServiceProviderTest extends \Orchestra\Testbench\TestCase
 {
     protected function getEnvironmentSetUp($app)
@@ -23,7 +21,7 @@ class SentryLaravelServiceProviderTest extends \Orchestra\Testbench\TestCase
 
     public function testIsBound()
     {
-        $this->assertEquals(app()->bound('sentry'), true);
+        $this->assertEquals(true, app()->bound('sentry'));
     }
 
     /**
@@ -31,7 +29,7 @@ class SentryLaravelServiceProviderTest extends \Orchestra\Testbench\TestCase
      */
     public function testEnvironment()
     {
-        $this->assertEquals(app('sentry')->environment, 'testing');
+        $this->assertEquals('testing', app('sentry')->environment);
     }
 
     /**
@@ -39,9 +37,17 @@ class SentryLaravelServiceProviderTest extends \Orchestra\Testbench\TestCase
      */
     public function testDSN()
     {
-        $this->assertEquals(app('sentry')->server, 'http://example.com/api/1/store/');
-        $this->assertEquals(app('sentry')->public_key, 'public');
-        $this->assertEquals(app('sentry')->secret_key, 'secret');
-        $this->assertEquals(app('sentry')->project, '1');
+        $this->assertEquals('http://example.com/api/1/store/', app('sentry')->server);
+        $this->assertEquals('public', app('sentry')->public_key);
+        $this->assertEquals('secret', app('sentry')->secret_key);
+        $this->assertEquals('1', app('sentry')->project);
+    }
+
+    /**
+     * @depends testIsBound
+     */
+    public function testDidRegisterEvents()
+    {
+        $this->assertEquals(true, app('events')->hasListeners('router.matched') && app('events')->hasListeners('Illuminate\Routing\Events\RouteMatched'));
     }
 }
