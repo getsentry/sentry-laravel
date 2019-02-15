@@ -129,6 +129,6 @@ class SentryLaravelServiceProvider extends ServiceProvider
      */
     private function hasDSNSet()
     {
-        return !empty(array_get($this->app[static::$abstract . '.config'], 'dsn'));
+        return !empty(array_get($this->app['config'][static::$abstract], 'dsn'));
     }
 }
