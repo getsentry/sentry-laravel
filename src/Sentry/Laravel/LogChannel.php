@@ -14,11 +14,7 @@ class LogChannel extends LogManager
      */
     public function __invoke(array $config)
     {
-        $handler = new SentryHandler(
-            $this->app->make('sentry'),
-            isset($config['level']) ? $config['level'] : null,
-            isset($config['bubble']) ? $config['bubble'] : true
-        );
+        $handler = new SentryHandler($this->app->make('sentry'), $config['level'] ?? null, $config['bubble'] ?? true);
 
         return new Logger($this->parseChannel($config), [$this->prepareHandler($handler, $config)]);
     }

@@ -2,6 +2,7 @@
 
 namespace Sentry\Laravel;
 
+use Exception;
 use Illuminate\Console\Command;
 
 class TestCommand extends Command
@@ -38,34 +39,35 @@ class TestCommand extends Command
         $old_error_reporting = error_reporting(E_ALL | E_STRICT);
 
         try {
+            /** @var \Sentry\State\Hub $hub */
             $hub = app('sentry');
 
-            /** @var \Sentry\Client $client */
-            $client = $hub->getClient();
-
-            if ($client->getOptions()->getDsn()) {
-                $this->info("[sentry] Client DSN discovered!");
+            if ($hub->getClient()->getOptions()->getDsn()) {
+                $this->info('[sentry] Client DSN discovered!');
             } else {
                 $this->warn('[sentry] Could not discover DSN! Check your config or .env file');
+
+                return;
             }
 
             $this->info('[sentry] Generating test event');
 
-            $ex = $this->generateTestException('command name', array('foo' => 'bar'));
+            $ex = $this->generateTestException('command name', ['foo' => 'bar']);
 
             $hub->captureException($ex);
 
-            $this->info("[sentry] Sending test event");
+            $this->info('[sentry] Sending test event');
 
             $lastEventId = $hub->getLastEventId();
+
             if (!$lastEventId) {
-                $this->error("[sentry] There was an error sending the test event.");
-                $this->error("[sentry] Please check if you dsn is set properly in your config. SENTRY_LARAVEL_DSN");
+                $this->error('[sentry] There was an error sending the test event.');
+                $this->error('[sentry] Please check if you DSN is set properly in your config or .env as `SENTRY_LARAVEL_DSN`.');
             } else {
-                $this->info("[sentry] Event sent: " . $lastEventId);
+                $this->info("[sentry] Event sent with ID: {$lastEventId}");
             }
-        } catch (\Exception $e) {
-            $this->error("[sentry] " . $e->getMessage());
+        } catch (Exception $e) {
+            $this->error("[sentry] {$e->getMessage()}");
         }
 
         error_reporting($old_error_reporting);
@@ -79,12 +81,12 @@ class TestCommand extends Command
      *
      * @return \Exception
      */
-    protected function generateTestException($command, $arg)
+    protected function generateTestException($command, $arg): ?Exception
     {
         // Do something silly
         try {
-            throw new \Exception('This is a test exception sent from the Sentry Laravel SDK.');
-        } catch (\Exception $ex) {
+            throw new Exception('This is a test exception sent from the Sentry Laravel SDK.');
+        } catch (Exception $ex) {
             return $ex;
         }
     }

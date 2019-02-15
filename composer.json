@@ -20,7 +20,7 @@
     "phpunit/phpunit": "7.3.*",
     "laravel/framework": "5.7.*",
     "orchestra/testbench": "3.7.*",
-    "friendsofphp/php-cs-fixer": "2.7.*"
+    "friendsofphp/php-cs-fixer": "2.14.*"
   },
   "autoload": {
     "psr-0": {

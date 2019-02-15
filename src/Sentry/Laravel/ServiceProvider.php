@@ -2,11 +2,14 @@
 
 namespace Sentry\Laravel;
 
-use function Sentry\configureScope;
-use Sentry\ClientBuilder;
 use Sentry\State\Hub;
+use Sentry\ClientBuilder;
+use Illuminate\Log\LogManager;
+use Laravel\Lumen\Application as Lumen;
+use Illuminate\Foundation\Application as Laravel;
+use Illuminate\Support\ServiceProvider as IlluminateServiceProvider;
 
-class ServiceProvider extends \Illuminate\Support\ServiceProvider
+class ServiceProvider extends IlluminateServiceProvider
 {
     /**
      * Abstract type to bind Sentry as in the Service Container.
@@ -16,108 +19,102 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
     public static $abstract = 'sentry';
 
     /**
-     * Bootstrap the application events.
-     *
-     * @return void
+     * Boot the service provider.
      */
-    public function boot()
+    public function boot(): void
     {
-        // Publish the configuration file
-        $this->publishes(array(
-            __DIR__ . '/../../../config/sentry.php' => config_path(static::$abstract . '.php'),
-        ), 'config');
+        $this->app->make(self::$abstract);
 
         $this->bindEvents($this->app);
 
         if ($this->app->runningInConsole()) {
+            if ($this->app instanceof Laravel) {
+                $this->publishes([
+                    __DIR__ . '/../../../config/sentry.php' => config_path(static::$abstract . '.php'),
+                ], 'config');
+            }
+
             $this->registerArtisanCommands();
+        }
+    }
+
+    /**
+     * Register the service provider.
+     */
+    public function register(): void
+    {
+        if ($this->app instanceof Lumen) {
+            $this->app->configure('sentry');
+        }
+
+        $this->mergeConfigFrom(__DIR__ . '/../../../config/sentry.php', static::$abstract);
+
+        $this->configureAndRegisterClient($this->app['config'][static::$abstract]);
+
+        if (($logManager = $this->app->make('log')) instanceof LogManager) {
+            $logManager->extend('sentry', function ($app, array $config) {
+                return (new LogChannel($app))($config);
+            });
+        }
+    }
+
+    /**
+     * Bind to the Laravel event dispatcher to log events.
+     */
+    protected function bindEvents(): void
+    {
+        $userConfig = $this->app['config'][static::$abstract];
+
+        $handler = new EventHandler($userConfig);
+
+        $handler->subscribe($this->app->events);
+
+        if (isset($userConfig['send_default_pii']) && $userConfig['send_default_pii'] !== false) {
+            $handler->subscribeAuthEvents($this->app->events);
         }
     }
 
     /**
      * Register the artisan commands.
      */
-    protected function registerArtisanCommands()
+    protected function registerArtisanCommands(): void
     {
-        $this->commands(array(
-            'Sentry\Laravel\TestCommand',
-        ));
+        $this->commands([
+            TestCommand::class,
+        ]);
     }
 
     /**
-     * Bind to the Laravel event dispatcher to log events.
-     *
-     * @param $app
+     * Configure and register the Sentry client with the container.
      */
-    protected function bindEvents($app)
+    protected function configureAndRegisterClient(): void
     {
-        $userConfig = $app['config'][static::$abstract];
-
-        $handler = new EventHandler($userConfig);
-
-        $handler->subscribe($app->events);
-
-        // In Laravel >=5.3 we can get the user context from the auth events
-        if (isset($userConfig['send_default_pii']) && $userConfig['send_default_pii'] !== false && version_compare($app::VERSION, '5.3') >= 0) {
-            $handler->subscribeAuthEvents($app->events);
-        }
-    }
-
-    /**
-     * Register the service provider.
-     *
-     * @return void
-     */
-    public function register()
-    {
-        $this->mergeConfigFrom(__DIR__ . '/../../../config/sentry.php', static::$abstract);
-
-        $app = $this->app;
-
-        $this->app->singleton(static::$abstract, function ($app) {
-            $userConfig = $app['config'][static::$abstract];
+        $this->app->singleton(static::$abstract, function () {
             $basePath = base_path();
+            $userConfig = $this->app['config'][static::$abstract];
 
-            // We do not want this setting to hit our main client
+            // We do not want this setting to hit our main client because it's Laravel specific
             unset($userConfig['breadcrumbs.sql_bindings']);
+
             $options = \array_merge(
                 [
-                    'environment' => $app->environment(),
-                    'prefixes' => array($basePath),
+                    'environment' => $this->app->environment(),
+                    'prefixes' => [$basePath],
                     'project_root' => $basePath,
-                    'in_app_exclude' => array($basePath . '/vendor'),
-                    'integrations' => [new Integration()]
+                    'in_app_exclude' => [$basePath . '/vendor'],
+                    'integrations' => [new Integration],
                 ],
                 $userConfig
             );
+
             $clientBuilder = ClientBuilder::create($options);
             $clientBuilder->setSdkIdentifier(Version::SDK_IDENTIFIER);
             $clientBuilder->setSdkVersion(Version::SDK_VERSION);
-            Hub::setCurrent(new Hub($clientBuilder->getClient()));
 
-            if (isset($userConfig['send_default_pii']) && $userConfig['send_default_pii'] !== false && version_compare($app::VERSION, '5.3') < 0) {
-                try {
-                    // Bind user context if available
-                    if ($app['auth']->check()) {
-                        configureScope(function (Scope $scope) use ($app): void {
-                            $scope->setUser(['id' => $app['auth']->user()->getAuthIdentifier()]);
-                        });
-                    }
-                } catch (Exception $e) {
-                    error_log(sprintf('sentry.breadcrumbs error=%s', $e->getMessage()));
-                }
-            }
+            Hub::setCurrent(new Hub($clientBuilder->getClient()));
 
             return Hub::getCurrent();
         });
-
-        // Add a sentry log channel for Laravel 5.6+
-        if (version_compare($app::VERSION, '5.6') >= 0) {
-            $app->make('log')->extend('sentry', function ($app, array $config) {
-                $channel = new LogChannel($app);
-                return $channel($config);
-            });
-        }
     }
 
     /**
