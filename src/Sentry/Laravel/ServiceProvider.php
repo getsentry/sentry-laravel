@@ -3,8 +3,13 @@
 namespace Sentry\Laravel;
 
 use Sentry\State\Hub;
+use Sentry\ClientBuilder;
+use Illuminate\Log\LogManager;
+use Laravel\Lumen\Application as Lumen;
+use Illuminate\Foundation\Application as Laravel;
+use Illuminate\Support\ServiceProvider as IlluminateServiceProvider;
 
-class ServiceProvider extends BaseServiceProvider
+class ServiceProvider extends IlluminateServiceProvider
 {
     /**
      * Abstract type to bind Sentry as in the Service Container.
@@ -14,39 +19,22 @@ class ServiceProvider extends BaseServiceProvider
     public static $abstract = 'sentry';
 
     /**
-     * Bootstrap the application events.
+     * Boot the service provider.
      */
     public function boot(): void
     {
-        $this->publishes([
-            __DIR__ . '/../../../config/sentry.php' => config_path(static::$abstract . '.php'),
-        ], 'config');
-
-        $this->configureAndRegisterClient($this->app['config'][static::$abstract]);
+        $this->app->make(self::$abstract);
 
         $this->bindEvents($this->app);
 
         if ($this->app->runningInConsole()) {
+            if ($this->app instanceof Laravel) {
+                $this->publishes([
+                    __DIR__ . '/../../../config/sentry.php' => config_path(static::$abstract . '.php'),
+                ], 'config');
+            }
+
             $this->registerArtisanCommands();
-        }
-    }
-
-    /**
-     * Bind to the Laravel event dispatcher to log events.
-     *
-     * @param \Illuminate\Contracts\Foundation\Application|\Illuminate\Foundation\Application $app
-     */
-    protected function bindEvents($app): void
-    {
-        $userConfig = $app['config'][static::$abstract];
-
-        $handler = new EventHandler($userConfig);
-
-        $handler->subscribe($app->events);
-
-        // In Laravel >=5.3 we can get the user context from the auth events
-        if (isset($userConfig['send_default_pii']) && $userConfig['send_default_pii'] !== false && $this->isMinimumLaravelVersion('5.3')) {
-            $handler->subscribeAuthEvents($app->events);
         }
     }
 
@@ -55,18 +43,78 @@ class ServiceProvider extends BaseServiceProvider
      */
     public function register(): void
     {
+        if ($this->app instanceof Lumen) {
+            $this->app->configure('sentry');
+        }
+
         $this->mergeConfigFrom(__DIR__ . '/../../../config/sentry.php', static::$abstract);
 
-        $this->app->singleton(static::$abstract, function () {
-            return Hub::getCurrent();
-        });
+        $this->configureAndRegisterClient($this->app['config'][static::$abstract]);
 
-        // Add a sentry log channel for Laravel 5.6+
-        if ($this->isMinimumLaravelVersion('5.6')) {
-            $this->app->make('log')->extend('sentry', function ($app, array $config) {
+        if (($logManager = $this->app->make('log')) instanceof LogManager) {
+            $logManager->extend('sentry', function ($app, array $config) {
                 return (new LogChannel($app))($config);
             });
         }
+    }
+
+    /**
+     * Bind to the Laravel event dispatcher to log events.
+     */
+    protected function bindEvents(): void
+    {
+        $userConfig = $this->app['config'][static::$abstract];
+
+        $handler = new EventHandler($userConfig);
+
+        $handler->subscribe($this->app->events);
+
+        if (isset($userConfig['send_default_pii']) && $userConfig['send_default_pii'] !== false) {
+            $handler->subscribeAuthEvents($this->app->events);
+        }
+    }
+
+    /**
+     * Register the artisan commands.
+     */
+    protected function registerArtisanCommands(): void
+    {
+        $this->commands([
+            TestCommand::class,
+        ]);
+    }
+
+    /**
+     * Configure and register the Sentry client with the container.
+     */
+    protected function configureAndRegisterClient(): void
+    {
+        $this->app->singleton(static::$abstract, function () {
+            $basePath = base_path();
+            $userConfig = $this->app['config'][static::$abstract];
+
+            // We do not want this setting to hit our main client because it's Laravel specific
+            unset($userConfig['breadcrumbs.sql_bindings']);
+
+            $options = \array_merge(
+                [
+                    'environment' => $this->app->environment(),
+                    'prefixes' => [$basePath],
+                    'project_root' => $basePath,
+                    'in_app_exclude' => [$basePath . '/vendor'],
+                    'integrations' => [new Integration],
+                ],
+                $userConfig
+            );
+
+            $clientBuilder = ClientBuilder::create($options);
+            $clientBuilder->setSdkIdentifier(Version::SDK_IDENTIFIER);
+            $clientBuilder->setSdkVersion(Version::SDK_VERSION);
+
+            Hub::setCurrent(new Hub($clientBuilder->getClient()));
+
+            return Hub::getCurrent();
+        });
     }
 
     /**
