@@ -46,6 +46,8 @@ class TestCommand extends Command
                 $this->info('[sentry] Client DSN discovered!');
             } else {
                 $this->warn('[sentry] Could not discover DSN! Check your config or .env file');
+
+                return;
             }
 
             $this->info('[sentry] Generating test event');
