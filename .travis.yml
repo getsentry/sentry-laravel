@@ -1,15 +1,10 @@
 language: php
 
-sudo: false
-
-cache:
-  directories:
-    - $HOME/.composer/cache
-
 php:
   - 7.1
   - 7.2
   - 7.3
+  - 7.4snapshot
 
 env:
   matrix:
@@ -23,23 +18,40 @@ env:
   - LARAVEL=5.7.* TESTBENCH=3.7.* PHPUNIT=7.3.*
 
 matrix:
+  fast_finish: true
+  allow_failures:
+    - php: 7.4snapshot
   exclude:
     - php: 7.2
       env: LARAVEL=5.0.* TESTBENCH=3.0.* PHPUNIT=4.8.*
 
+cache:
+  directories:
+    - $HOME/.composer/cache
+
+stages:
+  - Code style
+  - Test
+
+jobs:
+  include:
+    - stage: Code style
+      name: PHP CS Fixer
+      php: 7.3
+      script:
+        - composer require friendsofphp/php-cs-fixer ^2.14 --dev
+        - composer phpcs
+
 before_install:
-  - composer self-update --stable --no-interaction
   - composer remove friendsofphp/php-cs-fixer --dev --no-update
   - composer require laravel/framework:$LARAVEL illuminate/support:$LARAVEL orchestra/testbench:$TESTBENCH phpunit/phpunit:$PHPUNIT php-http/curl-client guzzlehttp/psr7 --no-update --no-interaction --dev
 
 install:
-  - travis_retry composer install --no-suggest --no-interaction
+  - travis_retry composer install --no-suggest --no-interaction --prefer-dist
   - composer info
 
 script:
   - composer tests-travis
-  - composer require friendsofphp/php-cs-fixer ^2.2 --dev
-  - composer phpcs
 
 notifications:
   webhooks:
