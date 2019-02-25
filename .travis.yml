@@ -1,54 +1,60 @@
 language: php
 
-sudo: false
+php:
+  - 7.1
+  - 7.2
+  - 7.3
+  - 7.4snapshot
+
+env:
+  matrix:
+    - LARAVEL=5.0.* TESTBENCH=3.0.* PHPUNIT=4.8.*
+    - LARAVEL=5.1.* TESTBENCH=3.1.* PHPUNIT=5.7.*
+    - LARAVEL=5.2.* TESTBENCH=3.2.* PHPUNIT=5.7.*
+    - LARAVEL=5.3.* TESTBENCH=3.3.* PHPUNIT=5.7.*
+    - LARAVEL=5.4.* TESTBENCH=3.4.* PHPUNIT=5.7.*
+    - LARAVEL=5.5.* TESTBENCH=3.5.* PHPUNIT=6.5.*
+    - LARAVEL=5.6.* TESTBENCH=3.6.* PHPUNIT=7.0.*
+    - LARAVEL=5.7.* TESTBENCH=3.7.* PHPUNIT=7.3.*
+
+matrix:
+  fast_finish: true
+  allow_failures:
+    - php: 7.4snapshot
+  exclude:
+    - php: 7.2
+      env: LARAVEL=5.0.* TESTBENCH=3.0.* PHPUNIT=4.8.*
+    - php: 7.3
+      env: LARAVEL=5.0.* TESTBENCH=3.0.* PHPUNIT=4.8.*
+    - php: 7.4snapshot
+      env: LARAVEL=5.0.* TESTBENCH=3.0.* PHPUNIT=4.8.*
 
 cache:
   directories:
     - $HOME/.composer/cache
 
-php:
-  - 7.1
-  - 7.2
+stages:
+  - Code style
+  - Test
 
-env:
-  matrix:
-  - LARAVEL=5.0.* TESTBENCH=3.0.* PHPUNIT=4.8.*
-  - LARAVEL=5.1.* TESTBENCH=3.1.* PHPUNIT=5.7.*
-  - LARAVEL=5.2.* TESTBENCH=3.2.* PHPUNIT=5.7.*
-  - LARAVEL=5.3.* TESTBENCH=3.3.* PHPUNIT=5.7.*
-  - LARAVEL=5.4.* TESTBENCH=3.4.* PHPUNIT=5.7.*
-  - LARAVEL=5.5.* TESTBENCH=3.5.* PHPUNIT=6.5.*
-  - LARAVEL=5.6.* TESTBENCH=3.6.* PHPUNIT=7.0.*
-  - LARAVEL=5.7.* TESTBENCH=3.7.* PHPUNIT=7.3.*
-
-matrix:
-  exclude:
-    - php: 5.6
-      env: LARAVEL=5.5.* TESTBENCH=3.5.* PHPUNIT=6.5.*
-    - php: 5.6
-      env: LARAVEL=5.6.* TESTBENCH=3.6.* PHPUNIT=7.0.*
-    - php: 5.6
-      env: LARAVEL=5.7.* TESTBENCH=3.7.* PHPUNIT=7.3.*
-    - php: 7.0
-      env: LARAVEL=5.6.* TESTBENCH=3.6.* PHPUNIT=7.0.*
-    - php: 7.0
-      env: LARAVEL=5.7.* TESTBENCH=3.7.* PHPUNIT=7.3.*
-    - php: 7.2
-      env: LARAVEL=5.0.* TESTBENCH=3.0.* PHPUNIT=4.8.*
+jobs:
+  include:
+    - stage: Code style
+      name: PHP CS Fixer
+      php: 7.3
+      env: USE_COMPOSER_JSON=1
+      script: composer phpcs
 
 before_install:
-  - composer self-update --stable --no-interaction
-  - composer remove friendsofphp/php-cs-fixer --dev --no-update
-  - composer require laravel/framework:$LARAVEL illuminate/support:$LARAVEL orchestra/testbench:$TESTBENCH phpunit/phpunit:$PHPUNIT php-http/curl-client guzzlehttp/psr7 --no-update --no-interaction --dev
+  - if [ "$USE_COMPOSER_JSON" != "1" ]; then composer remove friendsofphp/php-cs-fixer --dev --no-update; fi;
+  - if [ "$USE_COMPOSER_JSON" != "1" ]; then composer require laravel/framework:$LARAVEL illuminate/support:$LARAVEL orchestra/testbench:$TESTBENCH phpunit/phpunit:$PHPUNIT php-http/curl-client guzzlehttp/psr7 --no-update --no-interaction --dev; fi;
 
 install:
-  - travis_retry composer install --no-suggest --no-interaction
+  - travis_retry composer install --no-suggest --no-interaction --prefer-dist --no-progress
   - composer info
 
 script:
   - composer tests-travis
-  - composer require friendsofphp/php-cs-fixer ^2.2 --dev
-  - composer phpcs
 
 notifications:
   webhooks:
