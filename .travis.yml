@@ -42,13 +42,12 @@ jobs:
     - stage: Code style
       name: PHP CS Fixer
       php: 7.3
-      script:
-        - composer require friendsofphp/php-cs-fixer ^2.14 --dev
-        - composer phpcs
+      env: USE_COMPOSER_JSON=1
+      script: composer phpcs
 
 before_install:
-  - composer remove friendsofphp/php-cs-fixer --dev --no-update
-  - composer require laravel/framework:$LARAVEL illuminate/support:$LARAVEL orchestra/testbench:$TESTBENCH phpunit/phpunit:$PHPUNIT php-http/curl-client guzzlehttp/psr7 --no-update --no-interaction --dev
+  - if [ "$USE_COMPOSER_JSON" != "1" ]; then composer remove friendsofphp/php-cs-fixer --dev --no-update; fi;
+  - if [ "$USE_COMPOSER_JSON" != "1" ]; then composer require laravel/framework:$LARAVEL illuminate/support:$LARAVEL orchestra/testbench:$TESTBENCH phpunit/phpunit:$PHPUNIT php-http/curl-client guzzlehttp/psr7 --no-update --no-interaction --dev; fi;
 
 install:
   - travis_retry composer install --no-suggest --no-interaction --prefer-dist
