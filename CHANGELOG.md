@@ -1,8 +1,12 @@
 # Changelog
 
-## 1.0.0 (unreleased)
+## 1.0.0
 
-- ...
+- This version requires `sentry/sentry` `>= 2.0` and also PHP `>= 7.1`
+- Support for Laravel 5.8
+- Be advised `app('sentry')` now no longer returns the "old" `Raven_Client` instead it will return `\Sentry\State\Hub`
+
+Please see [Docs](https://docs.sentry.io/platforms/php/laravel/) for detailed usage.
 
 ## 0.12.0 (unreleased)
 
@@ -32,7 +36,7 @@
 
 ## 0.9.0
 
-This version no longer supports Laravel 4.x, version `0.8.x` will ofcourse still work for Laravel 4.
+This version no longer supports Laravel 4.x, version `0.8.x` will of course still work for Laravel 4.
 
 - Set 'user_context' configuration default to false. (#132)
 - Update `SENTRY_DSN` env variable name to `SENTRY_LARAVEL_DSN`. (#130)
