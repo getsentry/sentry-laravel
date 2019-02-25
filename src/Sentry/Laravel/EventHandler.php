@@ -294,7 +294,9 @@ class EventHandler
     protected function commandStartingHandler(CommandStarting $event)
     {
         Integration::configureScope(function (Scope $scope) use ($event): void {
-            $scope->setTag('command', $event->command);
+            if ($event->command) {
+                $scope->setTag('command', $event->command);
+            }
         });
     }
 
