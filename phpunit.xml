@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
 <phpunit backupStaticAttributes="false"
          colors="true"
          convertErrorsToExceptions="true"
@@ -13,7 +12,6 @@
       <directory>./test/Sentry/</directory>
     </testsuite>
   </testsuites>
-
   <filter>
     <whitelist>
       <directory suffix=".php">./src/Sentry/</directory>
