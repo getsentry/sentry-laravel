@@ -25,7 +25,9 @@ class ServiceProvider extends IlluminateServiceProvider
     {
         $this->app->make(self::$abstract);
 
-        $this->bindEvents($this->app);
+        if ($this->hasDsnSet()) {
+            $this->bindEvents($this->app);
+        }
 
         if ($this->app->runningInConsole()) {
             if ($this->app instanceof Laravel) {
@@ -115,6 +117,16 @@ class ServiceProvider extends IlluminateServiceProvider
 
             return Hub::getCurrent();
         });
+    }
+
+    /**
+     * Check if a DSN was set in the config.
+     *
+     * @return bool
+     */
+    protected function hasDsnSet(): bool
+    {
+        return !empty($this->app['config'][static::$abstract]['dsn'] ?? null);
     }
 
     /**
