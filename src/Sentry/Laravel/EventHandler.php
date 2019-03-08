@@ -65,7 +65,7 @@ class EventHandler
      */
     public function __construct(array $config)
     {
-        $this->sqlBindings = isset($config['breadcrumbs.sql_bindings']) ? $config['breadcrumbs.sql_bindings'] === true : true;
+        $this->sqlBindings = isset($config['breadcrumbs']['sql_bindings']) ? $config['breadcrumbs']['sql_bindings'] === true : true;
     }
 
     /**
