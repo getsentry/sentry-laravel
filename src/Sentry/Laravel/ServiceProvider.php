@@ -96,7 +96,11 @@ class ServiceProvider extends IlluminateServiceProvider
             $userConfig = $this->app['config'][static::$abstract];
 
             // We do not want this setting to hit our main client because it's Laravel specific
-            unset($userConfig['breadcrumbs.sql_bindings']);
+            unset(
+                $userConfig['breadcrumbs'],
+                // this is kept for backwards compatibilty and can be dropped in a breaking release
+                $userConfig['breadcrumbs.sql_bindings']
+            );
 
             $options = \array_merge(
                 [
