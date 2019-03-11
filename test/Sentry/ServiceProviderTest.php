@@ -1,5 +1,7 @@
 <?php
 
+namespace Sentry\Laravel\Tests;
+
 use Sentry\State\Hub;
 use Sentry\Laravel\Facade;
 use Sentry\Laravel\ServiceProvider;

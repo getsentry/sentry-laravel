@@ -1,5 +1,7 @@
 <?php
 
+namespace Sentry\Laravel\Tests;
+
 class EventHandlerTest extends \PHPUnit\Framework\TestCase
 {
     /**

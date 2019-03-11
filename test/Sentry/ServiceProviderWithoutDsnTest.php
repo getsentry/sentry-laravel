@@ -1,5 +1,7 @@
 <?php
 
+namespace Sentry\Laravel\Tests;
+
 use Sentry\Laravel\ServiceProvider;
 use Illuminate\Routing\Events\RouteMatched;
 
