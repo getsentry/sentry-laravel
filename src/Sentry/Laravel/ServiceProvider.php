@@ -130,7 +130,9 @@ class ServiceProvider extends IlluminateServiceProvider
      */
     protected function hasDsnSet(): bool
     {
-        return !empty($this->app['config'][static::$abstract]['dsn'] ?? null);
+        $config = $this->app['config'][static::$abstract];
+
+        return !empty($config['dsn']);
     }
 
     /**
