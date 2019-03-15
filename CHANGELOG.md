@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- ...
+
+## 1.0.1
+
 - Fix the configuration syntax for the sql bindings in breadcrumbs configuration option to be compatible with Laravel (#207)
 - Prevent registering events when no DSN is set (#205)
 
