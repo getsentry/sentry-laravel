@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Fix the configuration syntax for the sql bindings in breadcrumbs configuration option to be compaitable with Laravel (#207)
+- Fix the configuration syntax for the sql bindings in breadcrumbs configuration option to be compatible with Laravel (#207)
 
 ## 1.0.0
 
