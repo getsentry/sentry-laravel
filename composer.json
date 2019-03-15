@@ -27,6 +27,11 @@
       "Sentry\\Laravel\\": "src/"
     }
   },
+  "autoload-dev": {
+    "psr-4": {
+      "Sentry\\Laravel\\Tests\\": "test/Sentry/"
+    }
+  },
   "scripts": {
     "tests": [
       "vendor/bin/phpunit --verbose"

@@ -56,7 +56,7 @@ class EventHandler
      *
      * @var bool
      */
-    private $sqlBindings;
+    private $recordSqlBindings;
 
     /**
      * EventHandler constructor.
@@ -65,7 +65,7 @@ class EventHandler
      */
     public function __construct(array $config)
     {
-        $this->sqlBindings = isset($config['breadcrumbs.sql_bindings']) ? $config['breadcrumbs.sql_bindings'] === true : true;
+        $this->recordSqlBindings = ($config['breadcrumbs']['sql_bindings'] ?? $config['breadcrumbs.sql_bindings'] ?? false) === true;
     }
 
     /**
@@ -161,7 +161,7 @@ class EventHandler
     {
         $data = array('connectionName' => $connectionName);
 
-        if ($this->sqlBindings) {
+        if ($this->recordSqlBindings) {
             $data['bindings'] = $bindings;
         }
 
@@ -183,7 +183,7 @@ class EventHandler
     {
         $data = array('connectionName' => $query->connectionName);
 
-        if ($this->sqlBindings) {
+        if ($this->recordSqlBindings) {
             $data['bindings'] = $query->bindings;
         }
 
