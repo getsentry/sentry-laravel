@@ -1,11 +1,11 @@
 {
   "providers": [
-    "Sentry\SentryLaravel\SentryLaravelServiceProvider"
+    "Sentry\Laravel\ServiceProvider"
   ],
   "aliases": [
     {
       "alias": "Sentry",
-      "facade": "Sentry\SentryLaravel\SentryFacade"
+      "facade": "Sentry\Laravel\Facade"
     }
   ]
 }
