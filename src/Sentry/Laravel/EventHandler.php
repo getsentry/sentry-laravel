@@ -5,7 +5,6 @@ namespace Sentry\Laravel;
 use Exception;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Auth\Events\Authenticated;
-use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\QueueManager;
 use Illuminate\Routing\Events\RouteMatched;
