@@ -67,12 +67,14 @@ class ServiceProvider extends IlluminateServiceProvider
     {
         $userConfig = $this->app['config'][static::$abstract];
 
-        $handler = new EventHandler($userConfig);
+        $handler = new EventHandler($this->app->events, $userConfig);
 
-        $handler->subscribe($this->app->events);
+        $handler->subscribe();
+
+        $handler->subscribeQueueEvents($this->app->queue);
 
         if (isset($userConfig['send_default_pii']) && $userConfig['send_default_pii'] !== false) {
-            $handler->subscribeAuthEvents($this->app->events);
+            $handler->subscribeAuthEvents();
         }
     }
 
@@ -142,6 +144,6 @@ class ServiceProvider extends IlluminateServiceProvider
      */
     public function provides()
     {
-        return array(static::$abstract);
+        return [static::$abstract];
     }
 }
