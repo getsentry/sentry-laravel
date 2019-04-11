@@ -87,6 +87,9 @@ class Integration implements IntegrationInterface
 
     /**
      * Block until all async events are processed for the HTTP transport.
+     *
+     * @internal This is not part of the public API and is here temporarily until
+     *  the underlying issue can be resolved, this method will be removed.
      */
     public static function flushEvents(): void
     {
