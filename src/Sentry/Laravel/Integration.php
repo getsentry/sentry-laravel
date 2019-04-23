@@ -6,9 +6,11 @@ use function Sentry\addBreadcrumb;
 use function Sentry\configureScope;
 use Sentry\Breadcrumb;
 use Sentry\Event;
+use Sentry\Client;
 use Sentry\Integration\IntegrationInterface;
 use Sentry\State\Hub;
 use Sentry\State\Scope;
+use Sentry\Transport\HttpTransport;
 
 class Integration implements IntegrationInterface
 {
@@ -81,5 +83,31 @@ class Integration implements IntegrationInterface
     public static function setTransaction($transaction): void
     {
         self::$transaction = $transaction;
+    }
+
+    /**
+     * Block until all async events are processed for the HTTP transport.
+     *
+     * @internal This is not part of the public API and is here temporarily until
+     *  the underlying issue can be resolved, this method will be removed.
+     */
+    public static function flushEvents(): void
+    {
+        $client = Hub::getCurrent()->getClient();
+
+        if ($client instanceof Client) {
+            $transportProperty = new \ReflectionProperty(Client::class, 'transport');
+            $transportProperty->setAccessible(true);
+
+            $transport = $transportProperty->getValue($client);
+
+            if ($transport instanceof HttpTransport) {
+                $closure = \Closure::bind(function () {
+                    $this->cleanupPendingRequests();
+                }, $transport, $transport);
+
+                $closure();
+            }
+        }
     }
 }
