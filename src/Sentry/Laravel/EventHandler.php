@@ -80,7 +80,7 @@ class EventHandler
     public function __construct(Dispatcher $events, array $config)
     {
         $this->events = $events;
-        $this->recordSqlBindings = ($config['breadcrumbs']['sql_bindings'] ?? $config['breadcrumbs.sql_bindings'] ?? false) === true;
+        $this->recordSqlBindings = ($config['breadcrumbs.sql_bindings'] ?? $config['breadcrumbs']['sql_bindings'] ?? false) === true;
     }
 
     /**
