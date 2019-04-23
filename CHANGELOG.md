@@ -2,7 +2,10 @@
 
 ## Unreleased
 
-- ...
+- Fixed `sql_bindings` configuration fallback (#231)
+- Fixed events generated in queue worker not sending until worker exits (#228)
+- Add phpDoc methods to the facade for better autocompletion (#226)
+- Fallback to `SENTRY_DSN` if defined in env (#224)
 
 ## 1.0.1
 
