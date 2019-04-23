@@ -313,11 +313,21 @@ class EventHandler
      */
     protected function commandStartingHandler(CommandStarting $event)
     {
-        Integration::configureScope(function (Scope $scope) use ($event): void {
-            if ($event->command) {
+        if ($event->command) {
+            Integration::configureScope(function (Scope $scope) use ($event): void {
                 $scope->setTag('command', $event->command);
-            }
-        });
+            });
+
+            Integration::addBreadcrumb(new Breadcrumb(
+                Breadcrumb::LEVEL_INFO,
+                Breadcrumb::TYPE_USER,
+                'artisan.command',
+                'Invoked Artisan command: ' . $event->command,
+                method_exists($event->input, '__toString') ? [
+                    'input' => (string)$event->input,
+                ] : []
+            ));
+        }
     }
 
     /**
