@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Track Artisan command invocation in breadcrumb (#232)
 - Fixed `sql_bindings` configuration fallback (#231)
 - Fixed events generated in queue worker not sending until worker exits (#228)
 - Add phpDoc methods to the facade for better autocompletion (#226)
