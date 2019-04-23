@@ -5,7 +5,7 @@ namespace Sentry\Laravel\Tests;
 use Sentry\State\Hub;
 use Illuminate\Config\Repository;
 
-class SqlBindingsInBreadcrumbsWithOldConfigKeyTest extends SentryLaravelTestCase
+class SqlBindingsInBreadcrumbsWithOldConfigKeyDisabledTest extends SentryLaravelTestCase
 {
     protected function getEnvironmentSetUp($app)
     {
@@ -15,9 +15,7 @@ class SqlBindingsInBreadcrumbsWithOldConfigKeyTest extends SentryLaravelTestCase
 
         $config = $app['config']->all();
 
-        $config['sentry']['breadcrumbs.sql_bindings'] = true;
-
-        unset($config['sentry']['breadcrumbs']);
+        $config['sentry']['breadcrumbs.sql_bindings'] = false;
 
         $app['config'] = new Repository($config);
     }
@@ -31,9 +29,9 @@ class SqlBindingsInBreadcrumbsWithOldConfigKeyTest extends SentryLaravelTestCase
     /**
      * @depends testIsBound
      */
-    public function testSqlBindingsAreRecordedWhenEnabledByOldConfigKey()
+    public function testSqlBindingsAreRecordedWhenDisabledByOldConfigKey()
     {
-        $this->assertTrue($this->app['config']->get('sentry')['breadcrumbs.sql_bindings']);
+        $this->assertFalse($this->app['config']->get('sentry')['breadcrumbs.sql_bindings']);
 
         $this->dispatchLaravelEvent('illuminate.query', [
             $query = 'SELECT * FROM breadcrumbs WHERE bindings = ?;',
@@ -48,6 +46,6 @@ class SqlBindingsInBreadcrumbsWithOldConfigKeyTest extends SentryLaravelTestCase
         $lastBreadcrumb = end($breadcrumbs);
 
         $this->assertEquals($query, $lastBreadcrumb->getMessage());
-        $this->assertEquals($bindings, $lastBreadcrumb->getMetadata()['bindings']);
+        $this->assertFalse(isset($lastBreadcrumb->getMetadata()['bindings']));
     }
 }

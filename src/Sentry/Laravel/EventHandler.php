@@ -25,7 +25,7 @@ class EventHandler
      *
      * @var array
      */
-    protected static $eventHandlerMap = array(
+    protected static $eventHandlerMap = [
         'router.matched' => 'routerMatched', // Until Laravel 5.1
         'Illuminate\Routing\Events\RouteMatched' => 'routeMatched',  // Since Laravel 5.2
 
@@ -40,16 +40,16 @@ class EventHandler
 
         'Illuminate\Console\Events\CommandStarting' => 'commandStarting', // Since Laravel 5.5
         'Illuminate\Console\Events\CommandFinished' => 'commandFinished', // Since Laravel 5.5
-    );
+    ];
 
     /**
      * Maps authentication event handler function to event names.
      *
      * @var array
      */
-    protected static $authEventHandlerMap = array(
+    protected static $authEventHandlerMap = [
         'Illuminate\Auth\Events\Authenticated' => 'authenticated', // Since Laravel 5.3
-    );
+    ];
 
     /**
      * Indicates if we should we add query bindings to the breadcrumbs.
@@ -65,7 +65,7 @@ class EventHandler
      */
     public function __construct(array $config)
     {
-        $this->recordSqlBindings = ($config['breadcrumbs']['sql_bindings'] ?? $config['breadcrumbs.sql_bindings'] ?? false) === true;
+        $this->recordSqlBindings = ($config['breadcrumbs.sql_bindings'] ?? $config['breadcrumbs']['sql_bindings'] ?? false) === true;
     }
 
     /**
@@ -76,7 +76,7 @@ class EventHandler
     public function subscribe(Dispatcher $events)
     {
         foreach (static::$eventHandlerMap as $eventName => $handler) {
-            $events->listen($eventName, array($this, $handler));
+            $events->listen($eventName, [$this, $handler]);
         }
     }
 
@@ -88,7 +88,7 @@ class EventHandler
     public function subscribeAuthEvents(Dispatcher $events)
     {
         foreach (static::$authEventHandlerMap as $eventName => $handler) {
-            $events->listen($eventName, array($this, $handler));
+            $events->listen($eventName, [$this, $handler]);
         }
     }
 
@@ -105,7 +105,7 @@ class EventHandler
         }
 
         try {
-            call_user_func_array(array($this, $method . 'handler'), $arguments);
+            call_user_func_array([$this, $method . 'handler'], $arguments);
         } catch (Exception $exception) {
             // Ignore
         }
@@ -159,7 +159,7 @@ class EventHandler
      */
     protected function queryHandler($query, $bindings, $time, $connectionName)
     {
-        $data = array('connectionName' => $connectionName);
+        $data = ['connectionName' => $connectionName];
 
         if ($this->recordSqlBindings) {
             $data['bindings'] = $bindings;
@@ -181,7 +181,7 @@ class EventHandler
      */
     protected function queryExecutedHandler(QueryExecuted $query)
     {
-        $data = array('connectionName' => $query->connectionName);
+        $data = ['connectionName' => $query->connectionName];
 
         if ($this->recordSqlBindings) {
             $data['bindings'] = $query->bindings;
@@ -210,7 +210,7 @@ class EventHandler
             Breadcrumb::TYPE_USER,
             'log.' . $level,
             $message,
-            empty($context) ? array() : array('params' => $context)
+            empty($context) ? [] : ['params' => $context]
         ));
     }
 
@@ -226,7 +226,7 @@ class EventHandler
             Breadcrumb::TYPE_USER,
             'log.' . $logEntry->level,
             $logEntry->message,
-            empty($logEntry->context) ? array() : array('params' => $logEntry->context)
+            empty($logEntry->context) ? [] : ['params' => $logEntry->context]
         ));
     }
 
@@ -238,9 +238,9 @@ class EventHandler
     protected function authenticatedHandler(Authenticated $event)
     {
         Integration::configureScope(function (Scope $scope) use ($event): void {
-            $scope->setUser(array(
+            $scope->setUser([
                 'id' => $event->user->getAuthIdentifier(),
-            ));
+            ]);
         });
     }
 

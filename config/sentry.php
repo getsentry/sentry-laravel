@@ -1,6 +1,4 @@
 <?php
-
-return array(
     'dsn' => env('SENTRY_LARAVEL_DSN', env('SENTRY_DSN')),
 
     // capture release as git sha
@@ -12,4 +10,4 @@ return array(
         'sql_bindings' => true,
 
     ],
-);
+];

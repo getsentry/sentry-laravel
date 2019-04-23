@@ -142,6 +142,6 @@ class ServiceProvider extends IlluminateServiceProvider
      */
     public function provides()
     {
-        return array(static::$abstract);
+        return [static::$abstract];
     }
 }
