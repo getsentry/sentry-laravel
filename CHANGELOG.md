@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.2
 
 - Track Artisan command invocation in breadcrumb (#232)
 - Fixed `sql_bindings` configuration fallback (#231)
