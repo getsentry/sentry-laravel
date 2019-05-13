@@ -16,6 +16,8 @@ abstract class SentryLaravelTestCase extends LaravelTestCase
 
     protected function getEnvironmentSetUp($app)
     {
+        $app['config']->set('sentry.dsn', 'http://publickey:secretkey@sentry.dev/123');
+
         foreach ($this->setupConfig as $key => $value) {
             $app['config']->set($key, $value);
         }

@@ -6,22 +6,6 @@ use Sentry\State\Hub;
 
 class SqlBindingsInBreadcrumbsTest extends SentryLaravelTestCase
 {
-    protected function getEnvironmentSetUp($app)
-    {
-        $app['config']->set('sentry.dsn', 'http://publickey:secretkey@sentry.dev/123');
-
-        parent::getEnvironmentSetUp($app);
-    }
-
-    public function testIsBound()
-    {
-        $this->assertTrue(app()->bound('sentry'));
-        $this->assertInstanceOf(Hub::class, app('sentry'));
-    }
-
-    /**
-     * @depends testIsBound
-     */
     public function testSqlBindingsAreRecordedWhenEnabled()
     {
         $this->resetApplicationWithConfig([
@@ -46,9 +30,6 @@ class SqlBindingsInBreadcrumbsTest extends SentryLaravelTestCase
         $this->assertEquals($bindings, $lastBreadcrumb->getMetadata()['bindings']);
     }
 
-    /**
-     * @depends testIsBound
-     */
     public function testSqlBindingsAreRecordedWhenDisabled()
     {
         $this->resetApplicationWithConfig([

@@ -11,8 +11,6 @@ class SqlBindingsInBreadcrumbsWithOldConfigKeyDisabledTest extends SentryLaravel
     {
         parent::getEnvironmentSetUp($app);
 
-        $app['config']->set('sentry.dsn', 'http://publickey:secretkey@sentry.dev/123');
-
         $config = $app['config']->all();
 
         $config['sentry']['breadcrumbs.sql_bindings'] = false;
@@ -20,15 +18,6 @@ class SqlBindingsInBreadcrumbsWithOldConfigKeyDisabledTest extends SentryLaravel
         $app['config'] = new Repository($config);
     }
 
-    public function testIsBound()
-    {
-        $this->assertTrue(app()->bound('sentry'));
-        $this->assertInstanceOf(Hub::class, app('sentry'));
-    }
-
-    /**
-     * @depends testIsBound
-     */
     public function testSqlBindingsAreRecordedWhenDisabledByOldConfigKey()
     {
         $this->assertFalse($this->app['config']->get('sentry')['breadcrumbs.sql_bindings']);
