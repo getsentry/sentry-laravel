@@ -6,6 +6,7 @@ use Sentry\State\Hub;
 use Sentry\ClientBuilder;
 use Illuminate\Log\LogManager;
 use Laravel\Lumen\Application as Lumen;
+use Sentry\Integration\IntegrationInterface;
 use Illuminate\Foundation\Application as Laravel;
 use Illuminate\Support\ServiceProvider as IlluminateServiceProvider;
 
@@ -110,9 +111,11 @@ class ServiceProvider extends IlluminateServiceProvider
                     'prefixes' => [$basePath],
                     'project_root' => $basePath,
                     'in_app_exclude' => [$basePath . '/vendor'],
-                    'integrations' => [new Integration],
                 ],
-                $userConfig
+                $userConfig,
+                [
+                    'integrations' => $this->getIntegrations(),
+                ]
             );
 
             $clientBuilder = ClientBuilder::create($options);
@@ -135,6 +138,30 @@ class ServiceProvider extends IlluminateServiceProvider
         $config = $this->app['config'][static::$abstract];
 
         return !empty($config['dsn']);
+    }
+
+    /**
+     * Resolve the integrations from the user configuration with the container.
+     *
+     * @return array
+     */
+    private function getIntegrations(): array
+    {
+        $integrations = [new Integration];
+
+        $userIntegrations = $this->app['config'][static::$abstract]['integrations'] ?? [];
+
+        foreach ($userIntegrations as $userIntegration) {
+            if ($userIntegration instanceof IntegrationInterface) {
+                $integrations[] = $userIntegration;
+            } elseif (\is_string($userIntegration)) {
+                $integrations[] = $this->app->get($userIntegration);
+            } else {
+                throw new \RuntimeException('Sentry integrations should either be a container reference or a instance of `\Sentry\Integration\IntegrationInterface`.');
+            }
+        }
+
+        return $integrations;
     }
 
     /**
