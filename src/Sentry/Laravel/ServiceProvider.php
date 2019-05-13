@@ -155,7 +155,7 @@ class ServiceProvider extends IlluminateServiceProvider
             if ($userIntegration instanceof IntegrationInterface) {
                 $integrations[] = $userIntegration;
             } elseif (\is_string($userIntegration)) {
-                $integrations[] = $this->app->get($userIntegration);
+                $integrations[] = $this->app->make($userIntegration);
             } else {
                 throw new \RuntimeException('Sentry integrations should either be a container reference or a instance of `\Sentry\Integration\IntegrationInterface`.');
             }

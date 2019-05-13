@@ -50,7 +50,7 @@ class IntegrationsOptionTest extends SentryLaravelTestCase
     }
 
     /**
-     * @expectedException \Illuminate\Container\EntryNotFoundException
+     * @expectedException \ReflectionException
      */
     public function testCustomIntegrationThrowsExceptionIfNotResolvable()
     {
