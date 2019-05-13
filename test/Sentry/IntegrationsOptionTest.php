@@ -40,6 +40,17 @@ class IntegrationsOptionTest extends SentryLaravelTestCase
         $this->assertNotNull(Hub::getCurrent()->getClient()->getIntegration(IntegrationsOptionTestIntegrationStub::class));
     }
 
+    public function testCustomIntegrationByInstance()
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.integrations' => [
+                new IntegrationsOptionTestIntegrationStub,
+            ],
+        ]);
+
+        $this->assertNotNull(Hub::getCurrent()->getClient()->getIntegration(IntegrationsOptionTestIntegrationStub::class));
+    }
+
     public function testCustomIntegrationThrowsExceptionIfNotResolvable()
     {
         $this->expectException(EntryNotFoundException::class);
