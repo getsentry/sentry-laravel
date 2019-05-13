@@ -2,10 +2,8 @@
 
 namespace Sentry\Laravel\Tests;
 
-use RuntimeException;
 use Sentry\State\Hub;
 use Sentry\Integration\IntegrationInterface;
-use Illuminate\Container\EntryNotFoundException;
 
 class IntegrationsOptionTest extends SentryLaravelTestCase
 {
@@ -51,10 +49,11 @@ class IntegrationsOptionTest extends SentryLaravelTestCase
         $this->assertNotNull(Hub::getCurrent()->getClient()->getIntegration(IntegrationsOptionTestIntegrationStub::class));
     }
 
+    /**
+     * @expectedException \Illuminate\Container\EntryNotFoundException
+     */
     public function testCustomIntegrationThrowsExceptionIfNotResolvable()
     {
-        $this->expectException(EntryNotFoundException::class);
-
         $this->resetApplicationWithConfig([
             'sentry.integrations' => [
                 'this-will-not-resolve',
@@ -62,10 +61,11 @@ class IntegrationsOptionTest extends SentryLaravelTestCase
         ]);
     }
 
+    /**
+     * @expectedException \RuntimeException
+     */
     public function testIncorrectIntegrationEntryThrowsException()
     {
-        $this->expectException(RuntimeException::class);
-
         $this->resetApplicationWithConfig([
             'sentry.integrations' => [
                 static function () {
