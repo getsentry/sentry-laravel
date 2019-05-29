@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Resolve `integrations` option from the container (#239)
+
 ## 1.0.2
 
 - Track Artisan command invocation in breadcrumb (#232)

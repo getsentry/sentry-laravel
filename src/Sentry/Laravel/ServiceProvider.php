@@ -6,6 +6,7 @@ use Sentry\State\Hub;
 use Sentry\ClientBuilder;
 use Illuminate\Log\LogManager;
 use Laravel\Lumen\Application as Lumen;
+use Sentry\Integration\IntegrationInterface;
 use Illuminate\Foundation\Application as Laravel;
 use Illuminate\Support\ServiceProvider as IlluminateServiceProvider;
 
@@ -51,7 +52,7 @@ class ServiceProvider extends IlluminateServiceProvider
 
         $this->mergeConfigFrom(__DIR__ . '/../../../config/sentry.php', static::$abstract);
 
-        $this->configureAndRegisterClient($this->app['config'][static::$abstract]);
+        $this->configureAndRegisterClient($this->getUserConfig());
 
         if (($logManager = $this->app->make('log')) instanceof LogManager) {
             $logManager->extend('sentry', function ($app, array $config) {
@@ -65,7 +66,7 @@ class ServiceProvider extends IlluminateServiceProvider
      */
     protected function bindEvents(): void
     {
-        $userConfig = $this->app['config'][static::$abstract];
+        $userConfig = $this->getUserConfig();
 
         $handler = new EventHandler($this->app->events, $userConfig);
 
@@ -95,7 +96,7 @@ class ServiceProvider extends IlluminateServiceProvider
     {
         $this->app->singleton(static::$abstract, function () {
             $basePath = base_path();
-            $userConfig = $this->app['config'][static::$abstract];
+            $userConfig = $this->getUserConfig();
 
             // We do not want this setting to hit our main client because it's Laravel specific
             unset(
@@ -110,9 +111,11 @@ class ServiceProvider extends IlluminateServiceProvider
                     'prefixes' => [$basePath],
                     'project_root' => $basePath,
                     'in_app_exclude' => [$basePath . '/vendor'],
-                    'integrations' => [new Integration],
                 ],
-                $userConfig
+                $userConfig,
+                [
+                    'integrations' => $this->getIntegrations(),
+                ]
             );
 
             $clientBuilder = ClientBuilder::create($options);
@@ -132,9 +135,43 @@ class ServiceProvider extends IlluminateServiceProvider
      */
     protected function hasDsnSet(): bool
     {
-        $config = $this->app['config'][static::$abstract];
+        $config = $this->getUserConfig();
 
         return !empty($config['dsn']);
+    }
+
+    /**
+     * Resolve the integrations from the user configuration with the container.
+     *
+     * @return array
+     */
+    private function getIntegrations(): array
+    {
+        $integrations = [new Integration];
+
+        $userIntegrations = $this->getUserConfig()['integrations'] ?? [];
+
+        foreach ($userIntegrations as $userIntegration) {
+            if ($userIntegration instanceof IntegrationInterface) {
+                $integrations[] = $userIntegration;
+            } elseif (\is_string($userIntegration)) {
+                $integrations[] = $this->app->make($userIntegration);
+            } else {
+                throw new \RuntimeException('Sentry integrations should either be a container reference or a instance of `\Sentry\Integration\IntegrationInterface`.');
+            }
+        }
+
+        return $integrations;
+    }
+
+    /**
+     * Retrieve the user configuration.
+     *
+     * @return array
+     */
+    private function getUserConfig(): array
+    {
+        return $this->app['config'][static::$abstract];
     }
 
     /**
