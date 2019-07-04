@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.0
 
 - Register alias `HubInterface` to container (#249)
 - Resolve `integrations` option from the container (#239)
