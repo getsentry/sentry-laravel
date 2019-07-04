@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Register alias `HubInterface` to container (#249)
 - Resolve `integrations` option from the container (#239)
 
 ## 1.0.2
