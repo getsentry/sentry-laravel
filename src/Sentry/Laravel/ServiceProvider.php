@@ -4,6 +4,7 @@ namespace Sentry\Laravel;
 
 use Sentry\State\Hub;
 use Sentry\ClientBuilder;
+use Sentry\State\HubInterface;
 use Illuminate\Log\LogManager;
 use Laravel\Lumen\Application as Lumen;
 use Sentry\Integration\IntegrationInterface;
@@ -126,6 +127,8 @@ class ServiceProvider extends IlluminateServiceProvider
 
             return Hub::getCurrent();
         });
+
+        $this->app->alias(self::$abstract, HubInterface::class);
     }
 
     /**
