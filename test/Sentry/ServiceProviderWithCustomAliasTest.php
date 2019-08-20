@@ -6,33 +6,33 @@ use Sentry\State\Hub;
 use Sentry\Laravel\Facade;
 use Sentry\Laravel\ServiceProvider;
 
-class ServiceProviderTest extends \Orchestra\Testbench\TestCase
+class ServiceProviderWithCustomAliasTest extends \Orchestra\Testbench\TestCase
 {
     protected function getEnvironmentSetUp($app)
     {
-        $app['config']->set('sentry.dsn', 'http://publickey:secretkey@sentry.dev/123');
-        $app['config']->set('sentry.error_types', E_ALL ^ E_DEPRECATED ^ E_USER_DEPRECATED);
+        $app['config']->set('custom-sentry.dsn', 'http://publickey:secretkey@sentry.dev/123');
+        $app['config']->set('custom-sentry.error_types', E_ALL ^ E_DEPRECATED ^ E_USER_DEPRECATED);
     }
 
     protected function getPackageProviders($app)
     {
         return [
-            ServiceProvider::class,
+            CustomSentryServiceProvider::class,
         ];
     }
 
     protected function getPackageAliases($app)
     {
         return [
-            'Sentry' => Facade::class,
+            'CustomSentry' => CustomSentryFacade::class,
         ];
     }
 
     public function testIsBound()
     {
-        $this->assertTrue(app()->bound('sentry'));
-        $this->assertInstanceOf(Hub::class, app('sentry'));
-        $this->assertSame(app('sentry'), Facade::getFacadeRoot());
+        $this->assertTrue(app()->bound('custom-sentry'));
+        $this->assertInstanceOf(Hub::class, app('custom-sentry'));
+        $this->assertSame(app('custom-sentry'), CustomSentryFacade::getFacadeRoot());
     }
 
     /**
@@ -40,7 +40,7 @@ class ServiceProviderTest extends \Orchestra\Testbench\TestCase
      */
     public function testEnvironment()
     {
-        $this->assertEquals('testing', app('sentry')->getClient()->getOptions()->getEnvironment());
+        $this->assertEquals('testing', app('custom-sentry')->getClient()->getOptions()->getEnvironment());
     }
 
     /**
@@ -49,7 +49,7 @@ class ServiceProviderTest extends \Orchestra\Testbench\TestCase
     public function testDsnWasSetFromConfig()
     {
         /** @var \Sentry\Options $options */
-        $options = app('sentry')->getClient()->getOptions();
+        $options = app('custom-sentry')->getClient()->getOptions();
 
         $this->assertEquals('http://sentry.dev', $options->getDsn());
         $this->assertEquals(123, $options->getProjectId());
@@ -64,7 +64,20 @@ class ServiceProviderTest extends \Orchestra\Testbench\TestCase
     {
         $this->assertEquals(
             E_ALL ^ E_DEPRECATED ^ E_USER_DEPRECATED,
-            app('sentry')->getClient()->getOptions()->getErrorTypes()
+            app('custom-sentry')->getClient()->getOptions()->getErrorTypes()
         );
+    }
+}
+
+class CustomSentryServiceProvider extends ServiceProvider
+{
+    public static $abstract = 'custom-sentry';
+}
+
+class CustomSentryFacade extends Facade
+{
+    protected static function getFacadeAccessor()
+    {
+        return 'custom-sentry';
     }
 }
