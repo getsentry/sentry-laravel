@@ -25,7 +25,7 @@ class ServiceProvider extends IlluminateServiceProvider
      */
     public function boot(): void
     {
-        $this->app->make(self::$abstract);
+        $this->app->make(static::$abstract);
 
         if ($this->hasDsnSet()) {
             $this->bindEvents($this->app);
@@ -128,7 +128,7 @@ class ServiceProvider extends IlluminateServiceProvider
             return Hub::getCurrent();
         });
 
-        $this->app->alias(self::$abstract, HubInterface::class);
+        $this->app->alias(static::$abstract, HubInterface::class);
     }
 
     /**
