@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fix custom container alias (#263)
+
 ## 1.1.0
 
 - Register alias `HubInterface` to container (#249)
