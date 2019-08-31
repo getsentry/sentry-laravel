@@ -22,6 +22,8 @@
     "orchestra/testbench": "^3.9",
     "friendsofphp/php-cs-fixer": "2.14.*"
   },
+  "minimum-stability": "dev",
+  "prefer-stable": true,
   "autoload": {
     "psr-0": {
       "Sentry\\Laravel\\": "src/"
