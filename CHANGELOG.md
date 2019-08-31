@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Support for Laravel 6
+
 ## 1.1.1
 
 - Fix custom container alias (#263)
