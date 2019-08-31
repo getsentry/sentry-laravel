@@ -49,11 +49,10 @@ class IntegrationsOptionTest extends SentryLaravelTestCase
         $this->assertNotNull(Hub::getCurrent()->getClient()->getIntegration(IntegrationsOptionTestIntegrationStub::class));
     }
 
-    /**
-     * @expectedException \ReflectionException
-     */
     public function testCustomIntegrationThrowsExceptionIfNotResolvable()
     {
+        $this->expectException(\ReflectionException::class);
+
         $this->resetApplicationWithConfig([
             'sentry.integrations' => [
                 'this-will-not-resolve',
@@ -61,11 +60,10 @@ class IntegrationsOptionTest extends SentryLaravelTestCase
         ]);
     }
 
-    /**
-     * @expectedException \RuntimeException
-     */
     public function testIncorrectIntegrationEntryThrowsException()
     {
+        $this->expectException(\RuntimeException::class);
+
         $this->resetApplicationWithConfig([
             'sentry.integrations' => [
                 static function () {
