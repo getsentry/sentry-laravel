@@ -51,7 +51,8 @@ class IntegrationsOptionTest extends SentryLaravelTestCase
 
     public function testCustomIntegrationThrowsExceptionIfNotResolvable()
     {
-        $this->expectException(\ReflectionException::class);
+        // Throws \ReflectionException in <=5.8 and \Illuminate\Contracts\Container\BindingResolutionException since 6.0
+        $this->expectException(\Exception::class);
 
         $this->resetApplicationWithConfig([
             'sentry.integrations' => [
