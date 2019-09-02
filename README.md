@@ -19,14 +19,15 @@ Laravel integration for [Sentry](https://sentry.io/).
 - Laravel `4.2.x` is supported until version `0.8.x`
 - Laravel `<= 5.7.x` on PHP `<= 7.0` is supported until version `0.11.x`
 - Laravel `>= 5.x.x` on PHP `>= 7.1` is supported in the most recent version
+- Laravel `>= 6.x.x` on PHP `>= 7.2` is supported in the most recent version
 
 Please note that of version `>= 1.0.0` we require PHP Version `>= 7.1` because we are using our new [PHP SDK](https://github.com/getsentry/sentry-php) underneath. 
 
 ## Installation
 
-- [Laravel 5.x.x](http://docs.sentry.io/platforms/php/laravel/#laravel-5x)
-- [Laravel 4.x.x](http://docs.sentry.io/platforms/php/laravel/#laravel-4x)
-- [Lumen 5.x.x](http://docs.sentry.io/platforms/php/laravel/#lumen-5x)
+- [Laravel 5.x & 6.x](http://docs.sentry.io/platforms/php/laravel/#laravel-5x)
+- [Laravel 4.x](http://docs.sentry.io/platforms/php/laravel/#laravel-4x)
+- [Lumen 5.x](http://docs.sentry.io/platforms/php/laravel/#lumen-5x)
 
 ## Contributing
 
