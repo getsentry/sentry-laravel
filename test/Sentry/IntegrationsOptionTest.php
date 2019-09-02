@@ -49,11 +49,12 @@ class IntegrationsOptionTest extends SentryLaravelTestCase
         $this->assertNotNull(Hub::getCurrent()->getClient()->getIntegration(IntegrationsOptionTestIntegrationStub::class));
     }
 
+    /**
+     * Throws \ReflectionException in <=5.8 and \Illuminate\Contracts\Container\BindingResolutionException since 6.0
+     * @expectedException \Exception
+     */
     public function testCustomIntegrationThrowsExceptionIfNotResolvable()
     {
-        // Throws \ReflectionException in <=5.8 and \Illuminate\Contracts\Container\BindingResolutionException since 6.0
-        $this->expectException(\Exception::class);
-
         $this->resetApplicationWithConfig([
             'sentry.integrations' => [
                 'this-will-not-resolve',
@@ -61,10 +62,11 @@ class IntegrationsOptionTest extends SentryLaravelTestCase
         ]);
     }
 
+    /**
+     * @expectedException \RuntimeException
+     */
     public function testIncorrectIntegrationEntryThrowsException()
     {
-        $this->expectException(\RuntimeException::class);
-
         $this->resetApplicationWithConfig([
             'sentry.integrations' => [
                 static function () {
