@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.2.0
+
 - Support for Laravel 6 (#269)
 
 ## 1.1.1
