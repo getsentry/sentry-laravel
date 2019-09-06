@@ -60,6 +60,12 @@ class ServiceProvider extends IlluminateServiceProvider
                 return (new LogChannel($app))($config);
             });
         }
+
+        if ($this->app instanceof Laravel) {
+            $this->app->terminating(function () {
+                Integration::flushEvents();
+            });
+        }
     }
 
     /**
