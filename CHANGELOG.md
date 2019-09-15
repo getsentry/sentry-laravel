@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix fatal error when user context is not an array when using log channels (#272)
+
 ## 1.2.0
 
 - Support for Laravel 6 (#269)
