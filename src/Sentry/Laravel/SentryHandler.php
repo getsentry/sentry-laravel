@@ -175,7 +175,7 @@ class SentryHandler extends AbstractProcessingHandler
                 }
 
                 if (!empty($record['context']['user'])) {
-                    $scope->setUser($record['context']['user']);
+                    $scope->setUser((array)$record['context']['user']);
                     unset($record['context']['user']);
                 }
 
