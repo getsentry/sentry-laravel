@@ -2,7 +2,6 @@
 
 namespace Sentry\Laravel\Tests;
 
-use Sentry\State\Hub;
 use Sentry\Integration\IntegrationInterface;
 
 class IntegrationsOptionTest extends SentryLaravelTestCase
@@ -24,7 +23,7 @@ class IntegrationsOptionTest extends SentryLaravelTestCase
             ],
         ]);
 
-        $this->assertNotNull(Hub::getCurrent()->getClient()->getIntegration(IntegrationsOptionTestIntegrationStub::class));
+        $this->assertNotNull($this->getHubFromContainer()->getClient()->getIntegration(IntegrationsOptionTestIntegrationStub::class));
     }
 
     public function testCustomIntegrationIsResolvedFromContainerByClass()
@@ -35,7 +34,7 @@ class IntegrationsOptionTest extends SentryLaravelTestCase
             ],
         ]);
 
-        $this->assertNotNull(Hub::getCurrent()->getClient()->getIntegration(IntegrationsOptionTestIntegrationStub::class));
+        $this->assertNotNull($this->getHubFromContainer()->getClient()->getIntegration(IntegrationsOptionTestIntegrationStub::class));
     }
 
     public function testCustomIntegrationByInstance()
@@ -46,7 +45,7 @@ class IntegrationsOptionTest extends SentryLaravelTestCase
             ],
         ]);
 
-        $this->assertNotNull(Hub::getCurrent()->getClient()->getIntegration(IntegrationsOptionTestIntegrationStub::class));
+        $this->assertNotNull($this->getHubFromContainer()->getClient()->getIntegration(IntegrationsOptionTestIntegrationStub::class));
     }
 
     /**

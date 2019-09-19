@@ -123,9 +123,11 @@ class ServiceProvider extends IlluminateServiceProvider
             $clientBuilder->setSdkIdentifier(Version::SDK_IDENTIFIER);
             $clientBuilder->setSdkVersion(Version::SDK_VERSION);
 
-            Hub::setCurrent(new Hub($clientBuilder->getClient()));
+            $hub = new Hub($clientBuilder->getClient());
 
-            return Hub::getCurrent();
+            Integration::setCurrentHub($hub);
+
+            return $hub;
         });
 
         $this->app->alias(static::$abstract, HubInterface::class);
