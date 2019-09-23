@@ -2,15 +2,16 @@
 
 namespace Sentry\Laravel;
 
+use Sentry\FlushableClientInterface;
+use Sentry\SentrySdk;
+use Sentry\State\Hub;
+use Sentry\State\HubInterface;
 use function Sentry\addBreadcrumb;
 use function Sentry\configureScope;
 use Sentry\Breadcrumb;
 use Sentry\Event;
-use Sentry\Client;
 use Sentry\Integration\IntegrationInterface;
-use Sentry\State\Hub;
 use Sentry\State\Scope;
-use Sentry\Transport\HttpTransport;
 
 class Integration implements IntegrationInterface
 {
@@ -25,7 +26,7 @@ class Integration implements IntegrationInterface
     public function setupOnce(): void
     {
         Scope::addGlobalEventProcessor(function (Event $event): Event {
-            $self = Hub::getCurrent()->getIntegration(self::class);
+            $self = static::getCurrentHub()->getIntegration(self::class);
 
             if (!$self instanceof self) {
                 return $event;
@@ -44,7 +45,7 @@ class Integration implements IntegrationInterface
      */
     public static function addBreadcrumb(Breadcrumb $breadcrumb): void
     {
-        $self = Hub::getCurrent()->getIntegration(self::class);
+        $self = static::getCurrentHub()->getIntegration(self::class);
 
         if (!$self instanceof self) {
             return;
@@ -60,7 +61,7 @@ class Integration implements IntegrationInterface
      */
     public static function configureScope(callable $callback): void
     {
-        $self = Hub::getCurrent()->getIntegration(self::class);
+        $self = static::getCurrentHub()->getIntegration(self::class);
 
         if (!$self instanceof self) {
             return;
@@ -93,21 +94,57 @@ class Integration implements IntegrationInterface
      */
     public static function flushEvents(): void
     {
-        $client = Hub::getCurrent()->getClient();
+        $client = static::getCurrentHub()->getClient();
 
-        if ($client instanceof Client) {
-            $transportProperty = new \ReflectionProperty(Client::class, 'transport');
-            $transportProperty->setAccessible(true);
-
-            $transport = $transportProperty->getValue($client);
-
-            if ($transport instanceof HttpTransport) {
-                $closure = \Closure::bind(function () {
-                    $this->cleanupPendingRequests();
-                }, $transport, $transport);
-
-                $closure();
-            }
+        if ($client instanceof FlushableClientInterface) {
+            $client->flush();
         }
+    }
+
+    /**
+     * Gets the current hub. If it's not initialized then creates a new instance
+     * and sets it as current hub.
+     *
+     * The is here for legacy reasons where we used the Hub directly as a singleton.
+     *
+     * @TODO: This method should be removed and replaced with calls to `SentrySdk::getCurrentHub()` directly once
+     *   `sentry/sentry` 3.0 is released and pinned as an dependency.
+     *
+     * @internal This is not part of the public API and is here temporarily.
+     *
+     * @return \Sentry\State\HubInterface
+     */
+    public static function getCurrentHub(): HubInterface
+    {
+        if (class_exists(SentrySdk::class)) {
+            SentrySdk::getCurrentHub();
+        }
+
+        return Hub::getCurrent();
+    }
+
+    /**
+     * Sets the current hub.
+     *
+     * The is here for legacy reasons where we used the Hub directly as a singleton.
+     *
+     * @TODO: This method should be removed and replaced with calls to `SentrySdk::getCurrentHub()` directly once
+     *   `sentry/sentry` 3.0 is released and pinned as an dependency.
+     *
+     * @internal This is not part of the public API and is here temporarily.
+     *
+     * @param \Sentry\State\HubInterface $hub
+     *
+     * @return void
+     */
+    public static function setCurrentHub(HubInterface $hub): void
+    {
+        if (class_exists(SentrySdk::class)) {
+            SentrySdk::setCurrentHub($hub);
+
+            return;
+        }
+
+        Hub::setCurrent($hub);
     }
 }

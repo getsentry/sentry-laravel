@@ -2,7 +2,6 @@
 
 namespace Sentry\Laravel\Tests;
 
-use Sentry\State\Hub;
 use Illuminate\Config\Repository;
 
 class SqlBindingsInBreadcrumbsWithOldConfigKeyDisabledTest extends SentryLaravelTestCase
@@ -29,7 +28,7 @@ class SqlBindingsInBreadcrumbsWithOldConfigKeyDisabledTest extends SentryLaravel
             'test',
         ]);
 
-        $breadcrumbs = $this->getScope(Hub::getCurrent())->getBreadcrumbs();
+        $breadcrumbs = $this->getCurrentBreadcrumbs();
 
         /** @var \Sentry\Breadcrumb $lastBreadcrumb */
         $lastBreadcrumb = end($breadcrumbs);

@@ -2,7 +2,6 @@
 
 namespace Sentry\Laravel\Tests;
 
-use Sentry\State\Scope;
 use Sentry\State\HubInterface;
 use Sentry\Laravel\ServiceProvider;
 use Orchestra\Testbench\TestCase as LaravelTestCase;
@@ -47,12 +46,24 @@ abstract class SentryLaravelTestCase extends LaravelTestCase
             : $dispatcher->fire($event, $payload);
     }
 
-    protected function getScope(HubInterface $hub): Scope
+    protected function getHubFromContainer(): HubInterface
     {
-        $method = new \ReflectionMethod($hub, 'getScope');
+        return $this->app->make('sentry');
+    }
 
+    protected function getCurrentBreadcrumbs(): array
+    {
+        $hub = $this->getHubFromContainer();
+
+        $method = new \ReflectionMethod($hub, 'getScope');
         $method->setAccessible(true);
 
-        return $method->invoke($hub);
+        /** @var \Sentry\State\Scope $scope */
+        $scope = $method->invoke($hub);
+
+        $property = new \ReflectionProperty($scope, 'breadcrumbs');
+        $property->setAccessible(true);
+
+        return $property->getValue($scope);
     }
 }

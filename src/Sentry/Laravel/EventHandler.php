@@ -16,7 +16,6 @@ use Illuminate\Routing\Route;
 use RuntimeException;
 use Sentry\State\Scope;
 use Sentry\Breadcrumb;
-use Sentry\State\Hub;
 
 class EventHandler
 {
@@ -115,7 +114,7 @@ class EventHandler
             Integration::flushEvents();
 
             // We have added a scope when a job starts processing
-            Hub::getCurrent()->popScope();
+            Integration::getCurrentHub()->popScope();
         });
 
         foreach (static::$queueEventHandlerMap as $eventName => $handler) {
@@ -283,7 +282,7 @@ class EventHandler
     protected function queueJobProcessingHandler(JobProcessing $event)
     {
         // When a job starts, we want to push a new scope
-        Hub::getCurrent()->pushScope();
+        Integration::getCurrentHub()->pushScope();
 
         $job = [
             'job' => $event->job->getName(),

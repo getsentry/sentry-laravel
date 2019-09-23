@@ -8,16 +8,18 @@ php:
 
 env:
   matrix:
-    - LARAVEL=5.0.* TESTBENCH=3.0.* PHPUNIT=4.8.*
-    - LARAVEL=5.1.* TESTBENCH=3.1.* PHPUNIT=5.7.*
-    - LARAVEL=5.2.* TESTBENCH=3.2.* PHPUNIT=5.7.*
-    - LARAVEL=5.3.* TESTBENCH=3.3.* PHPUNIT=5.7.*
-    - LARAVEL=5.4.* TESTBENCH=3.4.* PHPUNIT=5.7.*
-    - LARAVEL=5.5.* TESTBENCH=3.5.* PHPUNIT=6.5.*
-    - LARAVEL=5.6.* TESTBENCH=3.6.* PHPUNIT=7.5.*
-    - LARAVEL=5.7.* TESTBENCH=3.7.* PHPUNIT=7.5.*
-    - LARAVEL=5.8.* TESTBENCH=3.8.* PHPUNIT=7.5.*
-    - LARAVEL=6.0.* TESTBENCH=3.9.* PHPUNIT=8.0.*
+    - LARAVEL=5.0.* TESTBENCH=3.0.* PHPUNIT=4.8.* SENTRY=^2.0
+    - LARAVEL=5.1.* TESTBENCH=3.1.* PHPUNIT=5.7.* SENTRY=^2.0
+    - LARAVEL=5.2.* TESTBENCH=3.2.* PHPUNIT=5.7.* SENTRY=^2.0
+    - LARAVEL=5.3.* TESTBENCH=3.3.* PHPUNIT=5.7.* SENTRY=^2.0
+    - LARAVEL=5.4.* TESTBENCH=3.4.* PHPUNIT=5.7.* SENTRY=^2.0
+    - LARAVEL=5.5.* TESTBENCH=3.5.* PHPUNIT=6.5.* SENTRY=^2.0
+    - LARAVEL=5.6.* TESTBENCH=3.6.* PHPUNIT=7.5.* SENTRY=^2.0
+    - LARAVEL=5.7.* TESTBENCH=3.7.* PHPUNIT=7.5.* SENTRY=^2.0
+    - LARAVEL=5.8.* TESTBENCH=3.8.* PHPUNIT=7.5.* SENTRY=^2.0
+    - LARAVEL=6.0.* TESTBENCH=3.9.* PHPUNIT=8.0.* SENTRY=^2.0
+    # We add one more test using the bleading edge of the sentry/sentry package
+    - LARAVEL=6.0.* TESTBENCH=3.9.* PHPUNIT=8.0.* SENTRY=dev-develop@dev
 
 matrix:
   fast_finish: true
@@ -25,13 +27,15 @@ matrix:
     - php: 7.4snapshot
   exclude:
     - php: 7.1
-      env: LARAVEL=6.0.* TESTBENCH=3.9.* PHPUNIT=8.0.*
+      env: LARAVEL=6.0.* TESTBENCH=3.9.* PHPUNIT=8.0.* SENTRY=^2.0
+    - php: 7.1
+      env: LARAVEL=6.0.* TESTBENCH=3.9.* PHPUNIT=8.0.* SENTRY=dev-develop@dev
     - php: 7.2
-      env: LARAVEL=5.0.* TESTBENCH=3.0.* PHPUNIT=4.8.*
+      env: LARAVEL=5.0.* TESTBENCH=3.0.* PHPUNIT=4.8.* SENTRY=^2.0
     - php: 7.3
-      env: LARAVEL=5.0.* TESTBENCH=3.0.* PHPUNIT=4.8.*
+      env: LARAVEL=5.0.* TESTBENCH=3.0.* PHPUNIT=4.8.* SENTRY=^2.0
     - php: 7.4snapshot
-      env: LARAVEL=5.0.* TESTBENCH=3.0.* PHPUNIT=4.8.*
+      env: LARAVEL=5.0.* TESTBENCH=3.0.* PHPUNIT=4.8.* SENTRY=^2.0
 
 cache:
   directories:
@@ -51,7 +55,7 @@ jobs:
 
 before_install:
   - if [ "$USE_COMPOSER_JSON" != "1" ]; then composer remove friendsofphp/php-cs-fixer --dev --no-update; fi;
-  - if [ "$USE_COMPOSER_JSON" != "1" ]; then composer require laravel/framework:$LARAVEL illuminate/support:$LARAVEL orchestra/testbench:$TESTBENCH phpunit/phpunit:$PHPUNIT --no-update --no-interaction --dev; fi;
+  - if [ "$USE_COMPOSER_JSON" != "1" ]; then composer require laravel/framework:$LARAVEL illuminate/support:$LARAVEL orchestra/testbench:$TESTBENCH phpunit/phpunit:$PHPUNIT sentry/sentry:$SENTRY --no-update --no-interaction --dev; fi;
 
 install:
   - travis_retry composer install --no-suggest --no-interaction --prefer-dist --no-progress

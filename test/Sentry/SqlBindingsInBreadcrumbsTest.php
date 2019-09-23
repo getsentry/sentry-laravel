@@ -2,8 +2,6 @@
 
 namespace Sentry\Laravel\Tests;
 
-use Sentry\State\Hub;
-
 class SqlBindingsInBreadcrumbsTest extends SentryLaravelTestCase
 {
     public function testSqlBindingsAreRecordedWhenEnabled()
@@ -21,7 +19,7 @@ class SqlBindingsInBreadcrumbsTest extends SentryLaravelTestCase
             'test',
         ]);
 
-        $breadcrumbs = $this->getScope(Hub::getCurrent())->getBreadcrumbs();
+        $breadcrumbs = $this->getCurrentBreadcrumbs();
 
         /** @var \Sentry\Breadcrumb $lastBreadcrumb */
         $lastBreadcrumb = end($breadcrumbs);
@@ -45,7 +43,7 @@ class SqlBindingsInBreadcrumbsTest extends SentryLaravelTestCase
             'test',
         ]);
 
-        $breadcrumbs = $this->getScope(Hub::getCurrent())->getBreadcrumbs();
+        $breadcrumbs = $this->getCurrentBreadcrumbs();
 
         /** @var \Sentry\Breadcrumb $lastBreadcrumb */
         $lastBreadcrumb = end($breadcrumbs);

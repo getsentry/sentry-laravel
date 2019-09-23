@@ -123,21 +123,17 @@ class SentryHandler extends AbstractProcessingHandler
         switch ($logLevel) {
             case Logger::DEBUG:
                 return Severity::debug();
-            case Logger::INFO:
-                return Severity::info();
             case Logger::NOTICE:
+            case Logger::INFO:
                 return Severity::info();
             case Logger::WARNING:
                 return Severity::warning();
             case Logger::ERROR:
                 return Severity::error();
+            case Logger::ALERT:
+            case Logger::EMERGENCY:
             case Logger::CRITICAL:
                 return Severity::fatal();
-            case Logger::ALERT:
-                return Severity::fatal();
-            case Logger::EMERGENCY:
-                return Severity::fatal();
-
         }
     }
 
