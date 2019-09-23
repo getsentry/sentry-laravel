@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add compatibility with sentry/sentry 2.2+ (#273)
+
 ## 1.2.1
 
 - Fix fatal error when user context is not an array when using log channels (#272)
