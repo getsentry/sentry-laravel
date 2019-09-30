@@ -2,9 +2,9 @@
 
 namespace Sentry\Laravel\Tests;
 
-use Sentry\State\Hub;
 use Sentry\Laravel\Facade;
 use Sentry\Laravel\ServiceProvider;
+use Sentry\State\HubInterface;
 
 class ServiceProviderTest extends \Orchestra\Testbench\TestCase
 {
@@ -31,7 +31,7 @@ class ServiceProviderTest extends \Orchestra\Testbench\TestCase
     public function testIsBound()
     {
         $this->assertTrue(app()->bound('sentry'));
-        $this->assertInstanceOf(Hub::class, app('sentry'));
+        $this->assertInstanceOf(HubInterface::class, app('sentry'));
         $this->assertSame(app('sentry'), Facade::getFacadeRoot());
     }
 
