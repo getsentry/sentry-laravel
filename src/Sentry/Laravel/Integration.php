@@ -117,7 +117,7 @@ class Integration implements IntegrationInterface
     public static function getCurrentHub(): HubInterface
     {
         if (class_exists(SentrySdk::class)) {
-            SentrySdk::getCurrentHub();
+            return SentrySdk::getCurrentHub();
         }
 
         return Hub::getCurrent();
