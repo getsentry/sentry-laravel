@@ -11,6 +11,7 @@ use Sentry\Event;
 use Sentry\Severity;
 use Sentry\State\Hub;
 use Sentry\State\Scope;
+use function Sentry\configureScope;
 
 class SentryHandler extends AbstractProcessingHandler
 {
@@ -203,6 +204,9 @@ class SentryHandler extends AbstractProcessingHandler
                 if (isset($record['context']['exception']) && $record['context']['exception'] instanceof \Throwable) {
                     $this->hub->captureException($record['context']['exception']);
                 } else {
+                    configureScope(function (Scope &$scope) use ($record) {
+                        $scope = $scope->setFingerprint([md5($record['message'])]);
+                    });
                     $this->hub->captureMessage($record['formatted'], $this->getLogLevel($record['level']));
                 }
             }
