@@ -203,6 +203,9 @@ class SentryHandler extends AbstractProcessingHandler
                 if (isset($record['context']['exception']) && $record['context']['exception'] instanceof \Throwable) {
                     $this->hub->captureException($record['context']['exception']);
                 } else {
+                    $this->hub->configureScope(function (Scope $scope) use ($record) {
+                        $scope->setFingerprint([$record['message']]);
+                    });
                     $this->hub->captureMessage($record['formatted'], $this->getLogLevel($record['level']));
                 }
             }
