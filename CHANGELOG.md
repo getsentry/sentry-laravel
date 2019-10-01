@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.3.1
+
 - Fix compatibility with sentry/sentry 2.2+ (#276)
 
 ## 1.3.0
