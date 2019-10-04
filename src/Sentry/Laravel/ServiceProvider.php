@@ -7,7 +7,7 @@ use Sentry\ClientBuilder;
 use Sentry\State\HubInterface;
 use Illuminate\Log\LogManager;
 use Laravel\Lumen\Application as Lumen;
-use Sentry\Integration\IntegrationInterface;
+use Sentry\Integration as SdkIntegration;
 use Illuminate\Foundation\Application as Laravel;
 use Illuminate\Support\ServiceProvider as IlluminateServiceProvider;
 
@@ -123,6 +123,31 @@ class ServiceProvider extends IlluminateServiceProvider
             $clientBuilder->setSdkIdentifier(Version::SDK_IDENTIFIER);
             $clientBuilder->setSdkVersion(Version::SDK_VERSION);
 
+            $options = $clientBuilder->getOptions();
+
+            if ($options->hasDefaultIntegrations()) {
+                $integrations = $options->getIntegrations();
+
+                // Remove the default error and fatal exception listeners to let Laravel handle those
+                // itself. These event are still bubbling up through the documented changes in the users
+                // `ExceptionHandler` of their application or through the log channel integration to Sentry
+                $options->setIntegrations(array_filter($integrations, static function (SdkIntegration\IntegrationInterface $integration): bool {
+                    if ($integration instanceof SdkIntegration\ErrorListenerIntegration) {
+                        return false;
+                    }
+
+                    if ($integration instanceof SdkIntegration\ExceptionListenerIntegration) {
+                        return false;
+                    }
+
+                    if ($integration instanceof SdkIntegration\FatalErrorListenerIntegration) {
+                        return false;
+                    }
+
+                    return true;
+                }));
+            }
+
             $hub = new Hub($clientBuilder->getClient());
 
             Integration::setCurrentHub($hub);
@@ -157,7 +182,7 @@ class ServiceProvider extends IlluminateServiceProvider
         $userIntegrations = $this->getUserConfig()['integrations'] ?? [];
 
         foreach ($userIntegrations as $userIntegration) {
-            if ($userIntegration instanceof IntegrationInterface) {
+            if ($userIntegration instanceof SdkIntegration\IntegrationInterface) {
                 $integrations[] = $userIntegration;
             } elseif (\is_string($userIntegration)) {
                 $integrations[] = $this->app->make($userIntegration);
