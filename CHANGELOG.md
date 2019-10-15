@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.4.0
+
+- Add the query execution time to the query breadcrumb (#283)
+- Do not register default error and fatal listeners to prevent duplicated events (#280)
+
 ## 1.3.1
 
 - Fix compatibility with sentry/sentry 2.2+ (#276)
