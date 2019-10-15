@@ -189,7 +189,34 @@ class EventHandler
      */
     protected function queryHandler($query, $bindings, $time, $connectionName)
     {
+        $this->addQueryBreadcrumb($query, $bindings, $time, $connectionName);
+    }
+
+    /**
+     * Since Laravel 5.2
+     *
+     * @param \Illuminate\Database\Events\QueryExecuted $query
+     */
+    protected function queryExecutedHandler(QueryExecuted $query)
+    {
+        $this->addQueryBreadcrumb($query->sql, $query->bindings, $query->time, $query->connectionName);
+    }
+
+    /**
+     * Helper to add an query breadcrumb.
+     *
+     * @param string     $query
+     * @param arrat      $bindings
+     * @param float|null $time
+     * @param string     $connectionName
+     */
+    private function addQueryBreadcrumb($query, $bindings, $time, $connectionName)
+    {
         $data = ['connectionName' => $connectionName];
+
+        if ($time !== null) {
+            $data['executionTimeMs'] = $time;
+        }
 
         if ($this->recordSqlBindings) {
             $data['bindings'] = $bindings;
@@ -200,28 +227,6 @@ class EventHandler
             Breadcrumb::TYPE_USER,
             'sql.query',
             $query,
-            $data
-        ));
-    }
-
-    /**
-     * Since Laravel 5.2
-     *
-     * @param \Illuminate\Database\Events\QueryExecuted $query
-     */
-    protected function queryExecutedHandler(QueryExecuted $query)
-    {
-        $data = ['connectionName' => $query->connectionName];
-
-        if ($this->recordSqlBindings) {
-            $data['bindings'] = $query->bindings;
-        }
-
-        Integration::addBreadcrumb(new Breadcrumb(
-            Breadcrumb::LEVEL_INFO,
-            Breadcrumb::TYPE_USER,
-            'sql.query',
-            $query->sql,
             $data
         ));
     }
