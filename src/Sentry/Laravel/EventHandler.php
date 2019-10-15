@@ -206,7 +206,7 @@ class EventHandler
      * Helper to add an query breadcrumb.
      *
      * @param string     $query
-     * @param arrat      $bindings
+     * @param array      $bindings
      * @param float|null $time
      * @param string     $connectionName
      */
