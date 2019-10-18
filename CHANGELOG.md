@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 1.4.1
+
+- Fix default Monolog logger level being invalid when using the Log channel (#287)
+
 ## 1.4.0
 
 - Add the query execution time to the query breadcrumb (#283)
