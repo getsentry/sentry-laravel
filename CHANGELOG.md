@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Allow any log level to create breadcrumbs (#297)
+
 ## 1.4.1
 
 - Fix default Monolog logger level being invalid when using the Log channel (#287)

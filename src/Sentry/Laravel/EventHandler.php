@@ -3,19 +3,19 @@
 namespace Sentry\Laravel;
 
 use Exception;
-use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Auth\Events\Authenticated;
+use Illuminate\Console\Events\CommandFinished;
+use Illuminate\Console\Events\CommandStarting;
+use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\QueueManager;
 use Illuminate\Routing\Events\RouteMatched;
-use Illuminate\Contracts\Events\Dispatcher;
-use Illuminate\Database\Events\QueryExecuted;
-use Illuminate\Console\Events\CommandStarting;
-use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Routing\Route;
 use RuntimeException;
-use Sentry\State\Scope;
 use Sentry\Breadcrumb;
+use Sentry\State\Scope;
 
 class EventHandler
 {
@@ -240,13 +240,7 @@ class EventHandler
      */
     protected function logHandler($level, $message, $context)
     {
-        Integration::addBreadcrumb(new Breadcrumb(
-            $level,
-            Breadcrumb::TYPE_USER,
-            'log.' . $level,
-            $message,
-            empty($context) ? [] : ['params' => $context]
-        ));
+        $this->addLogBreadcrumb($level, $message, is_array($context) ? $context : []);
     }
 
     /**
@@ -256,13 +250,53 @@ class EventHandler
      */
     protected function messageLoggedHandler(MessageLogged $logEntry)
     {
+        $this->addLogBreadcrumb($logEntry->level, $logEntry->message, $logEntry->context);
+    }
+
+    /**
+     * Helper to add an log breadcrumb.
+     *
+     * @param  string $level   Log level. May be any standard.
+     * @param  string $message Log messsage.
+     * @param  array  $context Log context.
+     * @return void
+     */
+    private function addLogBreadcrumb(string $level, string $message, array $context = []): void
+    {
         Integration::addBreadcrumb(new Breadcrumb(
-            $logEntry->level,
+            $this->logLvlToBreadcrumbLvl($level),
             Breadcrumb::TYPE_USER,
-            'log.' . $logEntry->level,
-            $logEntry->message,
-            empty($logEntry->context) ? [] : ['params' => $logEntry->context]
+            'log.' . $level,
+            $message,
+            empty($context) ? [] : ['params' => $context]
         ));
+    }
+
+    /**
+     * Translates common log levels to Sentry breadcrumb levels.
+     *
+     * @param string $level Log level. Maybe any standard.
+     * @return string Breadcrumb level.
+     */
+    protected function logLvlToBreadcrumbLvl(string $level): string
+    {
+        switch (strtolower($level)) {
+            case 'debug':
+                return Breadcrumb::LEVEL_DEBUG;
+            case 'info':
+            case 'notice':
+                return Breadcrumb::LEVEL_INFO;
+            case 'warning':
+                return Breadcrumb::LEVEL_WARNING;
+            case 'error':
+                return Breadcrumb::LEVEL_ERROR;
+            case 'critical':
+            case 'alert':
+            case 'emergency':
+                return Breadcrumb::LEVEL_FATAL;
+            default:
+                return Breadcrumb::LEVEL_INFO;
+        }
     }
 
     /**
