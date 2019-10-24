@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Allow decorating the `ClientBuilderInterface` from the `register` method of a Service Provider (#290)
+
 ## 1.4.1
 
 - Fix default Monolog logger level being invalid when using the Log channel (#287)
