@@ -2,7 +2,7 @@
 
 namespace Sentry\Laravel\Tests;
 
-use Sentry\ClientBuilder;
+use Sentry\ClientBuilderInterface;
 use Sentry\Laravel\ServiceProvider;
 
 class ServiceClientBuilderDecoratorTest extends \Orchestra\Testbench\TestCase
@@ -11,7 +11,7 @@ class ServiceClientBuilderDecoratorTest extends \Orchestra\Testbench\TestCase
     {
         $app['config']->set('sentry.dsn', 'http://publickey:secretkey@sentry.dev/123');
 
-        $app->extend(ClientBuilder::class, function (ClientBuilder $clientBuilder) {
+        $app->extend(ClientBuilderInterface::class, function (ClientBuilderInterface $clientBuilder) {
             $clientBuilder->getOptions()->setEnvironment('from_service_container');
 
             return $clientBuilder;

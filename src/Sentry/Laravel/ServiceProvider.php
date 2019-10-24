@@ -2,11 +2,11 @@
 
 namespace Sentry\Laravel;
 
-use Sentry\Options;
 use Sentry\State\Hub;
 use Sentry\ClientBuilder;
 use Sentry\State\HubInterface;
 use Illuminate\Log\LogManager;
+use Sentry\ClientBuilderInterface;
 use Laravel\Lumen\Application as Lumen;
 use Sentry\Integration as SdkIntegration;
 use Illuminate\Foundation\Application as Laravel;
@@ -96,7 +96,7 @@ class ServiceProvider extends IlluminateServiceProvider
      */
     protected function configureAndRegisterClient(): void
     {
-        $this->app->bind(ClientBuilder::class, function () {
+        $this->app->bind(ClientBuilderInterface::class, function () {
             $basePath = base_path();
             $userConfig = $this->getUserConfig();
 
@@ -130,8 +130,8 @@ class ServiceProvider extends IlluminateServiceProvider
         });
 
         $this->app->singleton(static::$abstract, function () {
-            /** @var \Sentry\ClientBuilder $clientBuilder */
-            $clientBuilder = $this->app->make(ClientBuilder::class);
+            /** @var \Sentry\ClientBuilderInterface $clientBuilder */
+            $clientBuilder = $this->app->make(ClientBuilderInterface::class);
 
             $options = $clientBuilder->getOptions();
 
