@@ -259,12 +259,11 @@ class EventHandler
      * @param  string $level   Log level. May be any standard.
      * @param  string $message Log messsage.
      * @param  array  $context Log context.
-     * @return void
      */
     private function addLogBreadcrumb(string $level, string $message, array $context = []): void
     {
         Integration::addBreadcrumb(new Breadcrumb(
-            $this->logLvlToBreadcrumbLvl($level),
+            $this->logLevelToBreadcrumbLevel($level),
             Breadcrumb::TYPE_USER,
             'log.' . $level,
             $message,
@@ -275,17 +274,15 @@ class EventHandler
     /**
      * Translates common log levels to Sentry breadcrumb levels.
      *
-     * @param string $level Log level. Maybe any standard.
+     * @param  string $level Log level. Maybe any standard.
+     *
      * @return string Breadcrumb level.
      */
-    protected function logLvlToBreadcrumbLvl(string $level): string
+    protected function logLevelToBreadcrumbLevel(string $level): string
     {
         switch (strtolower($level)) {
             case 'debug':
                 return Breadcrumb::LEVEL_DEBUG;
-            case 'info':
-            case 'notice':
-                return Breadcrumb::LEVEL_INFO;
             case 'warning':
                 return Breadcrumb::LEVEL_WARNING;
             case 'error':
@@ -294,6 +291,8 @@ class EventHandler
             case 'alert':
             case 'emergency':
                 return Breadcrumb::LEVEL_FATAL;
+            case 'info':
+            case 'notice':
             default:
                 return Breadcrumb::LEVEL_INFO;
         }
