@@ -2,6 +2,7 @@
 
 namespace Sentry\Laravel\Tests;
 
+use Sentry\Breadcrumb;
 use Sentry\State\HubInterface;
 use Sentry\Laravel\ServiceProvider;
 use Orchestra\Testbench\TestCase as LaravelTestCase;
@@ -65,5 +66,16 @@ abstract class SentryLaravelTestCase extends LaravelTestCase
         $property->setAccessible(true);
 
         return $property->getValue($scope);
+    }
+
+    protected function getLastBreadcrumb(): ?Breadcrumb
+    {
+        $breadcrumbs = $this->getCurrentBreadcrumbs();
+
+        if (empty($breadcrumbs)) {
+            return null;
+        }
+
+        return end($breadcrumbs);
     }
 }

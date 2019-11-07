@@ -1,6 +1,5 @@
 <?php
 
-
 namespace Sentry\Laravel\Tests;
 
 class LaravelLogsInBreadcrumbsTest extends SentryLaravelTestCase
@@ -19,10 +18,7 @@ class LaravelLogsInBreadcrumbsTest extends SentryLaravelTestCase
             $context = ['1'],
         ]);
 
-        $breadcrumbs = $this->getCurrentBreadcrumbs();
-
-        /** @var \Sentry\Breadcrumb $lastBreadcrumb */
-        $lastBreadcrumb = end($breadcrumbs);
+        $lastBreadcrumb = $this->getLastBreadcrumb();
 
         $this->assertEquals($level, $lastBreadcrumb->getLevel());
         $this->assertEquals($message, $lastBreadcrumb->getMessage());
@@ -43,7 +39,6 @@ class LaravelLogsInBreadcrumbsTest extends SentryLaravelTestCase
             $context = ['1'],
         ]);
 
-        $breadcrumbs = $this->getCurrentBreadcrumbs();
-        $this->assertEmpty($breadcrumbs);
+        $this->assertEmpty($this->getCurrentBreadcrumbs());
     }
 }

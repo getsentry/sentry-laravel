@@ -23,15 +23,12 @@ class SqlBindingsInBreadcrumbsWithOldConfigKeyDisabledTest extends SentryLaravel
 
         $this->dispatchLaravelEvent('illuminate.query', [
             $query = 'SELECT * FROM breadcrumbs WHERE bindings = ?;',
-            $bindings = ['1'],
+            ['1'],
             10,
             'test',
         ]);
 
-        $breadcrumbs = $this->getCurrentBreadcrumbs();
-
-        /** @var \Sentry\Breadcrumb $lastBreadcrumb */
-        $lastBreadcrumb = end($breadcrumbs);
+        $lastBreadcrumb = $this->getLastBreadcrumb();
 
         $this->assertEquals($query, $lastBreadcrumb->getMessage());
         $this->assertFalse(isset($lastBreadcrumb->getMetadata()['bindings']));

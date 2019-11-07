@@ -1,6 +1,5 @@
 <?php
 
-
 namespace Sentry\Laravel\Tests;
 
 use Illuminate\Console\Events\CommandStarting;
@@ -12,8 +11,9 @@ class QueueInfoInBreadcrumbsTest extends SentryLaravelTestCase
     public function testQueueInfoAreRecordedWhenEnabled()
     {
         if ($this->shouldSkip()) {
-            $this->markTestSkipped('Laravel version too low.');
+            $this->markTestSkipped('Laravel version <5.5 does not contain the events tested.');
         }
+
         $this->resetApplicationWithConfig([
             'sentry.breadcrumbs.queue_info' => true,
         ]);
@@ -22,10 +22,7 @@ class QueueInfoInBreadcrumbsTest extends SentryLaravelTestCase
 
         $this->dispatchCommandStartEvent();
 
-        $breadcrumbs = $this->getCurrentBreadcrumbs();
-
-        /** @var \Sentry\Breadcrumb $lastBreadcrumb */
-        $lastBreadcrumb = end($breadcrumbs);
+        $lastBreadcrumb = $this->getLastBreadcrumb();
 
         $this->assertEquals('Invoked Artisan command: test:command', $lastBreadcrumb->getMessage());
         $this->assertEquals('--foo=bar', $lastBreadcrumb->getMetadata()['input']);
@@ -34,24 +31,34 @@ class QueueInfoInBreadcrumbsTest extends SentryLaravelTestCase
     public function testQueueInfoAreRecordedWhenDisabled()
     {
         if ($this->shouldSkip()) {
-            $this->markTestSkipped('Laravel version too low.');
+            $this->markTestSkipped('Laravel version <5.5 does not contain the events tested.');
         }
+
         $this->resetApplicationWithConfig([
             'sentry.breadcrumbs.queue_info' => false,
         ]);
 
         $this->assertFalse($this->app['config']->get('sentry.breadcrumbs.queue_info'));
+
         $this->dispatchCommandStartEvent();
 
-        $breadcrumbs = $this->getCurrentBreadcrumbs();
-        $this->assertEmpty($breadcrumbs);
+        $this->assertEmpty($this->getCurrentBreadcrumbs());
     }
 
     private function dispatchCommandStartEvent()
     {
         $dispatcher = $this->app['events'];
-        $method     = method_exists($dispatcher, 'dispatch') ? 'dispatch' : 'fire';
-        $this->app['events']->$method(CommandStarting::class, new CommandStarting($command = 'test:command', $input = new ArrayInput(['--foo' => 'bar']), new BufferedOutput()));
+
+        $method = method_exists($dispatcher, 'dispatch') ? 'dispatch' : 'fire';
+
+        $this->app['events']->$method(
+            CommandStarting::class,
+            new CommandStarting(
+                'test:command',
+                new ArrayInput(['--foo' => 'bar']),
+                new BufferedOutput()
+            )
+        );
     }
 
     private function shouldSkip()
