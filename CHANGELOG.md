@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Allow any log level to create breadcrumbs (#297)
+- Allow decorating the `ClientBuilderInterface` from the `register` method of a Service Provider (#290)
 
 ## 1.4.1
 

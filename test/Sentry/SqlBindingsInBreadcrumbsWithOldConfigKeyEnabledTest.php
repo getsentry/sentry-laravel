@@ -28,10 +28,7 @@ class SqlBindingsInBreadcrumbsWithOldConfigKeyEnabledTest extends SentryLaravelT
             'test',
         ]);
 
-        $breadcrumbs = $this->getCurrentBreadcrumbs();
-
-        /** @var \Sentry\Breadcrumb $lastBreadcrumb */
-        $lastBreadcrumb = end($breadcrumbs);
+        $lastBreadcrumb = $this->getLastBreadcrumb();
 
         $this->assertEquals($query, $lastBreadcrumb->getMessage());
         $this->assertEquals($bindings, $lastBreadcrumb->getMetadata()['bindings']);
