@@ -64,11 +64,32 @@ class EventHandler
     private $events;
 
     /**
+     * Indicates if we should we add SQL queries to the breadcrumbs.
+     *
+     * @var bool
+     */
+    private $recordSqlQueries;
+
+    /**
      * Indicates if we should we add query bindings to the breadcrumbs.
      *
      * @var bool
      */
     private $recordSqlBindings;
+
+    /**
+     * Indicates if we should we add Laravel logs to the breadcrumbs.
+     *
+     * @var bool
+     */
+    private $recordLaravelLogs;
+
+    /**
+     * Indicates if we should we add queue info to the breadcrumbs.
+     *
+     * @var bool
+     */
+    private $recordQueueInfo;
 
     /**
      * EventHandler constructor.
@@ -78,8 +99,11 @@ class EventHandler
      */
     public function __construct(Dispatcher $events, array $config)
     {
-        $this->events = $events;
+        $this->events            = $events;
+        $this->recordSqlQueries  = ($config['breadcrumbs.sql_queries'] ?? $config['breadcrumbs']['sql_queries'] ?? true) === true;
         $this->recordSqlBindings = ($config['breadcrumbs.sql_bindings'] ?? $config['breadcrumbs']['sql_bindings'] ?? false) === true;
+        $this->recordLaravelLogs = ($config['breadcrumbs.logs'] ?? $config['breadcrumbs']['logs'] ?? true) === true;
+        $this->recordQueueInfo   = ($config['breadcrumbs.queue_info'] ?? $config['breadcrumbs']['queue_info'] ?? true) === true;
     }
 
     /**
@@ -189,6 +213,10 @@ class EventHandler
      */
     protected function queryHandler($query, $bindings, $time, $connectionName)
     {
+        if (!$this->recordSqlQueries) {
+            return;
+        }
+
         $this->addQueryBreadcrumb($query, $bindings, $time, $connectionName);
     }
 
@@ -199,6 +227,10 @@ class EventHandler
      */
     protected function queryExecutedHandler(QueryExecuted $query)
     {
+        if (!$this->recordSqlQueries) {
+            return;
+        }
+
         $this->addQueryBreadcrumb($query->sql, $query->bindings, $query->time, $query->connectionName);
     }
 
@@ -240,6 +272,10 @@ class EventHandler
      */
     protected function logHandler($level, $message, $context)
     {
+        if (!$this->recordLaravelLogs) {
+            return;
+        }
+
         Integration::addBreadcrumb(new Breadcrumb(
             $level,
             Breadcrumb::TYPE_USER,
@@ -256,6 +292,10 @@ class EventHandler
      */
     protected function messageLoggedHandler(MessageLogged $logEntry)
     {
+        if (!$this->recordLaravelLogs) {
+            return;
+        }
+
         Integration::addBreadcrumb(new Breadcrumb(
             $logEntry->level,
             Breadcrumb::TYPE_USER,
@@ -289,6 +329,10 @@ class EventHandler
         // When a job starts, we want to push a new scope
         Integration::getCurrentHub()->pushScope();
 
+        if (!$this->recordQueueInfo) {
+            return;
+        }
+
         $job = [
             'job' => $event->job->getName(),
             'queue' => $event->job->getQueue(),
@@ -321,6 +365,10 @@ class EventHandler
             Integration::configureScope(function (Scope $scope) use ($event): void {
                 $scope->setTag('command', $event->command);
             });
+
+            if (!$this->recordQueueInfo) {
+                return;
+            }
 
             Integration::addBreadcrumb(new Breadcrumb(
                 Breadcrumb::LEVEL_INFO,
