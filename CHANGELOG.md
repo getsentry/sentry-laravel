@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.5.0
+
 - Fix throwing errors when installed when config cache is active (6214338)
 - Allow any log level to create breadcrumbs (#297)
 - Allow decorating the `ClientBuilderInterface` from the `register` method of a Service Provider (#290)
