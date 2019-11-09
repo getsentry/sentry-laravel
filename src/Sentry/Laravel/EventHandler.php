@@ -99,11 +99,11 @@ class EventHandler
      */
     public function __construct(Dispatcher $events, array $config)
     {
-        $this->events            = $events;
-        $this->recordSqlQueries  = ($config['breadcrumbs.sql_queries'] ?? $config['breadcrumbs']['sql_queries'] ?? true) === true;
+        $this->events = $events;
+        $this->recordSqlQueries = ($config['breadcrumbs.sql_queries'] ?? $config['breadcrumbs']['sql_queries'] ?? true) === true;
         $this->recordSqlBindings = ($config['breadcrumbs.sql_bindings'] ?? $config['breadcrumbs']['sql_bindings'] ?? false) === true;
         $this->recordLaravelLogs = ($config['breadcrumbs.logs'] ?? $config['breadcrumbs']['logs'] ?? true) === true;
-        $this->recordQueueInfo   = ($config['breadcrumbs.queue_info'] ?? $config['breadcrumbs']['queue_info'] ?? true) === true;
+        $this->recordQueueInfo = ($config['breadcrumbs.queue_info'] ?? $config['breadcrumbs']['queue_info'] ?? true) === true;
     }
 
     /**
@@ -288,9 +288,9 @@ class EventHandler
     /**
      * Helper to add an log breadcrumb.
      *
-     * @param  string $level   Log level. May be any standard.
-     * @param  string $message Log messsage.
-     * @param  array  $context Log context.
+     * @param string $level   Log level. May be any standard.
+     * @param string $message Log messsage.
+     * @param array  $context Log context.
      */
     private function addLogBreadcrumb(string $level, string $message, array $context = []): void
     {
@@ -310,13 +310,13 @@ class EventHandler
     /**
      * Translates common log levels to Sentry breadcrumb levels.
      *
-     * @param  string $level Log level. Maybe any standard.
+     * @param string $level Log level. Maybe any standard.
      *
      * @return string Breadcrumb level.
      */
     protected function logLevelToBreadcrumbLevel(string $level): string
     {
-        // @TODO: Once we depend on `sentry-php` 3.0 we can use `Breadcrumb::LEVEL_FATAL` directly.
+        // @TODO: Once we depend on `sentry-php` 3.x we can use `Breadcrumb::LEVEL_FATAL` directly
         $fatal = defined(Breadcrumb::class . '::LEVEL_FATAL')
             ? constant(Breadcrumb::class . '::LEVEL_FATAL')
             : constant(Breadcrumb::class . '::LEVEL_CRITICAL');
