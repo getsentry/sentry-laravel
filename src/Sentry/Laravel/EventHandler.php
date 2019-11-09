@@ -316,6 +316,11 @@ class EventHandler
      */
     protected function logLevelToBreadcrumbLevel(string $level): string
     {
+        // @TODO: Once we depend on `sentry-php` 3.0 we can use `Breadcrumb::LEVEL_FATAL` directly.
+        $fatal = defined(Breadcrumb::class . '::LEVEL_FATAL')
+            ? constant(Breadcrumb::class . '::LEVEL_FATAL')
+            : constant(Breadcrumb::class . '::LEVEL_CRITICAL');
+
         switch (strtolower($level)) {
             case 'debug':
                 return Breadcrumb::LEVEL_DEBUG;
@@ -326,7 +331,7 @@ class EventHandler
             case 'critical':
             case 'alert':
             case 'emergency':
-                return Breadcrumb::LEVEL_FATAL;
+                return $fatal;
             case 'info':
             case 'notice':
             default:
