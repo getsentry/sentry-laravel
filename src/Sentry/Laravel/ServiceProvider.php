@@ -211,7 +211,7 @@ class ServiceProvider extends IlluminateServiceProvider
      */
     private function getUserConfig(): array
     {
-        return $this->app['config'][static::$abstract];
+        return $this->app['config'][static::$abstract] ?? [];
     }
 
     /**
