@@ -17,7 +17,7 @@ env:
     - LARAVEL=5.6.* TESTBENCH=3.6.* PHPUNIT=7.5.* SENTRY=^2.0
     - LARAVEL=5.7.* TESTBENCH=3.7.* PHPUNIT=7.5.* SENTRY=^2.0
     - LARAVEL=5.8.* TESTBENCH=3.8.* PHPUNIT=7.5.* SENTRY=^2.0
-    - LARAVEL=6.0.* TESTBENCH=3.9.* PHPUNIT=8.0.* SENTRY=^2.0
+    - LARAVEL=^6.0 TESTBENCH=3.9.* PHPUNIT=8.0.* SENTRY=^2.0
     # We add one more test using the bleading edge of the sentry/sentry package
     - LARAVEL=6.0.* TESTBENCH=3.9.* PHPUNIT=8.0.* SENTRY=dev-develop@dev
 
@@ -29,7 +29,9 @@ matrix:
     - php: 7.1
       env: LARAVEL=6.0.* TESTBENCH=3.9.* PHPUNIT=8.0.* SENTRY=^2.0
     - php: 7.1
-      env: LARAVEL=6.0.* TESTBENCH=3.9.* PHPUNIT=8.0.* SENTRY=dev-develop@dev
+      env: LARAVEL=^6.0 TESTBENCH=3.9.* PHPUNIT=8.0.* SENTRY=^2.0
+    - php: 7.1
+      env: LARAVEL=^6.0 TESTBENCH=3.9.* PHPUNIT=8.0.* SENTRY=dev-develop@dev
     - php: 7.2
       env: LARAVEL=5.0.* TESTBENCH=3.0.* PHPUNIT=4.8.* SENTRY=^2.0
     - php: 7.3
