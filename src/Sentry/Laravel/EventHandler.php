@@ -421,7 +421,7 @@ class EventHandler
     protected function commandStartingHandler(CommandStarting $event)
     {
         if ($event->command) {
-            Integration::configureScope(function (Scope $scope) use ($event): void {
+            Integration::configureScope(static function (Scope $scope) use ($event): void {
                 $scope->setTag('command', $event->command);
             });
 
@@ -433,7 +433,7 @@ class EventHandler
                 Breadcrumb::LEVEL_INFO,
                 Breadcrumb::TYPE_USER,
                 'artisan.command',
-                'Invoked Artisan command: ' . $event->command,
+                'Starting Artisan command: ' . $event->command,
                 method_exists($event->input, '__toString') ? [
                     'input' => (string)$event->input,
                 ] : []
@@ -448,7 +448,19 @@ class EventHandler
      */
     protected function commandFinishedHandler(CommandFinished $event)
     {
-        Integration::configureScope(function (Scope $scope) use ($event): void {
+        Integration::addBreadcrumb(new Breadcrumb(
+            Breadcrumb::LEVEL_INFO,
+            Breadcrumb::TYPE_USER,
+            'artisan.command',
+            'Finished Artisan command: ' . $event->command,
+            array_merge([
+                'exit' => $event->exitCode,
+            ], method_exists($event->input, '__toString') ? [
+                'input' => (string)$event->input,
+            ] : [])
+        ));
+
+        Integration::configureScope(static function (Scope $scope) use ($event): void {
             $scope->setTag('command', '');
         });
 
