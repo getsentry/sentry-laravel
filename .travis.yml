@@ -19,7 +19,9 @@ env:
     - LARAVEL=5.8.* TESTBENCH=3.8.* PHPUNIT=7.5.* SENTRY=^2.0
     - LARAVEL=^6.0 TESTBENCH=3.9.* PHPUNIT=8.0.* SENTRY=^2.0
     # We add one more test using the bleading edge of the sentry/sentry package
-    - LARAVEL=6.0.* TESTBENCH=3.9.* PHPUNIT=8.0.* SENTRY=dev-develop@dev
+    - LARAVEL=^6.0 TESTBENCH=3.9.* PHPUNIT=8.0.* SENTRY=dev-develop@dev
+    # We add one mire test using the development version of Laravel
+    - LARAVEL=7.x-dev@dev TESTBENCH=5.0.x-dev@dev PHPUNIT=8.0.* SENTRY=^2.0
 
 matrix:
   fast_finish: true
@@ -27,7 +29,7 @@ matrix:
     - php: 7.4snapshot
   exclude:
     - php: 7.1
-      env: LARAVEL=6.0.* TESTBENCH=3.9.* PHPUNIT=8.0.* SENTRY=^2.0
+      env: LARAVEL=7.x-dev@dev TESTBENCH=5.0.x-dev@dev PHPUNIT=8.0.* SENTRY=^2.0
     - php: 7.1
       env: LARAVEL=^6.0 TESTBENCH=3.9.* PHPUNIT=8.0.* SENTRY=^2.0
     - php: 7.1
@@ -57,7 +59,7 @@ jobs:
 
 before_install:
   - if [ "$USE_COMPOSER_JSON" != "1" ]; then composer remove friendsofphp/php-cs-fixer --dev --no-update; fi;
-  - if [ "$USE_COMPOSER_JSON" != "1" ]; then composer require laravel/framework:$LARAVEL illuminate/support:$LARAVEL orchestra/testbench:$TESTBENCH phpunit/phpunit:$PHPUNIT sentry/sentry:$SENTRY --no-update --no-interaction --dev; fi;
+  - if [ "$USE_COMPOSER_JSON" != "1" ]; then composer require laravel/framework:$LARAVEL illuminate/support:$LARAVEL orchestra/testbench:$TESTBENCH orchestra/testbench-core:$TESTBENCH phpunit/phpunit:$PHPUNIT sentry/sentry:$SENTRY --no-update --no-interaction --dev; fi;
 
 install:
   - travis_retry composer install --no-suggest --no-interaction --prefer-dist --no-progress
