@@ -20,7 +20,7 @@ env:
     - LARAVEL=^6.0 TESTBENCH=3.9.* PHPUNIT=8.0.* SENTRY=^2.0
     # We add one more test using the bleading edge of the sentry/sentry package
     - LARAVEL=^6.0 TESTBENCH=3.9.* PHPUNIT=8.0.* SENTRY=dev-develop@dev
-    # We add one mire test using the development version of Laravel
+    # We add one more test using the latest development version of Laravel
     - LARAVEL=7.x-dev@dev TESTBENCH=5.0.x-dev@dev PHPUNIT=8.0.* SENTRY=^2.0
 
 matrix:
