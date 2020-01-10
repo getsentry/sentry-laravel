@@ -346,10 +346,10 @@ class EventHandler
      */
     protected function authenticatedHandler(Authenticated $event)
     {
-        Integration::configureScope(function (Scope $scope) use ($event): void {
+        Integration::configureScope(static function (Scope $scope) use ($event): void {
             $scope->setUser([
                 'id' => $event->user->getAuthIdentifier(),
-            ]);
+            ], true);
         });
     }
 
