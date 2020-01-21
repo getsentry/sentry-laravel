@@ -112,7 +112,7 @@ class ServiceProvider extends IlluminateServiceProvider
                 [
                     'environment' => $this->app->environment(),
                     'prefixes' => [$basePath],
-                    'in_app_include' => ["{$basePath}/app"],
+                    'in_app_exclude' => ["{$basePath}/vendor"],
                 ],
                 $userConfig,
                 [
