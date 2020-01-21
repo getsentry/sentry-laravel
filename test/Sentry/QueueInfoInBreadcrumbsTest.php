@@ -24,7 +24,7 @@ class QueueInfoInBreadcrumbsTest extends SentryLaravelTestCase
 
         $lastBreadcrumb = $this->getLastBreadcrumb();
 
-        $this->assertEquals('Invoked Artisan command: test:command', $lastBreadcrumb->getMessage());
+        $this->assertEquals('Starting Artisan command: test:command', $lastBreadcrumb->getMessage());
         $this->assertEquals('--foo=bar', $lastBreadcrumb->getMetadata()['input']);
     }
 
