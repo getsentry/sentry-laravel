@@ -17,6 +17,7 @@ use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Routing\Route;
 use RuntimeException;
 use Sentry\Breadcrumb;
+use Sentry\SentrySdk;
 use Sentry\State\Scope;
 
 class EventHandler
@@ -471,7 +472,7 @@ class EventHandler
     private function beforeQueuedJob()
     {
         // When a job starts, we want to push a new scope
-        Integration::getCurrentHub()->pushScope();
+        SentrySdk::getCurrentHub()->pushScope();
     }
 
     private function afterQueuedJob()
@@ -480,6 +481,6 @@ class EventHandler
         Integration::flushEvents();
 
         // We have added a scope when the job started processing
-        Integration::getCurrentHub()->popScope();
+        SentrySdk::getCurrentHub()->popScope();
     }
 }

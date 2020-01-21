@@ -2,6 +2,7 @@
 
 namespace Sentry\Laravel;
 
+use Sentry\SentrySdk;
 use Sentry\State\Hub;
 use Sentry\ClientBuilder;
 use Sentry\State\HubInterface;
@@ -159,7 +160,7 @@ class ServiceProvider extends IlluminateServiceProvider
 
             $hub = new Hub($clientBuilder->getClient());
 
-            Integration::setCurrentHub($hub);
+            SentrySdk::setCurrentHub($hub);
 
             return $hub;
         });
