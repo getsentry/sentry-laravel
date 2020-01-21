@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- Use default breadcrumb type for handled events (#302)
+- Use default breadcrumb type for handled events (#303)
+- Support Sentry SDK ^2.3 (and drop support for older versions) (#316)
+- Fix queue events to correctly flush events when not running a queue deamon (#318)
 
 ## 1.5.0
 
