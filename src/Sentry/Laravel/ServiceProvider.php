@@ -74,7 +74,7 @@ class ServiceProvider extends IlluminateServiceProvider
 
         $handler->subscribe();
 
-        $handler->subscribeQueueEvents($this->app->queue);
+        $handler->subscribeQueueEvents();
 
         if (isset($userConfig['send_default_pii']) && $userConfig['send_default_pii'] !== false) {
             $handler->subscribeAuthEvents();

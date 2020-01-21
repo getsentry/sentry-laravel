@@ -4,11 +4,14 @@ php:
   - 7.1
   - 7.2
   - 7.3
-  - 7.4snapshot
+  - 7.4
 
 env:
   matrix:
+    # Laravel 5.0 does not support PHP ^7.2 and should only be tested on 7.1 (Laravel requirement)
     - LARAVEL=5.0.* TESTBENCH=3.0.* PHPUNIT=4.8.* SENTRY=^2.0
+
+    # All versions below should be test on PHP ^7.1 (Sentry SDK requrement)
     - LARAVEL=5.1.* TESTBENCH=3.1.* PHPUNIT=5.7.* SENTRY=^2.0
     - LARAVEL=5.2.* TESTBENCH=3.2.* PHPUNIT=5.7.* SENTRY=^2.0
     - LARAVEL=5.3.* TESTBENCH=3.3.* PHPUNIT=5.7.* SENTRY=^2.0
@@ -17,24 +20,37 @@ env:
     - LARAVEL=5.6.* TESTBENCH=3.6.* PHPUNIT=7.5.* SENTRY=^2.0
     - LARAVEL=5.7.* TESTBENCH=3.7.* PHPUNIT=7.5.* SENTRY=^2.0
     - LARAVEL=5.8.* TESTBENCH=3.8.* PHPUNIT=7.5.* SENTRY=^2.0
-    - LARAVEL=6.0.* TESTBENCH=3.9.* PHPUNIT=8.0.* SENTRY=^2.0
+
+    # All versions only support PHP ^7.2 (Laravel requirement)
+    - LARAVEL=^6.0 TESTBENCH=3.9.* PHPUNIT=8.0.* SENTRY=^2.0
+
     # We add one more test using the bleading edge of the sentry/sentry package
-    - LARAVEL=6.0.* TESTBENCH=3.9.* PHPUNIT=8.0.* SENTRY=dev-develop@dev
+    - LARAVEL=^6.0 TESTBENCH=3.9.* PHPUNIT=8.0.* SENTRY=dev-develop@dev
+
+    # We add one more test using the latest development version of Laravel
+    - LARAVEL=7.x-dev@dev TESTBENCH=5.0.x-dev@dev PHPUNIT=8.4.* SENTRY=^2.0 COMPOSER_STABILITY=dev
 
 matrix:
   fast_finish: true
   allow_failures:
-    - php: 7.4snapshot
+    - php: 7.2
+      env: LARAVEL=7.x-dev@dev TESTBENCH=5.0.x-dev@dev PHPUNIT=8.4.* SENTRY=^2.0 COMPOSER_STABILITY=dev
+    - php: 7.3
+      env: LARAVEL=7.x-dev@dev TESTBENCH=5.0.x-dev@dev PHPUNIT=8.4.* SENTRY=^2.0 COMPOSER_STABILITY=dev
+    - php: 7.4
+      env: LARAVEL=7.x-dev@dev TESTBENCH=5.0.x-dev@dev PHPUNIT=8.4.* SENTRY=^2.0 COMPOSER_STABILITY=dev
   exclude:
     - php: 7.1
-      env: LARAVEL=6.0.* TESTBENCH=3.9.* PHPUNIT=8.0.* SENTRY=^2.0
+      env: LARAVEL=7.x-dev@dev TESTBENCH=5.0.x-dev@dev PHPUNIT=8.4.* SENTRY=^2.0 COMPOSER_STABILITY=dev
     - php: 7.1
-      env: LARAVEL=6.0.* TESTBENCH=3.9.* PHPUNIT=8.0.* SENTRY=dev-develop@dev
+      env: LARAVEL=^6.0 TESTBENCH=3.9.* PHPUNIT=8.0.* SENTRY=^2.0
+    - php: 7.1
+      env: LARAVEL=^6.0 TESTBENCH=3.9.* PHPUNIT=8.0.* SENTRY=dev-develop@dev
     - php: 7.2
       env: LARAVEL=5.0.* TESTBENCH=3.0.* PHPUNIT=4.8.* SENTRY=^2.0
     - php: 7.3
       env: LARAVEL=5.0.* TESTBENCH=3.0.* PHPUNIT=4.8.* SENTRY=^2.0
-    - php: 7.4snapshot
+    - php: 7.4
       env: LARAVEL=5.0.* TESTBENCH=3.0.* PHPUNIT=4.8.* SENTRY=^2.0
 
 cache:
@@ -55,6 +71,7 @@ jobs:
 
 before_install:
   - if [ "$USE_COMPOSER_JSON" != "1" ]; then composer remove friendsofphp/php-cs-fixer --dev --no-update; fi;
+  - if [ "$USE_COMPOSER_JSON" != "1" ]; then composer config minimum-stability ${COMPOSER_STABILITY:=stable}; fi;
   - if [ "$USE_COMPOSER_JSON" != "1" ]; then composer require laravel/framework:$LARAVEL illuminate/support:$LARAVEL orchestra/testbench:$TESTBENCH phpunit/phpunit:$PHPUNIT sentry/sentry:$SENTRY --no-update --no-interaction --dev; fi;
 
 install:
