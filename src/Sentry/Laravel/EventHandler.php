@@ -446,7 +446,7 @@ class EventHandler
     {
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,
-            Breadcrumb::TYPE_USER,
+            Breadcrumb::TYPE_DEFAULT,
             'artisan.command',
             'Finished Artisan command: ' . $event->command,
             array_merge([
