@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Use default breadcrumb type for handled events (#302)
+
 ## 1.5.0
 
 - Fix throwing errors when installed when config cache is active (6214338)

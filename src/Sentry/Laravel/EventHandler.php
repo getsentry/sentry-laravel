@@ -252,7 +252,7 @@ class EventHandler
 
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,
-            Breadcrumb::TYPE_USER,
+            Breadcrumb::TYPE_DEFAULT,
             'sql.query',
             $query,
             $data
@@ -296,7 +296,7 @@ class EventHandler
 
         Integration::addBreadcrumb(new Breadcrumb(
             $this->logLevelToBreadcrumbLevel($level),
-            Breadcrumb::TYPE_USER,
+            Breadcrumb::TYPE_DEFAULT,
             'log.' . $level,
             $message,
             empty($context) ? [] : ['params' => $context]
@@ -371,7 +371,7 @@ class EventHandler
 
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,
-            Breadcrumb::TYPE_USER,
+            Breadcrumb::TYPE_DEFAULT,
             'queue.job',
             'Processing queue job',
             $job
@@ -427,7 +427,7 @@ class EventHandler
 
             Integration::addBreadcrumb(new Breadcrumb(
                 Breadcrumb::LEVEL_INFO,
-                Breadcrumb::TYPE_USER,
+                Breadcrumb::TYPE_DEFAULT,
                 'artisan.command',
                 'Starting Artisan command: ' . $event->command,
                 method_exists($event->input, '__toString') ? [
