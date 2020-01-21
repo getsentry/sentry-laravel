@@ -17,6 +17,7 @@ use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Routing\Route;
 use RuntimeException;
 use Sentry\Breadcrumb;
+use Sentry\SentrySdk;
 use Sentry\State\Scope;
 
 class EventHandler
@@ -311,11 +312,6 @@ class EventHandler
      */
     protected function logLevelToBreadcrumbLevel(string $level): string
     {
-        // @TODO: Once we depend on `sentry-php` 3.x we can use `Breadcrumb::LEVEL_FATAL` directly
-        $fatal = defined(Breadcrumb::class . '::LEVEL_FATAL')
-            ? constant(Breadcrumb::class . '::LEVEL_FATAL')
-            : constant(Breadcrumb::class . '::LEVEL_CRITICAL');
-
         switch (strtolower($level)) {
             case 'debug':
                 return Breadcrumb::LEVEL_DEBUG;
@@ -326,7 +322,7 @@ class EventHandler
             case 'critical':
             case 'alert':
             case 'emergency':
-                return $fatal;
+                return Breadcrumb::LEVEL_FATAL;
             case 'info':
             case 'notice':
             default:
@@ -341,10 +337,10 @@ class EventHandler
      */
     protected function authenticatedHandler(Authenticated $event)
     {
-        Integration::configureScope(function (Scope $scope) use ($event): void {
+        Integration::configureScope(static function (Scope $scope) use ($event): void {
             $scope->setUser([
                 'id' => $event->user->getAuthIdentifier(),
-            ]);
+            ], true);
         });
     }
 
@@ -471,7 +467,7 @@ class EventHandler
     private function beforeQueuedJob()
     {
         // When a job starts, we want to push a new scope
-        Integration::getCurrentHub()->pushScope();
+        SentrySdk::getCurrentHub()->pushScope();
     }
 
     private function afterQueuedJob()
@@ -480,6 +476,6 @@ class EventHandler
         Integration::flushEvents();
 
         // We have added a scope when the job started processing
-        Integration::getCurrentHub()->popScope();
+        SentrySdk::getCurrentHub()->popScope();
     }
 }
