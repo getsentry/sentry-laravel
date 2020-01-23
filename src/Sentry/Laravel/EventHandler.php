@@ -150,12 +150,14 @@ class EventHandler
      */
     public function __call($method, $arguments)
     {
-        if (!method_exists($this, $method . 'handler')) {
-            throw new RuntimeException('Missing event handler:' . $method . 'handler');
+        $handlerMethod = $handlerMethod = "{$method}Handler";
+
+        if (!method_exists($this, $handlerMethod)) {
+            throw new RuntimeException("Missing event handler: {$handlerMethod}");
         }
 
         try {
-            call_user_func_array([$this, $method . 'handler'], $arguments);
+            call_user_func_array([$this, $handlerMethod], $arguments);
         } catch (Exception $exception) {
             // Ignore
         }
