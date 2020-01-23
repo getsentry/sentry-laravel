@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 1.6.1
+
+- Fix queue events with missing handler suffix (#322)
+
 ## 1.6.0
 
 - Use default breadcrumb type for handled events (#303)
