@@ -1,11 +1,14 @@
-minVersion: '0.7.0'
+minVersion: '0.9.0'
 github:
   owner: getsentry
   repo: sentry-laravel
 changelogPolicy: simple
 preReleaseCommand: bash scripts/craft-pre-release.sh
+statusProvider: 
+  name: github
 targets:
 - name: github
+  includeNames: /none/
 - name: registry
   type: sdk
   config:
