@@ -86,7 +86,7 @@ class IntegrationsOptionTest extends SentryLaravelTestCase
             $this->ensureIsNotDisabledIntegration($integration);
         }
 
-        $this->expectNotToPerformAssertions();
+        $this->assertTrue(true, 'Not all disabled integrations are actually disabled.');
     }
 
     public function testDisabledIntegrationsAreNotPresentWithCustomIntegrations()
