@@ -3,6 +3,9 @@
 namespace Sentry\Laravel\Tests;
 
 use Sentry\Integration\IntegrationInterface;
+use Sentry\Integration\ErrorListenerIntegration;
+use Sentry\Integration\ExceptionListenerIntegration;
+use Sentry\Integration\FatalErrorListenerIntegration;
 
 class IntegrationsOptionTest extends SentryLaravelTestCase
 {
@@ -50,6 +53,7 @@ class IntegrationsOptionTest extends SentryLaravelTestCase
 
     /**
      * Throws \ReflectionException in <=5.8 and \Illuminate\Contracts\Container\BindingResolutionException since 6.0
+     *
      * @expectedException \Exception
      */
     public function testCustomIntegrationThrowsExceptionIfNotResolvable()
@@ -72,6 +76,60 @@ class IntegrationsOptionTest extends SentryLaravelTestCase
                 },
             ],
         ]);
+    }
+
+    public function testDisabledIntegrationsAreNotPresent()
+    {
+        $integrations = $this->getHubFromContainer()->getClient()->getOptions()->getIntegrations();
+
+        foreach ($integrations as $integration) {
+            $this->ensureIsNotDisabledIntegration($integration);
+        }
+
+        $this->expectNotToPerformAssertions();
+    }
+
+    public function testDisabledIntegrationsAreNotPresentWithCustomIntegrations()
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.integrations' => [
+                new IntegrationsOptionTestIntegrationStub,
+            ],
+        ]);
+
+        $integrations = $this->getHubFromContainer()->getClient()->getOptions()->getIntegrations();
+
+        $found = false;
+
+        foreach ($integrations as $integration) {
+            $this->ensureIsNotDisabledIntegration($integration);
+
+            if ($integration instanceof IntegrationsOptionTestIntegrationStub) {
+                $found = true;
+            }
+        }
+
+        $this->assertTrue($found, 'No IntegrationsOptionTestIntegrationStub found in final integrations enabled');
+    }
+
+    /**
+     * Make sure the passed integration is not one of the disabled integrations.
+     *
+     * @param \Sentry\Integration\IntegrationInterface $integration
+     */
+    private function ensureIsNotDisabledIntegration(IntegrationInterface $integration)
+    {
+        if ($integration instanceof ErrorListenerIntegration) {
+            $this->fail('Should not have ErrorListenerIntegration registered');
+        }
+
+        if ($integration instanceof ExceptionListenerIntegration) {
+            $this->fail('Should not have ExceptionListenerIntegration registered');
+        }
+
+        if ($integration instanceof FatalErrorListenerIntegration) {
+            $this->fail('Should not have FatalErrorListenerIntegration registered');
+        }
     }
 }
 
