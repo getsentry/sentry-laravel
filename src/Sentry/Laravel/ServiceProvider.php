@@ -101,10 +101,12 @@ class ServiceProvider extends IlluminateServiceProvider
             $basePath = base_path();
             $userConfig = $this->getUserConfig();
 
-            // We do not want this setting to hit our main client because it's Laravel specific
             unset(
+                // We do not want this setting to hit our main client because it's Laravel specific
                 $userConfig['breadcrumbs'],
-                // this is kept for backwards compatibilty and can be dropped in a breaking release
+                // We resolve the integrations through the container later, so we initially do not pass it to the SDK yet
+                $userConfig['integrations'],
+                // This is kept for backwards compatibilty and can be dropped in a future breaking release
                 $userConfig['breadcrumbs.sql_bindings']
             );
 
@@ -114,10 +116,7 @@ class ServiceProvider extends IlluminateServiceProvider
                     'prefixes' => [$basePath],
                     'in_app_exclude' => ["{$basePath}/vendor"],
                 ],
-                $userConfig,
-                [
-                    'integrations' => $this->getIntegrations(),
-                ]
+                $userConfig
             );
 
             $clientBuilder = ClientBuilder::create($options);
@@ -135,13 +134,19 @@ class ServiceProvider extends IlluminateServiceProvider
 
             $options = $clientBuilder->getOptions();
 
-            if ($options->hasDefaultIntegrations()) {
-                $integrations = $options->getIntegrations();
+            $userIntegrations = $this->resolveIntegrationsFromUserConfig();
+
+            $options->setIntegrations(static function (array $integrations) use ($options, $userIntegrations) {
+                $allIntegrations = array_merge($integrations, $userIntegrations);
+
+                if (!$options->hasDefaultIntegrations()) {
+                    return $allIntegrations;
+                }
 
                 // Remove the default error and fatal exception listeners to let Laravel handle those
                 // itself. These event are still bubbling up through the documented changes in the users
                 // `ExceptionHandler` of their application or through the log channel integration to Sentry
-                $options->setIntegrations(array_filter($integrations, static function (SdkIntegration\IntegrationInterface $integration): bool {
+                return array_filter($allIntegrations, static function (SdkIntegration\IntegrationInterface $integration): bool {
                     if ($integration instanceof SdkIntegration\ErrorListenerIntegration) {
                         return false;
                     }
@@ -155,8 +160,8 @@ class ServiceProvider extends IlluminateServiceProvider
                     }
 
                     return true;
-                }));
-            }
+                });
+            });
 
             $hub = new Hub($clientBuilder->getClient());
 
@@ -185,7 +190,7 @@ class ServiceProvider extends IlluminateServiceProvider
      *
      * @return array
      */
-    private function getIntegrations(): array
+    private function resolveIntegrationsFromUserConfig(): array
     {
         $integrations = [new Integration];
 
@@ -195,7 +200,13 @@ class ServiceProvider extends IlluminateServiceProvider
             if ($userIntegration instanceof SdkIntegration\IntegrationInterface) {
                 $integrations[] = $userIntegration;
             } elseif (\is_string($userIntegration)) {
-                $integrations[] = $this->app->make($userIntegration);
+                $resolvedIntegration = $this->app->make($userIntegration);
+
+                if (!($resolvedIntegration instanceof SdkIntegration\IntegrationInterface)) {
+                    throw new \RuntimeException('Sentry integrations should a instance of `\Sentry\Integration\IntegrationInterface`.');
+                }
+
+                $integrations[] = $resolvedIntegration;
             } else {
                 throw new \RuntimeException('Sentry integrations should either be a container reference or a instance of `\Sentry\Integration\IntegrationInterface`.');
             }
