@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.6.2
+
 - Fix for default integrations not disabled (#327)
 
 ## 1.6.1
