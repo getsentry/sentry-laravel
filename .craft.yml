@@ -11,5 +11,6 @@ targets:
   includeNames: /none/
 - name: registry
   type: sdk
+  includeNames: /none/
   config:
     canonical: 'composer:sentry/sentry-laravel'
