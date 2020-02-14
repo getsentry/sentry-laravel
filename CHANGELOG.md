@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix for default integrations not disabled (#327)
+
 ## 1.6.1
 
 - Fix queue events with missing handler suffix (#322)
