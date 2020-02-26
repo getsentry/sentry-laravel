@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 1.7.0
+
+- Support for Laravel 7 (#330)
+
 ## 1.6.2
 
 - Fix for default integrations not disabled (#327)
