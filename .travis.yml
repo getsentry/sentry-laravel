@@ -1,16 +1,12 @@
 language: php
 
 php:
-  - 7.1
   - 7.2
   - 7.3
   - 7.4
 
 env:
   matrix:
-    # Laravel 5.0 does not support PHP ^7.2 and should only be tested on 7.1 (Laravel requirement)
-    - LARAVEL=5.0.* TESTBENCH=3.0.* PHPUNIT=4.8.* SENTRY=^2.3
-
     # All versions below should be test on PHP ^7.1 (Sentry SDK requrement)
     - LARAVEL=5.1.* TESTBENCH=3.1.* PHPUNIT=5.7.* SENTRY=^2.3
     - LARAVEL=5.2.* TESTBENCH=3.2.* PHPUNIT=5.7.* SENTRY=^2.3
@@ -40,21 +36,6 @@ matrix:
       env: LARAVEL=8.x-dev@dev TESTBENCH=6.x-dev@dev PHPUNIT=8.4.* SENTRY=^2.3 COMPOSER_STABILITY=dev
     - php: 7.4
       env: LARAVEL=8.x-dev@dev TESTBENCH=6.x-dev@dev PHPUNIT=8.4.* SENTRY=^2.3 COMPOSER_STABILITY=dev
-  exclude:
-    - php: 7.1
-      env: LARAVEL=8.x-dev@dev TESTBENCH=6.x-dev@dev PHPUNIT=8.4.* SENTRY=^2.3 COMPOSER_STABILITY=dev
-    - php: 7.1
-      env: LARAVEL=^7.0 TESTBENCH=5.1.* PHPUNIT=8.4.* SENTRY=dev-develop@dev
-    - php: 7.1
-      env: LARAVEL=^7.0 TESTBENCH=5.1.* PHPUNIT=8.4.* SENTRY=^2.3
-    - php: 7.1
-      env: LARAVEL=^6.0 TESTBENCH=4.7.* PHPUNIT=8.4.* SENTRY=^2.3
-    - php: 7.2
-      env: LARAVEL=5.0.* TESTBENCH=3.0.* PHPUNIT=4.8.* SENTRY=^2.3
-    - php: 7.3
-      env: LARAVEL=5.0.* TESTBENCH=3.0.* PHPUNIT=4.8.* SENTRY=^2.3
-    - php: 7.4
-      env: LARAVEL=5.0.* TESTBENCH=3.0.* PHPUNIT=4.8.* SENTRY=^2.3
 
 cache:
   directories:
