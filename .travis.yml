@@ -22,11 +22,11 @@ env:
     - LARAVEL=5.8.* TESTBENCH=3.8.* PHPUNIT=7.5.* SENTRY=^2.3
 
     # All versions below only support PHP ^7.2 (Laravel requirement)
-    - LARAVEL=^6.0 TESTBENCH=4.7.* PHPUNIT=8.0.* SENTRY=^2.3
-    - LARAVEL=^7.0 TESTBENCH=5.1.* PHPUNIT=8.0.* SENTRY=^2.3
+    - LARAVEL=^6.0 TESTBENCH=4.7.* PHPUNIT=8.4.* SENTRY=^2.3
+    - LARAVEL=^7.0 TESTBENCH=5.1.* PHPUNIT=8.4.* SENTRY=^2.3
 
     # We add one more test using the bleading edge of the sentry/sentry package
-    - LARAVEL=^7.0 TESTBENCH=5.1.* PHPUNIT=8.0.* SENTRY=dev-develop@dev
+    - LARAVEL=^7.0 TESTBENCH=5.1.* PHPUNIT=8.4.* SENTRY=dev-develop@dev
 
     # We add one more test using the next version of Laravel
     - LARAVEL=8.x-dev@dev TESTBENCH=6.x-dev@dev PHPUNIT=8.4.* SENTRY=^2.3 COMPOSER_STABILITY=dev
@@ -44,11 +44,11 @@ matrix:
     - php: 7.1
       env: LARAVEL=8.x-dev@dev TESTBENCH=6.x-dev@dev PHPUNIT=8.4.* SENTRY=^2.3 COMPOSER_STABILITY=dev
     - php: 7.1
-      env: LARAVEL=^7.0 TESTBENCH=5.1.* PHPUNIT=8.0.* SENTRY=dev-develop@dev
+      env: LARAVEL=^7.0 TESTBENCH=5.1.* PHPUNIT=8.4.* SENTRY=dev-develop@dev
     - php: 7.1
-      env: LARAVEL=^7.0 TESTBENCH=5.1.* PHPUNIT=8.0.* SENTRY=^2.3
+      env: LARAVEL=^7.0 TESTBENCH=5.1.* PHPUNIT=8.4.* SENTRY=^2.3
     - php: 7.1
-      env: LARAVEL=^6.0 TESTBENCH=4.7.* PHPUNIT=8.0.* SENTRY=^2.3
+      env: LARAVEL=^6.0 TESTBENCH=4.7.* PHPUNIT=8.4.* SENTRY=^2.3
     - php: 7.2
       env: LARAVEL=5.0.* TESTBENCH=3.0.* PHPUNIT=4.8.* SENTRY=^2.3
     - php: 7.3
@@ -68,7 +68,7 @@ jobs:
   include:
     - stage: Code style
       name: PHP CS Fixer
-      php: 7.3
+      php: 7.4
       env: USE_COMPOSER_JSON=1
       script: composer phpcs
 
