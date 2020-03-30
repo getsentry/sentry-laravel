@@ -15,6 +15,7 @@ use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\Events\WorkerStopping;
 use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Routing\Route;
+use Illuminate\Support\Str;
 use RuntimeException;
 use Sentry\Breadcrumb;
 use Sentry\SentrySdk;
@@ -170,14 +171,24 @@ class EventHandler
      */
     protected function routerMatchedHandler(Route $route)
     {
+        $routeName = null;
+
         if ($route->getName()) {
             // someaction (route name/alias)
             $routeName = $route->getName();
-        } elseif ($route->getActionName()) {
+
+            // Laravel 7 route caching generates a route names if the user didn't specify one
+            // theirselfs to optimize route matching. These route names are useless to the
+            // developer so if we encounter a generated route name we discard the value
+            if (Str::startsWith($routeName, 'generated::')) {
+                $routeName = null;
+            }
+        }
+
+        if (empty($routeName) && $route->getActionName()) {
             // SomeController@someAction (controller action)
             $routeName = $route->getActionName();
-        }
-        if (empty($routeName) || $routeName === 'Closure') {
+        } elseif (empty($routeName) || $routeName === 'Closure') {
             // /someaction // Fallback to the url
             $routeName = $route->uri();
         }
@@ -188,6 +199,7 @@ class EventHandler
             'route',
             $routeName
         ));
+
         Integration::setTransaction($routeName);
     }
 
