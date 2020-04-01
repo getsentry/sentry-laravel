@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.7.1
+
 - Discard Laravel 7 route cache generated route names (#337)
 
 ## 1.7.0
