@@ -21,4 +21,7 @@ return [
         'queue_info' => true,
     ],
 
+    // @see: https://docs.sentry.io/error-reporting/configuration/?platform=php#send-default-pii
+    'send_default_pii' => false,
+
 ];
