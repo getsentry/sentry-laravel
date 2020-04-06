@@ -21,4 +21,5 @@ return [
         'queue_info' => true,
     ],
 
+    'send_default_pii' => true,
 ];
