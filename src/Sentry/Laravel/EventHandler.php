@@ -302,9 +302,9 @@ class EventHandler
      * @param string $message Log messsage.
      * @param array  $context Log context.
      */
-    private function addLogBreadcrumb(string $level, string $message, array $context = []): void
+    private function addLogBreadcrumb(string $level, ?string $message, array $context = []): void
     {
-        if (!$this->recordLaravelLogs) {
+        if (!$this->recordLaravelLogs || is_null($message)) {
             return;
         }
 
