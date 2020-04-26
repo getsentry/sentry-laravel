@@ -299,7 +299,7 @@ class EventHandler
      * Helper to add an log breadcrumb.
      *
      * @param string $level   Log level. May be any standard.
-     * @param string $message Log messsage.
+     * @param string $message Log message.
      * @param array  $context Log context.
      */
     private function addLogBreadcrumb(string $level, string $message, array $context = []): void
