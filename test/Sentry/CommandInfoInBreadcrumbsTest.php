@@ -6,7 +6,7 @@ use Illuminate\Console\Events\CommandStarting;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 
-class QueueInfoInBreadcrumbsTest extends SentryLaravelTestCase
+class CommandInfoInBreadcrumbsTest extends SentryLaravelTestCase
 {
     public function testQueueInfoAreRecordedWhenEnabled()
     {
@@ -15,10 +15,10 @@ class QueueInfoInBreadcrumbsTest extends SentryLaravelTestCase
         }
 
         $this->resetApplicationWithConfig([
-            'sentry.breadcrumbs.queue_info' => true,
+            'sentry.breadcrumbs.command_info' => true,
         ]);
 
-        $this->assertTrue($this->app['config']->get('sentry.breadcrumbs.queue_info'));
+        $this->assertTrue($this->app['config']->get('sentry.breadcrumbs.command_info'));
 
         $this->dispatchCommandStartEvent();
 
@@ -35,10 +35,10 @@ class QueueInfoInBreadcrumbsTest extends SentryLaravelTestCase
         }
 
         $this->resetApplicationWithConfig([
-            'sentry.breadcrumbs.queue_info' => false,
+            'sentry.breadcrumbs.command_info' => false,
         ]);
 
-        $this->assertFalse($this->app['config']->get('sentry.breadcrumbs.queue_info'));
+        $this->assertFalse($this->app['config']->get('sentry.breadcrumbs.command_info'));
 
         $this->dispatchCommandStartEvent();
 
