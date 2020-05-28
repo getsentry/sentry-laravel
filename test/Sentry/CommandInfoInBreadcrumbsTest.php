@@ -8,7 +8,7 @@ use Symfony\Component\Console\Output\BufferedOutput;
 
 class CommandInfoInBreadcrumbsTest extends SentryLaravelTestCase
 {
-    public function testQueueInfoAreRecordedWhenEnabled()
+    public function testCommandInfoAreRecordedWhenEnabled()
     {
         if ($this->shouldSkip()) {
             $this->markTestSkipped('Laravel version <5.5 does not contain the events tested.');
@@ -28,7 +28,7 @@ class CommandInfoInBreadcrumbsTest extends SentryLaravelTestCase
         $this->assertEquals('--foo=bar', $lastBreadcrumb->getMetadata()['input']);
     }
 
-    public function testQueueInfoAreRecordedWhenDisabled()
+    public function testCommandInfoAreRecordedWhenDisabled()
     {
         if ($this->shouldSkip()) {
             $this->markTestSkipped('Laravel version <5.5 does not contain the events tested.');
