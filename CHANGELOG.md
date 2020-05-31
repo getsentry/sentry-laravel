@@ -4,6 +4,7 @@
 
 - Add `send_default_pii` option by default to published config file (#340)
 - Update `.gitattributes` to exclude more files from dist release (#341)
+- Fixed scope data in queue jobs being lost in some cases (#351)
 
 ## 1.7.1
 
