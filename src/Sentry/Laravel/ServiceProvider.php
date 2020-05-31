@@ -75,7 +75,9 @@ class ServiceProvider extends IlluminateServiceProvider
 
         $handler->subscribe();
 
-        $handler->subscribeQueueEvents();
+        if ($this->app->bound('queue')) {
+            $handler->subscribeQueueEvents($this->app->queue);
+        }
 
         if (isset($userConfig['send_default_pii']) && $userConfig['send_default_pii'] !== false) {
             $handler->subscribeAuthEvents();
@@ -106,7 +108,7 @@ class ServiceProvider extends IlluminateServiceProvider
                 $userConfig['breadcrumbs'],
                 // We resolve the integrations through the container later, so we initially do not pass it to the SDK yet
                 $userConfig['integrations'],
-                // This is kept for backwards compatibilty and can be dropped in a future breaking release
+                // This is kept for backwards compatibility and can be dropped in a future breaking release
                 $userConfig['breadcrumbs.sql_bindings']
             );
 
