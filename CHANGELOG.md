@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.8.0
+
 - Add `send_default_pii` option by default to published config file (#340)
 - Update `.gitattributes` to exclude more files from dist release (#341)
 - Ignore log breadcrumbs when `null` is the message logged (#345)
