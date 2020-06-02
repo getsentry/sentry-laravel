@@ -6,19 +6,19 @@ use Illuminate\Console\Events\CommandStarting;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 
-class QueueInfoInBreadcrumbsTest extends SentryLaravelTestCase
+class CommandInfoInBreadcrumbsTest extends SentryLaravelTestCase
 {
-    public function testQueueInfoAreRecordedWhenEnabled()
+    public function testCommandInfoAreRecordedWhenEnabled()
     {
         if ($this->shouldSkip()) {
             $this->markTestSkipped('Laravel version <5.5 does not contain the events tested.');
         }
 
         $this->resetApplicationWithConfig([
-            'sentry.breadcrumbs.queue_info' => true,
+            'sentry.breadcrumbs.command_info' => true,
         ]);
 
-        $this->assertTrue($this->app['config']->get('sentry.breadcrumbs.queue_info'));
+        $this->assertTrue($this->app['config']->get('sentry.breadcrumbs.command_info'));
 
         $this->dispatchCommandStartEvent();
 
@@ -28,17 +28,17 @@ class QueueInfoInBreadcrumbsTest extends SentryLaravelTestCase
         $this->assertEquals('--foo=bar', $lastBreadcrumb->getMetadata()['input']);
     }
 
-    public function testQueueInfoAreRecordedWhenDisabled()
+    public function testCommandInfoAreRecordedWhenDisabled()
     {
         if ($this->shouldSkip()) {
             $this->markTestSkipped('Laravel version <5.5 does not contain the events tested.');
         }
 
         $this->resetApplicationWithConfig([
-            'sentry.breadcrumbs.queue_info' => false,
+            'sentry.breadcrumbs.command_info' => false,
         ]);
 
-        $this->assertFalse($this->app['config']->get('sentry.breadcrumbs.queue_info'));
+        $this->assertFalse($this->app['config']->get('sentry.breadcrumbs.command_info'));
 
         $this->dispatchCommandStartEvent();
 

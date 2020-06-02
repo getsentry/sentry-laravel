@@ -100,6 +100,13 @@ class EventHandler
     private $recordQueueInfo;
 
     /**
+     * Indicates if we should we add command info to the breadcrumbs.
+     *
+     * @var bool
+     */
+    private $recordCommandInfo;
+
+    /**
      * Indicates if we pushed a scope for the queue.
      *
      * @var bool
@@ -119,6 +126,7 @@ class EventHandler
         $this->recordSqlBindings = ($config['breadcrumbs.sql_bindings'] ?? $config['breadcrumbs']['sql_bindings'] ?? false) === true;
         $this->recordLaravelLogs = ($config['breadcrumbs.logs'] ?? $config['breadcrumbs']['logs'] ?? true) === true;
         $this->recordQueueInfo = ($config['breadcrumbs.queue_info'] ?? $config['breadcrumbs']['queue_info'] ?? true) === true;
+        $this->recordCommandInfo = ($config['breadcrumbs.command_info'] ?? $config['breadcrumbs']['command_info'] ?? true) === true;
     }
 
     /**
@@ -457,7 +465,7 @@ class EventHandler
                 $scope->setTag('command', $event->command);
             });
 
-            if (!$this->recordQueueInfo) {
+            if (!$this->recordCommandInfo) {
                 return;
             }
 
@@ -480,19 +488,21 @@ class EventHandler
      */
     protected function commandFinishedHandler(CommandFinished $event)
     {
-        Integration::addBreadcrumb(new Breadcrumb(
-            Breadcrumb::LEVEL_INFO,
-            Breadcrumb::TYPE_DEFAULT,
-            'artisan.command',
-            'Finished Artisan command: ' . $event->command,
-            array_merge([
-                'exit' => $event->exitCode,
-            ], method_exists($event->input, '__toString') ? [
-                'input' => (string)$event->input,
-            ] : [])
-        ));
+        if ($this->recordCommandInfo) {
+            Integration::addBreadcrumb(new Breadcrumb(
+                Breadcrumb::LEVEL_INFO,
+                Breadcrumb::TYPE_DEFAULT,
+                'artisan.command',
+                'Finished Artisan command: ' . $event->command,
+                array_merge([
+                    'exit' => $event->exitCode,
+                ], method_exists($event->input, '__toString') ? [
+                    'input' => (string)$event->input,
+                ] : [])
+            ));
+        }
 
-        Integration::configureScope(static function (Scope $scope) use ($event): void {
+        Integration::configureScope(static function (Scope $scope): void {
             $scope->setTag('command', '');
         });
 

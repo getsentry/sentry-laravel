@@ -19,6 +19,9 @@ return [
 
         // Capture queue job information in breadcrumbs
         'queue_info' => true,
+
+        // Capture command information in breadcrumbs
+        'command_info' => true,
     ],
 
     // @see: https://docs.sentry.io/error-reporting/configuration/?platform=php#send-default-pii
