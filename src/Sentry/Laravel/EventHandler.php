@@ -313,13 +313,20 @@ class EventHandler
     /**
      * Helper to add an log breadcrumb.
      *
-     * @param string $level   Log level. May be any standard.
-     * @param string $message Log message.
-     * @param array  $context Log context.
+     * @param string      $level   Log level. May be any standard.
+     * @param string|null $message Log message.
+     * @param array       $context Log context.
      */
-    private function addLogBreadcrumb(string $level, string $message, array $context = []): void
+    private function addLogBreadcrumb(string $level, ?string $message, array $context = []): void
     {
         if (!$this->recordLaravelLogs) {
+            return;
+        }
+
+        // A log message with `null` as value will not be recorded by Laravel
+        // however empty strings are logged so we mimick that behaviour to
+        // check for `null` to stay consistent with how Laravel logs it
+        if ($message === null) {
             return;
         }
 
