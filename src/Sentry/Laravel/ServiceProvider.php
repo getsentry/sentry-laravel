@@ -2,7 +2,6 @@
 
 namespace Sentry\Laravel;
 
-use Illuminate\Support\Env;
 use Sentry\SentrySdk;
 use Sentry\State\Hub;
 use Sentry\ClientBuilder;
@@ -115,7 +114,7 @@ class ServiceProvider extends IlluminateServiceProvider
 
             $options = \array_merge(
                 [
-                    'environment' => Env::get('SENTRY_ENVIRONMENT') ?? $this->app->environment(),
+                    'environment' => \env('SENTRY_ENVIRONMENT') ?? $this->app->environment(),
                     'prefixes' => [$basePath],
                     'in_app_exclude' => ["{$basePath}/vendor"],
                 ],
