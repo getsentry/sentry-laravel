@@ -5,11 +5,11 @@ namespace Sentry;
 use Sentry\Laravel\Facade;
 use Sentry\Laravel\ServiceProvider;
 
-class ServiceProviderWithEnvironmentFromEnvironmentTest extends \Orchestra\Testbench\TestCase
+class ServiceProviderWithEnvironmentFromConfigTest extends \Orchestra\Testbench\TestCase
 {
     protected function getEnvironmentSetUp($app)
     {
-        putenv('SENTRY_ENVIRONMENT=not_testing');
+        $app['config']->set('sentry.environment', 'not_testing');
     }
 
     protected function getPackageProviders($app)
@@ -26,7 +26,7 @@ class ServiceProviderWithEnvironmentFromEnvironmentTest extends \Orchestra\Testb
         ];
     }
 
-    public function testSentryEnvironmentDefaultGetsOverriddenByEnvironmentVariable()
+    public function testSentryEnvironmentDefaultGetsOverriddenByConfig()
     {
         $this->assertEquals('not_testing', app('sentry')->getClient()->getOptions()->getEnvironment());
     }

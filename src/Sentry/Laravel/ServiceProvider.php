@@ -114,12 +114,13 @@ class ServiceProvider extends IlluminateServiceProvider
 
             $options = \array_merge(
                 [
-                    'environment' => \env('SENTRY_ENVIRONMENT') ?? $this->app->environment(),
                     'prefixes' => [$basePath],
                     'in_app_exclude' => ["{$basePath}/vendor"],
                 ],
                 $userConfig
             );
+
+            $options['environment'] = $userConfig['environment'] ?? $this->app->environment();
 
             $clientBuilder = ClientBuilder::create($options);
 
