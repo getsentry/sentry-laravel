@@ -7,7 +7,7 @@ return [
     // capture release as git sha
     // 'release' => trim(exec('git --git-dir ' . base_path('.git') . ' log --pretty="%h" -n1 HEAD')),
 
-    // By default the environment will be inferred from your Laravel application
+    // When left empty or `null` the Laravel environment will be used
     'environment' => env('SENTRY_ENVIRONMENT'),
 
     'breadcrumbs' => [

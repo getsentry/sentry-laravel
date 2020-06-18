@@ -120,7 +120,10 @@ class ServiceProvider extends IlluminateServiceProvider
                 $userConfig
             );
 
-            $options['environment'] = $userConfig['environment'] ?? $this->app->environment();
+            // When we get no environment from the (user) configuration we default to the Laravel environment
+            if (empty($options['environment'])) {
+                $options['environment'] = $this->app->environment();
+            }
 
             $clientBuilder = ClientBuilder::create($options);
 
