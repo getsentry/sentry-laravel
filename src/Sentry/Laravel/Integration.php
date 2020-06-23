@@ -30,8 +30,10 @@ class Integration implements IntegrationInterface
                 return $event;
             }
 
-            $event->setTransaction($self->getTransaction());
-
+            if (null === $event->getTransaction()) {
+                $event->setTransaction($self->getTransaction());
+            }
+            
             return $event;
         });
     }

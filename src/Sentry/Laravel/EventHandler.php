@@ -21,6 +21,7 @@ use RuntimeException;
 use Sentry\Breadcrumb;
 use Sentry\SentrySdk;
 use Sentry\State\Scope;
+use Sentry\Tracing\SpanContext;
 
 class EventHandler
 {
@@ -286,6 +287,21 @@ class EventHandler
         if ($this->recordSqlBindings) {
             $data['bindings'] = $bindings;
         }
+
+        /** @var \Sentry\State\Hub $hub */
+        $hub = SentrySdk::getCurrentHub();
+        $hub->configureScope(function (Scope $scope) use ($data, $query, $time): void {
+            $transaction = $scope->getSpan();
+            if (null !== $transaction) {
+                $context = new SpanContext();
+                $context->op = 'sql.query';
+                $context->description = $query;
+                $timestamp = microtime(true) - $time / 1000;
+                $context->startTimestamp = $timestamp;
+                $context->endTimestamp = $context->startTimestamp + $time / 1000;
+                $transaction->startChild($context);
+            }
+        });
 
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,
