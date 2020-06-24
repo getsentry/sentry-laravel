@@ -30,6 +30,8 @@ class ServiceProvider extends IlluminateServiceProvider
 
     /**
      * Boot the service provider.
+     *
+     * @param \Illuminate\Contracts\Foundation\Application $application
      */
     public function boot(Application $application): void
     {
