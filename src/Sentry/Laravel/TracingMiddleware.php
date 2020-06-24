@@ -24,7 +24,7 @@ class TracingMiddleware
         $transaction = null;
 
         if (app()->bound('sentry')) {
-            $path = ltrim("/{$request->path()}", '/');
+            $path = '/' . ltrim($request->path(), '/');
 
             /** @var \Sentry\State\Hub $hub */
             $hub = app('sentry');
