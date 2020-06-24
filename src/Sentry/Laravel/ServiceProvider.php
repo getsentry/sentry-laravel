@@ -2,6 +2,11 @@
 
 namespace Sentry\Laravel;
 
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\View\Engine;
+use Illuminate\Contracts\View\View;
+use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
+use Illuminate\View\Engines\EngineResolver;
 use Sentry\SentrySdk;
 use Sentry\State\Hub;
 use Sentry\ClientBuilder;
@@ -9,6 +14,7 @@ use Sentry\State\HubInterface;
 use Illuminate\Log\LogManager;
 use Sentry\ClientBuilderInterface;
 use Laravel\Lumen\Application as Lumen;
+use Illuminate\View\Factory as ViewFactory;
 use Sentry\Integration as SdkIntegration;
 use Illuminate\Foundation\Application as Laravel;
 use Illuminate\Support\ServiceProvider as IlluminateServiceProvider;
@@ -25,7 +31,7 @@ class ServiceProvider extends IlluminateServiceProvider
     /**
      * Boot the service provider.
      */
-    public function boot(): void
+    public function boot(Application $application): void
     {
         $this->app->make(static::$abstract);
 
@@ -42,6 +48,9 @@ class ServiceProvider extends IlluminateServiceProvider
 
             $this->registerArtisanCommands();
         }
+
+        $httpKernel = $application->make(HttpKernelInterface::class);
+        $httpKernel->prependMiddleware(TracingMiddleware::class);
     }
 
     /**
@@ -62,6 +71,32 @@ class ServiceProvider extends IlluminateServiceProvider
                 return (new LogChannel($app))($config);
             });
         }
+
+        $this->app->afterResolving('view.engine.resolver', function (EngineResolver $engineResolver) : void {
+            foreach (['file', 'php', 'blade'] as $engineName) {
+                $realEngine = $engineResolver->resolve($engineName);
+
+                $engineResolver->register($engineName, function () use ($realEngine) {
+                    return $this->wrapEngine($realEngine);
+                });
+            }
+        });
+    }
+
+    public function wrapEngine(Engine $realEngine) : Engine
+    {
+        /** @var ViewFactory $viewFactory */
+        $viewFactory = $this->app->make('view');
+
+        /** @noinspection UnusedFunctionResultInspection */
+        $viewFactory->composer('*', static function (View $view) use ($viewFactory) : void {
+            $viewFactory->share(ViewEngineDecorator::SHARED_KEY, $view->name());
+        });
+
+        return new ViewEngineDecorator(
+            $realEngine,
+            $viewFactory
+        );
     }
 
     /**
