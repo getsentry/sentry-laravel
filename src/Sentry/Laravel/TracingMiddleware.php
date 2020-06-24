@@ -25,6 +25,7 @@ class TracingMiddleware
 
         if (app()->bound('sentry')) {
             $path = '/' . ltrim($request->path(), '/');
+            $fallbackTime = microtime(true);
 
             /** @var \Sentry\State\Hub $hub */
             $hub = app('sentry');
@@ -33,7 +34,7 @@ class TracingMiddleware
             $context->op = 'http.server';
             $context->name = $path;
             $context->description = strtoupper($request->method()) . ' ' . $path;
-            $context->startTimestamp = $request->server('REQUEST_TIME_FLOAT') ?? microtime(true);
+            $context->startTimestamp = $request->server('REQUEST_TIME_FLOAT', $fallbackTime);
 
             // Listen for a `RouteMatched` so we can use the route information for a nice transaction name
             // @TODO: We already listen for this in the `EventHandler` but since there is no way for us to change the context this was added as PoC
@@ -44,7 +45,16 @@ class TracingMiddleware
 
             $transaction = $hub->startTransaction($context);
 
-            $this->addBootTimeSpans($transaction);
+            if (!$this->addBootTimeSpans($transaction)) {
+                // @TODO: We might want to move this together with the `RouteMatches` listener to some central place and or do this from the `EventHandler`
+                app()->booted(static function () use ($request, $transaction, $fallbackTime): void {
+                    $spanContextStart = new SpanContext();
+                    $spanContextStart->op = 'autoload+bootstrap';
+                    $spanContextStart->startTimestamp = defined('LARAVEL_START') ? LARAVEL_START : $request->server('REQUEST_TIME_FLOAT', $fallbackTime);
+                    $spanContextStart->endTimestamp = microtime(true);
+                    $transaction->startChild($spanContextStart);
+                });
+            }
 
             $hub->configureScope(static function (Scope $scope) use ($transaction): void {
                 $scope->setSpan($transaction);
@@ -78,30 +88,30 @@ class TracingMiddleware
         }
     }
 
-    private function addBootTimeSpans(Transaction $transaction): void
+    private function addBootTimeSpans(Transaction $transaction): bool
     {
         if (!defined('LARAVEL_START') || !LARAVEL_START) {
-            return;
+            return false;
         }
 
         if (!defined('SENTRY_AUTOLOAD') || !SENTRY_AUTOLOAD) {
-            return;
+            return false;
         }
 
         if (!defined('SENTRY_BOOTSTRAP') || !SENTRY_BOOTSTRAP) {
-            return;
+            return false;
         }
 
         $spanContextStart = new SpanContext();
         $spanContextStart->op = 'autoload';
-        $spanContextStart->endTimestamp = SENTRY_AUTOLOAD;
         $spanContextStart->startTimestamp = LARAVEL_START;
+        $spanContextStart->endTimestamp = SENTRY_AUTOLOAD;
         $transaction->startChild($spanContextStart);
 
         $spanContextStart = new SpanContext();
         $spanContextStart->op = 'bootstrap';
-        $spanContextStart->endTimestamp = SENTRY_BOOTSTRAP;
         $spanContextStart->startTimestamp = SENTRY_AUTOLOAD;
+        $spanContextStart->endTimestamp = SENTRY_BOOTSTRAP;
         $transaction->startChild($spanContextStart);
     }
 }
