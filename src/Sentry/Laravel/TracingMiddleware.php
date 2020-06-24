@@ -3,6 +3,7 @@
 namespace Sentry\Laravel;
 
 use Closure;
+use Sentry\SentrySdk;
 use Sentry\State\Scope;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\TransactionContext;
@@ -37,13 +38,19 @@ class TracingMiddleware
             });
         }
 
-        $response = $next($request);
+        return $next($request);
+    }
 
-        if (null !== $transaction) {
-            $transaction->finish();
-        }
-
-        return $response;
+    public function terminate($request, $response)
+    {
+        /** @var \Sentry\State\Hub $hub */
+        $hub = SentrySdk::getCurrentHub();
+        $hub->configureScope(function (Scope $scope): void {
+            $transaction = $scope->getSpan();
+            if (null !== $transaction) {
+                $transaction->finish();
+            }
+        });
     }
 
     private function addBootTimeSpans(Transaction $transaction): void
