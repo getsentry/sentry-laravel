@@ -15,19 +15,19 @@ final class ViewEngineDecorator implements Engine
     public const SHARED_KEY = '__sentry_tracing_view_name';
 
     /** @var Engine */
-    private $realEngine;
+    private $engine;
 
     /** @var Factory */
     private $viewFactory;
 
-    public function __construct(Engine $realEngine, Factory $viewFactory)
+    public function __construct(Engine $engine, Factory $viewFactory)
     {
-        $this->realEngine = $realEngine;
+        $this->engine = $engine;
         $this->viewFactory = $viewFactory;
     }
 
     /**
-     * {@inheritDoc}
+     * {@inheritdoc}
      */
     public function get($path, array $data = []): string
     {
@@ -47,7 +47,7 @@ final class ViewEngineDecorator implements Engine
             $this->viewFactory->shared(self::SHARED_KEY, 'unknown');
         }
 
-        $result = $this->realEngine->get($path, $data);
+        $result = $this->engine->get($path, $data);
 
         if (null !== $span) {
             $span->finish();
@@ -57,19 +57,10 @@ final class ViewEngineDecorator implements Engine
     }
 
     /**
-     * Since Laravel has a nasty habit of exposing public API that is not defined in interfaces, we must expose the
-     * getCompiler method commonly used in the actual view engines.
-     *
-     * Unfortunately, we have to disable all kinds of static analysis due to this violation :/
-     *
-     * @noinspection PhpUnused
+     * Laravel uses this function internally
      */
     public function getCompiler(): CompilerInterface
     {
-        /**
-         * @noinspection PhpUndefinedMethodInspection
-         * @psalm-suppress UndefinedInterfaceMethod
-         */
-        return $this->realEngine->getCompiler();
+        return $this->engine->getCompiler();
     }
 }
