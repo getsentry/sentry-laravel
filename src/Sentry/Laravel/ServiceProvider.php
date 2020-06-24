@@ -72,31 +72,28 @@ class ServiceProvider extends IlluminateServiceProvider
             });
         }
 
-        $this->app->afterResolving('view.engine.resolver', function (EngineResolver $engineResolver) : void {
+        $this->app->afterResolving('view.engine.resolver', function (EngineResolver $engineResolver): void {
             foreach (['file', 'php', 'blade'] as $engineName) {
                 $realEngine = $engineResolver->resolve($engineName);
 
                 $engineResolver->register($engineName, function () use ($realEngine) {
-                    return $this->wrapEngine($realEngine);
+                    return $this->wrapViewEngine($realEngine);
                 });
             }
         });
     }
 
-    public function wrapEngine(Engine $realEngine) : Engine
+    public function wrapViewEngine(Engine $realEngine): Engine
     {
         /** @var ViewFactory $viewFactory */
         $viewFactory = $this->app->make('view');
 
         /** @noinspection UnusedFunctionResultInspection */
         $viewFactory->composer('*', static function (View $view) use ($viewFactory) : void {
-            $viewFactory->share(ViewEngineDecorator::SHARED_KEY, $view->name());
+            $viewFactory->share(TracingViewEngineDecorator::SHARED_KEY, $view->name());
         });
 
-        return new ViewEngineDecorator(
-            $realEngine,
-            $viewFactory
-        );
+        return new TracingViewEngineDecorator($realEngine, $viewFactory);
     }
 
     /**

@@ -10,7 +10,7 @@ use Sentry\SentrySdk;
 use Sentry\State\Scope;
 use Sentry\Tracing\SpanContext;
 
-final class ViewEngineDecorator implements Engine
+final class TracingViewEngineDecorator implements Engine
 {
     public const SHARED_KEY = '__sentry_tracing_view_name';
 
