@@ -80,18 +80,28 @@ class TracingMiddleware
 
     private function addBootTimeSpans(Transaction $transaction): void
     {
-        if (LARAVEL_START && SENTRY_AUTOLOAD && SENTRY_BOOTSTRAP) {
-            $spanContextStart = new SpanContext();
-            $spanContextStart->op = 'autoload';
-            $spanContextStart->startTimestamp = LARAVEL_START;
-            $spanContextStart->endTimestamp = SENTRY_AUTOLOAD;
-            $transaction->startChild($spanContextStart);
-
-            $spanContextStart = new SpanContext();
-            $spanContextStart->op = 'bootstrap';
-            $spanContextStart->startTimestamp = SENTRY_AUTOLOAD;
-            $spanContextStart->endTimestamp = SENTRY_BOOTSTRAP;
-            $transaction->startChild($spanContextStart);
+        if (!defined('LARAVEL_START') || !LARAVEL_START) {
+            return;
         }
+
+        if (!defined('SENTRY_AUTOLOAD') || !SENTRY_AUTOLOAD) {
+            return;
+        }
+
+        if (!defined('SENTRY_BOOTSTRAP') || !SENTRY_BOOTSTRAP) {
+            return;
+        }
+
+        $spanContextStart = new SpanContext();
+        $spanContextStart->op = 'autoload';
+        $spanContextStart->endTimestamp = SENTRY_AUTOLOAD;
+        $spanContextStart->startTimestamp = LARAVEL_START;
+        $transaction->startChild($spanContextStart);
+
+        $spanContextStart = new SpanContext();
+        $spanContextStart->op = 'bootstrap';
+        $spanContextStart->endTimestamp = SENTRY_BOOTSTRAP;
+        $spanContextStart->startTimestamp = SENTRY_AUTOLOAD;
+        $transaction->startChild($spanContextStart);
     }
 }
