@@ -3,7 +3,6 @@
 namespace Sentry\Laravel;
 
 use Closure;
-use Illuminate\Routing\Events\RouteMatched;
 use Sentry\State\Scope;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\TransactionContext;

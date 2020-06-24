@@ -6,7 +6,6 @@ namespace Sentry\Laravel;
 use Illuminate\Contracts\View\Engine;
 use Illuminate\View\Compilers\CompilerInterface;
 use Illuminate\View\Factory;
-use Sentry\SentrySdk;
 use Sentry\State\Scope;
 use Sentry\Tracing\SpanContext;
 
@@ -33,18 +32,17 @@ final class TracingViewEngineDecorator implements Engine
     {
         $transaction = null;
         $span = null;
-        /** @var \Sentry\State\Hub $hub */
-        $hub = SentrySdk::getCurrentHub();
-        $hub->configureScope(function (Scope $scope) use (&$transaction): void {
+
+        Integration::configureScope(static function (Scope $scope) use (&$transaction): void {
             $transaction = $scope->getSpan();
         });
 
         if (null !== $transaction) {
             $context = new SpanContext();
-            $context->op = 'render';
-            $context->description = basename($path);
+            $context->op = 'view.render';
+            $context->description = $this->viewFactory->shared(self::SHARED_KEY, basename($path));
+
             $span = $transaction->startChild($context);
-            $this->viewFactory->shared(self::SHARED_KEY, 'unknown');
         }
 
         $result = $this->engine->get($path, $data);

@@ -31,10 +31,8 @@ class ServiceProvider extends IlluminateServiceProvider
 
     /**
      * Boot the service provider.
-     *
-     * @param \Illuminate\Contracts\Foundation\Application $application
      */
-    public function boot(Application $application): void
+    public function boot(): void
     {
         $this->app->make(static::$abstract);
 
@@ -50,10 +48,12 @@ class ServiceProvider extends IlluminateServiceProvider
             }
 
             $this->registerArtisanCommands();
-        }
+        } elseif ($this->app->bound(HttpKernelInterface::class)) {
+            /** @var \Illuminate\Contracts\Http\Kernel $httpKernel */
+            $httpKernel = $this->app->make(HttpKernelInterface::class);
 
-        $httpKernel = $application->make(HttpKernelInterface::class);
-        $httpKernel->prependMiddleware(TracingMiddleware::class);
+            $httpKernel->prependMiddleware(TracingMiddleware::class);
+        }
     }
 
     /**
