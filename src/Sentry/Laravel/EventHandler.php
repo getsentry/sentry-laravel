@@ -21,6 +21,7 @@ use Sentry\Breadcrumb;
 use Sentry\SentrySdk;
 use Sentry\State\Scope;
 use Sentry\Tracing\SpanContext;
+use Sentry\Tracing\Transaction;
 
 class EventHandler
 {
@@ -194,11 +195,21 @@ class EventHandler
      */
     protected function routerMatchedHandler(Route $route)
     {
+        $routeName = Integration::extractNameForRoute($route) ?? '<unlabeled transaction>';
+
+        Integration::configureScope(static function (Scope $scope) use ($routeName): void {
+            $transaction = $scope->getSpan();
+
+            if ($transaction instanceof Transaction) {
+                $transaction->setName($routeName);
+            }
+        });
+
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,
             Breadcrumb::TYPE_NAVIGATION,
             'route',
-            $routeName = Integration::extractNameForRoute($route)
+            $routeName
         ));
 
         Integration::setTransaction($routeName);

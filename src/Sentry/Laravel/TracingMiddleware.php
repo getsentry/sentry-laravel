@@ -36,13 +36,6 @@ class TracingMiddleware
             $context->description = strtoupper($request->method()) . ' ' . $path;
             $context->startTimestamp = $request->server('REQUEST_TIME_FLOAT', $fallbackTime);
 
-            // Listen for a `RouteMatched` so we can use the route information for a nice transaction name
-            // @TODO: We already listen for this in the `EventHandler` but since there is no way for us to change the context this was added as PoC
-            app('events')->listen(RouteMatched::class, static function (RouteMatched $event) use (&$context, $request): void {
-                $context->name = Integration::extractNameForRoute($event->route);
-                $context->description = strtoupper($request->method()) . ' ' . $context->name;
-            });
-
             $transaction = $hub->startTransaction($context);
 
             if (!$this->addBootTimeSpans($transaction)) {
