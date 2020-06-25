@@ -3,6 +3,7 @@
 namespace Sentry\Laravel;
 
 use Closure;
+use Sentry\Context\Context;
 use Sentry\State\Scope;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\TransactionContext;
@@ -32,7 +33,10 @@ class TracingMiddleware
             $context = new TransactionContext();
             $context->op = 'http.server';
             $context->name = $path;
-            $context->description = strtoupper($request->method()) . ' ' . $path;
+            $context->data = new Context([
+                'url' => $path,
+                'method' => strtoupper($request->method()),
+            ]);
             $context->startTimestamp = $request->server('REQUEST_TIME_FLOAT', $fallbackTime);
 
             $transaction = $hub->startTransaction($context);
@@ -105,5 +109,7 @@ class TracingMiddleware
         $spanContextStart->startTimestamp = SENTRY_AUTOLOAD;
         $spanContextStart->endTimestamp = SENTRY_BOOTSTRAP;
         $transaction->startChild($spanContextStart);
+
+        return true;
     }
 }

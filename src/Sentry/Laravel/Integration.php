@@ -114,7 +114,11 @@ class Integration implements IntegrationInterface
     {
         $routeName = null;
 
-        if ($route->getName()) {
+        if ($route->uri()) {
+            $routeName = $route->uri();
+        }
+
+        if (empty($routeName) && $route->getName()) {
             // someaction (route name/alias)
             $routeName = $route->getName();
 

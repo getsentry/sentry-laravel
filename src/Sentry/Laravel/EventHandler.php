@@ -197,11 +197,15 @@ class EventHandler
     {
         $routeName = Integration::extractNameForRoute($route) ?? '<unlabeled transaction>';
 
-        Integration::configureScope(static function (Scope $scope) use ($routeName): void {
+        Integration::configureScope(static function (Scope $scope) use ($routeName, $route): void {
+            // TODO: Use getTransaction
             $transaction = $scope->getSpan();
 
             if ($transaction instanceof Transaction) {
                 $transaction->setName($routeName);
+                $transaction->setData([
+                    'action' => $route->getActionName()
+                ]);
             }
         });
 
