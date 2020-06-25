@@ -204,7 +204,8 @@ class EventHandler
             if ($transaction instanceof Transaction) {
                 $transaction->setName($routeName);
                 $transaction->setData([
-                    'action' => $route->getActionName()
+                    'action' => $route->getActionName(),
+                    'name' => $route->getName()
                 ]);
             }
         });
