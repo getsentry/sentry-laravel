@@ -8,6 +8,7 @@ use Illuminate\View\Compilers\CompilerInterface;
 use Illuminate\View\Factory;
 use Sentry\State\Scope;
 use Sentry\Tracing\SpanContext;
+use Sentry\Tracing\Span;
 
 final class TracingViewEngineDecorator implements Engine
 {
@@ -19,10 +20,14 @@ final class TracingViewEngineDecorator implements Engine
     /** @var Factory */
     private $viewFactory;
 
-    public function __construct(Engine $engine, Factory $viewFactory)
+    /** @var Span */
+    private $parentSpan;
+
+    public function __construct(Engine $engine, Factory $viewFactory, Span $parentSpan)
     {
         $this->engine = $engine;
         $this->viewFactory = $viewFactory;
+        $this->parentSpan = $parentSpan;
     }
 
     /**
@@ -30,25 +35,22 @@ final class TracingViewEngineDecorator implements Engine
      */
     public function get($path, array $data = []): string
     {
-        $transaction = null;
-        $span = null;
+        $context = new SpanContext();
+        $context->op = 'render';
+        $context->description = $this->viewFactory->shared(self::SHARED_KEY, basename($path));
 
-        Integration::configureScope(static function (Scope $scope) use (&$transaction): void {
-            $transaction = $scope->getSpan();
-        });
-
-        if (null !== $transaction) {
-            $context = new SpanContext();
-            $context->op = 'view.render';
-            $context->description = $this->viewFactory->shared(self::SHARED_KEY, basename($path));
-
-            $span = $transaction->startChild($context);
+        $span = $this->parentSpan->startChild($context);
+        
+        if ($this->parentSpan->getStartTimestamp() < 0) {
+            $this->parentSpan->setStartTimestamp($span->getStartTimestamp());
         }
 
         $result = $this->engine->get($path, $data);
 
-        if (null !== $span) {
-            $span->finish();
+        $span->finish();
+
+        if ($end = $span->getEndTimestamp()) {
+            $this->parentSpan->finish($end);
         }
 
         return $result;

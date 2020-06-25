@@ -198,8 +198,7 @@ class EventHandler
         $routeName = Integration::extractNameForRoute($route) ?? '<unlabeled transaction>';
 
         Integration::configureScope(static function (Scope $scope) use ($routeName, $route): void {
-            // TODO: Use getTransaction
-            $transaction = $scope->getSpan();
+            $transaction = $scope->getTransaction();
 
             if ($transaction instanceof Transaction) {
                 $transaction->setName($routeName);
@@ -282,7 +281,7 @@ class EventHandler
         }
 
         Integration::configureScope(static function (Scope $scope) use ($query, $time): void {
-            $transaction = $scope->getSpan();
+            $transaction = $scope->getTransaction();
             if (null !== $transaction) {
                 $context = new SpanContext();
                 $context->op = 'sql.query';

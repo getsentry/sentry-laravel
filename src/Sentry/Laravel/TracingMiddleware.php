@@ -12,6 +12,11 @@ use Sentry\Tracing\Transaction;
 class TracingMiddleware
 {
     /**
+     * The current active transaction
+     */
+    protected $transaction = null;
+
+    /**
      * Handle an incoming request.
      *
      * @param \Illuminate\Http\Request $request
@@ -21,8 +26,6 @@ class TracingMiddleware
      */
     public function handle($request, Closure $next)
     {
-        $transaction = null;
-
         if (app()->bound('sentry')) {
             $path = '/' . ltrim($request->path(), '/');
             $fallbackTime = microtime(true);
@@ -30,18 +33,22 @@ class TracingMiddleware
             /** @var \Sentry\State\Hub $hub */
             $hub = app('sentry');
 
-            $context = new TransactionContext();
-            $context->op = 'http.server';
-            $context->name = $path;
-            $context->data = new Context([
+            $transaction = null;
+
+            Integration::configureScope(static function (Scope $scope) use (&$transaction): void {
+                $transaction = $scope->getTransaction();
+            });
+
+            $this->transaction = $transaction;
+            $this->transaction->setOp('http.server');
+            $this->transaction->setName($path);
+            $this->transaction->setData([
                 'url' => $path,
                 'method' => strtoupper($request->method()),
             ]);
-            $context->startTimestamp = $request->server('REQUEST_TIME_FLOAT', $fallbackTime);
+            $this->transaction->setStartTimestamp($request->server('REQUEST_TIME_FLOAT', $fallbackTime));
 
-            $transaction = $hub->startTransaction($context);
-
-            if (!$this->addBootTimeSpans($transaction)) {
+            if (!$this->addBootTimeSpans()) {
                 // @TODO: We might want to move this together with the `RouteMatches` listener to some central place and or do this from the `EventHandler`
                 app()->booted(static function () use ($request, $transaction, $fallbackTime): void {
                     $spanContextStart = new SpanContext();
@@ -51,10 +58,6 @@ class TracingMiddleware
                     $transaction->startChild($spanContextStart);
                 });
             }
-
-            $hub->configureScope(static function (Scope $scope) use ($transaction): void {
-                $scope->setSpan($transaction);
-            });
         }
 
         return $next($request);
@@ -71,20 +74,13 @@ class TracingMiddleware
     public function terminate($request, $response)
     {
         if (app()->bound('sentry')) {
-            /** @var \Sentry\State\Hub $hub */
-            $hub = app('sentry');
-
-            $hub->configureScope(static function (Scope $scope): void {
-                $transaction = $scope->getSpan();
-
-                if (null !== $transaction) {
-                    $transaction->finish();
-                }
-            });
+            if (null !== $this->transaction) {
+                $this->transaction->finish();
+            }
         }
     }
 
-    private function addBootTimeSpans(Transaction $transaction): bool
+    private function addBootTimeSpans(): bool
     {
         if (!defined('LARAVEL_START') || !LARAVEL_START) {
             return false;
@@ -102,13 +98,13 @@ class TracingMiddleware
         $spanContextStart->op = 'autoload';
         $spanContextStart->startTimestamp = LARAVEL_START;
         $spanContextStart->endTimestamp = SENTRY_AUTOLOAD;
-        $transaction->startChild($spanContextStart);
+        $this->transaction->startChild($spanContextStart);
 
         $spanContextStart = new SpanContext();
         $spanContextStart->op = 'bootstrap';
         $spanContextStart->startTimestamp = SENTRY_AUTOLOAD;
         $spanContextStart->endTimestamp = SENTRY_BOOTSTRAP;
-        $transaction->startChild($spanContextStart);
+        $this->transaction->startChild($spanContextStart);
 
         return true;
     }

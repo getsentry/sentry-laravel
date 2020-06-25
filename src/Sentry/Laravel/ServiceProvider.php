@@ -2,7 +2,6 @@
 
 namespace Sentry\Laravel;
 
-use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\View\Engine;
 use Illuminate\Contracts\View\View;
 use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
@@ -19,6 +18,10 @@ use Illuminate\View\Factory as ViewFactory;
 use Sentry\Integration as SdkIntegration;
 use Illuminate\Foundation\Application as Laravel;
 use Illuminate\Support\ServiceProvider as IlluminateServiceProvider;
+use Sentry\State\Scope;
+use Sentry\Tracing\SpanContext;
+use Sentry\Tracing\TransactionContext;
+
 
 class ServiceProvider extends IlluminateServiceProvider
 {
@@ -65,9 +68,18 @@ class ServiceProvider extends IlluminateServiceProvider
             $this->app->configure('sentry');
         }
 
+        $this->app->singleton(TracingMiddleware::class);
+
         $this->mergeConfigFrom(__DIR__ . '/../../../config/sentry.php', static::$abstract);
 
         $this->configureAndRegisterClient($this->getUserConfig());
+
+        /** @var \Sentry\State\Hub $hub */
+        $hub = app('sentry');
+        $transaction = $hub->startTransaction(new TransactionContext());
+        $hub->configureScope(static function (Scope $scope) use ($transaction): void {
+            $scope->setSpan($transaction);
+        });
 
         if (($logManager = $this->app->make('log')) instanceof LogManager) {
             $logManager->extend('sentry', function ($app, array $config) {
@@ -100,7 +112,18 @@ class ServiceProvider extends IlluminateServiceProvider
             $viewFactory->share(TracingViewEngineDecorator::SHARED_KEY, $view->name());
         });
 
-        return new TracingViewEngineDecorator($realEngine, $viewFactory);
+        $transaction = null;
+
+        Integration::configureScope(static function (Scope $scope) use (&$transaction): void {
+            $transaction = $scope->getTransaction();
+        });
+
+        $context = new SpanContext();
+        $context->op = 'view.engine';
+        // We will set this later to the start of the first view render
+        $context->startTimestamp = -1;
+        $parent = $transaction->startChild($context);
+        return new TracingViewEngineDecorator($realEngine, $viewFactory, $parent);
     }
 
     /**

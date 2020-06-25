@@ -12,6 +12,7 @@ use Sentry\Breadcrumb;
 use Sentry\Event;
 use Sentry\Integration\IntegrationInterface;
 use Sentry\State\Scope;
+use Sentry\Tracing\Transaction;
 
 class Integration implements IntegrationInterface
 {
@@ -137,5 +138,20 @@ class Integration implements IntegrationInterface
         }
 
         return $routeName;
+    }
+
+    public static function sentryTracingMeta(): string {
+        $content = "";
+
+        Integration::configureScope(static function (Scope $scope) use (&$content): void {
+            $span = $scope->getSpan();
+
+            if (null !== $span) {
+                $content = '<meta name="sentry-trace" content="' . $span->toTraceparent() . '"/>';
+                //$content .= "<meta name='sentry-trace-data' content='" . $span->getDescription() . "'/>";
+            }
+        });
+
+        return $content;
     }
 }
