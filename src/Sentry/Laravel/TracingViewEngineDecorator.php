@@ -36,11 +36,11 @@ final class TracingViewEngineDecorator implements Engine
     public function get($path, array $data = []): string
     {
         $context = new SpanContext();
-        $context->op = 'render';
+        $context->op = 'view.render';
         $context->description = $this->viewFactory->shared(self::SHARED_KEY, basename($path));
 
         $span = $this->parentSpan->startChild($context);
-        
+
         if ($this->parentSpan->getStartTimestamp() < 0) {
             $this->parentSpan->setStartTimestamp($span->getStartTimestamp());
         }
