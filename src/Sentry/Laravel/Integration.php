@@ -114,8 +114,9 @@ class Integration implements IntegrationInterface
     {
         $routeName = null;
 
-        if ($route->uri()) {
-            $routeName = $route->uri();
+        if (empty($routeName) && $route->getActionName()) {
+            // SomeController@someAction (controller action)
+            $routeName = $route->getActionName();
         }
 
         if (empty($routeName) && $route->getName()) {
@@ -128,11 +129,6 @@ class Integration implements IntegrationInterface
             if (Str::startsWith($routeName, 'generated::')) {
                 $routeName = null;
             }
-        }
-
-        if (empty($routeName) && $route->getActionName()) {
-            // SomeController@someAction (controller action)
-            $routeName = $route->getActionName();
         }
 
         if (empty($routeName) || $routeName === 'Closure') {

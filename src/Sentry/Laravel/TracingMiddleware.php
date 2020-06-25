@@ -45,7 +45,7 @@ class TracingMiddleware
                 // @TODO: We might want to move this together with the `RouteMatches` listener to some central place and or do this from the `EventHandler`
                 app()->booted(static function () use ($request, $transaction, $fallbackTime): void {
                     $spanContextStart = new SpanContext();
-                    $spanContextStart->op = 'autoload+bootstrap';
+                    $spanContextStart->op = 'app.bootstrap';
                     $spanContextStart->startTimestamp = defined('LARAVEL_START') ? LARAVEL_START : $request->server('REQUEST_TIME_FLOAT', $fallbackTime);
                     $spanContextStart->endTimestamp = microtime(true);
                     $transaction->startChild($spanContextStart);
