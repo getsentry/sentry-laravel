@@ -20,14 +20,10 @@ final class TracingViewEngineDecorator implements Engine
     /** @var Factory */
     private $viewFactory;
 
-    /** @var Span */
-    private $parentSpan;
-
-    public function __construct(Engine $engine, Factory $viewFactory, Span $parentSpan)
+    public function __construct(Engine $engine, Factory $viewFactory)
     {
         $this->engine = $engine;
         $this->viewFactory = $viewFactory;
-        $this->parentSpan = $parentSpan;
     }
 
     /**
@@ -35,23 +31,21 @@ final class TracingViewEngineDecorator implements Engine
      */
     public function get($path, array $data = []): string
     {
+        $parentSpan = null;
+
+        Integration::configureScope(static function (Scope $scope) use (&$parentSpan): void {
+            $parentSpan = $scope->getSpan();
+        });
+
         $context = new SpanContext();
         $context->op = 'view.render';
         $context->description = $this->viewFactory->shared(self::SHARED_KEY, basename($path));
 
-        $span = $this->parentSpan->startChild($context);
-
-        if ($this->parentSpan->getStartTimestamp() < 0) {
-            $this->parentSpan->setStartTimestamp($span->getStartTimestamp());
-        }
+        $span = $parentSpan->startChild($context);
 
         $result = $this->engine->get($path, $data);
 
         $span->finish();
-
-        if ($end = $span->getEndTimestamp()) {
-            $this->parentSpan->finish($end);
-        }
 
         return $result;
     }

@@ -3,7 +3,6 @@
 namespace Sentry\Laravel;
 
 use Closure;
-use Sentry\Context\Context;
 use Sentry\State\Scope;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\TransactionContext;
@@ -30,32 +29,34 @@ class TracingMiddleware
             $path = '/' . ltrim($request->path(), '/');
             $fallbackTime = microtime(true);
 
-            /** @var \Sentry\State\Hub $hub */
-            $hub = app('sentry');
+            $context = new TransactionContext();
+            if ($request->header('sentry-trace')) {
+                $context = TransactionContext::fromTraceparent($request->header('sentry-trace'));
+            }
 
-            $transaction = null;
-
-            Integration::configureScope(static function (Scope $scope) use (&$transaction): void {
-                $transaction = $scope->getTransaction();
-            });
-
-            $this->transaction = $transaction;
-            $this->transaction->setOp('http.server');
-            $this->transaction->setName($path);
-            $this->transaction->setData([
+            $context->op = 'http.server';
+            $context->name = $path;
+            $context->data = [
                 'url' => $path,
                 'method' => strtoupper($request->method()),
-            ]);
-            $this->transaction->setStartTimestamp($request->server('REQUEST_TIME_FLOAT', $fallbackTime));
+            ];
+            $context->startTimestamp = $request->server('REQUEST_TIME_FLOAT', $fallbackTime);
+
+            /** @var \Sentry\State\Hub $hub */
+            $hub = app('sentry');
+            $this->transaction = $hub->startTransaction($context);
+            $hub->configureScope(function (Scope $scope): void {
+                $scope->setSpan($this->transaction);
+            });
 
             if (!$this->addBootTimeSpans()) {
                 // @TODO: We might want to move this together with the `RouteMatches` listener to some central place and or do this from the `EventHandler`
-                app()->booted(static function () use ($request, $transaction, $fallbackTime): void {
+                app()->booted(function () use ($request, $fallbackTime): void {
                     $spanContextStart = new SpanContext();
                     $spanContextStart->op = 'app.bootstrap';
                     $spanContextStart->startTimestamp = defined('LARAVEL_START') ? LARAVEL_START : $request->server('REQUEST_TIME_FLOAT', $fallbackTime);
                     $spanContextStart->endTimestamp = microtime(true);
-                    $transaction->startChild($spanContextStart);
+                    $this->transaction->startChild($spanContextStart);
                 });
             }
         }

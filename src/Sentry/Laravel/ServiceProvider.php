@@ -74,13 +74,6 @@ class ServiceProvider extends IlluminateServiceProvider
 
         $this->configureAndRegisterClient($this->getUserConfig());
 
-        /** @var \Sentry\State\Hub $hub */
-        $hub = app('sentry');
-        $transaction = $hub->startTransaction(new TransactionContext());
-        $hub->configureScope(static function (Scope $scope) use ($transaction): void {
-            $scope->setSpan($transaction);
-        });
-
         if (($logManager = $this->app->make('log')) instanceof LogManager) {
             $logManager->extend('sentry', function ($app, array $config) {
                 return (new LogChannel($app))($config);
@@ -112,18 +105,7 @@ class ServiceProvider extends IlluminateServiceProvider
             $viewFactory->share(TracingViewEngineDecorator::SHARED_KEY, $view->name());
         });
 
-        $transaction = null;
-
-        Integration::configureScope(static function (Scope $scope) use (&$transaction): void {
-            $transaction = $scope->getTransaction();
-        });
-
-        $context = new SpanContext();
-        $context->op = 'view.engine';
-        // We will set this later to the start of the first view render
-        $context->startTimestamp = -1;
-        $parent = $transaction->startChild($context);
-        return new TracingViewEngineDecorator($realEngine, $viewFactory, $parent);
+        return new TracingViewEngineDecorator($realEngine, $viewFactory);
     }
 
     /**
