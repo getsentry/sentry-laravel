@@ -30,8 +30,8 @@ class TracingMiddleware
             $fallbackTime = microtime(true);
 
             $context = new TransactionContext();
-            if ($request->header('sentry-trace')) {
-                $context = TransactionContext::fromTraceparent($request->header('sentry-trace'));
+            if ($sentryTraceHeader = $request->header('sentry-trace')) {
+                $context = TransactionContext::fromTraceparent($sentryTraceHeader);
             }
 
             $context->op = 'http.server';
