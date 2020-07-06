@@ -14,8 +14,10 @@
   "require": {
     "php": "^7.1",
     "illuminate/support": "5.0 - 5.8 | ^6.0 | ^7.0",
-    "sentry/sdk": "^2.1"
+    "sentry/sdk": "3.x-dev"
   },
+  "minimum-stability": "dev",
+  "prefer-stable": true,
   "require-dev": {
     "phpunit/phpunit": "^8.0",
     "laravel/framework": "^6.0",
