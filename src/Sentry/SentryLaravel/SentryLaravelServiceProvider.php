@@ -24,14 +24,14 @@ class SentryLaravelServiceProvider extends ServiceProvider
 
         // Laravel 4.x compatibility
         if (version_compare($app::VERSION, '5.0') < 0) {
-            $this->package('sentry/sentry-laravel', static::$abstract);
+            $this->package('sentry/sentry-laravel', $containerType = static::$abstract);
 
-            $app->error(function (\Exception $e) use ($app) {
-                $app[static::$abstract]->captureException($e);
+            $app->error(function (\Exception $e) use ($app, $containerType) {
+                $app[$containerType]->captureException($e);
             });
 
-            $app->fatal(function ($e) use ($app) {
-                $app[static::$abstract]->captureException($e);
+            $app->fatal(function ($e) use ($app, $containerType) {
+                $app[$containerType]->captureException($e);
             });
 
             $this->bindEvents($app);
@@ -86,16 +86,18 @@ class SentryLaravelServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        $this->app->singleton(static::$abstract . '.config', function ($app) {
+        $containerType = static::$abstract;
+
+        $this->app->singleton("{$containerType}.config", function ($app) use ($containerType) {
             // sentry::config is Laravel 4.x
-            $user_config = $app['config'][static::$abstract] ?: $app['config'][static::$abstract . '::config'];
+            $user_config = $app['config'][$containerType] ?: $app['config']["{$containerType}::config"];
 
             // Make sure we don't crash when we did not publish the config file and the config is null
             return $user_config ?: array();
         });
 
-        $this->app->singleton(static::$abstract, function ($app) {
-            $user_config = $app[static::$abstract . '.config'];
+        $this->app->singleton($containerType, function ($app) use ($containerType) {
+            $user_config = $app["{$containerType}.config"];
             $base_path = base_path();
             $client = SentryLaravel::getClient(array_merge(array(
                 'environment' => $app->environment(),
