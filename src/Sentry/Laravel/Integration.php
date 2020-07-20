@@ -6,13 +6,13 @@ use Illuminate\Routing\Route;
 use Illuminate\Support\Str;
 use Sentry\FlushableClientInterface;
 use Sentry\SentrySdk;
+use Sentry\Tracing\Span;
 use function Sentry\addBreadcrumb;
 use function Sentry\configureScope;
 use Sentry\Breadcrumb;
 use Sentry\Event;
 use Sentry\Integration\IntegrationInterface;
 use Sentry\State\Scope;
-use Sentry\Tracing\Transaction;
 
 class Integration implements IntegrationInterface
 {
@@ -111,7 +111,7 @@ class Integration implements IntegrationInterface
      *
      * @return string|null
      */
-    public static function extractNameForRoute(Route $route)
+    public static function extractNameForRoute(Route $route): ?string
     {
         $routeName = null;
 
@@ -140,18 +140,37 @@ class Integration implements IntegrationInterface
         return $routeName;
     }
 
-    public static function sentryTracingMeta(): string {
-        $content = "";
+    /**
+     * @return string
+     */
+    public static function sentryTracingMeta(): string
+    {
+        $span = self::currentTracingSpan();
 
-        Integration::configureScope(static function (Scope $scope) use (&$content): void {
-            $span = $scope->getSpan();
+        if ($span === null) {
+            return '';
+        }
 
-            if (null !== $span) {
-                $content = '<meta name="sentry-trace" content="' . $span->toTraceparent() . '"/>';
-                //$content .= "<meta name='sentry-trace-data' content='" . $span->getDescription() . "'/>";
-            }
-        });
+        $content = sprintf('<meta name="sentry-trace" content="%s"/>', $span->toTraceparent());
+        // $content .= sprintf('<meta name="sentry-trace-data" content="%s"/>', $span->getDescription());
 
         return $content;
+    }
+
+    /**
+     * Get the current active tracing span from the scope.
+     *
+     * @return \Sentry\Tracing\Span|null
+     * @internal
+     */
+    public static function currentTracingSpan(): ?Span
+    {
+        $span = null;
+
+        self::configureScope(static function (Scope $scope) use (&$span): void {
+            $span = $scope->getSpan();
+        });
+
+        return $span;
     }
 }
