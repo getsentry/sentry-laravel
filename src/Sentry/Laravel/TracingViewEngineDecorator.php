@@ -31,6 +31,9 @@ final class TracingViewEngineDecorator implements Engine
     {
         $parentSpan = Integration::currentTracingSpan();
 
+        if ($parentSpan === null) {
+            return;
+        }
 
         $context = new SpanContext();
         $context->op = 'view.render';
