@@ -125,6 +125,13 @@ class Integration implements IntegrationInterface
             if (Str::startsWith($routeName, 'generated::')) {
                 $routeName = null;
             }
+
+            // If the route name ends with a `.` we assume an incomplete group name prefix
+            // we discard this value since it will most likely not mean anything to the
+            // developer and will be duplicated by other unnamed routes in the group
+            if (Str::endsWith($routeName, '.')) {
+                $routeName = null;
+            }
         }
 
         if (empty($routeName) && $route->getActionName()) {
