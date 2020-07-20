@@ -32,7 +32,7 @@ final class TracingViewEngineDecorator implements Engine
         $parentSpan = Integration::currentTracingSpan();
 
         if ($parentSpan === null) {
-            return;
+            return $this->engine->get($path, $data);
         }
 
         $context = new SpanContext();
