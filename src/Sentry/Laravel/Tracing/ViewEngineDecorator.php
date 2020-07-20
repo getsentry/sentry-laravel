@@ -1,14 +1,15 @@
 <?php
 
 
-namespace Sentry\Laravel;
+namespace Sentry\Laravel\Tracing;
 
 use Illuminate\Contracts\View\Engine;
 use Illuminate\View\Compilers\CompilerInterface;
 use Illuminate\View\Factory;
+use Sentry\Laravel\Integration;
 use Sentry\Tracing\SpanContext;
 
-final class TracingViewEngineDecorator implements Engine
+final class ViewEngineDecorator implements Engine
 {
     public const SHARED_KEY = '__sentry_tracing_view_name';
 

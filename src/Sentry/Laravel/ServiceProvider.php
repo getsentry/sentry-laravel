@@ -2,11 +2,7 @@
 
 namespace Sentry\Laravel;
 
-use Illuminate\Contracts\View\Engine;
-use Illuminate\Contracts\View\View;
 use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
-use Illuminate\View\Engines\EngineResolver;
-use InvalidArgumentException;
 use Sentry\SentrySdk;
 use Sentry\State\Hub;
 use Sentry\ClientBuilder;
@@ -14,14 +10,9 @@ use Sentry\State\HubInterface;
 use Illuminate\Log\LogManager;
 use Sentry\ClientBuilderInterface;
 use Laravel\Lumen\Application as Lumen;
-use Illuminate\View\Factory as ViewFactory;
 use Sentry\Integration as SdkIntegration;
 use Illuminate\Foundation\Application as Laravel;
 use Illuminate\Support\ServiceProvider as IlluminateServiceProvider;
-use Sentry\State\Scope;
-use Sentry\Tracing\SpanContext;
-use Sentry\Tracing\TransactionContext;
-
 
 class ServiceProvider extends IlluminateServiceProvider
 {
@@ -51,11 +42,6 @@ class ServiceProvider extends IlluminateServiceProvider
             }
 
             $this->registerArtisanCommands();
-        } elseif ($this->app->bound(HttpKernelInterface::class)) {
-            /** @var \Illuminate\Contracts\Http\Kernel $httpKernel */
-            $httpKernel = $this->app->make(HttpKernelInterface::class);
-
-            $httpKernel->prependMiddleware(TracingMiddleware::class);
         }
     }
 
@@ -68,8 +54,6 @@ class ServiceProvider extends IlluminateServiceProvider
             $this->app->configure('sentry');
         }
 
-        $this->app->singleton(TracingMiddleware::class);
-
         $this->mergeConfigFrom(__DIR__ . '/../../../config/sentry.php', static::$abstract);
 
         $this->configureAndRegisterClient($this->getUserConfig());
@@ -79,33 +63,6 @@ class ServiceProvider extends IlluminateServiceProvider
                 return (new LogChannel($app))($config);
             });
         }
-
-        $this->app->afterResolving('view.engine.resolver', function (EngineResolver $engineResolver): void {
-            foreach (['file', 'php', 'blade'] as $engineName) {
-                try {
-                    $realEngine = $engineResolver->resolve($engineName);
-
-                    $engineResolver->register($engineName, function () use ($realEngine) {
-                        return $this->wrapViewEngine($realEngine);
-                    });
-                } catch (InvalidArgumentException $e) {
-                    // The `file` engine was introduced in Laravel 5.4 and will throw an `InvalidArgumentException` on Laravel 5.3 and below
-                }
-            }
-        });
-    }
-
-    public function wrapViewEngine(Engine $realEngine): Engine
-    {
-        /** @var ViewFactory $viewFactory */
-        $viewFactory = $this->app->make('view');
-
-        /** @noinspection UnusedFunctionResultInspection */
-        $viewFactory->composer('*', static function (View $view) use ($viewFactory) : void {
-            $viewFactory->share(TracingViewEngineDecorator::SHARED_KEY, $view->name());
-        });
-
-        return new TracingViewEngineDecorator($realEngine, $viewFactory);
     }
 
     /**

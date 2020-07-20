@@ -55,7 +55,8 @@
     },
     "laravel": {
       "providers": [
-        "Sentry\\Laravel\\ServiceProvider"
+        "Sentry\\Laravel\\ServiceProvider",
+        "Sentry\\Laravel\\Tracing\\ServiceProvider"
       ],
       "aliases": {
         "Sentry": "Sentry\\Laravel\\Facade"
