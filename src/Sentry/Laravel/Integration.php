@@ -115,11 +115,6 @@ class Integration implements IntegrationInterface
     {
         $routeName = null;
 
-        if (empty($routeName) && $route->getActionName()) {
-            // SomeController@someAction (controller action)
-            $routeName = $route->getActionName();
-        }
-
         if (empty($routeName) && $route->getName()) {
             // someaction (route name/alias)
             $routeName = $route->getName();
@@ -132,9 +127,14 @@ class Integration implements IntegrationInterface
             }
         }
 
+        if (empty($routeName) && $route->getActionName()) {
+            // SomeController@someAction (controller action)
+            $routeName = ltrim($route->getActionName(), '\\');
+        }
+
         if (empty($routeName) || $routeName === 'Closure') {
             // /someaction // Fallback to the url
-            $routeName = $route->uri();
+            $routeName = '/' . ltrim($route->uri(), '/');
         }
 
         return $routeName;
