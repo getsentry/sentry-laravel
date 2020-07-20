@@ -76,7 +76,7 @@ class Integration implements IntegrationInterface
     /**
      * @return null|string
      */
-    public static function getTransaction()
+    public static function getTransaction(): ?string
     {
         return self::$transaction;
     }
@@ -105,7 +105,7 @@ class Integration implements IntegrationInterface
     }
 
     /**
-     * Extract the name for the route.
+     * Extract the readable name for a route.
      *
      * @param \Illuminate\Routing\Route $route
      *
@@ -141,6 +141,8 @@ class Integration implements IntegrationInterface
     }
 
     /**
+     * Retrieve the meta tags with tracing information to link this request to front-end requests.
+     *
      * @return string
      */
     public static function sentryTracingMeta(): string
@@ -161,7 +163,8 @@ class Integration implements IntegrationInterface
      * Get the current active tracing span from the scope.
      *
      * @return \Sentry\Tracing\Span|null
-     * @internal
+     *
+     * @internal This is used internally as an easy way to retrieve the current active tracing span.
      */
     public static function currentTracingSpan(): ?Span
     {
