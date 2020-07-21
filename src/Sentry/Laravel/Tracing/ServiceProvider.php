@@ -25,7 +25,7 @@ class ServiceProvider extends IlluminateServiceProvider
     {
         $this->app->singleton(Middleware::class);
 
-        $this->app->afterResolving('view.engine.resolver', function (EngineResolver $engineResolver): void {
+        $viewEngineWrapper = function (EngineResolver $engineResolver): void {
             foreach (['file', 'php', 'blade'] as $engineName) {
                 try {
                     $realEngine = $engineResolver->resolve($engineName);
@@ -34,10 +34,18 @@ class ServiceProvider extends IlluminateServiceProvider
                         return $this->wrapViewEngine($realEngine);
                     });
                 } catch (InvalidArgumentException $e) {
-                    // The `file` engine was introduced in Laravel 5.4 and will throw an `InvalidArgumentException` on Laravel 5.3 and below
+                    // The `file` engine was introduced in Laravel 5.4. On lower Laravel versions
+                    // resolving that driver  will throw an `InvalidArgumentException`. We can
+                    // ignore this exception because we can't wrap drivers that don't exist
                 }
             }
-        });
+        };
+
+        if ($this->app->resolved('view.engine.resolver')) {
+            $viewEngineWrapper($this->app->make('view.engine.resolver'));
+        } else {
+            $this->app->afterResolving('view.engine.resolver', $viewEngineWrapper);
+        }
     }
 
     private function wrapViewEngine(Engine $realEngine): Engine
