@@ -4,6 +4,7 @@ namespace Sentry\Laravel\Tracing;
 
 use Closure;
 use Illuminate\Http\Request;
+use Sentry\SentrySdk;
 use Sentry\State\Hub;
 use Sentry\State\Scope;
 use Sentry\Tracing\SpanContext;
@@ -70,9 +71,8 @@ class Middleware
 
         $this->transaction = $sentry->startTransaction($context);
 
-        $sentry->configureScope(function (Scope $scope): void {
-            $scope->setSpan($this->transaction);
-        });
+        // Setting the Transaction on the Hub
+        SentrySdk::getCurrentHub()->setSpan($this->transaction);
 
         if (!$this->addBootTimeSpans()) {
             // @TODO: We might want to move this together with the `RouteMatches` listener to some central place and or do this from the `EventHandler`

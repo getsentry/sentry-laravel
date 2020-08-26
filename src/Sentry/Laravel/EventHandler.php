@@ -197,17 +197,15 @@ class EventHandler
     {
         $routeName = Integration::extractNameForRoute($route) ?? '<unlabeled transaction>';
 
-        Integration::configureScope(static function (Scope $scope) use ($routeName, $route): void {
-            $transaction = $scope->getTransaction();
+        $transaction = SentrySdk::getCurrentHub()->getTransaction();
 
-            if ($transaction instanceof Transaction) {
-                $transaction->setName($routeName);
-                $transaction->setData([
-                    'action' => $route->getActionName(),
-                    'name' => $route->getName()
-                ]);
-            }
-        });
+        if ($transaction instanceof Transaction) {
+            $transaction->setName($routeName);
+            $transaction->setData([
+                'action' => $route->getActionName(),
+                'name' => $route->getName()
+            ]);
+        }
 
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,
@@ -280,17 +278,15 @@ class EventHandler
             $data['bindings'] = $bindings;
         }
 
-        Integration::configureScope(static function (Scope $scope) use ($query, $time): void {
-            $transaction = $scope->getTransaction();
-            if (null !== $transaction) {
-                $context = new SpanContext();
-                $context->op = 'sql.query';
-                $context->description = $query;
-                $context->startTimestamp = microtime(true) - $time / 1000;
-                $context->endTimestamp = $context->startTimestamp + $time / 1000;
-                $transaction->startChild($context);
-            }
-        });
+        $transaction = SentrySdk::getCurrentHub()->getTransaction();
+        if (null !== $transaction) {
+            $context = new SpanContext();
+            $context->op = 'sql.query';
+            $context->description = $query;
+            $context->startTimestamp = microtime(true) - $time / 1000;
+            $context->endTimestamp = $context->startTimestamp + $time / 1000;
+            $transaction->startChild($context);
+        }
 
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,

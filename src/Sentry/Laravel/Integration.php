@@ -175,12 +175,6 @@ class Integration implements IntegrationInterface
      */
     public static function currentTracingSpan(): ?Span
     {
-        $span = null;
-
-        self::configureScope(static function (Scope $scope) use (&$span): void {
-            $span = $scope->getSpan();
-        });
-
-        return $span;
+        return SentrySdk::getCurrentHub()->getSpan();
     }
 }
