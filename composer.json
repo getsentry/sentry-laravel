@@ -14,7 +14,7 @@
   "require": {
     "php": "^7.1",
     "illuminate/support": "5.0 - 5.8 | ^6.0 | ^7.0",
-    "sentry/sdk": "3.x-dev"
+    "sentry/sdk": "3.0.0-beta1"
   },
   "minimum-stability": "dev",
   "prefer-stable": true,
