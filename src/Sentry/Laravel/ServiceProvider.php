@@ -2,6 +2,7 @@
 
 namespace Sentry\Laravel;
 
+use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
 use Sentry\SentrySdk;
 use Sentry\State\Hub;
 use Sentry\ClientBuilder;
