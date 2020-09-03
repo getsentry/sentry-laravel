@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Respect the `SENTRY_ENVIRONMENT` environment variable to override the Laravel environment (#354)
+- Support for Laravel 8 (#374)
 
 ## 1.8.0
 
