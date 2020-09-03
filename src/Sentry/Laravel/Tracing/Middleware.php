@@ -6,7 +6,6 @@ use Closure;
 use Illuminate\Http\Request;
 use Sentry\SentrySdk;
 use Sentry\State\Hub;
-use Sentry\State\Scope;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\TransactionContext;
 
