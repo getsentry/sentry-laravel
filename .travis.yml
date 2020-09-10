@@ -22,20 +22,18 @@ env:
     - LARAVEL=^7.0 TESTBENCH=5.1.* PHPUNIT=8.4.* SENTRY=^2.3
 
     # We add one more test using the next version of Laravel which only support PHP ^7.3 (Laravel requirement)
-    - LARAVEL=8.x-dev@dev TESTBENCH=6.0.x-dev@dev PHPUNIT=8.4.* SENTRY=^2.3 COMPOSER_STABILITY=dev
+    - LARAVEL=8.x-dev@dev TESTBENCH=^6.0 PHPUNIT=8.4.* SENTRY=^2.3 COMPOSER_STABILITY=dev
 
 matrix:
   fast_finish: true
   allow_failures:
-    - php: 7.2
-      env: LARAVEL=8.x-dev@dev TESTBENCH=6.0.x-dev@dev PHPUNIT=8.4.* SENTRY=^2.3 COMPOSER_STABILITY=dev
     - php: 7.3
-      env: LARAVEL=8.x-dev@dev TESTBENCH=6.0.x-dev@dev PHPUNIT=8.4.* SENTRY=^2.3 COMPOSER_STABILITY=dev
+      env: LARAVEL=8.x-dev@dev TESTBENCH=^6.0 PHPUNIT=8.4.* SENTRY=^2.3 COMPOSER_STABILITY=dev
     - php: 7.4
-      env: LARAVEL=8.x-dev@dev TESTBENCH=6.0.x-dev@dev PHPUNIT=8.4.* SENTRY=^2.3 COMPOSER_STABILITY=dev
+      env: LARAVEL=8.x-dev@dev TESTBENCH=^6.0 PHPUNIT=8.4.* SENTRY=^2.3 COMPOSER_STABILITY=dev
   exclude:
     - php: 7.2
-      env: LARAVEL=8.x-dev@dev TESTBENCH=6.0.x-dev@dev PHPUNIT=8.4.* SENTRY=^2.3 COMPOSER_STABILITY=dev
+      env: LARAVEL=8.x-dev@dev TESTBENCH=^6.0 PHPUNIT=8.4.* SENTRY=^2.3 COMPOSER_STABILITY=dev
 
 cache:
   directories:

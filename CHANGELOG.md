@@ -11,6 +11,11 @@ using an on-premise installation it requires Sentry version `>= v20.6.0` to work
 - Using `3.0.0-beta1` of Sentry PHP SDK
 - Add support for Tracing, enable it by setting `traces_sample_rate` in the config to a value > 1
 
+## 1.9.0
+
+- Respect the `SENTRY_ENVIRONMENT` environment variable to override the Laravel environment (#354)
+- Support for Laravel 8 (#374)
+
 ## 1.8.0
 
 - Add `send_default_pii` option by default to published config file (#340)
