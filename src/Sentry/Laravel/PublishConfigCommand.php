@@ -42,7 +42,7 @@ class PublishConfigCommand extends Command
         if ($this->confirm('Enable Performance Monitoring?', true)) {
             $this->setEnvironmentValue(['SENTRY_TRACES_SAMPLE_RATE' => 1.0]);
 
-            $this->info('[Sentry] Added `SENTRY_TRACES_SAMPLE_RATE=1` to you env file.');
+            $this->info('[Sentry] Added `SENTRY_TRACES_SAMPLE_RATE=1` to your .env file.');
 
             $testCommandPrompt = 'Want to send a test Event & Transaction?';
             $args = ['--transaction' => true];
