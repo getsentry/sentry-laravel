@@ -4,6 +4,8 @@ namespace Sentry\Laravel;
 
 use Exception;
 use Illuminate\Console\Command;
+use Sentry\Tracing\SpanContext;
+use Sentry\Tracing\TransactionContext;
 
 class TestCommand extends Command
 {
@@ -19,7 +21,7 @@ class TestCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'sentry:test';
+    protected $signature = 'sentry:test {--transaction}';
 
     /**
      * The console command description.
@@ -43,32 +45,51 @@ class TestCommand extends Command
             $hub = app('sentry');
 
             if ($hub->getClient()->getOptions()->getDsn()) {
-                $this->info('[sentry] Client DSN discovered!');
+                $this->info('[Sentry] DSN discovered!');
             } else {
-                $this->error('[sentry] Could not discover DSN!');
-                $this->error('[sentry] Please check if you DSN is set properly in your config or `.env` as `SENTRY_LARAVEL_DSN`.');
+                $this->error('[Sentry] Could not discover DSN!');
+                $this->error('[Sentry] Please check if you DSN is set properly in your config or `.env` as `SENTRY_LARAVEL_DSN`.');
 
                 return;
             }
 
-            $this->info('[sentry] Generating test event');
+            if ($this->option('transaction')) {
+                $hub->getClient()->getOptions()->setTracesSampleRate(1);
+            }
+
+            $transactionContext = new TransactionContext();
+            $transactionContext->setName('Sentry Test Transaction');
+            $transactionContext->setOp('sentry.test');
+            $transaction = $hub->startTransaction($transactionContext);
+
+            $spanContext = new SpanContext();
+            $spanContext->setOp('sentry.sent');
+            $span1 = $transaction->startChild($spanContext);
+
+            $this->info('[Sentry] Generating test Event');
 
             $ex = $this->generateTestException('command name', ['foo' => 'bar']);
 
             $hub->captureException($ex);
 
-            $this->info('[sentry] Sending test event');
+            $this->info('[Sentry] Sending test Event');
+
+            $span1->finish();
+            $result = $transaction->finish();
+            if ($result) {
+                $this->info('[Sentry] Sending test Transaction');
+            }
 
             $lastEventId = $hub->getLastEventId();
 
             if (!$lastEventId) {
-                $this->error('[sentry] There was an error sending the test event.');
-                $this->error('[sentry] Please check if you DSN is set properly in your config or `.env` as `SENTRY_LARAVEL_DSN`.');
+                $this->error('[Sentry] There was an error sending the test event.');
+                $this->error('[Sentry] Please check if you DSN is set properly in your config or `.env` as `SENTRY_LARAVEL_DSN`.');
             } else {
-                $this->info("[sentry] Event sent with ID: {$lastEventId}");
+                $this->info("[Sentry] Event sent with ID: {$lastEventId}");
             }
         } catch (Exception $e) {
-            $this->error("[sentry] {$e->getMessage()}");
+            $this->error("[Sentry] {$e->getMessage()}");
         }
 
         error_reporting($old_error_reporting);

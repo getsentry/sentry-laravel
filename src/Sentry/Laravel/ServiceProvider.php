@@ -13,6 +13,7 @@ use Laravel\Lumen\Application as Lumen;
 use Sentry\Integration as SdkIntegration;
 use Illuminate\Foundation\Application as Laravel;
 use Illuminate\Support\ServiceProvider as IlluminateServiceProvider;
+use Illuminate\Support\Facades\Storage;
 
 class ServiceProvider extends IlluminateServiceProvider
 {
@@ -92,6 +93,7 @@ class ServiceProvider extends IlluminateServiceProvider
     {
         $this->commands([
             TestCommand::class,
+            PublishConfigCommand::class,
         ]);
     }
 
