@@ -9,7 +9,7 @@ using an on-premise installation it requires Sentry version `>= v20.6.0` to work
 [sentry.io](https://sentry.io) nothing will change and no action is needed.
 
 - Using `3.0.0-beta1` of Sentry PHP SDK
-- Add support for Tracing, enable it by setting `traces_sample_rate` in the config to a value > 1
+- Add support for Tracing, enable it by setting `traces_sample_rate` in the config to a value > 0 (the value should be larger than `0.0` and smaller or equal than `1.0` (to send everything))
 
 ## 1.9.0
 
