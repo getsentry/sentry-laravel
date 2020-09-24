@@ -37,8 +37,8 @@ final class ViewEngineDecorator implements Engine
         }
 
         $context = new SpanContext();
-        $context->op = 'view.render';
-        $context->description = $this->viewFactory->shared(self::SHARED_KEY, basename($path));
+        $context->setOp('view.render');
+        $context->setDescription($this->viewFactory->shared(self::SHARED_KEY, basename($path)));
 
         $span = $parentSpan->startChild($context);
 

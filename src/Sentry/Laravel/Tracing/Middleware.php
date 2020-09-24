@@ -60,13 +60,13 @@ class Middleware
             ? TransactionContext::fromTraceparent($sentryTraceHeader)
             : new TransactionContext;
 
-        $context->op = 'http.server';
-        $context->name = $path;
-        $context->data = [
+        $context->setOp('http.server');
+        $context->setName($path);
+        $context->setData([
             'url' => $path,
             'method' => strtoupper($request->method()),
-        ];
-        $context->startTimestamp = $request->server('REQUEST_TIME_FLOAT', $fallbackTime);
+        ]);
+        $context->setStartTimestamp($request->server('REQUEST_TIME_FLOAT', $fallbackTime));
 
         $this->transaction = $sentry->startTransaction($context);
 
@@ -77,9 +77,9 @@ class Middleware
             // @TODO: We might want to move this together with the `RouteMatches` listener to some central place and or do this from the `EventHandler`
             app()->booted(function () use ($request, $fallbackTime): void {
                 $spanContextStart = new SpanContext();
-                $spanContextStart->op = 'app.bootstrap';
-                $spanContextStart->startTimestamp = defined('LARAVEL_START') ? LARAVEL_START : $request->server('REQUEST_TIME_FLOAT', $fallbackTime);
-                $spanContextStart->endTimestamp = microtime(true);
+                $spanContextStart->setOp('app.bootstrap');
+                $spanContextStart->setStartTimestamp(defined('LARAVEL_START') ? LARAVEL_START : $request->server('REQUEST_TIME_FLOAT', $fallbackTime));
+                $spanContextStart->setEndTimestamp(microtime(true));
                 $this->transaction->startChild($spanContextStart);
             });
         }
@@ -100,15 +100,15 @@ class Middleware
         }
 
         $spanContextStart = new SpanContext();
-        $spanContextStart->op = 'autoload';
-        $spanContextStart->startTimestamp = LARAVEL_START;
-        $spanContextStart->endTimestamp = SENTRY_AUTOLOAD;
+        $spanContextStart->setOp('autoload');
+        $spanContextStart->setStartTimestamp(LARAVEL_START);
+        $spanContextStart->setEndTimestamp(SENTRY_AUTOLOAD);
         $this->transaction->startChild($spanContextStart);
 
         $spanContextStart = new SpanContext();
-        $spanContextStart->op = 'bootstrap';
-        $spanContextStart->startTimestamp = SENTRY_AUTOLOAD;
-        $spanContextStart->endTimestamp = SENTRY_BOOTSTRAP;
+        $spanContextStart->setOp('bootstrap');
+        $spanContextStart->setStartTimestamp(SENTRY_AUTOLOAD);
+        $spanContextStart->setEndTimestamp(SENTRY_BOOTSTRAP);
         $this->transaction->startChild($spanContextStart);
 
         return true;
