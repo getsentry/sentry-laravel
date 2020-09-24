@@ -281,10 +281,10 @@ class EventHandler
         $transaction = SentrySdk::getCurrentHub()->getTransaction();
         if (null !== $transaction) {
             $context = new SpanContext();
-            $context->op = 'sql.query';
-            $context->description = $query;
-            $context->startTimestamp = microtime(true) - $time / 1000;
-            $context->endTimestamp = $context->startTimestamp + $time / 1000;
+            $context->setOp('sql.query');
+            $context->setDescription($query);
+            $context->setStartTimestamp(microtime(true) - $time / 1000);
+            $context->setEndTimestamp($context->getStartTimestamp() + $time / 1000);
             $transaction->startChild($context);
         }
 
