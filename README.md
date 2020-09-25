@@ -27,9 +27,9 @@ Please note that of version `>= 1.0.0` we require PHP Version `>= 7.1` because w
 
 ## Installation
 
-- [Laravel 5.x & 6.x & 7.x](https://docs.sentry.io/platforms/php/laravel/#laravel-5x--6x)
-- [Lumen 5.x & 6.x](https://docs.sentry.io/platforms/php/laravel/#lumen-5x--6x)
-- [Laravel 4.x](https://docs.sentry.io/platforms/php/laravel/#laravel-4x)
+- [Laravel 5.x & 6.x & 7.x & 8.x](https://docs.sentry.io/platforms/php/guides/laravel/#install)
+- [Laravel 4.x](https://docs.sentry.io/platforms/php/guides/laravel/laravel4/)
+- [Lumen](https://docs.sentry.io/platforms/php/guides/laravel/lumen/)
 
 ## Contributing
 
