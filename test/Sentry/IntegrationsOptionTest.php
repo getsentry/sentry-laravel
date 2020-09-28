@@ -100,7 +100,7 @@ class IntegrationsOptionTest extends SentryLaravelTestCase
         $integrations = $this->getHubFromContainer()->getClient()->getOptions()->getIntegrations();
 
         $found = false;
-
+        
         foreach ($integrations as $integration) {
             $this->ensureIsNotDisabledIntegration($integration);
 
