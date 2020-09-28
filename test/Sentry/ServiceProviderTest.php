@@ -51,10 +51,10 @@ class ServiceProviderTest extends \Orchestra\Testbench\TestCase
         /** @var \Sentry\Options $options */
         $options = app('sentry')->getClient()->getOptions();
 
-        $this->assertEquals('http://sentry.dev', $options->getDsn());
-        $this->assertEquals(123, $options->getProjectId());
-        $this->assertEquals('publickey', $options->getPublicKey());
-        $this->assertEquals('secretkey', $options->getSecretKey());
+        $this->assertEquals('http://sentry.dev', $options->getDsn()->getScheme() . '://' . $options->getDsn()->getHost());
+        $this->assertEquals(123, $options->getDsn()->getProjectId());
+        $this->assertEquals('publickey', $options->getDsn()->getPublicKey());
+        $this->assertEquals('secretkey', $options->getDsn()->getSecretKey());
     }
 
     /**

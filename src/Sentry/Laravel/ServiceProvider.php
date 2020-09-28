@@ -2,6 +2,7 @@
 
 namespace Sentry\Laravel;
 
+use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
 use Sentry\SentrySdk;
 use Sentry\State\Hub;
 use Sentry\ClientBuilder;
@@ -12,6 +13,7 @@ use Laravel\Lumen\Application as Lumen;
 use Sentry\Integration as SdkIntegration;
 use Illuminate\Foundation\Application as Laravel;
 use Illuminate\Support\ServiceProvider as IlluminateServiceProvider;
+use Illuminate\Support\Facades\Storage;
 
 class ServiceProvider extends IlluminateServiceProvider
 {
@@ -91,6 +93,7 @@ class ServiceProvider extends IlluminateServiceProvider
     {
         $this->commands([
             TestCommand::class,
+            PublishConfigCommand::class,
         ]);
     }
 

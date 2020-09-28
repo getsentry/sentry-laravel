@@ -8,32 +8,32 @@ php:
 env:
   matrix:
     # All versions below should be test on PHP ^7.1 (Sentry SDK requrement)
-    - LARAVEL=5.1.* TESTBENCH=3.1.* PHPUNIT=5.7.* SENTRY=^2.3
-    - LARAVEL=5.2.* TESTBENCH=3.2.* PHPUNIT=5.7.* SENTRY=^2.3
-    - LARAVEL=5.3.* TESTBENCH=3.3.* PHPUNIT=5.7.* SENTRY=^2.3
-    - LARAVEL=5.4.* TESTBENCH=3.4.* PHPUNIT=5.7.* SENTRY=^2.3
-    - LARAVEL=5.5.* TESTBENCH=3.5.* PHPUNIT=6.5.* SENTRY=^2.3
-    - LARAVEL=5.6.* TESTBENCH=3.6.* PHPUNIT=7.5.* SENTRY=^2.3
-    - LARAVEL=5.7.* TESTBENCH=3.7.* PHPUNIT=7.5.* SENTRY=^2.3
-    - LARAVEL=5.8.* TESTBENCH=3.8.* PHPUNIT=7.5.* SENTRY=^2.3
+    - LARAVEL=5.1.* TESTBENCH=3.1.* PHPUNIT=5.7.* SENTRY=^3.0
+    - LARAVEL=5.2.* TESTBENCH=3.2.* PHPUNIT=5.7.* SENTRY=^3.0
+    - LARAVEL=5.3.* TESTBENCH=3.3.* PHPUNIT=5.7.* SENTRY=^3.0
+    - LARAVEL=5.4.* TESTBENCH=3.4.* PHPUNIT=5.7.* SENTRY=^3.0
+    - LARAVEL=5.5.* TESTBENCH=3.5.* PHPUNIT=6.5.* SENTRY=^3.0
+    - LARAVEL=5.6.* TESTBENCH=3.6.* PHPUNIT=7.5.* SENTRY=^3.0
+    - LARAVEL=5.7.* TESTBENCH=3.7.* PHPUNIT=7.5.* SENTRY=^3.0
+    - LARAVEL=5.8.* TESTBENCH=3.8.* PHPUNIT=7.5.* SENTRY=^3.0
 
     # All versions below only support PHP ^7.2 (Laravel requirement)
-    - LARAVEL=^6.0 TESTBENCH=4.7.* PHPUNIT=8.4.* SENTRY=^2.3
-    - LARAVEL=^7.0 TESTBENCH=5.1.* PHPUNIT=8.4.* SENTRY=^2.3
+    - LARAVEL=^6.0 TESTBENCH=4.7.* PHPUNIT=8.4.* SENTRY=^3.0
+    - LARAVEL=^7.0 TESTBENCH=5.1.* PHPUNIT=8.4.* SENTRY=^3.0
 
     # We add one more test using the next version of Laravel which only support PHP ^7.3 (Laravel requirement)
-    - LARAVEL=8.x-dev@dev TESTBENCH=^6.0 PHPUNIT=8.4.* SENTRY=^2.3 COMPOSER_STABILITY=dev
+    - LARAVEL=8.x-dev@dev TESTBENCH=^6.0 PHPUNIT=8.4.* SENTRY=^3.0 COMPOSER_STABILITY=dev
 
 matrix:
   fast_finish: true
   allow_failures:
     - php: 7.3
-      env: LARAVEL=8.x-dev@dev TESTBENCH=^6.0 PHPUNIT=8.4.* SENTRY=^2.3 COMPOSER_STABILITY=dev
+      env: LARAVEL=8.x-dev@dev TESTBENCH=^6.0 PHPUNIT=8.4.* SENTRY=^3.0 COMPOSER_STABILITY=dev
     - php: 7.4
-      env: LARAVEL=8.x-dev@dev TESTBENCH=^6.0 PHPUNIT=8.4.* SENTRY=^2.3 COMPOSER_STABILITY=dev
+      env: LARAVEL=8.x-dev@dev TESTBENCH=^6.0 PHPUNIT=8.4.* SENTRY=^3.0 COMPOSER_STABILITY=dev
   exclude:
     - php: 7.2
-      env: LARAVEL=8.x-dev@dev TESTBENCH=^6.0 PHPUNIT=8.4.* SENTRY=^2.3 COMPOSER_STABILITY=dev
+      env: LARAVEL=8.x-dev@dev TESTBENCH=^6.0 PHPUNIT=8.4.* SENTRY=^3.0 COMPOSER_STABILITY=dev
 
 cache:
   directories:

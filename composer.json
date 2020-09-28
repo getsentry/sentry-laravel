@@ -21,9 +21,9 @@
     }
   ],
   "require": {
-    "php": "^7.1",
+    "php": "^7.2",
     "illuminate/support": "5.0 - 5.8 | ^6.0 | ^7.0 | ^8.0",
-    "sentry/sdk": "^2.1"
+    "sentry/sdk": "^3.0"
   },
   "require-dev": {
     "phpunit/phpunit": "^8.0",
@@ -57,12 +57,13 @@
   },
   "extra": {
     "branch-alias": {
-      "dev-master": "1.x-dev",
+      "dev-master": "2.x-dev",
       "dev-0.x": "0.x-dev"
     },
     "laravel": {
       "providers": [
-        "Sentry\\Laravel\\ServiceProvider"
+        "Sentry\\Laravel\\ServiceProvider",
+        "Sentry\\Laravel\\Tracing\\ServiceProvider"
       ],
       "aliases": {
         "Sentry": "Sentry\\Laravel\\Facade"

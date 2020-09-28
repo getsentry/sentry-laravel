@@ -2,8 +2,11 @@
 
 namespace Sentry\Laravel;
 
+use Illuminate\Routing\Route;
+use Illuminate\Support\Str;
 use Sentry\FlushableClientInterface;
 use Sentry\SentrySdk;
+use Sentry\Tracing\Span;
 use function Sentry\addBreadcrumb;
 use function Sentry\configureScope;
 use Sentry\Breadcrumb;
@@ -30,7 +33,9 @@ class Integration implements IntegrationInterface
                 return $event;
             }
 
-            $event->setTransaction($self->getTransaction());
+            if (null === $event->getTransaction()) {
+                $event->setTransaction($self->getTransaction());
+            }
 
             return $event;
         });
@@ -71,7 +76,7 @@ class Integration implements IntegrationInterface
     /**
      * @return null|string
      */
-    public static function getTransaction()
+    public static function getTransaction(): ?string
     {
         return self::$transaction;
     }
@@ -97,5 +102,79 @@ class Integration implements IntegrationInterface
         if ($client instanceof FlushableClientInterface) {
             $client->flush();
         }
+    }
+
+    /**
+     * Extract the readable name for a route.
+     *
+     * @param \Illuminate\Routing\Route $route
+     *
+     * @return string|null
+     */
+    public static function extractNameForRoute(Route $route): ?string
+    {
+        $routeName = null;
+
+        if (empty($routeName) && $route->getName()) {
+            // someaction (route name/alias)
+            $routeName = $route->getName();
+
+            // Laravel 7 route caching generates a route names if the user didn't specify one
+            // theirselfs to optimize route matching. These route names are useless to the
+            // developer so if we encounter a generated route name we discard the value
+            if (Str::startsWith($routeName, 'generated::')) {
+                $routeName = null;
+            }
+
+            // If the route name ends with a `.` we assume an incomplete group name prefix
+            // we discard this value since it will most likely not mean anything to the
+            // developer and will be duplicated by other unnamed routes in the group
+            if (Str::endsWith($routeName, '.')) {
+                $routeName = null;
+            }
+        }
+
+        if (empty($routeName) && $route->getActionName()) {
+            // SomeController@someAction (controller action)
+            $routeName = ltrim($route->getActionName(), '\\');
+        }
+
+        if (empty($routeName) || $routeName === 'Closure') {
+            // /someaction // Fallback to the url
+            $routeName = '/' . ltrim($route->uri(), '/');
+        }
+
+        return $routeName;
+    }
+
+    /**
+     * Retrieve the meta tags with tracing information to link this request to front-end requests.
+     *
+     * @return string
+     */
+    public static function sentryTracingMeta(): string
+    {
+        $span = self::currentTracingSpan();
+
+        if ($span === null) {
+            return '';
+        }
+
+        $content = sprintf('<meta name="sentry-trace" content="%s"/>', $span->toTraceparent());
+        // $content .= sprintf('<meta name="sentry-trace-data" content="%s"/>', $span->getDescription());
+
+        return $content;
+    }
+
+    /**
+     * Get the current active tracing span from the scope.
+     *
+     * @return \Sentry\Tracing\Span|null
+     *
+     * @internal This is used internally as an easy way to retrieve the current active tracing span.
+     */
+    public static function currentTracingSpan(): ?Span
+    {
+        return SentrySdk::getCurrentHub()->getSpan();
     }
 }
