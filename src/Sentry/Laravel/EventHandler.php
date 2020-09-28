@@ -278,14 +278,16 @@ class EventHandler
             $data['bindings'] = $bindings;
         }
 
-        $transaction = SentrySdk::getCurrentHub()->getTransaction();
-        if (null !== $transaction) {
+        $parentSpan = Integration::currentTracingSpan();
+
+        if (null !== $parentSpan) {
             $context = new SpanContext();
             $context->setOp('sql.query');
             $context->setDescription($query);
             $context->setStartTimestamp(microtime(true) - $time / 1000);
             $context->setEndTimestamp($context->getStartTimestamp() + $time / 1000);
-            $transaction->startChild($context);
+
+            $parentSpan->startChild($context);
         }
 
         Integration::addBreadcrumb(new Breadcrumb(
