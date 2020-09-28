@@ -97,39 +97,10 @@ class IntegrationsOptionTest extends SentryLaravelTestCase
             ],
         ]);
 
-        $integrations = $this->getHubFromContainer()->getClient()->getOptions()->getIntegrations();
-
-        $found = false;
-        
-        foreach ($integrations as $integration) {
-            $this->ensureIsNotDisabledIntegration($integration);
-
-            if ($integration instanceof IntegrationsOptionTestIntegrationStub) {
-                $found = true;
-            }
-        }
-
-        $this->assertTrue($found, 'No IntegrationsOptionTestIntegrationStub found in final integrations enabled');
-    }
-
-    /**
-     * Make sure the passed integration is not one of the disabled integrations.
-     *
-     * @param \Sentry\Integration\IntegrationInterface $integration
-     */
-    private function ensureIsNotDisabledIntegration(IntegrationInterface $integration)
-    {
-        if ($integration instanceof ErrorListenerIntegration) {
-            $this->fail('Should not have ErrorListenerIntegration registered');
-        }
-
-        if ($integration instanceof ExceptionListenerIntegration) {
-            $this->fail('Should not have ExceptionListenerIntegration registered');
-        }
-
-        if ($integration instanceof FatalErrorListenerIntegration) {
-            $this->fail('Should not have FatalErrorListenerIntegration registered');
-        }
+        $this->assertNotNull($this->getHubFromContainer()->getClient()->getIntegration(IntegrationsOptionTestIntegrationStub::class));
+        $this->assertNull($this->getHubFromContainer()->getClient()->getIntegration(ErrorListenerIntegration::class));
+        $this->assertNull($this->getHubFromContainer()->getClient()->getIntegration(ExceptionListenerIntegration::class));
+        $this->assertNull($this->getHubFromContainer()->getClient()->getIntegration(FatalErrorListenerIntegration::class));
     }
 }
 
