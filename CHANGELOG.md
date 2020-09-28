@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## 2.0.0
+
+**Breaking Change**: This version uses the [envelope endpoint](https://develop.sentry.dev/sdk/envelopes/). If you are
+using an on-premise installation it requires Sentry version `>= v20.6.0` to work. If you are using
+[sentry.io](https://sentry.io) nothing will change and no action is needed.
+
+**Tracing API / Monitor Performance**
+
+In this version we released API for Tracing. `\Sentry\startTransaction` is your entry point for manual instrumentation.
+More information can be found in our [Performance](https://docs.sentry.io/platforms/php/guides/laravel/performance/) docs.
+
+- Using `^3.0` of Sentry PHP SDK
+- Add support for Tracing, enable it by setting `traces_sample_rate` in the config to a value > 0 (the value should be larger than `0.0` and smaller or equal than `1.0` (to send everything))
+
 ## 2.0.0-beta1
 
 **Breaking Change**: This version uses the [envelope endpoint](https://develop.sentry.dev/sdk/envelopes/). If you are
