@@ -53,7 +53,6 @@ class ServiceProvider extends IlluminateServiceProvider
         /** @var ViewFactory $viewFactory */
         $viewFactory = $this->app->make('view');
 
-        /** @noinspection UnusedFunctionResultInspection */
         $viewFactory->composer('*', static function (View $view) use ($viewFactory) : void {
             $viewFactory->share(ViewEngineDecorator::SHARED_KEY, $view->name());
         });

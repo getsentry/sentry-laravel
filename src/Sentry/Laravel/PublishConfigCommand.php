@@ -63,7 +63,6 @@ class PublishConfigCommand extends Command
 
         if (count($values) > 0) {
             foreach ($values as $envKey => $envValue) {
-
                 $str .= "\n"; // In case the searched variable is in the last line without \n
                 $keyPosition = strpos($str, "{$envKey}=");
                 $endOfLinePosition = strpos($str, "\n", $keyPosition);
@@ -75,12 +74,13 @@ class PublishConfigCommand extends Command
                 } else {
                     $str = str_replace($oldLine, "{$envKey}={$envValue}", $str);
                 }
-
             }
         }
 
         $str = substr($str, 0, -1);
-        if (!file_put_contents($envFile, $str)) return false;
+        if (!file_put_contents($envFile, $str)) {
+            return false;
+        }
         return true;
     }
 }
