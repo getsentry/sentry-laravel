@@ -4,6 +4,7 @@ namespace Sentry\Laravel\Tracing;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Sentry\SentrySdk;
 use Sentry\State\Hub;
 use Sentry\Tracing\SpanContext;
@@ -59,6 +60,10 @@ class Middleware
 
             // Make sure we set the span in the Sentry SDK to the transaction
             SentrySdk::getCurrentHub()->setSpan($this->transaction);
+
+            if ($response instanceof Response) {
+                $this->transaction->setHttpStatus($response->status());
+            }
 
             $this->transaction->finish();
         }
