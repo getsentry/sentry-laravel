@@ -58,7 +58,8 @@ class Middleware
                 $this->appSpan->finish();
             }
 
-            // Make sure we set the span in the Sentry SDK to the transaction
+            // Make sure we set the transaction and not have a child span in the Sentry SDK
+            // If the transaction is not on the scope during finish, the trace.context is wrong
             SentrySdk::getCurrentHub()->setSpan($this->transaction);
 
             if ($response instanceof Response) {
