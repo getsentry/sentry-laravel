@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Improve performance tracing by nesting `view.render` spans and adding a `app.handle` span showing how long the actual application code runs after Laravel bootstrapping (#387)
+
 ## 2.0.0
 
 **Breaking Change**: This version uses the [envelope endpoint](https://develop.sentry.dev/sdk/envelopes/). If you are
