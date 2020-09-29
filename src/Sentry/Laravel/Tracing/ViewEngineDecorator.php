@@ -1,12 +1,12 @@
 <?php
 
-
 namespace Sentry\Laravel\Tracing;
 
 use Illuminate\Contracts\View\Engine;
 use Illuminate\View\Compilers\CompilerInterface;
 use Illuminate\View\Factory;
 use Sentry\Laravel\Integration;
+use Sentry\SentrySdk;
 use Sentry\Tracing\SpanContext;
 
 final class ViewEngineDecorator implements Engine
@@ -42,15 +42,22 @@ final class ViewEngineDecorator implements Engine
 
         $span = $parentSpan->startChild($context);
 
+        $scope = SentrySdk::getCurrentHub()->pushScope();
+        $scope->setSpan($span);
+
         $result = $this->engine->get($path, $data);
 
         $span->finish();
+
+        SentrySdk::getCurrentHub()->popScope();
 
         return $result;
     }
 
     /**
-     * Laravel uses this function internally
+     * Laravel uses this function internally.
+     *
+     * @internal
      */
     public function getCompiler(): CompilerInterface
     {

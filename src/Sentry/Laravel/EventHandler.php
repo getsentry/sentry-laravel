@@ -20,8 +20,6 @@ use RuntimeException;
 use Sentry\Breadcrumb;
 use Sentry\SentrySdk;
 use Sentry\State\Scope;
-use Sentry\Tracing\SpanContext;
-use Sentry\Tracing\Transaction;
 
 class EventHandler
 {
@@ -197,16 +195,6 @@ class EventHandler
     {
         $routeName = Integration::extractNameForRoute($route) ?? '<unlabeled transaction>';
 
-        $transaction = SentrySdk::getCurrentHub()->getTransaction();
-
-        if ($transaction instanceof Transaction) {
-            $transaction->setName($routeName);
-            $transaction->setData([
-                'action' => $route->getActionName(),
-                'name' => $route->getName()
-            ]);
-        }
-
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,
             Breadcrumb::TYPE_NAVIGATION,
@@ -276,16 +264,6 @@ class EventHandler
 
         if ($this->recordSqlBindings) {
             $data['bindings'] = $bindings;
-        }
-
-        $transaction = SentrySdk::getCurrentHub()->getTransaction();
-        if (null !== $transaction) {
-            $context = new SpanContext();
-            $context->setOp('sql.query');
-            $context->setDescription($query);
-            $context->setStartTimestamp(microtime(true) - $time / 1000);
-            $context->setEndTimestamp($context->getStartTimestamp() + $time / 1000);
-            $transaction->startChild($context);
         }
 
         Integration::addBreadcrumb(new Breadcrumb(

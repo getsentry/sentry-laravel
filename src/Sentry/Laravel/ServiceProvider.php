@@ -2,7 +2,6 @@
 
 namespace Sentry\Laravel;
 
-use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
 use Sentry\SentrySdk;
 use Sentry\State\Hub;
 use Sentry\ClientBuilder;
@@ -12,18 +11,9 @@ use Sentry\ClientBuilderInterface;
 use Laravel\Lumen\Application as Lumen;
 use Sentry\Integration as SdkIntegration;
 use Illuminate\Foundation\Application as Laravel;
-use Illuminate\Support\ServiceProvider as IlluminateServiceProvider;
-use Illuminate\Support\Facades\Storage;
 
-class ServiceProvider extends IlluminateServiceProvider
+class ServiceProvider extends BaseServiceProvider
 {
-    /**
-     * Abstract type to bind Sentry as in the Service Container.
-     *
-     * @var string
-     */
-    public static $abstract = 'sentry';
-
     /**
      * Boot the service provider.
      */
@@ -183,18 +173,6 @@ class ServiceProvider extends IlluminateServiceProvider
     }
 
     /**
-     * Check if a DSN was set in the config.
-     *
-     * @return bool
-     */
-    protected function hasDsnSet(): bool
-    {
-        $config = $this->getUserConfig();
-
-        return !empty($config['dsn']);
-    }
-
-    /**
      * Resolve the integrations from the user configuration with the container.
      *
      * @return array
@@ -222,18 +200,6 @@ class ServiceProvider extends IlluminateServiceProvider
         }
 
         return $integrations;
-    }
-
-    /**
-     * Retrieve the user configuration.
-     *
-     * @return array
-     */
-    private function getUserConfig(): array
-    {
-        $config = $this->app['config'][static::$abstract];
-
-        return empty($config) ? [] : $config;
     }
 
     /**

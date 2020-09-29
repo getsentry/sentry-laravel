@@ -4,6 +4,7 @@ namespace Sentry\Laravel\Tracing;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Sentry\SentrySdk;
 use Sentry\State\Hub;
 use Sentry\Tracing\SpanContext;
@@ -17,6 +18,13 @@ class Middleware
      * @var \Sentry\Tracing\Transaction|null
      */
     protected $transaction;
+
+    /**
+     * The span for the `app.handle` part of the application.
+     *
+     * @var \Sentry\Tracing\Span|null
+     */
+    protected $appSpan;
 
     /**
      * Handle an incoming request.
@@ -46,6 +54,18 @@ class Middleware
     public function terminate($request, $response): void
     {
         if ($this->transaction !== null && app()->bound('sentry')) {
+            if ($this->appSpan !== null) {
+                $this->appSpan->finish();
+            }
+
+            // Make sure we set the transaction and not have a child span in the Sentry SDK
+            // If the transaction is not on the scope during finish, the trace.context is wrong
+            SentrySdk::getCurrentHub()->setSpan($this->transaction);
+
+            if ($response instanceof Response) {
+                $this->transaction->setHttpStatus($response->status());
+            }
+
             $this->transaction->finish();
         }
     }
@@ -81,6 +101,13 @@ class Middleware
                 $spanContextStart->setStartTimestamp(defined('LARAVEL_START') ? LARAVEL_START : $request->server('REQUEST_TIME_FLOAT', $fallbackTime));
                 $spanContextStart->setEndTimestamp(microtime(true));
                 $this->transaction->startChild($spanContextStart);
+
+                $appContextStart = new SpanContext();
+                $appContextStart->setOp('app.handle');
+                $appContextStart->setStartTimestamp(microtime(true));
+                $this->appSpan = $this->transaction->startChild($appContextStart);
+
+                SentrySdk::getCurrentHub()->setSpan($this->appSpan);
             });
         }
     }
