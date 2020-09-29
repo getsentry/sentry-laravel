@@ -5,26 +5,42 @@ namespace Sentry\Laravel\Tracing;
 use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
 use Illuminate\Contracts\View\Engine;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\ServiceProvider as IlluminateServiceProvider;
 use Illuminate\View\Engines\EngineResolver;
 use Illuminate\View\Factory as ViewFactory;
+use Sentry\Laravel\BaseServiceProvider;
 
-class ServiceProvider extends IlluminateServiceProvider
+class ServiceProvider extends BaseServiceProvider
 {
     public function boot(): void
     {
-        if ($this->app->bound(HttpKernelInterface::class)) {
-            /** @var \Illuminate\Contracts\Http\Kernel $httpKernel */
-            $httpKernel = $this->app->make(HttpKernelInterface::class);
+        if ($this->hasDsnSet()) {
+            $this->bindEvents($this->app);
 
-            $httpKernel->prependMiddleware(Middleware::class);
+            $this->bindViewEngine();
+
+            if ($this->app->bound(HttpKernelInterface::class)) {
+                /** @var \Illuminate\Contracts\Http\Kernel $httpKernel */
+                $httpKernel = $this->app->make(HttpKernelInterface::class);
+
+                $httpKernel->prependMiddleware(Middleware::class);
+            }
         }
     }
 
     public function register(): void
     {
         $this->app->singleton(Middleware::class);
+    }
 
+    private function bindEvents(): void
+    {
+        $handler = new EventHandler($this->app->events);
+
+        $handler->subscribe();
+    }
+
+    private function bindViewEngine(): void
+    {
         $viewEngineWrapper = function (EngineResolver $engineResolver): void {
             foreach (['file', 'php', 'blade'] as $engineName) {
                 try {
