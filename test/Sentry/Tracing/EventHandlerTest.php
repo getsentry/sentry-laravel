@@ -2,6 +2,7 @@
 
 namespace Sentry\Laravel\Tests\Tracing;
 
+use Mockery;
 use ReflectionClass;
 use Orchestra\Testbench\TestCase;
 use Sentry\Laravel\Tracing\EventHandler;
@@ -31,7 +32,7 @@ class EventHandlerTest extends TestCase
     {
         SentrySdk::getCurrentHub()->setSpan(null);
 
-        $eventHandlerMock = $this->mock(EventHandler::class)->makePartial();
+        $eventHandlerMock = Mockery::mock(EventHandler::class)->makePartial();
 
         $eventHandlerMock->shouldReceive('__call')->withArgs(['queryHandler', []]);
 
@@ -43,7 +44,7 @@ class EventHandlerTest extends TestCase
         $transaction = SentrySdk::getCurrentHub()->startTransaction(new TransactionContext());
         SentrySdk::getCurrentHub()->setSpan($transaction);
 
-        $eventHandlerMock = $this->mock(EventHandler::class)->makePartial()->shouldAllowMockingProtectedMethods();
+        $eventHandlerMock = Mockery::mock(EventHandler::class)->makePartial()->shouldAllowMockingProtectedMethods();
 
         $eventHandlerMock->shouldReceive('queryHandler')->withArgs(['', [], 0, ''])->once();
 
