@@ -71,7 +71,7 @@ class EventHandler
 
         $parentSpan = Integration::currentTracingSpan();
 
-        // If there is no tracing span active there is no need to handle the even
+        // If there is no tracing span active there is no need to handle the event
         if ($parentSpan === null) {
             return;
         }
