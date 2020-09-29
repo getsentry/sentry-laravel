@@ -19,6 +19,13 @@ class Middleware
     protected $transaction;
 
     /**
+     * The span for the `app.handle` part of the application.
+     *
+     * @var \Sentry\Tracing\Span|null
+     */
+    protected $appSpan;
+
+    /**
      * Handle an incoming request.
      *
      * @param \Illuminate\Http\Request $request
@@ -46,6 +53,13 @@ class Middleware
     public function terminate($request, $response): void
     {
         if ($this->transaction !== null && app()->bound('sentry')) {
+            if ($this->appSpan !== null) {
+                $this->appSpan->finish();
+            }
+
+            // Make sure we set the span in the Sentry SDK to the transaction
+            SentrySdk::getCurrentHub()->setSpan($this->transaction);
+
             $this->transaction->finish();
         }
     }
@@ -81,6 +95,13 @@ class Middleware
                 $spanContextStart->setStartTimestamp(defined('LARAVEL_START') ? LARAVEL_START : $request->server('REQUEST_TIME_FLOAT', $fallbackTime));
                 $spanContextStart->setEndTimestamp(microtime(true));
                 $this->transaction->startChild($spanContextStart);
+
+                $appContextStart = new SpanContext();
+                $appContextStart->setOp('app.handle');
+                $appContextStart->setStartTimestamp(microtime(true));
+                $this->appSpan = $this->transaction->startChild($appContextStart);
+
+                SentrySdk::getCurrentHub()->setSpan($this->appSpan);
             });
         }
     }
