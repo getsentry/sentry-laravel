@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Improve performance tracing by nesting `view.render` spans and adding a `app.handle` span showing how long the actual application code runs after Laravel bootstrapping (#387)
+- Disable tracing on empty `traces_sample_rate` (#390)
 
 ## 2.0.0
 
