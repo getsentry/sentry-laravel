@@ -13,7 +13,7 @@ class ServiceProvider extends BaseServiceProvider
 {
     public function boot(): void
     {
-        if ($this->hasDsnSet()) {
+        if ($this->hasDsnSet() && $this->hasTracingEnabled()) {
             $this->bindEvents($this->app);
 
             $this->bindViewEngine();

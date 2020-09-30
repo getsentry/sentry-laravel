@@ -36,4 +36,17 @@ abstract class BaseServiceProvider extends ServiceProvider
 
         return empty($config) ? [] : $config;
     }
+
+    /**
+     * Check if tracing was enabled in the config.
+     *
+     * @return bool
+     */
+    protected function hasTracingEnabled(): bool
+    {
+        $config = $this->getUserConfig();
+
+        // We would expect a `0.0` which is considered `empty` when tracing should be disabled
+        return !empty($config['traces_sample_rate']);
+    }
 }
