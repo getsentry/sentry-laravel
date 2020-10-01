@@ -4,6 +4,8 @@ namespace Sentry\Laravel;
 
 use Exception;
 use Illuminate\Console\Command;
+use Sentry\ClientBuilder;
+use Sentry\State\Hub;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\TransactionContext;
 
@@ -21,7 +23,7 @@ class TestCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'sentry:test {--transaction}';
+    protected $signature = 'sentry:test {--transaction} {--dsn=}';
 
     /**
      * The console command description.
@@ -43,6 +45,10 @@ class TestCommand extends Command
         try {
             /** @var \Sentry\State\Hub $hub */
             $hub = app('sentry');
+
+            if ($this->option('dsn')) {
+                $hub = new Hub(ClientBuilder::create(['dsn' => $this->option('dsn')])->getClient());
+            }
 
             if ($hub->getClient()->getOptions()->getDsn()) {
                 $this->info('[Sentry] DSN discovered!');
@@ -70,23 +76,22 @@ class TestCommand extends Command
 
             $ex = $this->generateTestException('command name', ['foo' => 'bar']);
 
-            $hub->captureException($ex);
+            $eventId = $hub->captureException($ex);
 
             $this->info('[Sentry] Sending test Event');
 
             $span1->finish();
             $result = $transaction->finish();
             if ($result) {
-                $this->info('[Sentry] Sending test Transaction');
+                $this->info("[Sentry] Transaction sent: {$result}");
             }
 
-            $lastEventId = $hub->getLastEventId();
 
-            if (!$lastEventId) {
+            if (!$eventId) {
                 $this->error('[Sentry] There was an error sending the test event.');
                 $this->error('[Sentry] Please check if you DSN is set properly in your config or `.env` as `SENTRY_LARAVEL_DSN`.');
             } else {
-                $this->info("[Sentry] Event sent with ID: {$lastEventId}");
+                $this->info("[Sentry] Event sent with ID: {$eventId}");
             }
         } catch (Exception $e) {
             $this->error("[Sentry] {$e->getMessage()}");
