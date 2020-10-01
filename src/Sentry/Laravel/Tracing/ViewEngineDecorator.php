@@ -3,7 +3,6 @@
 namespace Sentry\Laravel\Tracing;
 
 use Illuminate\Contracts\View\Engine;
-use Illuminate\View\Compilers\CompilerInterface;
 use Illuminate\View\Factory;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
@@ -54,13 +53,8 @@ final class ViewEngineDecorator implements Engine
         return $result;
     }
 
-    /**
-     * Laravel uses this function internally.
-     *
-     * @internal
-     */
-    public function getCompiler(): CompilerInterface
+    public function __call($name, $arguments)
     {
-        return $this->engine->getCompiler();
+        return call_user_func_array([$this->engine, $name], $arguments);
     }
 }
