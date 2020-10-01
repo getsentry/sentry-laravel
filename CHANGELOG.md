@@ -2,7 +2,10 @@
 
 ## Unreleased
 
+## 2.0.1
+
 - Improve performance tracing by nesting `view.render` spans and adding a `app.handle` span showing how long the actual application code runs after Laravel bootstrapping (#387)
+- Improve UX of `sentry:publish` command
 
 ## 2.0.0
 
