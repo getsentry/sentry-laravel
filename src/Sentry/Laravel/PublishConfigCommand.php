@@ -19,7 +19,7 @@ class PublishConfigCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'sentry:publish';
+    protected $signature = 'sentry:publish {--dsn=}';
 
     /**
      * The console command description.
@@ -42,10 +42,10 @@ class PublishConfigCommand extends Command
 
         $args = [];
 
-        $dsn = '';
+        $dsn = $this->option('dsn');
 
         if (!$this->isKeySet('SENTRY_LARAVEL_DSN')) {
-            do {
+            while (empty($dsn)) {
                 $this->info('');
                 $this->question('[Sentry] Please paste the DSN here');
                 $dsn = $this->ask('DSN');
@@ -59,9 +59,10 @@ class PublishConfigCommand extends Command
                     $dsn = '';
                     continue;
                 }
-                $this->setEnvironmentValue(['SENTRY_LARAVEL_DSN' => $dsn]);
-                $args = array_merge($args, ['--dsn' => $dsn]);
-            } while (empty($dsn));
+            };
+
+            $this->setEnvironmentValue(['SENTRY_LARAVEL_DSN' => $dsn]);
+            $args = array_merge($args, ['--dsn' => $dsn]);
         }
 
         if ($this->confirm('Enable Performance Monitoring?', true)) {
