@@ -15,6 +15,20 @@ use Illuminate\Foundation\Application as Laravel;
 class ServiceProvider extends BaseServiceProvider
 {
     /**
+     * List of configuration options that are Laravel specific and should not be sent to the base PHP SDK.
+     */
+    private const LARAVEL_SPECIFIC_OPTIONS = [
+        // We do not want this setting to hit our main client because it's Laravel specific
+        'breadcrumbs',
+        // We resolve the integrations through the container later, so we initially do not pass it to the SDK yet
+        'integrations',
+        // This is kept for backwards compatibility and can be dropped in a future breaking release
+        'breadcrumbs.sql_bindings',
+        // The base namespace for controllers to strip of the beginning of controller class names
+        'controllers_base_namespace',
+    ];
+
+    /**
      * Boot the service provider.
      */
     public function boot(): void
@@ -92,18 +106,17 @@ class ServiceProvider extends BaseServiceProvider
      */
     protected function configureAndRegisterClient(): void
     {
+        $userConfig = $this->getUserConfig();
+
+        Integration::setControllersBaseNamespace($userConfig['controllers_base_namespace']);
+
         $this->app->bind(ClientBuilderInterface::class, function () {
             $basePath = base_path();
             $userConfig = $this->getUserConfig();
 
-            unset(
-                // We do not want this setting to hit our main client because it's Laravel specific
-                $userConfig['breadcrumbs'],
-                // We resolve the integrations through the container later, so we initially do not pass it to the SDK yet
-                $userConfig['integrations'],
-                // This is kept for backwards compatibility and can be dropped in a future breaking release
-                $userConfig['breadcrumbs.sql_bindings']
-            );
+            foreach (self::LARAVEL_SPECIFIC_OPTIONS as $laravelSpecificOptionName) {
+                unset($userConfig[$laravelSpecificOptionName]);
+            }
 
             $options = \array_merge(
                 [
