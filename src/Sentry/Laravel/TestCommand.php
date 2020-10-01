@@ -21,7 +21,7 @@ class TestCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'sentry:test {--transaction}';
+    protected $signature = 'sentry:test {--transaction} {--dsn}';
 
     /**
      * The console command description.
@@ -43,6 +43,10 @@ class TestCommand extends Command
         try {
             /** @var \Sentry\State\Hub $hub */
             $hub = app('sentry');
+
+            if ($this->option('dsn')) {
+                $hub->getClient()->getOptions()->setDsn($this->option('dsn'));
+            }
 
             if ($hub->getClient()->getOptions()->getDsn()) {
                 $this->info('[Sentry] DSN discovered!');

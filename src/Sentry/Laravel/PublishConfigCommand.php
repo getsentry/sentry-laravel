@@ -3,6 +3,7 @@
 namespace Sentry\Laravel;
 
 use Illuminate\Console\Command;
+use Sentry\Dsn;
 
 class PublishConfigCommand extends Command
 {
@@ -39,21 +40,50 @@ class PublishConfigCommand extends Command
             '--provider' => 'Sentry\Laravel\ServiceProvider'
         ]);
 
+        $args = [];
+
+        $dsn = '';
+
+        if (!$this->isKeySet('SENTRY_LARAVEL_DSN')) {
+            do {
+                $this->info('');
+                $this->question('[Sentry] Please paste the DSN here');
+                $dsn = $this->ask('DSN');
+                // In case someone copies it with SENTRY_LARAVEL_DSN=
+                $dsn = str_replace('SENTRY_LARAVEL_DSN=', '', $dsn);
+                try {
+                    $dsnObj = Dsn::createFromString($dsn);
+                } catch (\Exception $e) {
+                    // Not a valid DSN do it again
+                    $this->error('[Sentry] The DSN is not valid, please make sure to paste a valid DSN');
+                    $dsn = '';
+                    continue;
+                }
+                $this->setEnvironmentValue(['SENTRY_LARAVEL_DSN' => $dsn]);
+                $args = array_merge($args, ['--dsn' => $dsn]);
+            } while (empty($dsn));
+        }
+
         if ($this->confirm('Enable Performance Monitoring?', true)) {
             $this->setEnvironmentValue(['SENTRY_TRACES_SAMPLE_RATE' => 1.0]);
 
             $this->info('[Sentry] Added `SENTRY_TRACES_SAMPLE_RATE=1` to your .env file.');
 
             $testCommandPrompt = 'Want to send a test Event & Transaction?';
-            $args = ['--transaction' => true];
+            $args = array_merge($args, ['--transaction' => true]);
         } else {
             $testCommandPrompt = 'Want to send a test Event?';
-            $args = [];
         }
 
         if ($this->confirm($testCommandPrompt, true)) {
             $this->call('sentry:test', $args);
         }
+    }
+
+    public function isKeySet(string $key)
+    {
+        $envFile = app()->environmentFilePath();
+        return strpos(file_get_contents($envFile), $key) !== false;
     }
 
     public function setEnvironmentValue(array $values)
