@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2.1.0
+
 - Added a option (`controllers_base_namespace`) to strip away the controller base namespace for cleaner transaction names (#393)
 - Fix incompatibility with other packages that also decorate the view engine, like Livewire (#395)
 
