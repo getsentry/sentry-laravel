@@ -22,6 +22,11 @@ class Integration implements IntegrationInterface
     private static $transaction;
 
     /**
+     * @var null|string
+     */
+    private static $baseControllerNamespace;
+
+    /**
      * {@inheritdoc}
      */
     public function setupOnce(): void
@@ -84,9 +89,17 @@ class Integration implements IntegrationInterface
     /**
      * @param null|string $transaction
      */
-    public static function setTransaction($transaction): void
+    public static function setTransaction(?string $transaction): void
     {
         self::$transaction = $transaction;
+    }
+
+    /**
+     * @param null|string $namespace
+     */
+    public static function setControllersBaseNamespace(?string $namespace): void
+    {
+        self::$baseControllerNamespace = $namespace !== null ? trim($namespace, '\\') : null;
     }
 
     /**
@@ -136,7 +149,7 @@ class Integration implements IntegrationInterface
 
         if (empty($routeName) && $route->getActionName()) {
             // SomeController@someAction (controller action)
-            $routeName = ltrim($route->getActionName(), '\\');
+            $routeName = ltrim($route->getActionName(), (self::$baseControllerNamespace ?? '') . '\\');
         }
 
         if (empty($routeName) || $routeName === 'Closure') {
