@@ -2,11 +2,13 @@
 
 ## Unreleased
 
+- Added a option (`controllers_base_namespace`) to strip away the controller base namespace for cleaner transaction names (#393)
+- Fix incompatibility with other packages that also decorate the view engine, like Livewire (#395)
+
 ## 2.0.1
 
 - Improve performance tracing by nesting `view.render` spans and adding a `app.handle` span showing how long the actual application code runs after Laravel bootstrapping (#387)
 - Improve UX of `sentry:publish` command
-- Fix incompatibility with other packages that also decorate the view engine, like Livewire (#395)
 
 ## 2.0.0
 
