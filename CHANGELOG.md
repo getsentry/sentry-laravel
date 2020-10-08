@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2.1.1
+
 - Fix for potential `Undefined index: controllers_base_namespace.` notice
 
 ## 2.1.0
