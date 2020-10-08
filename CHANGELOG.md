@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix for potential `Undefined index: controllers_base_namespace.` notice
+
 ## 2.1.0
 
 - Added a option (`controllers_base_namespace`) to strip away the controller base namespace for cleaner transaction names (#393)

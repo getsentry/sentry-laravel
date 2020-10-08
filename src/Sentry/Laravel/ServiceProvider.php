@@ -108,7 +108,9 @@ class ServiceProvider extends BaseServiceProvider
     {
         $userConfig = $this->getUserConfig();
 
-        Integration::setControllersBaseNamespace($userConfig['controllers_base_namespace']);
+        if (isset($userConfig['controllers_base_namespace'])) {
+            Integration::setControllersBaseNamespace($userConfig['controllers_base_namespace']);
+        }
 
         $this->app->bind(ClientBuilderInterface::class, function () {
             $basePath = base_path();
