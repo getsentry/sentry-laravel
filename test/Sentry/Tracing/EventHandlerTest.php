@@ -4,19 +4,20 @@ namespace Sentry\Laravel\Tests\Tracing;
 
 use Mockery;
 use ReflectionClass;
-use Orchestra\Testbench\TestCase;
+use Sentry\Laravel\Tests\SentryLaravelTestCase;
+use Sentry\Laravel\Tracing\BacktraceHelper;
 use Sentry\Laravel\Tracing\EventHandler;
 use Sentry\SentrySdk;
 use Sentry\Tracing\TransactionContext;
 
-class EventHandlerTest extends TestCase
+class EventHandlerTest extends SentryLaravelTestCase
 {
     /**
      * @expectedException \RuntimeException
      */
     public function test_missing_event_handler_throws_exception()
     {
-        $handler = new EventHandler($this->app->events);
+        $handler = new EventHandler($this->app->events, $this->app->make(BacktraceHelper::class));
 
         $handler->thisIsNotAHandlerAndShouldThrowAnException();
     }
@@ -53,7 +54,7 @@ class EventHandlerTest extends TestCase
 
     private function tryAllEventHandlerMethods(array $methods): void
     {
-        $handler = new EventHandler($this->app->events, []);
+        $handler = new EventHandler($this->app->events, $this->app->make(BacktraceHelper::class));
 
         $methods = array_map(static function ($method) {
             return "{$method}Handler";

@@ -8,6 +8,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\View\Engines\EngineResolver;
 use Illuminate\View\Factory as ViewFactory;
 use Sentry\Laravel\BaseServiceProvider;
+use Sentry\Serializer\RepresentationSerializer;
 
 class ServiceProvider extends BaseServiceProvider
 {
@@ -30,11 +31,23 @@ class ServiceProvider extends BaseServiceProvider
     public function register(): void
     {
         $this->app->singleton(Middleware::class);
+
+        $this->app->singleton(BacktraceHelper::class, function () {
+            /** @var \Sentry\State\Hub $sentry */
+            $sentry = $this->app->make(self::$abstract);
+
+            $options = $sentry->getClient()->getOptions();
+
+            return new BacktraceHelper($options, new RepresentationSerializer($options));
+        });
     }
 
     private function bindEvents(): void
     {
-        $handler = new EventHandler($this->app->events);
+        $handler = new EventHandler(
+            $this->app->events,
+            $this->app->make(BacktraceHelper::class)
+        );
 
         $handler->subscribe();
     }

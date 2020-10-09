@@ -6,6 +6,7 @@ use ReflectionMethod;
 use Sentry\Breadcrumb;
 use Sentry\State\Scope;
 use ReflectionProperty;
+use Sentry\Laravel\Tracing;
 use Sentry\State\HubInterface;
 use Sentry\Laravel\ServiceProvider;
 use Orchestra\Testbench\TestCase as LaravelTestCase;
@@ -30,6 +31,7 @@ abstract class SentryLaravelTestCase extends LaravelTestCase
     {
         return [
             ServiceProvider::class,
+            Tracing\ServiceProvider::class,
         ];
     }
 

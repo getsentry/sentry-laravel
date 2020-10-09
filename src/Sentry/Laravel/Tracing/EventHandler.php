@@ -36,13 +36,21 @@ class EventHandler
     private $events;
 
     /**
+     * The backtrace helper.
+     *
+     * @var \Sentry\Laravel\Tracing\BacktraceHelper
+     */
+    private $backtraceHelper;
+
+    /**
      * EventHandler constructor.
      *
      * @param \Illuminate\Contracts\Events\Dispatcher $events
      */
-    public function __construct(Dispatcher $events)
+    public function __construct(Dispatcher $events, BacktraceHelper $backtraceHelper)
     {
-        $this->events = $events;
+        $this->events          = $events;
+        $this->backtraceHelper = $backtraceHelper;
     }
 
     /**
@@ -152,6 +160,26 @@ class EventHandler
         $context->setStartTimestamp(microtime(true) - $time / 1000);
         $context->setEndTimestamp($context->getStartTimestamp() + $time / 1000);
 
+        $this->resolveQuerySourceFromBacktrace($context);
+
         $parentSpan->startChild($context);
+    }
+
+    /**
+     * Try to find the origin of the SQL query that was just executed.
+     *
+     * @param \Sentry\Tracing\SpanContext $context
+     */
+    private function resolveQuerySourceFromBacktrace(SpanContext $context): void
+    {
+        $firstAppFrame = $this->backtraceHelper->findFirstInAppFrameForBacktrace(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS));
+
+        if ($firstAppFrame !== null) {
+            $filePath = $this->backtraceHelper->getOriginalViewPathForFrameOfCompiledViewPath($firstAppFrame) ?? $firstAppFrame->getFile();
+
+            $context->setData([
+                'sql.origin' => "{$filePath}:{$firstAppFrame->getLine()}",
+            ]);
+        }
     }
 }
