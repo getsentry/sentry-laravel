@@ -54,7 +54,7 @@ class TestCommand extends Command
                 $this->info('[Sentry] DSN discovered!');
             } else {
                 $this->error('[Sentry] Could not discover DSN!');
-                $this->error('[Sentry] Please check if you DSN is set properly in your config or `.env` as `SENTRY_LARAVEL_DSN`.');
+                $this->error('[Sentry] Please check if your DSN is set properly in your config or `.env` as `SENTRY_LARAVEL_DSN`.');
 
                 return;
             }
@@ -89,7 +89,7 @@ class TestCommand extends Command
 
             if (!$eventId) {
                 $this->error('[Sentry] There was an error sending the test event.');
-                $this->error('[Sentry] Please check if you DSN is set properly in your config or `.env` as `SENTRY_LARAVEL_DSN`.');
+                $this->error('[Sentry] Please check if your DSN is set properly in your config or `.env` as `SENTRY_LARAVEL_DSN`.');
             } else {
                 $this->info("[Sentry] Event sent with ID: {$eventId}");
             }
