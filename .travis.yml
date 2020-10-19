@@ -7,7 +7,7 @@ php:
 
 env:
   matrix:
-    # All versions below should be test on PHP ^7.1 (Sentry SDK requrement)
+    # All versions below should be test on PHP ^7.1 (Sentry SDK requirement)
     - LARAVEL=5.1.* TESTBENCH=3.1.* PHPUNIT=5.7.* SENTRY=^3.0
     - LARAVEL=5.2.* TESTBENCH=3.2.* PHPUNIT=5.7.* SENTRY=^3.0
     - LARAVEL=5.3.* TESTBENCH=3.3.* PHPUNIT=5.7.* SENTRY=^3.0
