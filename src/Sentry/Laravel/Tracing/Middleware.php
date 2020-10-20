@@ -36,7 +36,7 @@ class Middleware
      */
     public function handle($request, Closure $next)
     {
-        if (app()->bound('sentry')) {
+        if (app()->bound('sentry') && !app()->runningUnitTests()) {
             $this->startTransaction($request, app('sentry'));
         }
 
