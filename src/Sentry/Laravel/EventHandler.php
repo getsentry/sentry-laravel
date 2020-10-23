@@ -322,7 +322,7 @@ class EventHandler
             Breadcrumb::TYPE_DEFAULT,
             'log.' . $level,
             $message,
-            empty($context) ? [] : ['params' => $context]
+            $context
         ));
     }
 
