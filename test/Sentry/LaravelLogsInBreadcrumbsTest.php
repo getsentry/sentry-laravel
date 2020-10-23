@@ -22,7 +22,7 @@ class LaravelLogsInBreadcrumbsTest extends SentryLaravelTestCase
 
         $this->assertEquals($level, $lastBreadcrumb->getLevel());
         $this->assertEquals($message, $lastBreadcrumb->getMessage());
-        $this->assertEquals($context, $lastBreadcrumb->getMetadata()['params']);
+        $this->assertEquals($context, $lastBreadcrumb->getMetadata());
     }
 
     public function testLaravelLogsAreRecordedWhenDisabled()
