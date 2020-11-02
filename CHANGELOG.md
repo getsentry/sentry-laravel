@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Fix incorrectly stripped base controller action from transaction name (#406)
+- Move tracing request/response data hydration to the tracing middleware (#408)
 
 ## 2.1.1
 
