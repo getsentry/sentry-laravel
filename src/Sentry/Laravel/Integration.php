@@ -148,8 +148,8 @@ class Integration implements IntegrationInterface
         }
 
         if (empty($routeName) && $route->getActionName()) {
-            // SomeController@someAction (controller action)
-            $routeName = $route->getActionName();
+            // Some\Controller@someAction (controller action)
+            $routeName = ltrim($route->getActionName(), '\\');
 
             $baseNamespace = self::$baseControllerNamespace ?? '';
 
