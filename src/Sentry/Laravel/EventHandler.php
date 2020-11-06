@@ -173,7 +173,7 @@ class EventHandler
      */
     public function __call($method, $arguments)
     {
-        $handlerMethod = $handlerMethod = "{$method}Handler";
+        $handlerMethod = "{$method}Handler";
 
         if (!method_exists($this, $handlerMethod)) {
             throw new RuntimeException("Missing event handler: {$handlerMethod}");
