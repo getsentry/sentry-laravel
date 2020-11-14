@@ -7,6 +7,7 @@ use Illuminate\Contracts\View\Engine;
 use Illuminate\Contracts\View\View;
 use Illuminate\View\Engines\EngineResolver;
 use Illuminate\View\Factory as ViewFactory;
+use Laravel\Lumen\Application as Lumen;
 use Sentry\Laravel\BaseServiceProvider;
 
 class ServiceProvider extends BaseServiceProvider
@@ -18,7 +19,9 @@ class ServiceProvider extends BaseServiceProvider
 
             $this->bindViewEngine();
 
-            if ($this->app->bound(HttpKernelInterface::class)) {
+            if ($this->app instanceof Lumen) {
+                $this->app->middleware(Middleware::class);
+            } elseif ($this->app->bound(HttpKernelInterface::class)) {
                 /** @var \Illuminate\Contracts\Http\Kernel $httpKernel */
                 $httpKernel = $this->app->make(HttpKernelInterface::class);
 
@@ -69,7 +72,7 @@ class ServiceProvider extends BaseServiceProvider
         /** @var ViewFactory $viewFactory */
         $viewFactory = $this->app->make('view');
 
-        $viewFactory->composer('*', static function (View $view) use ($viewFactory) : void {
+        $viewFactory->composer('*', static function (View $view) use ($viewFactory): void {
             $viewFactory->share(ViewEngineDecorator::SHARED_KEY, $view->name());
         });
 
