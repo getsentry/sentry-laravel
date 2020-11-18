@@ -77,7 +77,7 @@ class ServiceProvider extends BaseServiceProvider
     {
         $userConfig = $this->getUserConfig();
 
-        $handler = new EventHandler($this->app->events, $userConfig);
+        $handler = new EventHandler($this->app, $userConfig);
 
         $handler->subscribe();
 

@@ -7,6 +7,7 @@ use Illuminate\Auth\Events\Authenticated;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Queue\Events\JobExceptionOccurred;
@@ -64,11 +65,11 @@ class EventHandler
     ];
 
     /**
-     * The Laravel event dispatcher.
+     * The Laravel container.
      *
-     * @var \Illuminate\Contracts\Events\Dispatcher
+     * @var \Illuminate\Contracts\Foundation\Application
      */
-    private $events;
+    private $app;
 
     /**
      * Indicates if we should we add SQL queries to the breadcrumbs.
@@ -115,12 +116,13 @@ class EventHandler
     /**
      * EventHandler constructor.
      *
-     * @param \Illuminate\Contracts\Events\Dispatcher $events
-     * @param array                                   $config
+     * @param \Illuminate\Contracts\Foundation\Application $app
+     * @param array                                        $config
      */
-    public function __construct(Dispatcher $events, array $config)
+    public function __construct(Application $app, array $config)
     {
-        $this->events = $events;
+        $this->app = $app;
+
         $this->recordSqlQueries = ($config['breadcrumbs.sql_queries'] ?? $config['breadcrumbs']['sql_queries'] ?? true) === true;
         $this->recordSqlBindings = ($config['breadcrumbs.sql_bindings'] ?? $config['breadcrumbs']['sql_bindings'] ?? false) === true;
         $this->recordLaravelLogs = ($config['breadcrumbs.logs'] ?? $config['breadcrumbs']['logs'] ?? true) === true;
@@ -134,7 +136,7 @@ class EventHandler
     public function subscribe()
     {
         foreach (static::$eventHandlerMap as $eventName => $handler) {
-            $this->events->listen($eventName, [$this, $handler]);
+            $this->app->events->listen($eventName, [$this, $handler]);
         }
     }
 
@@ -144,7 +146,7 @@ class EventHandler
     public function subscribeAuthEvents()
     {
         foreach (static::$authEventHandlerMap as $eventName => $handler) {
-            $this->events->listen($eventName, [$this, $handler]);
+            $this->app->events->listen($eventName, [$this, $handler]);
         }
     }
 
@@ -161,7 +163,7 @@ class EventHandler
         });
 
         foreach (static::$queueEventHandlerMap as $eventName => $handler) {
-            $this->events->listen($eventName, [$this, $handler]);
+            $this->app->events->listen($eventName, [$this, $handler]);
         }
     }
 
@@ -360,10 +362,23 @@ class EventHandler
      */
     protected function authenticatedHandler(Authenticated $event)
     {
-        Integration::configureScope(static function (Scope $scope) use ($event): void {
-            $scope->setUser([
-                'id' => $event->user->getAuthIdentifier(),
-            ], true);
+        $userData = [
+            'id' => $event->user->getAuthIdentifier(),
+        ];
+
+        if ($this->app->bound('request')) {
+            /** @var \Illuminate\Http\Request $request */
+            $request = $this->app->make('request');
+
+            $ipAddress = $request->ip();
+
+            if ($ipAddress !== null) {
+                $userData['ip_address'] = $ipAddress;
+            }
+        }
+
+        Integration::configureScope(static function (Scope $scope) use ($userData): void {
+            $scope->setUser($userData);
         });
     }
 
