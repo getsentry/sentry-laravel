@@ -83,7 +83,7 @@ class Middleware
         $sentryTraceHeader = $request->header('sentry-trace');
 
         $context = $sentryTraceHeader
-            ? TransactionContext::fromTraceparent($sentryTraceHeader)
+            ? TransactionContext::fromSentryTrace($sentryTraceHeader)
             : new TransactionContext;
 
         $context->setOp('http.server');
