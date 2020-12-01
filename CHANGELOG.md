@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 2.3.0
+
+- Bump Sentry SDK to `3.1.*` (#420)
+
 ## 2.2.0
 
 - Fix incorrectly stripped base controller action from transaction name (#406)
