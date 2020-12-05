@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- PHP 8 Support (#431)
+- Bump Sentry SDK to `3.2.*` (#431)
+
 ## 2.3.0
 
 - Bump Sentry SDK to `3.1.*` (#420)
