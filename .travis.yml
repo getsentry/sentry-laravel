@@ -19,9 +19,9 @@ env:
     - LARAVEL=5.8.* TESTBENCH=3.8.* PHPUNIT=7.5.*
     - LARAVEL=^6.0  TESTBENCH=4.7.* PHPUNIT=8.4.*
     - LARAVEL=^7.0  TESTBENCH=5.1.* PHPUNIT=8.4.*
-    
+
     # All versions below only support PHP ^7.3 (Laravel requirement)
-    - LARAVEL=^8.0  TESTBENCH=^6.0 PHPUNIT=8.4.*
+    - LARAVEL=^8.0  TESTBENCH=^6.0 PHPUNIT=9.3.*
 
     # We add one more test using the bleeding edge version of Laravel
     - LARAVEL=8.x-dev@dev TESTBENCH=^6.0 PHPUNIT=8.4.* COMPOSER_STABILITY=dev
@@ -37,9 +37,29 @@ matrix:
       env: LARAVEL=8.x-dev@dev TESTBENCH=^6.0 PHPUNIT=8.4.* COMPOSER_STABILITY=dev
   exclude:
     - php: 7.2
-      env: LARAVEL=^8.0  TESTBENCH=^6.0 PHPUNIT=8.4.*
+      env: LARAVEL=^8.0  TESTBENCH=^6.0 PHPUNIT=9.3.*
     - php: 7.2
       env: LARAVEL=8.x-dev@dev TESTBENCH=^6.0 PHPUNIT=8.4.* COMPOSER_STABILITY=dev
+    - php: 8.0
+      env: LARAVEL=5.1.* TESTBENCH=3.1.* PHPUNIT=5.7.*
+    - php: 8.0
+      env: LARAVEL=5.2.* TESTBENCH=3.2.* PHPUNIT=5.7.*
+    - php: 8.0
+      env: LARAVEL=5.3.* TESTBENCH=3.3.* PHPUNIT=5.7.*
+    - php: 8.0
+      env: LARAVEL=5.4.* TESTBENCH=3.4.* PHPUNIT=5.7.*
+    - php: 8.0
+      env: LARAVEL=5.5.* TESTBENCH=3.5.* PHPUNIT=6.5.*
+    - php: 8.0
+      env: LARAVEL=5.6.* TESTBENCH=3.6.* PHPUNIT=7.5.*
+    - php: 8.0
+      env: LARAVEL=5.7.* TESTBENCH=3.7.* PHPUNIT=7.5.*
+    - php: 8.0
+      env: LARAVEL=5.8.* TESTBENCH=3.8.* PHPUNIT=7.5.*
+    - php: 8.0
+      env: LARAVEL=^6.0  TESTBENCH=4.7.* PHPUNIT=8.4.*
+    - php: 8.0
+      env: LARAVEL=^7.0  TESTBENCH=5.1.* PHPUNIT=8.4.*
 
 cache:
   directories:
