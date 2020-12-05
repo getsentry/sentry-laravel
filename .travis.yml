@@ -4,6 +4,7 @@ php:
   - 7.2
   - 7.3
   - 7.4
+  - 8.0
 
 env:
   matrix:
@@ -31,6 +32,8 @@ matrix:
     - php: 7.3
       env: LARAVEL=8.x-dev@dev TESTBENCH=^6.0 PHPUNIT=8.4.* COMPOSER_STABILITY=dev
     - php: 7.4
+      env: LARAVEL=8.x-dev@dev TESTBENCH=^6.0 PHPUNIT=8.4.* COMPOSER_STABILITY=dev
+    - php: 8.0
       env: LARAVEL=8.x-dev@dev TESTBENCH=^6.0 PHPUNIT=8.4.* COMPOSER_STABILITY=dev
   exclude:
     - php: 7.2
