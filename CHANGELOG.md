@@ -2,9 +2,10 @@
 
 ## Unreleased
 
+## 2.3.1
+
 - Fix problems when enabling tracing on Laravel Lumen (#416)
 - PHP 8 Support (#431)
-- Bump Sentry SDK to `3.2.*` (#431)
 
 ## 2.3.0
 
