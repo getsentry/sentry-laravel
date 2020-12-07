@@ -86,7 +86,6 @@ class TestCommand extends Command
                 $this->info("[Sentry] Transaction sent: {$result}");
             }
 
-
             if (!$eventId) {
                 $this->error('[Sentry] There was an error sending the test event.');
                 $this->error('[Sentry] Please check if your DSN is set properly in your config or `.env` as `SENTRY_LARAVEL_DSN`.');

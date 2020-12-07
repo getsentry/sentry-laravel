@@ -2,6 +2,8 @@
 
 namespace Sentry\Laravel\Tests;
 
+use Exception;
+use RuntimeException;
 use Sentry\Integration\IntegrationInterface;
 use Sentry\Integration\ErrorListenerIntegration;
 use Sentry\Integration\ExceptionListenerIntegration;
@@ -9,6 +11,8 @@ use Sentry\Integration\FatalErrorListenerIntegration;
 
 class IntegrationsOptionTest extends SentryLaravelTestCase
 {
+    use ExpectsException;
+
     protected function getEnvironmentSetUp($app)
     {
         parent::getEnvironmentSetUp($app);
@@ -53,11 +57,11 @@ class IntegrationsOptionTest extends SentryLaravelTestCase
 
     /**
      * Throws \ReflectionException in <=5.8 and \Illuminate\Contracts\Container\BindingResolutionException since 6.0
-     *
-     * @expectedException \Exception
      */
     public function testCustomIntegrationThrowsExceptionIfNotResolvable()
     {
+        $this->safeExpectException(Exception::class);
+
         $this->resetApplicationWithConfig([
             'sentry.integrations' => [
                 'this-will-not-resolve',
@@ -65,11 +69,10 @@ class IntegrationsOptionTest extends SentryLaravelTestCase
         ]);
     }
 
-    /**
-     * @expectedException \RuntimeException
-     */
     public function testIncorrectIntegrationEntryThrowsException()
     {
+        $this->safeExpectException(RuntimeException::class);
+
         $this->resetApplicationWithConfig([
             'sentry.integrations' => [
                 static function () {

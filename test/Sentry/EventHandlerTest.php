@@ -3,16 +3,18 @@
 namespace Sentry\Laravel\Tests;
 
 use ReflectionClass;
+use RuntimeException;
 use Sentry\Laravel\EventHandler;
 use Orchestra\Testbench\TestCase;
 
 class EventHandlerTest extends TestCase
 {
-    /**
-     * @expectedException \RuntimeException
-     */
+    use ExpectsException;
+
     public function test_missing_event_handler_throws_exception()
     {
+        $this->safeExpectException(RuntimeException::class);
+
         $handler = new EventHandler($this->app->events, []);
 
         $handler->thisIsNotAHandlerAndShouldThrowAnException();
