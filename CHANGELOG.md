@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix overwriting the transaction name if it's set by the user (#442)
+
 ## 2.3.1
 
 - Fix problems when enabling tracing on Laravel Lumen (#416)
