@@ -19,11 +19,18 @@ class SetRequestIpMiddleware
     public function handle(Request $request, Closure $next)
     {
         if (app()->bound('sentry')) {
-            app('sentry')->configureScope(static function (Scope $scope) use ($request): void {
-                $scope->setUser([
-                    'ip_address' => $request->ip(),
-                ]);
-            });
+            /** @var \Sentry\State\HubInterface $sentry */
+            $sentry = app('sentry');
+
+            $client = $sentry->getClient();
+
+            if ($client !== null && $client->getOptions()->shouldSendDefaultPii()) {
+                app('sentry')->configureScope(static function (Scope $scope) use ($request): void {
+                    $scope->setUser([
+                        'ip_address' => $request->ip(),
+                    ]);
+                });
+            }
         }
 
         return $next($request);

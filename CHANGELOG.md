@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- Read the request IP from the request to make it more accurate when behind a reverse proxy (requires [trusted proxies](https://laravel.com/docs/8.x/requests#configuring-trusted-proxies) to be setup correctly) (#419)
+- Read the request IP from the Laravel request to make it more accurate when behind a reverse proxy (requires [trusted proxies](https://laravel.com/docs/8.x/requests#configuring-trusted-proxies) to be setup correctly) (#419)
+- Get request information (like the URL) from the Laravel request instead of constructing it from the global state (#419)
 
 ## 2.3.1
 
