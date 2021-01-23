@@ -5,17 +5,20 @@ namespace Sentry\Laravel\Tests\Tracing;
 use Mockery;
 use ReflectionClass;
 use Orchestra\Testbench\TestCase;
+use RuntimeException;
+use Sentry\Laravel\Tests\ExpectsException;
 use Sentry\Laravel\Tracing\EventHandler;
 use Sentry\SentrySdk;
 use Sentry\Tracing\TransactionContext;
 
 class EventHandlerTest extends TestCase
 {
-    /**
-     * @expectedException \RuntimeException
-     */
+    use ExpectsException;
+
     public function test_missing_event_handler_throws_exception()
     {
+        $this->safeExpectException(RuntimeException::class);
+
         $handler = new EventHandler($this->app->events);
 
         $handler->thisIsNotAHandlerAndShouldThrowAnException();

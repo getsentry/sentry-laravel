@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 2.3.1
+
+- Fix problems when enabling tracing on Laravel Lumen (#416)
+- PHP 8 Support (#431)
+
+## 2.3.0
+
+- Bump Sentry SDK to `3.1.*` (#420)
+
 ## 2.2.0
 
 - Fix incorrectly stripped base controller action from transaction name (#406)
