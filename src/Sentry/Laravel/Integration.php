@@ -135,7 +135,7 @@ class Integration implements IntegrationInterface
             // Laravel 7 route caching generates a route names if the user didn't specify one
             // theirselfs to optimize route matching. These route names are useless to the
             // developer so if we encounter a generated route name we discard the value
-            if (Str::startsWith($routeName, 'generated::')) {
+            if (Str::contains($routeName, 'generated::')) {
                 $routeName = null;
             }
 

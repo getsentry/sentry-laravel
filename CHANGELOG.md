@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fix generated route name not correctly ignored when using prefix (#441)
 - Fix overwriting the transaction name if it's set by the user (#442)
 
 ## 2.3.1
