@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix generated route name not correctly ignored when using prefix (#441)
+
 ## 2.3.1
 
 - Fix problems when enabling tracing on Laravel Lumen (#416)
