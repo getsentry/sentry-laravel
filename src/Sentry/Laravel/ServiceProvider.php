@@ -2,15 +2,18 @@
 
 namespace Sentry\Laravel;
 
+use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
+use Illuminate\Foundation\Application as Laravel;
+use Illuminate\Foundation\Http\Kernel as HttpKernel;
+use Illuminate\Log\LogManager;
+use Laravel\Lumen\Application as Lumen;
+use Sentry\ClientBuilder;
+use Sentry\ClientBuilderInterface;
+use Sentry\Integration as SdkIntegration;
+use Sentry\Laravel\Http\SetRequestIpMiddleware;
 use Sentry\SentrySdk;
 use Sentry\State\Hub;
-use Sentry\ClientBuilder;
 use Sentry\State\HubInterface;
-use Illuminate\Log\LogManager;
-use Sentry\ClientBuilderInterface;
-use Laravel\Lumen\Application as Lumen;
-use Sentry\Integration as SdkIntegration;
-use Illuminate\Foundation\Application as Laravel;
 
 class ServiceProvider extends BaseServiceProvider
 {
@@ -37,6 +40,17 @@ class ServiceProvider extends BaseServiceProvider
 
         if ($this->hasDsnSet()) {
             $this->bindEvents($this->app);
+
+            if ($this->app instanceof Lumen) {
+                $this->app->middleware(SetRequestIpMiddleware::class);
+            } elseif ($this->app->bound(HttpKernelInterface::class)) {
+                /** @var \Illuminate\Foundation\Http\Kernel $httpKernel */
+                $httpKernel = $this->app->make(HttpKernelInterface::class);
+
+                if ($httpKernel instanceof HttpKernel) {
+                    $httpKernel->pushMiddleware(SetRequestIpMiddleware::class);
+                }
+            }
         }
 
         if ($this->app->runningInConsole()) {

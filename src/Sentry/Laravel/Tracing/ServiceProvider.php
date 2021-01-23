@@ -5,6 +5,7 @@ namespace Sentry\Laravel\Tracing;
 use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
 use Illuminate\Contracts\View\Engine;
 use Illuminate\Contracts\View\View;
+use Illuminate\Foundation\Http\Kernel as HttpKernel;
 use Illuminate\View\Engines\EngineResolver;
 use Illuminate\View\Factory as ViewFactory;
 use Laravel\Lumen\Application as Lumen;
@@ -22,10 +23,12 @@ class ServiceProvider extends BaseServiceProvider
             if ($this->app instanceof Lumen) {
                 $this->app->middleware(Middleware::class);
             } elseif ($this->app->bound(HttpKernelInterface::class)) {
-                /** @var \Illuminate\Contracts\Http\Kernel $httpKernel */
+                /** @var \Illuminate\Foundation\Http\Kernel $httpKernel */
                 $httpKernel = $this->app->make(HttpKernelInterface::class);
 
-                $httpKernel->prependMiddleware(Middleware::class);
+                if ($httpKernel instanceof HttpKernel) {
+                    $httpKernel->prependMiddleware(Middleware::class);
+                }
             }
         }
     }
