@@ -6,9 +6,9 @@ use Exception;
 use Illuminate\Auth\Events\Authenticated;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
-use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Http\Request;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Queue\Events\JobExceptionOccurred;
 use Illuminate\Queue\Events\JobProcessed;
@@ -370,10 +370,12 @@ class EventHandler
             /** @var \Illuminate\Http\Request $request */
             $request = $this->app->make('request');
 
-            $ipAddress = $request->ip();
+            if ($request instanceof Request) {
+                $ipAddress = $request->ip();
 
-            if ($ipAddress !== null) {
-                $userData['ip_address'] = $ipAddress;
+                if ($ipAddress !== null) {
+                    $userData['ip_address'] = $ipAddress;
+                }
             }
         }
 
