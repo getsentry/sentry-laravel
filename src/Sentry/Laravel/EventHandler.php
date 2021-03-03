@@ -419,7 +419,7 @@ class EventHandler
     /**
      * Since Laravel 5.2
      *
-     * @param \Illuminate\Queue\Events\JobProcessing $event
+     * @param \Illuminate\Queue\Events\JobExceptionOccurred $event
      */
     protected function queueJobExceptionOccurredHandler(JobExceptionOccurred $event)
     {
@@ -429,7 +429,7 @@ class EventHandler
     /**
      * Since Laravel 5.2
      *
-     * @param \Illuminate\Queue\Events\JobProcessing $event
+     * @param \Illuminate\Queue\Events\JobProcessed $event
      */
     protected function queueJobProcessedHandler(JobProcessed $event)
     {
@@ -439,7 +439,7 @@ class EventHandler
     /**
      * Since Laravel 5.2
      *
-     * @param \Illuminate\Queue\Events\JobProcessing $event
+     * @param \Illuminate\Queue\Events\WorkerStopping $event
      */
     protected function queueWorkerStoppingHandler(WorkerStopping $event)
     {
