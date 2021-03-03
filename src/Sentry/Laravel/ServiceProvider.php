@@ -2,15 +2,19 @@
 
 namespace Sentry\Laravel;
 
+use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
+use Illuminate\Foundation\Application as Laravel;
+use Illuminate\Foundation\Http\Kernel as HttpKernel;
+use Illuminate\Log\LogManager;
+use Laravel\Lumen\Application as Lumen;
+use Sentry\ClientBuilder;
+use Sentry\ClientBuilderInterface;
+use Sentry\Integration as SdkIntegration;
+use Sentry\Laravel\Http\LaravelRequestFetcher;
+use Sentry\Laravel\Http\SetRequestIpMiddleware;
 use Sentry\SentrySdk;
 use Sentry\State\Hub;
-use Sentry\ClientBuilder;
 use Sentry\State\HubInterface;
-use Illuminate\Log\LogManager;
-use Sentry\ClientBuilderInterface;
-use Laravel\Lumen\Application as Lumen;
-use Sentry\Integration as SdkIntegration;
-use Illuminate\Foundation\Application as Laravel;
 
 class ServiceProvider extends BaseServiceProvider
 {
@@ -37,6 +41,17 @@ class ServiceProvider extends BaseServiceProvider
 
         if ($this->hasDsnSet()) {
             $this->bindEvents($this->app);
+
+            if ($this->app instanceof Lumen) {
+                $this->app->middleware(SetRequestIpMiddleware::class);
+            } elseif ($this->app->bound(HttpKernelInterface::class)) {
+                /** @var \Illuminate\Foundation\Http\Kernel $httpKernel */
+                $httpKernel = $this->app->make(HttpKernelInterface::class);
+
+                if ($httpKernel instanceof HttpKernel) {
+                    $httpKernel->pushMiddleware(SetRequestIpMiddleware::class);
+                }
+            }
         }
 
         if ($this->app->runningInConsole()) {
@@ -77,7 +92,7 @@ class ServiceProvider extends BaseServiceProvider
     {
         $userConfig = $this->getUserConfig();
 
-        $handler = new EventHandler($this->app->events, $userConfig);
+        $handler = new EventHandler($this->app, $userConfig);
 
         $handler->subscribe();
 
@@ -150,7 +165,7 @@ class ServiceProvider extends BaseServiceProvider
 
             $userIntegrations = $this->resolveIntegrationsFromUserConfig();
 
-            $options->setIntegrations(static function (array $integrations) use ($options, $userIntegrations) {
+            $options->setIntegrations(function (array $integrations) use ($options, $userIntegrations) {
                 $allIntegrations = array_merge($integrations, $userIntegrations);
 
                 if (!$options->hasDefaultIntegrations()) {
@@ -160,7 +175,7 @@ class ServiceProvider extends BaseServiceProvider
                 // Remove the default error and fatal exception listeners to let Laravel handle those
                 // itself. These event are still bubbling up through the documented changes in the users
                 // `ExceptionHandler` of their application or through the log channel integration to Sentry
-                return array_filter($allIntegrations, static function (SdkIntegration\IntegrationInterface $integration): bool {
+                $allIntegrations = array_filter($allIntegrations, static function (SdkIntegration\IntegrationInterface $integration): bool {
                     if ($integration instanceof SdkIntegration\ErrorListenerIntegration) {
                         return false;
                     }
@@ -173,8 +188,21 @@ class ServiceProvider extends BaseServiceProvider
                         return false;
                     }
 
+                    // We also remove the default request integration so it can be readded
+                    // after with a Laravel specific request fetcher. This way we can resolve
+                    // the request from Laravel instead of constructing it from the global state
+                    if ($integration instanceof SdkIntegration\RequestIntegration) {
+                        return false;
+                    }
+
                     return true;
                 });
+
+                $allIntegrations[] = new SdkIntegration\RequestIntegration(
+                    new LaravelRequestFetcher($this->app)
+                );
+
+                return $allIntegrations;
             });
 
             $hub = new Hub($clientBuilder->getClient());
