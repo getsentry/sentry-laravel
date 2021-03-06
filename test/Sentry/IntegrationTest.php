@@ -22,7 +22,9 @@ class IntegrationTest extends SentryLaravelTestCase
         Integration::setTransaction(null);
 
         $event = new RouteMatched(
-            new Route('GET', $routeUrl = '/sentry-route-matched-event', null),
+            new Route('GET', $routeUrl = '/sentry-route-matched-event', static function () {
+                // do nothing...
+            }),
             Mockery::mock(Request::class)->makePartial()
         );
 
@@ -36,7 +38,9 @@ class IntegrationTest extends SentryLaravelTestCase
         Integration::setTransaction(null);
 
         $this->dispatchLaravelEvent('router.matched', [
-            new Route('GET', $routeUrl = '/sentry-router-matched-event', null),
+            new Route('GET', $routeUrl = '/sentry-router-matched-event', static function () {
+                // do nothing...
+            }),
         ]);
 
         $this->assertSame($routeUrl, Integration::getTransaction());
