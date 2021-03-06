@@ -2,36 +2,47 @@
 
 namespace Sentry\Laravel\Tests;
 
-use PHPUnit\Framework\TestCase;
-use Sentry\ClientInterface;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Events\RouteMatched;
+use Illuminate\Routing\Route;
 use Sentry\Event;
 use Sentry\Laravel\Integration;
-use Sentry\SentrySdk;
 use Sentry\State\Scope;
 use function Sentry\withScope;
 
-class IntegrationTest extends TestCase
+class IntegrationTest extends SentryLaravelTestCase
 {
-    private static $integration;
-
-    public static function setUpBeforeClass(): void
+    public function testTransactionIsSetWhenRouteMatchedEventIsFired(): void
     {
-        parent::setUpBeforeClass();
+        if (!class_exists(RouteMatched::class)) {
+            $this->markTestSkipped('RouteMatched event class does not exist on this version of Laravel.');
+        }
 
-        self::$integration = new Integration;
-        self::$integration->setupOnce();
+        Integration::setTransaction(null);
+
+        $event = new RouteMatched(
+            new Route('GET', $routeUrl = '/sentry-route-matched-event', 'SentryTest@testRouteMatchedEvent'),
+            $this->mock(Request::class)
+        );
+
+        $this->dispatchLaravelEvent($event);
+
+        $this->assertSame($routeUrl, Integration::getTransaction());
+    }
+
+    public function testTransactionIsSetWhenRouterMatchedEventIsFired(): void
+    {
+        Integration::setTransaction(null);
+
+        $this->dispatchLaravelEvent('router.matched', [
+            new Route('GET', $routeUrl = '/sentry-router-matched-event', 'SentryTest@testRouterMatchedEvent'),
+        ]);
+
+        $this->assertSame($routeUrl, Integration::getTransaction());
     }
 
     public function testTransactionIsAppliedToEventWithoutTransaction(): void
     {
-        /** @var ClientInterface&MockObject $client */
-        $client = $this->createMock(ClientInterface::class);
-        $client->expects($this->once())
-            ->method('getIntegration')
-            ->willReturn(self::$integration);
-
-        SentrySdk::getCurrentHub()->bindClient($client);
-
         Integration::setTransaction($transaction = 'some-transaction-name');
 
         withScope(function (Scope $scope) use ($transaction): void {
@@ -49,14 +60,6 @@ class IntegrationTest extends TestCase
 
     public function testTransactionIsAppliedToEventWithEmptyTransaction(): void
     {
-        /** @var ClientInterface&MockObject $client */
-        $client = $this->createMock(ClientInterface::class);
-        $client->expects($this->once())
-            ->method('getIntegration')
-            ->willReturn(self::$integration);
-
-        SentrySdk::getCurrentHub()->bindClient($client);
-
         Integration::setTransaction($transaction = 'some-transaction-name');
 
         withScope(function (Scope $scope) use ($transaction): void {
@@ -75,14 +78,6 @@ class IntegrationTest extends TestCase
 
     public function testTransactionIsNotAppliedToEventWhenTransactionIsAlreadySet(): void
     {
-        /** @var ClientInterface&MockObject $client */
-        $client = $this->createMock(ClientInterface::class);
-        $client->expects($this->once())
-            ->method('getIntegration')
-            ->willReturn(self::$integration);
-
-        SentrySdk::getCurrentHub()->bindClient($client);
-
         Integration::setTransaction('some-transaction-name');
 
         withScope(function (Scope $scope): void {
