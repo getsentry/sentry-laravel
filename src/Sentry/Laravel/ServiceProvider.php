@@ -222,7 +222,11 @@ class ServiceProvider extends BaseServiceProvider
      */
     private function resolveIntegrationsFromUserConfig(): array
     {
-        $integrations = [new Integration];
+        // Default Sentry Laravel SDK integrations
+        $integrations = [
+            new Integration,
+            new Integration\ExceptionContextIntegration,
+        ];
 
         $userIntegrations = $this->getUserConfig()['integrations'] ?? [];
 
