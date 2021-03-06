@@ -6,6 +6,7 @@
 - Get request information (like the URL) from the Laravel request instead of constructing it from the global state (#419)
 - Fix generated route name not correctly ignored when using prefix (#441)
 - Fix overwriting the transaction name if it's set by the user (#442)
+- Add result from optional `context(): array` method on captured exception to the event sent to Sentry (#457)
 
 ## 2.3.1
 
