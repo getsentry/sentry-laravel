@@ -5,6 +5,7 @@ namespace Sentry\Laravel\Tests;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Routing\Route;
+use Mockery;
 use Sentry\Event;
 use Sentry\Laravel\Integration;
 use Sentry\State\Scope;
@@ -22,7 +23,7 @@ class IntegrationTest extends SentryLaravelTestCase
 
         $event = new RouteMatched(
             new Route('GET', $routeUrl = '/sentry-route-matched-event', null),
-            $this->mock(Request::class)
+            Mockery::mock(Request::class)->makePartial()
         );
 
         $this->dispatchLaravelEvent($event);
