@@ -135,8 +135,11 @@ class EventHandler
      */
     public function subscribe()
     {
+        /** @var \Illuminate\Events\Dispatcher $dispatcher */
+        $dispatcher = $this->app['events'];
+
         foreach (static::$eventHandlerMap as $eventName => $handler) {
-            $this->app->events->listen($eventName, [$this, $handler]);
+            $dispatcher->listen($eventName, [$this, $handler]);
         }
     }
 
@@ -145,8 +148,11 @@ class EventHandler
      */
     public function subscribeAuthEvents()
     {
+        /** @var \Illuminate\Events\Dispatcher $dispatcher */
+        $dispatcher = $this->app['events'];
+
         foreach (static::$authEventHandlerMap as $eventName => $handler) {
-            $this->app->events->listen($eventName, [$this, $handler]);
+            $dispatcher->listen($eventName, [$this, $handler]);
         }
     }
 
@@ -162,8 +168,11 @@ class EventHandler
             $this->afterQueuedJob();
         });
 
+        /** @var \Illuminate\Events\Dispatcher $dispatcher */
+        $dispatcher = $this->app['events'];
+
         foreach (static::$queueEventHandlerMap as $eventName => $handler) {
-            $this->app->events->listen($eventName, [$this, $handler]);
+            $dispatcher->listen($eventName, [$this, $handler]);
         }
     }
 
