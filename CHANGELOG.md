@@ -8,6 +8,7 @@
 - Fix overwriting the transaction name if it's set by the user (#442)
 - Add result from optional `context(): array` method on captured exception to the event sent to Sentry (#457)
 - Fix not overwriting the event transaction name if it was an empty string (#460)
+- Bump Sentry SDK to `3.2.*`
 
 ## 2.3.1
 
