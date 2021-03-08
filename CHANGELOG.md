@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2.4.1
+
 - Fix type hints incompatible with Laravel Lumen (#462)
 
 ## 2.4.0
