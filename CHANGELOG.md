@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix type hints incompatible with Laravel Lumen (#462)
+
 ## 2.4.0
 
 - Read the request IP from the Laravel request to make it more accurate when behind a reverse proxy (requires [trusted proxies](https://laravel.com/docs/8.x/requests#configuring-trusted-proxies) to be setup correctly) (#419)
