@@ -6,7 +6,9 @@ use Exception;
 use Illuminate\Auth\Events\Authenticated;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
-use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Container\BindingResolutionException;
+use Illuminate\Contracts\Container\Container;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Http\Request;
 use Illuminate\Log\Events\MessageLogged;
@@ -67,9 +69,9 @@ class EventHandler
     /**
      * The Laravel container.
      *
-     * @var \Illuminate\Contracts\Foundation\Application
+     * @var \Illuminate\Contracts\Container\Container
      */
-    private $app;
+    private $container;
 
     /**
      * Indicates if we should we add SQL queries to the breadcrumbs.
@@ -116,12 +118,12 @@ class EventHandler
     /**
      * EventHandler constructor.
      *
-     * @param \Illuminate\Contracts\Foundation\Application $app
-     * @param array                                        $config
+     * @param \Illuminate\Contracts\Container\Container $container
+     * @param array                                     $config
      */
-    public function __construct(Application $app, array $config)
+    public function __construct(Container $container, array $config)
     {
-        $this->app = $app;
+        $this->container = $container;
 
         $this->recordSqlQueries = ($config['breadcrumbs.sql_queries'] ?? $config['breadcrumbs']['sql_queries'] ?? true) === true;
         $this->recordSqlBindings = ($config['breadcrumbs.sql_bindings'] ?? $config['breadcrumbs']['sql_bindings'] ?? false) === true;
@@ -133,26 +135,34 @@ class EventHandler
     /**
      * Attach all event handlers.
      */
-    public function subscribe()
+    public function subscribe(): void
     {
-        /** @var \Illuminate\Events\Dispatcher $dispatcher */
-        $dispatcher = $this->app['events'];
+        /** @var \Illuminate\Contracts\Events\Dispatcher $dispatcher */
+        try {
+            $dispatcher = $this->container->make(Dispatcher::class);
 
-        foreach (static::$eventHandlerMap as $eventName => $handler) {
-            $dispatcher->listen($eventName, [$this, $handler]);
+            foreach (static::$eventHandlerMap as $eventName => $handler) {
+                $dispatcher->listen($eventName, [$this, $handler]);
+            }
+        } catch (BindingResolutionException $e) {
+            // If we cannot resolve the event dispatcher we also cannot listen to events
         }
     }
 
     /**
      * Attach all authentication event handlers.
      */
-    public function subscribeAuthEvents()
+    public function subscribeAuthEvents(): void
     {
-        /** @var \Illuminate\Events\Dispatcher $dispatcher */
-        $dispatcher = $this->app['events'];
+        /** @var \Illuminate\Contracts\Events\Dispatcher $dispatcher */
+        try {
+            $dispatcher = $this->container->make(Dispatcher::class);
 
-        foreach (static::$authEventHandlerMap as $eventName => $handler) {
-            $dispatcher->listen($eventName, [$this, $handler]);
+            foreach (static::$authEventHandlerMap as $eventName => $handler) {
+                $dispatcher->listen($eventName, [$this, $handler]);
+            }
+        } catch (BindingResolutionException $e) {
+            // If we cannot resolve the event dispatcher we also cannot listen to events
         }
     }
 
@@ -161,18 +171,22 @@ class EventHandler
      *
      * @param \Illuminate\Queue\QueueManager $queue
      */
-    public function subscribeQueueEvents(QueueManager $queue)
+    public function subscribeQueueEvents(QueueManager $queue): void
     {
         $queue->looping(function () {
             $this->cleanupScopeForQueuedJob();
             $this->afterQueuedJob();
         });
 
-        /** @var \Illuminate\Events\Dispatcher $dispatcher */
-        $dispatcher = $this->app['events'];
+        /** @var \Illuminate\Contracts\Events\Dispatcher $dispatcher */
+        try {
+            $dispatcher = $this->container->make(Dispatcher::class);
 
-        foreach (static::$queueEventHandlerMap as $eventName => $handler) {
-            $dispatcher->listen($eventName, [$this, $handler]);
+            foreach (static::$queueEventHandlerMap as $eventName => $handler) {
+                $dispatcher->listen($eventName, [$this, $handler]);
+            }
+        } catch (BindingResolutionException $e) {
+            // If we cannot resolve the event dispatcher we also cannot listen to events
         }
     }
 
@@ -375,9 +389,9 @@ class EventHandler
             'id' => $event->user->getAuthIdentifier(),
         ];
 
-        if ($this->app->bound('request')) {
+        try {
             /** @var \Illuminate\Http\Request $request */
-            $request = $this->app->make('request');
+            $request = $this->container->make('request');
 
             if ($request instanceof Request) {
                 $ipAddress = $request->ip();
@@ -386,6 +400,8 @@ class EventHandler
                     $userData['ip_address'] = $ipAddress;
                 }
             }
+        } catch (BindingResolutionException $e) {
+            // If there is no request bound we cannot get the IP address from it
         }
 
         Integration::configureScope(static function (Scope $scope) use ($userData): void {
