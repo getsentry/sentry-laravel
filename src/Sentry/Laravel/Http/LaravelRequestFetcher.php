@@ -3,7 +3,7 @@
 namespace Sentry\Laravel\Http;
 
 use Illuminate\Contracts\Container\BindingResolutionException;
-use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Container\Container;
 use Psr\Http\Message\ServerRequestInterface;
 use Sentry\Integration\RequestFetcher;
 use Sentry\Integration\RequestFetcherInterface;
@@ -11,25 +11,25 @@ use Sentry\Integration\RequestFetcherInterface;
 class LaravelRequestFetcher implements RequestFetcherInterface
 {
     /**
-     * The Laravel application container.
+     * The Laravel container.
      *
-     * @var \Illuminate\Contracts\Foundation\Application
+     * @var \Illuminate\Contracts\Container\Container
      */
-    private $app;
+    private $container;
 
-    public function __construct(Application $app)
+    public function __construct(Container $container)
     {
-        $this->app = $app;
+        $this->container = $container;
     }
 
     public function fetchRequest(): ?ServerRequestInterface
     {
-        if (!$this->app->bound('request') || $this->app->runningInConsole()) {
+        if (\PHP_SAPI === 'cli' || \PHP_SAPI === 'phpdbg' || !$this->container->bound('request')) {
             return null;
         }
 
         try {
-            return $this->app->make(ServerRequestInterface::class);
+            return $this->container->make(ServerRequestInterface::class);
         } catch (BindingResolutionException $e) {
             return (new RequestFetcher)->fetchRequest();
         }
