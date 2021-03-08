@@ -38,7 +38,7 @@ class Integration implements IntegrationInterface
                 return $event;
             }
 
-            if (null === $event->getTransaction()) {
+            if (empty($event->getTransaction())) {
                 $event->setTransaction($self->getTransaction());
             }
 
@@ -155,7 +155,8 @@ class Integration implements IntegrationInterface
 
             // Strip away the base namespace from the action name
             if (!empty($baseNamespace)) {
-                $routeName = Str::after($routeName, $baseNamespace . '\\');
+                // @see: Str::after, but this is not available before Laravel 5.4 so we use a inlined version
+                $routeName = array_reverse(explode($baseNamespace . '\\', $routeName, 2))[0];
             }
         }
 

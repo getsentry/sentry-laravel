@@ -7,6 +7,7 @@
 - Fix generated route name not correctly ignored when using prefix (#441)
 - Fix overwriting the transaction name if it's set by the user (#442)
 - Add result from optional `context(): array` method on captured exception to the event sent to Sentry (#457)
+- Fix not overwriting the event transaction name if it was an empty string (#460)
 
 ## 2.3.1
 
