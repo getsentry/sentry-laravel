@@ -3,23 +3,28 @@
 namespace Sentry\Laravel\Tests\Integration;
 
 use Exception;
-use PHPUnit\Framework\TestCase;
 use Sentry\Event;
 use Sentry\EventHint;
 use Sentry\Laravel\Integration\ExceptionContextIntegration;
+use Sentry\Laravel\Tests\SentryLaravelTestCase;
+use Sentry\SentrySdk;
 use Sentry\State\Scope;
 use function Sentry\withScope;
 
-class ExceptionContextIntegrationTest extends TestCase
+class ExceptionContextIntegrationTest extends SentryLaravelTestCase
 {
+    public function testExceptionContextIntegrationIsRegistered(): void
+    {
+        $integration = $this->getHubFromContainer()->getIntegration(ExceptionContextIntegration::class);
+
+        $this->assertInstanceOf(ExceptionContextIntegration::class, $integration);
+    }
+
     /**
      * @dataProvider invokeDataProvider
      */
     public function testInvoke(Exception $exception, ?array $expectedContext): void
     {
-        $integration = new ExceptionContextIntegration;
-        $integration->setupOnce();
-
         withScope(function (Scope $scope) use ($exception, $expectedContext): void {
             $event = Event::createEvent();
 

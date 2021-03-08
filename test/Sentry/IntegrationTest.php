@@ -13,6 +13,13 @@ use function Sentry\withScope;
 
 class IntegrationTest extends SentryLaravelTestCase
 {
+    public function testIntegrationIsRegistered(): void
+    {
+        $integration = $this->getHubFromContainer()->getIntegration(Integration::class);
+
+        $this->assertInstanceOf(Integration::class, $integration);
+    }
+
     public function testTransactionIsSetWhenRouteMatchedEventIsFired(): void
     {
         if (!class_exists(RouteMatched::class)) {
