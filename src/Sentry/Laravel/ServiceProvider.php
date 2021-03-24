@@ -37,7 +37,7 @@ class ServiceProvider extends BaseServiceProvider
      */
     public function boot(): void
     {
-        $this->app->make(static::$abstract);
+        $this->app->make(HubInterface::class);
 
         if ($this->hasDsnSet()) {
             $this->bindEvents($this->app);
@@ -71,7 +71,7 @@ class ServiceProvider extends BaseServiceProvider
     public function register(): void
     {
         if ($this->app instanceof Lumen) {
-            $this->app->configure('sentry');
+            $this->app->configure(static::$abstract);
         }
 
         $this->mergeConfigFrom(__DIR__ . '/../../../config/sentry.php', static::$abstract);
@@ -157,7 +157,7 @@ class ServiceProvider extends BaseServiceProvider
             return $clientBuilder;
         });
 
-        $this->app->singleton(static::$abstract, function () {
+        $this->app->singleton(HubInterface::class, function () {
             /** @var \Sentry\ClientBuilderInterface $clientBuilder */
             $clientBuilder = $this->app->make(ClientBuilderInterface::class);
 
@@ -212,7 +212,7 @@ class ServiceProvider extends BaseServiceProvider
             return $hub;
         });
 
-        $this->app->alias(static::$abstract, HubInterface::class);
+        $this->app->alias(HubInterface::class, static::$abstract);
     }
 
     /**
