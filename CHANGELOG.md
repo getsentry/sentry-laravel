@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Avoid collision if another package has bound `sentry` in the Laravel container (#467)
+
 ## 2.4.1
 
 - Fix type hints incompatible with Laravel Lumen (#462)
