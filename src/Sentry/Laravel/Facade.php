@@ -2,6 +2,8 @@
 
 namespace Sentry\Laravel;
 
+use Sentry\State\HubInterface;
+
 /**
  * @method static bool addBreadcrumb(\Sentry\Breadcrumb $breadcrumb)
  * @method static string|null captureMessage(string $message, \Sentry\Severity $level = null, \Sentry\State\Scope $scope = null)
@@ -21,6 +23,6 @@ class Facade extends \Illuminate\Support\Facades\Facade
 {
     protected static function getFacadeAccessor()
     {
-        return 'sentry';
+        return HubInterface::class;
     }
 }

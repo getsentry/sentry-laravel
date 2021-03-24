@@ -39,8 +39,8 @@ class Middleware
      */
     public function handle($request, Closure $next)
     {
-        if (app()->bound('sentry')) {
-            $this->startTransaction($request, app('sentry'));
+        if (app()->bound(HubInterface::class)) {
+            $this->startTransaction($request, app(HubInterface::class));
         }
 
         return $next($request);
@@ -56,7 +56,7 @@ class Middleware
      */
     public function terminate($request, $response): void
     {
-        if ($this->transaction !== null && app()->bound('sentry')) {
+        if ($this->transaction !== null && app()->bound(HubInterface::class)) {
             if ($this->appSpan !== null) {
                 $this->appSpan->finish();
             }

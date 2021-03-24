@@ -4,6 +4,7 @@ namespace Sentry\Laravel;
 
 use Monolog\Logger;
 use Illuminate\Log\LogManager;
+use Sentry\State\HubInterface;
 
 class LogChannel extends LogManager
 {
@@ -15,7 +16,7 @@ class LogChannel extends LogManager
     public function __invoke(array $config): Logger
     {
         $handler = new SentryHandler(
-            $this->app->make('sentry'),
+            $this->app->make(HubInterface::class),
             $config['level'] ?? Logger::DEBUG,
             $config['bubble'] ?? true
         );
