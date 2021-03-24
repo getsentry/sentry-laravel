@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2.4.2
+
 - Avoid collision if another package has bound `sentry` in the Laravel container (#467)
 
 ## 2.4.1
