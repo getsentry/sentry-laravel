@@ -21,6 +21,6 @@ class Facade extends \Illuminate\Support\Facades\Facade
 {
     protected static function getFacadeAccessor()
     {
-        return Sentry\State\HubInterface::class;
+        return \Sentry\State\HubInterface::class;
     }
 }
