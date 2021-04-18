@@ -198,9 +198,9 @@ class ServiceProvider extends BaseServiceProvider
                     return true;
                 });
 
-                $allIntegrations[] = new SdkIntegration\RequestIntegration(
+                array_unshift($allIntegrations, new SdkIntegration\RequestIntegration(
                     new LaravelRequestFetcher($this->app)
-                );
+                ));
 
                 return $allIntegrations;
             });
