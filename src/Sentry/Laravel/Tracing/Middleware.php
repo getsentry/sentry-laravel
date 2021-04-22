@@ -79,7 +79,7 @@ class Middleware
 
     private function startTransaction(Request $request, HubInterface $sentry): void
     {
-        $fallbackTime = microtime(true);
+        $requestStartTime = $request->server('REQUEST_TIME_FLOAT', microtime(true));
         $sentryTraceHeader = $request->header('sentry-trace');
 
         $context = $sentryTraceHeader
@@ -91,7 +91,7 @@ class Middleware
             'url' => '/' . ltrim($request->path(), '/'),
             'method' => strtoupper($request->method()),
         ]);
-        $context->setStartTimestamp($request->server('REQUEST_TIME_FLOAT', $fallbackTime));
+        $context->setStartTimestamp($requestStartTime);
 
         $this->transaction = $sentry->startTransaction($context);
 
@@ -99,21 +99,21 @@ class Middleware
         SentrySdk::getCurrentHub()->setSpan($this->transaction);
 
         if (!$this->addBootTimeSpans() && app() instanceof Laravel) {
-            // @TODO: We might want to move this together with the `RouteMatches` listener to some central place and or do this from the `EventHandler`
-            app()->booted(function () use ($request, $fallbackTime): void {
+            $laravelStartTime = defined('LARAVEL_START') ? LARAVEL_START : $request->server('REQUEST_TIME_FLOAT');
+            if ($laravelStartTime !== null) {
                 $spanContextStart = new SpanContext();
                 $spanContextStart->setOp('app.bootstrap');
-                $spanContextStart->setStartTimestamp(defined('LARAVEL_START') ? LARAVEL_START : $request->server('REQUEST_TIME_FLOAT', $fallbackTime));
+                $spanContextStart->setStartTimestamp($laravelStartTime);
                 $spanContextStart->setEndTimestamp(microtime(true));
                 $this->transaction->startChild($spanContextStart);
+            }
 
-                $appContextStart = new SpanContext();
-                $appContextStart->setOp('app.handle');
-                $appContextStart->setStartTimestamp(microtime(true));
-                $this->appSpan = $this->transaction->startChild($appContextStart);
+            $appContextStart = new SpanContext();
+            $appContextStart->setOp('app.handle');
+            $appContextStart->setStartTimestamp(microtime(true));
+            $this->appSpan = $this->transaction->startChild($appContextStart);
 
-                SentrySdk::getCurrentHub()->setSpan($this->appSpan);
-            });
+            SentrySdk::getCurrentHub()->setSpan($this->appSpan);
         }
     }
 
