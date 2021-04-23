@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Ensure user integrations are always executed after SDK integrations (#474)
+
 ## 2.4.2
 
 - Avoid collision if another package has bound `sentry` in the Laravel container (#467)
