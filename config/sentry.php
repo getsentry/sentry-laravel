@@ -28,8 +28,17 @@ return [
     ],
 
     'tracing' => [
-        // Trace queue jobs as separate transactions
-        'queue_jobs' => env('SENTRY_TRACING_QUEUE_JOBS', false),
+        // Trace queue jobs as their own transactions
+        'queue_job_transactions' => env('SENTRY_TRACE_QUEUE_ENABLED', false),
+
+        // Capture queue jobs as spans when executed on the sync driver
+        'queue_jobs' => true,
+
+        // Capture SQL queries as spans
+        'sql_queries' => true,
+
+        // Capture views as spans
+        'views' => true,
     ],
 
     // @see: https://docs.sentry.io/platforms/php/configuration/options/#send-default-pii

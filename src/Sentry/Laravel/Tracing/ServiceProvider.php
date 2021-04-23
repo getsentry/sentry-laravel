@@ -16,9 +16,11 @@ class ServiceProvider extends BaseServiceProvider
     public function boot(): void
     {
         if ($this->hasDsnSet()) {
-            $this->bindEvents();
+            $tracingConfig = $this->getUserConfig()['tracing'] ?? [];
 
-            $this->bindViewEngine();
+            $this->bindEvents($tracingConfig);
+
+            $this->bindViewEngine($tracingConfig);
 
             if ($this->app instanceof Lumen) {
                 $this->app->middleware(Middleware::class);
@@ -38,11 +40,9 @@ class ServiceProvider extends BaseServiceProvider
         $this->app->singleton(Middleware::class);
     }
 
-    private function bindEvents(): void
+    private function bindEvents(array $tracingConfig): void
     {
-        $userConfig = $this->getUserConfig();
-
-        $handler = new EventHandler($this->app, $userConfig);
+        $handler = new EventHandler($this->app, $tracingConfig);
 
         $handler->subscribe();
 
@@ -51,8 +51,12 @@ class ServiceProvider extends BaseServiceProvider
         }
     }
 
-    private function bindViewEngine(): void
+    private function bindViewEngine($tracingConfig): void
     {
+        if (($tracingConfig['views'] ?? true) !== true) {
+            return;
+        }
+
         $viewEngineWrapper = function (EngineResolver $engineResolver): void {
             foreach (['file', 'php', 'blade'] as $engineName) {
                 try {

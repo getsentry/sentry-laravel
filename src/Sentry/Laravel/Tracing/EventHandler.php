@@ -47,6 +47,20 @@ class EventHandler
     private $container;
 
     /**
+     * Indicates if we should we add SQL queries as spans.
+     *
+     * @var bool
+     */
+    private $traceSqlQueries;
+
+    /**
+     * Indicates if we should trace queue job spans.
+     *
+     * @var bool
+     */
+    private $traceQueueJobs;
+
+    /**
      * Indicates if we should trace queue jobs as separate transactions.
      *
      * @var bool
@@ -77,7 +91,9 @@ class EventHandler
     {
         $this->container = $container;
 
-        $this->traceQueueJobsAsTransactions = ($config['tracing']['queue_jobs'] ?? false) === true;
+        $this->traceSqlQueries = ($config['sql_queries'] ?? true) === true;
+        $this->traceQueueJobs = ($config['queue_jobs'] ?? false) === true;
+        $this->traceQueueJobsAsTransactions = ($config['queue_job_transactions'] ?? false) === true;
     }
 
     /**
@@ -104,6 +120,11 @@ class EventHandler
      */
     public function subscribeQueueEvents(QueueManager $queue): void
     {
+        // If both types of queue job tracing is disabled also do not register the events
+        if (!$this->traceQueueJobs && !$this->traceQueueJobsAsTransactions) {
+            return;
+        }
+
         $queue->looping(function () {
             $this->afterQueuedJob();
         });
@@ -172,6 +193,10 @@ class EventHandler
      */
     private function recordQuerySpan($query, $time): void
     {
+        if (!$this->traceSqlQueries) {
+            return;
+        }
+
         $parentSpan = Integration::currentTracingSpan();
 
         // If there is no tracing span active there is no need to handle the event
@@ -198,7 +223,12 @@ class EventHandler
         $parentSpan = Integration::currentTracingSpan();
 
         // If there is no tracing span active and we don't trace jobs as transactions there is no need to handle the event
-        if (!$this->traceQueueJobsAsTransactions && $parentSpan === null) {
+        if ($parentSpan === null && !$this->traceQueueJobsAsTransactions) {
+            return;
+        }
+
+        // If there is a parent span we can record that job as a child unless configured to not do so
+        if ($parentSpan !== null && !$this->traceQueueJobs) {
             return;
         }
 
