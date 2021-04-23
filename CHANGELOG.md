@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Remove wrapper around the context of log entry breadcrumbs (#405)
 - Ensure user integrations are always executed after SDK integrations (#474)
 
 ## 2.4.2
