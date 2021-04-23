@@ -4,6 +4,8 @@
 
 - Remove wrapper around the context of log entry breadcrumbs (#405)
 - Ensure user integrations are always executed after SDK integrations (#474)
+- Add tracing support for queue jobs (#478)
+- Add options to disable query and view tracing (#478)
 
 ## 2.4.2
 
