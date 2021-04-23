@@ -16,7 +16,7 @@ class ServiceProvider extends BaseServiceProvider
     public function boot(): void
     {
         if ($this->hasDsnSet()) {
-            $this->bindEvents($this->app);
+            $this->bindEvents();
 
             $this->bindViewEngine();
 
@@ -40,9 +40,15 @@ class ServiceProvider extends BaseServiceProvider
 
     private function bindEvents(): void
     {
-        $handler = new EventHandler($this->app->events);
+        $userConfig = $this->getUserConfig();
+
+        $handler = new EventHandler($this->app, $userConfig);
 
         $handler->subscribe();
+
+        if ($this->app->bound('queue')) {
+            $handler->subscribeQueueEvents($this->app->queue);
+        }
     }
 
     private function bindViewEngine(): void

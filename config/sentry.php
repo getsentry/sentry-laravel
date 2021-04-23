@@ -27,6 +27,11 @@ return [
         'command_info' => true,
     ],
 
+    'tracing' => [
+        // Trace queue jobs as separate transactions
+        'queue_jobs' => env('SENTRY_TRACING_QUEUE_JOBS', false),
+    ],
+
     // @see: https://docs.sentry.io/platforms/php/configuration/options/#send-default-pii
     'send_default_pii' => false,
 
