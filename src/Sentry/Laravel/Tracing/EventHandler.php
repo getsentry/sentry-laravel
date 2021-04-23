@@ -5,13 +5,9 @@ namespace Sentry\Laravel\Tracing;
 use Exception;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Events\QueryExecuted;
-use Illuminate\Routing\Events\RouteMatched;
-use Illuminate\Routing\Route;
 use RuntimeException;
 use Sentry\Laravel\Integration;
-use Sentry\SentrySdk;
 use Sentry\Tracing\SpanContext;
-use Sentry\Tracing\Transaction;
 
 class EventHandler
 {
@@ -21,9 +17,6 @@ class EventHandler
      * @var array
      */
     protected static $eventHandlerMap = [
-        'router.matched'    => 'routerMatched',  // Until Laravel 5.1
-        RouteMatched::class => 'routeMatched',   // Since Laravel 5.2
-
         'illuminate.query'   => 'query',         // Until Laravel 5.1
         QueryExecuted::class => 'queryExecuted', // Since Laravel 5.2
     ];
@@ -63,7 +56,7 @@ class EventHandler
      */
     public function __call($method, $arguments)
     {
-        $handlerMethod = $handlerMethod = "{$method}Handler";
+        $handlerMethod = "{$method}Handler";
 
         if (!method_exists($this, $handlerMethod)) {
             throw new RuntimeException("Missing tracing event handler: {$handlerMethod}");
@@ -81,36 +74,6 @@ class EventHandler
         } catch (Exception $exception) {
             // Ignore
         }
-    }
-
-    /**
-     * Until Laravel 5.1
-     *
-     * @param \Illuminate\Routing\Route $route
-     */
-    protected function routerMatchedHandler(Route $route): void
-    {
-        $transaction = SentrySdk::getCurrentHub()->getTransaction();
-
-        if ($transaction instanceof Transaction) {
-            $routeName = Integration::extractNameForRoute($route) ?? '<unlabeled transaction>';
-
-            $transaction->setName($routeName);
-            $transaction->setData([
-                'action' => $route->getActionName(),
-                'name'   => $route->getName(),
-            ]);
-        }
-    }
-
-    /**
-     * Since Laravel 5.2
-     *
-     * @param \Illuminate\Routing\Events\RouteMatched $match
-     */
-    protected function routeMatchedHandler(RouteMatched $match): void
-    {
-        $this->routerMatchedHandler($match->route);
     }
 
     /**

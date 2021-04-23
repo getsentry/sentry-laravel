@@ -2,6 +2,40 @@
 
 ## Unreleased
 
+- Ensure user integrations are always executed after SDK integrations (#474)
+
+## 2.4.2
+
+- Avoid collision if another package has bound `sentry` in the Laravel container (#467)
+
+## 2.4.1
+
+- Fix type hints incompatible with Laravel Lumen (#462)
+
+## 2.4.0
+
+- Read the request IP from the Laravel request to make it more accurate when behind a reverse proxy (requires [trusted proxies](https://laravel.com/docs/8.x/requests#configuring-trusted-proxies) to be setup correctly) (#419)
+- Get request information (like the URL) from the Laravel request instead of constructing it from the global state (#419)
+- Fix generated route name not correctly ignored when using prefix (#441)
+- Fix overwriting the transaction name if it's set by the user (#442)
+- Add result from optional `context(): array` method on captured exception to the event sent to Sentry (#457)
+- Fix not overwriting the event transaction name if it was an empty string (#460)
+- Bump Sentry SDK to `3.2.*`
+
+## 2.3.1
+
+- Fix problems when enabling tracing on Laravel Lumen (#416)
+- PHP 8 Support (#431)
+
+## 2.3.0
+
+- Bump Sentry SDK to `3.1.*` (#420)
+
+## 2.2.0
+
+- Fix incorrectly stripped base controller action from transaction name (#406)
+- Move tracing request/response data hydration to the tracing middleware (#408)
+
 ## 2.1.1
 
 - Fix for potential `Undefined index: controllers_base_namespace.` notice

@@ -3,10 +3,13 @@
 namespace Sentry\Laravel\Tracing;
 
 use Closure;
+use Illuminate\Foundation\Application as Laravel;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Routing\Route;
+use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
-use Sentry\State\Hub;
+use Sentry\State\HubInterface;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\TransactionContext;
 
@@ -36,8 +39,8 @@ class Middleware
      */
     public function handle($request, Closure $next)
     {
-        if (app()->bound('sentry')) {
-            $this->startTransaction($request, app('sentry'));
+        if (app()->bound(HubInterface::class)) {
+            $this->startTransaction($request, app(HubInterface::class));
         }
 
         return $next($request);
@@ -53,7 +56,7 @@ class Middleware
      */
     public function terminate($request, $response): void
     {
-        if ($this->transaction !== null && app()->bound('sentry')) {
+        if ($this->transaction !== null && app()->bound(HubInterface::class)) {
             if ($this->appSpan !== null) {
                 $this->appSpan->finish();
             }
@@ -62,28 +65,30 @@ class Middleware
             // If the transaction is not on the scope during finish, the trace.context is wrong
             SentrySdk::getCurrentHub()->setSpan($this->transaction);
 
+            if ($request instanceof Request) {
+                $this->hydrateRequestData($request);
+            }
+
             if ($response instanceof Response) {
-                $this->transaction->setHttpStatus($response->status());
+                $this->hydrateResponseData($response);
             }
 
             $this->transaction->finish();
         }
     }
 
-    private function startTransaction(Request $request, Hub $sentry): void
+    private function startTransaction(Request $request, HubInterface $sentry): void
     {
-        $path = '/' . ltrim($request->path(), '/');
         $fallbackTime = microtime(true);
         $sentryTraceHeader = $request->header('sentry-trace');
 
         $context = $sentryTraceHeader
-            ? TransactionContext::fromTraceparent($sentryTraceHeader)
+            ? TransactionContext::fromSentryTrace($sentryTraceHeader)
             : new TransactionContext;
 
         $context->setOp('http.server');
-        $context->setName($path);
         $context->setData([
-            'url' => $path,
+            'url' => '/' . ltrim($request->path(), '/'),
             'method' => strtoupper($request->method()),
         ]);
         $context->setStartTimestamp($request->server('REQUEST_TIME_FLOAT', $fallbackTime));
@@ -93,7 +98,7 @@ class Middleware
         // Setting the Transaction on the Hub
         SentrySdk::getCurrentHub()->setSpan($this->transaction);
 
-        if (!$this->addBootTimeSpans()) {
+        if (!$this->addBootTimeSpans() && app() instanceof Laravel) {
             // @TODO: We might want to move this together with the `RouteMatches` listener to some central place and or do this from the `EventHandler`
             app()->booted(function () use ($request, $fallbackTime): void {
                 $spanContextStart = new SpanContext();
@@ -139,5 +144,44 @@ class Middleware
         $this->transaction->startChild($spanContextStart);
 
         return true;
+    }
+
+    private function hydrateRequestData(Request $request): void
+    {
+        $route = $request->route();
+
+        if ($route instanceof Route) {
+            $this->updateTransactionNameIfDefault(Integration::extractNameForRoute($route));
+
+            $this->transaction->setData([
+                'name' => $route->getName(),
+                'action' => $route->getActionName(),
+                'method' => $request->getMethod(),
+            ]);
+        }
+
+        $this->updateTransactionNameIfDefault('/' . ltrim($request->path(), '/'));
+    }
+
+    private function hydrateResponseData(Response $response): void
+    {
+        $this->transaction->setHttpStatus($response->status());
+    }
+
+    private function updateTransactionNameIfDefault(?string $name): void
+    {
+        // Ignore empty names (and `null`) for caller convenience
+        if (empty($name)) {
+            return;
+        }
+
+        // If the transaction already has a name other than the default
+        // ignore the new name, this will most occur if the user has set a
+        // transaction name themself before the application reaches this point
+        if ($this->transaction->getName() !== TransactionContext::DEFAULT_NAME) {
+            return;
+        }
+
+        $this->transaction->setName($name);
     }
 }

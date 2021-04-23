@@ -6,6 +6,7 @@ use Exception;
 use Illuminate\Console\Command;
 use Sentry\ClientBuilder;
 use Sentry\State\Hub;
+use Sentry\State\HubInterface;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\TransactionContext;
 
@@ -43,8 +44,8 @@ class TestCommand extends Command
         $old_error_reporting = error_reporting(E_ALL | E_STRICT);
 
         try {
-            /** @var \Sentry\State\Hub $hub */
-            $hub = app('sentry');
+            /** @var \Sentry\State\HubInterface $hub */
+            $hub = app(HubInterface::class);
 
             if ($this->option('dsn')) {
                 $hub = new Hub(ClientBuilder::create(['dsn' => $this->option('dsn')])->getClient());
@@ -85,7 +86,6 @@ class TestCommand extends Command
             if ($result) {
                 $this->info("[Sentry] Transaction sent: {$result}");
             }
-
 
             if (!$eventId) {
                 $this->error('[Sentry] There was an error sending the test event.');
