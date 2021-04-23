@@ -27,9 +27,10 @@ Please note that of version `>= 2.0.0` we require PHP Version `>= 7.2` because w
 
 ## Installation
 
-- [Laravel 5.x & 6.x & 7.x & 8.x](https://docs.sentry.io/platforms/php/guides/laravel/)
-- [Laravel 4.x](https://docs.sentry.io/platforms/php/guides/laravel/laravel4/)
-- [Lumen](https://docs.sentry.io/platforms/php/guides/laravel/lumen/)
+- [Laravel 7.x & 8.x](https://docs.sentry.io/platforms/php/guides/laravel/)
+- [Laravel 5.x & 6.x](https://docs.sentry.io/platforms/php/guides/laravel/configuration/other-versions/laravel5-6/)
+- [Laravel 4.x](https://docs.sentry.io/platforms/php/guides/laravel/configuration/other-versions/laravel4/)
+- [Lumen](https://docs.sentry.io/platforms/php/guides/laravel/configuration/other-versions/lumen/)
 
 ## Contributing
 
@@ -47,6 +48,6 @@ $ vendor/bin/phpunit
 
 ## Links
 
-* [Documentation](http://docs.sentry.io/platforms/php/laravel/)
+* [Documentation](https://docs.sentry.io/platforms/php/guides/laravel/)
 * [Bug Tracker](http://github.com/getsentry/sentry-laravel/issues)
 * [Code](http://github.com/getsentry/sentry-laravel)

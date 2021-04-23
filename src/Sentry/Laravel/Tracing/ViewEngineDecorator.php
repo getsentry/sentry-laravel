@@ -41,14 +41,13 @@ final class ViewEngineDecorator implements Engine
 
         $span = $parentSpan->startChild($context);
 
-        $scope = SentrySdk::getCurrentHub()->pushScope();
-        $scope->setSpan($span);
+        SentrySdk::getCurrentHub()->setSpan($span);
 
         $result = $this->engine->get($path, $data);
 
         $span->finish();
 
-        SentrySdk::getCurrentHub()->popScope();
+        SentrySdk::getCurrentHub()->setSpan($parentSpan);
 
         return $result;
     }

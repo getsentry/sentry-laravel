@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - develop
+      - release/**
+
+jobs:
+  phpunit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      COMPOSER_NO_INTERACTION: 1
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php: [ "8.0", "7.4", "7.3", "7.2" ]
+        packages:
+          # All versions below should be test on PHP ^7.1 (Sentry SDK requirement)
+          - { laravel: 5.1.*, testbench: 3.1.*, phpunit: 5.7.* }
+          - { laravel: 5.2.*, testbench: 3.2.*, phpunit: 5.7.* }
+          - { laravel: 5.3.*, testbench: 3.3.*, phpunit: 5.7.* }
+          - { laravel: 5.4.*, testbench: 3.4.*, phpunit: 5.7.* }
+          - { laravel: 5.5.*, testbench: 3.5.*, phpunit: 6.5.* }
+          - { laravel: 5.6.*, testbench: 3.6.*, phpunit: 7.5.* }
+          - { laravel: 5.7.*, testbench: 3.7.*, phpunit: 7.5.* }
+          - { laravel: 5.8.*, testbench: 3.8.*, phpunit: 7.5.* }
+          - { laravel: ^6.0,  testbench: 4.7.*, phpunit: 8.4.* }
+          - { laravel: ^7.0,  testbench: 5.1.*, phpunit: 8.4.* }
+
+          # All versions below only support PHP ^7.3 (Laravel requirement)
+          - { laravel: ^8.0,  testbench: ^6.0, phpunit: 9.3.* }
+        exclude:
+          - php: "7.2"
+            packages: { laravel: ^8.0,  testbench: ^6.0, phpunit: 9.3.* }
+          - php: "8.0"
+            packages: { laravel: 5.1.*, testbench: 3.1.*, phpunit: 5.7.* }
+          - php: "8.0"
+            packages: { laravel: 5.2.*, testbench: 3.2.*, phpunit: 5.7.* }
+          - php: "8.0"
+            packages: { laravel: 5.3.*, testbench: 3.3.*, phpunit: 5.7.* }
+          - php: "8.0"
+            packages: { laravel: 5.4.*, testbench: 3.4.*, phpunit: 5.7.* }
+          - php: "8.0"
+            packages: { laravel: 5.5.*, testbench: 3.5.*, phpunit: 6.5.* }
+          - php: "8.0"
+            packages: { laravel: 5.6.*, testbench: 3.6.*, phpunit: 7.5.* }
+          - php: "8.0"
+            packages: { laravel: 5.7.*, testbench: 3.7.*, phpunit: 7.5.* }
+          - php: "8.0"
+            packages: { laravel: 5.8.*, testbench: 3.8.*, phpunit: 7.5.* }
+          - php: "8.0"
+            packages: { laravel: ^6.0,  testbench: 4.7.*, phpunit: 8.4.* }
+          - php: "8.0"
+            packages: { laravel: ^7.0,  testbench: 5.1.*, phpunit: 8.4.* }
+
+    name: phpunit (PHP:${{ matrix.php }}, Laravel:${{ matrix.packages.laravel }})
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          tools: composer:v2
+
+      - name: Install Composer dependencies
+        run: |
+          # No need for this package to run phpunit and it conflicts with older Laravel versions
+          composer remove friendsofphp/php-cs-fixer --dev --no-interaction --no-update
+
+          # Require the correct versions we want to run phpunit for
+          composer require \
+            "laravel/framework:${{ matrix.packages.laravel }}" \
+            "illuminate/support:${{ matrix.packages.laravel }}" \
+            "phpunit/phpunit:${{ matrix.packages.phpunit }}" \
+            "orchestra/testbench:${{ matrix.packages.testbench }}" \
+            --no-interaction --no-update
+
+          # Actually run the composer installation
+          composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run phpunit
+        run: vendor/bin/phpunit

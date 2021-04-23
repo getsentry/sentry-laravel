@@ -1,74 +1,77 @@
 {
-  "name": "sentry/sentry-laravel",
-  "type": "library",
-  "description": "Laravel SDK for Sentry (https://sentry.io)",
-  "keywords": [
-    "sentry",
-    "laravel",
-    "log",
-    "logging",
-    "error-monitoring",
-    "error-handler",
-    "crash-reporting",
-    "crash-reports"
-  ],
-  "homepage": "https://sentry.io",
-  "license": "Apache-2.0",
-  "authors": [
-    {
-      "name": "Sentry",
-      "email": "accounts@sentry.io"
-    }
-  ],
-  "require": {
-    "php": "^7.2",
-    "illuminate/support": "5.0 - 5.8 | ^6.0 | ^7.0 | ^8.0",
-    "sentry/sdk": "^3.0"
-  },
-  "require-dev": {
-    "phpunit/phpunit": "^8.0",
-    "laravel/framework": "^7.0",
-    "orchestra/testbench": "^5.0",
-    "friendsofphp/php-cs-fixer": "2.16.*",
-    "mockery/mockery": "1.3.*"
-  },
-  "autoload": {
-    "psr-0": {
-      "Sentry\\Laravel\\": "src/"
-    }
-  },
-  "autoload-dev": {
-    "psr-4": {
-      "Sentry\\Laravel\\Tests\\": "test/Sentry/"
-    }
-  },
-  "scripts": {
-    "tests": [
-      "vendor/bin/phpunit --verbose"
+    "name": "sentry/sentry-laravel",
+    "type": "library",
+    "description": "Laravel SDK for Sentry (https://sentry.io)",
+    "keywords": [
+        "sentry",
+        "laravel",
+        "log",
+        "logging",
+        "error-monitoring",
+        "error-handler",
+        "crash-reporting",
+        "crash-reports"
     ],
-    "tests-travis": [
-      "vendor/bin/phpunit --verbose --configuration phpunit.xml --coverage-clover test/clover.xml"
+    "homepage": "https://sentry.io",
+    "license": "Apache-2.0",
+    "authors": [
+        {
+            "name": "Sentry",
+            "email": "accounts@sentry.io"
+        }
     ],
-    "tests-report": [
-      "vendor/bin/phpunit --verbose --configuration phpunit.xml --coverage-html test/html-report"
-    ],
-    "phpcs": [
-      "vendor/bin/php-cs-fixer fix --config=.php_cs --verbose --diff --dry-run"
-    ]
-  },
-  "extra": {
-    "branch-alias": {
-      "dev-master": "2.x-dev",
-      "dev-0.x": "0.x-dev"
+    "require": {
+        "php": "^7.2 | ^8.0",
+        "illuminate/support": "5.0 - 5.8 | ^6.0 | ^7.0 | ^8.0",
+        "sentry/sentry": "3.2.*",
+        "sentry/sdk": "^3.1",
+        "symfony/psr-http-message-bridge": "^1.0 | ^2.0",
+        "nyholm/psr7": "^1.0"
     },
-    "laravel": {
-      "providers": [
-        "Sentry\\Laravel\\ServiceProvider",
-        "Sentry\\Laravel\\Tracing\\ServiceProvider"
-      ],
-      "aliases": {
-        "Sentry": "Sentry\\Laravel\\Facade"
-      }
+    "require-dev": {
+        "phpunit/phpunit": "^5.7 | ^6.5 | ^7.5 | ^8.4 | ^9.3",
+        "laravel/framework": "5.0 - 5.8 | ^6.0 | ^7.0 | ^8.0",
+        "orchestra/testbench": "3.1 - 3.8 | ^4.7 | ^5.1 | ^6.0",
+        "friendsofphp/php-cs-fixer": "2.18.*",
+        "mockery/mockery": "1.3.*"
+    },
+    "autoload": {
+        "psr-0": {
+            "Sentry\\Laravel\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Sentry\\Laravel\\Tests\\": "test/Sentry/"
+        }
+    },
+    "scripts": {
+        "tests": [
+            "vendor/bin/phpunit --verbose"
+        ],
+        "tests-travis": [
+            "XDEBUG_MODE=coverage vendor/bin/phpunit --verbose --configuration phpunit.xml --coverage-clover test/clover.xml"
+        ],
+        "tests-report": [
+            "XDEBUG_MODE=coverage vendor/bin/phpunit --verbose --configuration phpunit.xml --coverage-html test/html-report"
+        ],
+        "phpcs": [
+            "vendor/bin/php-cs-fixer fix --config=.php_cs --verbose --diff --dry-run"
+        ]
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-master": "2.x-dev",
+            "dev-0.x": "0.x-dev"
+        },
+        "laravel": {
+            "providers": [
+                "Sentry\\Laravel\\ServiceProvider",
+                "Sentry\\Laravel\\Tracing\\ServiceProvider"
+            ],
+            "aliases": {
+                "Sentry": "Sentry\\Laravel\\Facade"
+            }
+        }
     }
-  }
 }
