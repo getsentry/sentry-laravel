@@ -37,9 +37,11 @@ class ServiceProvider extends BaseServiceProvider
     {
         $this->app->singleton(Middleware::class);
 
-        $this->app->booted(function () {
-            $this->app->make(Middleware::class)->setBootedTimestamp(microtime(true));
-        });
+        if (!$this->app instanceof Lumen) {
+            $this->app->booted(function () {
+                $this->app->make(Middleware::class)->setBootedTimestamp(microtime(true));
+            });
+        }
     }
 
     private function bindEvents(): void

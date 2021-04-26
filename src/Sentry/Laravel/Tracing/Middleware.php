@@ -38,6 +38,8 @@ class Middleware
 
     /**
      * Set the timestamp of application bootstrap completion.
+     * For Lumen this method should be manually invoked at the end of application bootstrap process to include the
+     * `app.bootstrap` span.
      *
      * @internal This method should only be invoked from the "booted" callback
      * @param int $timestamp
@@ -117,15 +119,18 @@ class Middleware
         // Setting the Transaction on the Hub
         SentrySdk::getCurrentHub()->setSpan($this->transaction);
 
-        if (!$this->addBootTimeSpans() && app() instanceof Laravel) {
+        if (!$this->addBootTimeSpans()) {
             $this->addAppBootstrapSpan($request);
 
             $appContextStart = new SpanContext();
             $appContextStart->setOp('app.handle');
-            $appContextStart->setStartTimestamp(microtime(true));
+            $appContextStart->setStartTimestamp($this->bootedTimestamp ?? microtime(true));
             $this->appSpan = $this->transaction->startChild($appContextStart);
 
             SentrySdk::getCurrentHub()->setSpan($this->appSpan);
+
+            // Reset booted timestamp, because we don't want to report bootstrap time more than once
+            $this->bootedTimestamp = null;
         }
     }
 
@@ -146,9 +151,6 @@ class Middleware
         $spanContextStart->setStartTimestamp($laravelStartTime);
         $spanContextStart->setEndTimestamp($this->bootedTimestamp);
         $this->transaction->startChild($spanContextStart);
-
-        // Reset booted timestamp, because we don't want to report bootstrap time more than once
-        $this->bootedTimestamp = null;
     }
 
     private function addBootTimeSpans(): bool
