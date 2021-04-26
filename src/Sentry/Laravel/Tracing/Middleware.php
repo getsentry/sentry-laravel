@@ -120,46 +120,15 @@ class Middleware
         // Setting the Transaction on the Hub
         SentrySdk::getCurrentHub()->setSpan($this->transaction);
 
-        if (!$this->addBootTimeSpans()) {
-            $bootstrapSpan = $this->addAppBootstrapSpan($request);
+        $bootstrapSpan = $this->addAppBootstrapSpan($request);
 
-            $appContextStart = new SpanContext();
-            $appContextStart->setOp('app.handle');
-            $appContextStart->setStartTimestamp($bootstrapSpan ? $bootstrapSpan->getEndTimestamp() : microtime(true));
+        $appContextStart = new SpanContext();
+        $appContextStart->setOp('app.handle');
+        $appContextStart->setStartTimestamp($bootstrapSpan ? $bootstrapSpan->getEndTimestamp() : microtime(true));
 
-            $this->appSpan = $this->transaction->startChild($appContextStart);
+        $this->appSpan = $this->transaction->startChild($appContextStart);
 
-            SentrySdk::getCurrentHub()->setSpan($this->appSpan);
-        }
-    }
-
-    private function addBootTimeSpans(): bool
-    {
-        if (!defined('LARAVEL_START') || !LARAVEL_START) {
-            return false;
-        }
-
-        if (!defined('SENTRY_AUTOLOAD') || !SENTRY_AUTOLOAD) {
-            return false;
-        }
-
-        if (!defined('SENTRY_BOOTSTRAP') || !SENTRY_BOOTSTRAP) {
-            return false;
-        }
-
-        $spanContextStart = new SpanContext();
-        $spanContextStart->setOp('autoload');
-        $spanContextStart->setStartTimestamp(LARAVEL_START);
-        $spanContextStart->setEndTimestamp(SENTRY_AUTOLOAD);
-        $this->transaction->startChild($spanContextStart);
-
-        $spanContextStart = new SpanContext();
-        $spanContextStart->setOp('bootstrap');
-        $spanContextStart->setStartTimestamp(SENTRY_AUTOLOAD);
-        $spanContextStart->setEndTimestamp(SENTRY_BOOTSTRAP);
-        $this->transaction->startChild($spanContextStart);
-
-        return true;
+        SentrySdk::getCurrentHub()->setSpan($this->appSpan);
     }
 
     private function addAppBootstrapSpan(Request $request): ?Span
@@ -184,7 +153,26 @@ class Middleware
         // Consume the booted timestamp, because we don't want to report the bootstrap span more than once
         $this->bootedTimestamp = null;
 
+        // Add more information about the bootstrap section if possible
+        $this->addBootDetailTimeSpans($span);
+
         return $span;
+    }
+
+    private function addBootDetailTimeSpans(Span $bootstrap): void
+    {
+        // This constant should be defined right after the composer `autoload.php` require statement in `public/index.php`
+        // define('SENTRY_AUTOLOAD', microtime(true));
+        if (!defined('SENTRY_AUTOLOAD') || !SENTRY_AUTOLOAD) {
+            return;
+        }
+
+        $autoload = new SpanContext();
+        $autoload->setOp('autoload');
+        $autoload->setStartTimestamp($bootstrap->getStartTimestamp());
+        $autoload->setEndTimestamp(SENTRY_AUTOLOAD);
+
+        $bootstrap->startChild($autoload);
     }
 
     private function hydrateRequestData(Request $request): void
