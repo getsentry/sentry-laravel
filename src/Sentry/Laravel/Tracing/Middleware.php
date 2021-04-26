@@ -3,13 +3,13 @@
 namespace Sentry\Laravel\Tracing;
 
 use Closure;
-use Illuminate\Foundation\Application as Laravel;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Routing\Route;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
 use Sentry\State\HubInterface;
+use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\TransactionContext;
 
@@ -32,23 +32,9 @@ class Middleware
     /**
      * The timestamp of application bootstrap completion.
      *
-     * @var null|int
+     * @var float|null
      */
-    private $bootedTimestamp = null;
-
-    /**
-     * Set the timestamp of application bootstrap completion.
-     * For Lumen this method should be manually invoked at the end of application bootstrap process to include the
-     * `app.bootstrap` span.
-     *
-     * @internal This method should only be invoked from the "booted" callback
-     * @param int $timestamp
-     * @return void
-     */
-    public function setBootedTimestamp(int $timestamp): void
-    {
-        $this->bootedTimestamp = $timestamp;
-    }
+    private $bootedTimestamp;
 
     /**
      * Handle an incoming request.
@@ -98,6 +84,21 @@ class Middleware
         }
     }
 
+    /**
+     * Set the timestamp of application bootstrap completion.
+     *
+     * @param float|null $timestamp The unix timestamp of the booted event, default to `microtime(true)` if not `null`.
+     *
+     * @return void
+     * @internal This method should only be invoked right after the application has finished "booting":
+     *           For Laravel this is from the application `booted` callback.
+     *           For Lumen this is right before returning from the `bootstrap/app.php` file.
+     */
+    public function setBootedTimestamp(?float $timestamp = null): void
+    {
+        $this->bootedTimestamp = $timestamp ?? microtime(true);
+    }
+
     private function startTransaction(Request $request, HubInterface $sentry): void
     {
         $requestStartTime = $request->server('REQUEST_TIME_FLOAT', microtime(true));
@@ -120,37 +121,16 @@ class Middleware
         SentrySdk::getCurrentHub()->setSpan($this->transaction);
 
         if (!$this->addBootTimeSpans()) {
-            $this->addAppBootstrapSpan($request);
+            $bootstrapSpan = $this->addAppBootstrapSpan($request);
 
             $appContextStart = new SpanContext();
             $appContextStart->setOp('app.handle');
-            $appContextStart->setStartTimestamp($this->bootedTimestamp ?? microtime(true));
+            $appContextStart->setStartTimestamp($bootstrapSpan ? $bootstrapSpan->getEndTimestamp() : microtime(true));
+
             $this->appSpan = $this->transaction->startChild($appContextStart);
 
             SentrySdk::getCurrentHub()->setSpan($this->appSpan);
-
-            // Reset booted timestamp, because we don't want to report bootstrap time more than once
-            $this->bootedTimestamp = null;
         }
-    }
-
-    private function addAppBootstrapSpan(Request $request): void
-    {
-        if ($this->bootedTimestamp === null) {
-            return;
-        }
-
-        $laravelStartTime = defined('LARAVEL_START') ? LARAVEL_START : $request->server('REQUEST_TIME_FLOAT');
-
-        if ($laravelStartTime === null) {
-            return;
-        }
-
-        $spanContextStart = new SpanContext();
-        $spanContextStart->setOp('app.bootstrap');
-        $spanContextStart->setStartTimestamp($laravelStartTime);
-        $spanContextStart->setEndTimestamp($this->bootedTimestamp);
-        $this->transaction->startChild($spanContextStart);
     }
 
     private function addBootTimeSpans(): bool
@@ -180,6 +160,31 @@ class Middleware
         $this->transaction->startChild($spanContextStart);
 
         return true;
+    }
+
+    private function addAppBootstrapSpan(Request $request): ?Span
+    {
+        if ($this->bootedTimestamp === null) {
+            return null;
+        }
+
+        $laravelStartTime = defined('LARAVEL_START') ? LARAVEL_START : $request->server('REQUEST_TIME_FLOAT');
+
+        if ($laravelStartTime === null) {
+            return null;
+        }
+
+        $spanContextStart = new SpanContext();
+        $spanContextStart->setOp('app.bootstrap');
+        $spanContextStart->setStartTimestamp($laravelStartTime);
+        $spanContextStart->setEndTimestamp($this->bootedTimestamp);
+
+        $span = $this->transaction->startChild($spanContextStart);
+
+        // Consume the booted timestamp, because we don't want to report the bootstrap span more than once
+        $this->bootedTimestamp = null;
+
+        return $span;
     }
 
     private function hydrateRequestData(Request $request): void
