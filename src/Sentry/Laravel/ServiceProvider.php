@@ -166,43 +166,39 @@ class ServiceProvider extends BaseServiceProvider
             $userIntegrations = $this->resolveIntegrationsFromUserConfig();
 
             $options->setIntegrations(function (array $integrations) use ($options, $userIntegrations) {
-                $allIntegrations = array_merge($integrations, $userIntegrations);
+                if ($options->hasDefaultIntegrations()) {
+                    // Remove the default error and fatal exception listeners to let Laravel handle those
+                    // itself. These event are still bubbling up through the documented changes in the users
+                    // `ExceptionHandler` of their application or through the log channel integration to Sentry
+                    $integrations = array_filter($integrations, static function (SdkIntegration\IntegrationInterface $integration): bool {
+                        if ($integration instanceof SdkIntegration\ErrorListenerIntegration) {
+                            return false;
+                        }
 
-                if (!$options->hasDefaultIntegrations()) {
-                    return $allIntegrations;
+                        if ($integration instanceof SdkIntegration\ExceptionListenerIntegration) {
+                            return false;
+                        }
+
+                        if ($integration instanceof SdkIntegration\FatalErrorListenerIntegration) {
+                            return false;
+                        }
+
+                        // We also remove the default request integration so it can be readded
+                        // after with a Laravel specific request fetcher. This way we can resolve
+                        // the request from Laravel instead of constructing it from the global state
+                        if ($integration instanceof SdkIntegration\RequestIntegration) {
+                            return false;
+                        }
+
+                        return true;
+                    });
+
+                    $integrations[] = new SdkIntegration\RequestIntegration(
+                        new LaravelRequestFetcher($this->app)
+                    );
                 }
 
-                // Remove the default error and fatal exception listeners to let Laravel handle those
-                // itself. These event are still bubbling up through the documented changes in the users
-                // `ExceptionHandler` of their application or through the log channel integration to Sentry
-                $allIntegrations = array_filter($allIntegrations, static function (SdkIntegration\IntegrationInterface $integration): bool {
-                    if ($integration instanceof SdkIntegration\ErrorListenerIntegration) {
-                        return false;
-                    }
-
-                    if ($integration instanceof SdkIntegration\ExceptionListenerIntegration) {
-                        return false;
-                    }
-
-                    if ($integration instanceof SdkIntegration\FatalErrorListenerIntegration) {
-                        return false;
-                    }
-
-                    // We also remove the default request integration so it can be readded
-                    // after with a Laravel specific request fetcher. This way we can resolve
-                    // the request from Laravel instead of constructing it from the global state
-                    if ($integration instanceof SdkIntegration\RequestIntegration) {
-                        return false;
-                    }
-
-                    return true;
-                });
-
-                $allIntegrations[] = new SdkIntegration\RequestIntegration(
-                    new LaravelRequestFetcher($this->app)
-                );
-
-                return $allIntegrations;
+                return array_merge($integrations, $userIntegrations);
             });
 
             $hub = new Hub($clientBuilder->getClient());
