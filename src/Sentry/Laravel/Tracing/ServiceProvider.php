@@ -38,6 +38,12 @@ class ServiceProvider extends BaseServiceProvider
     public function register(): void
     {
         $this->app->singleton(Middleware::class);
+
+        if (!$this->app instanceof Lumen) {
+            $this->app->booted(function () {
+                $this->app->make(Middleware::class)->setBootedTimestamp();
+            });
+        }
     }
 
     private function bindEvents(array $tracingConfig): void
