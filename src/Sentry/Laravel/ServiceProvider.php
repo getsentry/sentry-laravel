@@ -22,7 +22,8 @@ class ServiceProvider extends BaseServiceProvider
      * List of configuration options that are Laravel specific and should not be sent to the base PHP SDK.
      */
     private const LARAVEL_SPECIFIC_OPTIONS = [
-        // We do not want this setting to hit our main client because it's Laravel specific
+        // We do not want these settings to hit the PHP SDK because it's Laravel specific and the SDK will throw errors
+        'tracing',
         'breadcrumbs',
         // We resolve the integrations through the container later, so we initially do not pass it to the SDK yet
         'integrations',
@@ -40,7 +41,7 @@ class ServiceProvider extends BaseServiceProvider
         $this->app->make(HubInterface::class);
 
         if ($this->hasDsnSet()) {
-            $this->bindEvents($this->app);
+            $this->bindEvents();
 
             if ($this->app instanceof Lumen) {
                 $this->app->middleware(SetRequestIpMiddleware::class);

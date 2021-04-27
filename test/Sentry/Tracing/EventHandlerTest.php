@@ -2,15 +2,12 @@
 
 namespace Sentry\Laravel\Tests\Tracing;
 
-use Mockery;
 use ReflectionClass;
 use Sentry\Laravel\Tests\SentryLaravelTestCase;
 use Sentry\Laravel\Tracing\BacktraceHelper;
 use RuntimeException;
 use Sentry\Laravel\Tests\ExpectsException;
 use Sentry\Laravel\Tracing\EventHandler;
-use Sentry\SentrySdk;
-use Sentry\Tracing\TransactionContext;
 
 class EventHandlerTest extends SentryLaravelTestCase
 {
@@ -20,7 +17,7 @@ class EventHandlerTest extends SentryLaravelTestCase
     {
         $this->safeExpectException(RuntimeException::class);
 
-        $handler = new EventHandler($this->app->events, $this->app->make(BacktraceHelper::class));
+        $handler = new EventHandler($this->app, $this->app->make(BacktraceHelper::class), []);
 
         $handler->thisIsNotAHandlerAndShouldThrowAnException();
     }
@@ -32,32 +29,9 @@ class EventHandlerTest extends SentryLaravelTestCase
         );
     }
 
-    public function test_handlers_are_not_called_when_no_transaction()
-    {
-        SentrySdk::getCurrentHub()->setSpan(null);
-
-        $eventHandlerMock = Mockery::mock(EventHandler::class)->makePartial();
-
-        $eventHandlerMock->shouldReceive('__call')->withArgs(['queryHandler', []]);
-
-        $eventHandlerMock->query();
-    }
-
-    public function test_handlers_are_called_when_transaction_is_present()
-    {
-        $transaction = SentrySdk::getCurrentHub()->startTransaction(new TransactionContext());
-        SentrySdk::getCurrentHub()->setSpan($transaction);
-
-        $eventHandlerMock = Mockery::mock(EventHandler::class)->makePartial()->shouldAllowMockingProtectedMethods();
-
-        $eventHandlerMock->shouldReceive('queryHandler')->withArgs(['', [], 0, ''])->once();
-
-        $eventHandlerMock->query('', [], 0, '');
-    }
-
     private function tryAllEventHandlerMethods(array $methods): void
     {
-        $handler = new EventHandler($this->app->events, $this->app->make(BacktraceHelper::class));
+        $handler = new EventHandler($this->app, $this->app->make(BacktraceHelper::class), []);
 
         $methods = array_map(static function ($method) {
             return "{$method}Handler";
