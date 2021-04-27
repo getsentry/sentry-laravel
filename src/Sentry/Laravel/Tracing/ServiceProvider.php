@@ -6,6 +6,7 @@ use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
 use Illuminate\Contracts\View\Engine;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
+use Illuminate\Queue\QueueManager;
 use Illuminate\View\Engines\EngineResolver;
 use Illuminate\View\Factory as ViewFactory;
 use InvalidArgumentException;
@@ -67,8 +68,10 @@ class ServiceProvider extends BaseServiceProvider
 
         $handler->subscribe();
 
-        if ($this->app->bound('queue')) {
-            $handler->subscribeQueueEvents($this->app->queue);
+        if ($this->app->bound(QueueManager::class)) {
+            $handler->subscribeQueueEvents(
+                $this->app->make(QueueManager::class)
+            );
         }
     }
 

@@ -8,6 +8,7 @@ use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Events as DatabaseEvents;
 use Illuminate\Queue\Events as QueueEvents;
+use Illuminate\Queue\Queue;
 use Illuminate\Queue\QueueManager;
 use RuntimeException;
 use Sentry\Laravel\Integration;
@@ -18,6 +19,8 @@ use Sentry\Tracing\TransactionContext;
 
 class EventHandler
 {
+    public const QUEUE_PAYLOAD_TRACE_PARENT_DATA = 'sentry_trace_parent_data';
+
     /**
      * Map event handlers to events.
      *
@@ -141,6 +144,19 @@ class EventHandler
         // If both types of queue job tracing is disabled also do not register the events
         if (!$this->traceQueueJobs && !$this->traceQueueJobsAsTransactions) {
             return;
+        }
+
+        // The payload create callback was introduced in Laravel 5.7 so we need to guard against older versions
+        if (method_exists(Queue::class, 'createPayloadUsing')) {
+            Queue::createPayloadUsing(static function (string $connection, string $queue, array $payload): array {
+                $currentSpan = Integration::currentTracingSpan();
+
+                if ($currentSpan !== null) {
+                    $payload[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] = $currentSpan->toTraceparent();
+                }
+
+                return $payload;
+            });
         }
 
         $queue->looping(function () {
@@ -276,15 +292,20 @@ class EventHandler
             return;
         }
 
-        $this->parentQueueJobSpan = $parentSpan;
+        if ($parentSpan === null) {
+            $traceParent = $event->job->payload()[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] ?? null;
 
-        $spanContext = $parentSpan === null
-            ? new TransactionContext(
-                method_exists($event->job, 'resolveName')
-                    ? $event->job->resolveName()
-                    : $event->job->getName()
-            )
-            : new SpanContext();
+            $context = $traceParent === null
+                ? new TransactionContext
+                : TransactionContext::fromSentryTrace($traceParent);
+
+            // If the parent transaction was not sampled we also stop the queue job from being recorded
+            if ($context->getParentSampled() === false) {
+                return;
+            }
+        } else {
+            $context = new SpanContext;
+        }
 
         $job = [
             'job' => $event->job->getName(),
@@ -294,20 +315,30 @@ class EventHandler
         ];
 
         // Resolve name exists only from Laravel 5.3+
-        if (method_exists($event->job, 'resolveName')) {
-            $job['resolved'] = $event->job->resolveName();
+        $resolvedJobName = method_exists($event->job, 'resolveName')
+            ? $event->job->resolveName()
+            : null;
+
+        if ($resolvedJobName !== null) {
+            $job['resolved'] = $resolvedJobName;
         }
 
-        $spanContext->setOp('queue.job');
-        $spanContext->setData($job);
-        $spanContext->setStartTimestamp(microtime(true));
+        if ($context instanceof TransactionContext) {
+            $context->setName($resolvedJobName ?? $event->job->getName());
+        }
+
+        $context->setOp('queue.job');
+        $context->setData($job);
+        $context->setStartTimestamp(microtime(true));
 
         // When the parent span is null we start a new transaction otherwise we start a child of the current span
         if ($parentSpan === null) {
-            $this->currentQueueJobSpan = SentrySdk::getCurrentHub()->startTransaction($spanContext);
+            $this->currentQueueJobSpan = SentrySdk::getCurrentHub()->startTransaction($context);
         } else {
-            $this->currentQueueJobSpan = $parentSpan->startChild($spanContext);
+            $this->currentQueueJobSpan = $parentSpan->startChild($context);
         }
+
+        $this->parentQueueJobSpan = $parentSpan;
 
         SentrySdk::getCurrentHub()->setSpan($this->currentQueueJobSpan);
     }
