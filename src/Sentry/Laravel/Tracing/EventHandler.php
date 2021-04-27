@@ -54,6 +54,13 @@ class EventHandler
     private $traceSqlQueries;
 
     /**
+     * Indicates if we should we add SQL query origin data to query spans.
+     *
+     * @var bool
+     */
+    private $traceSqlQueryOrigins;
+
+    /**
      * Indicates if we should trace queue job spans.
      *
      * @var bool
@@ -101,6 +108,8 @@ class EventHandler
         $this->backtraceHelper = $backtraceHelper;
 
         $this->traceSqlQueries = ($config['sql_queries'] ?? true) === true;
+        $this->traceSqlQueryOrigins = ($config['sql_origin'] ?? true) === true;
+
         $this->traceQueueJobs = ($config['queue_jobs'] ?? false) === true;
         $this->traceQueueJobsAsTransactions = ($config['queue_job_transactions'] ?? false) === true;
     }
@@ -219,10 +228,12 @@ class EventHandler
         $context->setStartTimestamp(microtime(true) - $time / 1000);
         $context->setEndTimestamp($context->getStartTimestamp() + $time / 1000);
 
-        $queryOrigin = $this->resolveQueryOriginFromBacktrace($context);
+        if ($this->traceSqlQueryOrigins) {
+            $queryOrigin = $this->resolveQueryOriginFromBacktrace($context);
 
-        if ($queryOrigin !== null) {
-            $context->setData(['sql.origin' => $queryOrigin]);
+            if ($queryOrigin !== null) {
+                $context->setData(['sql.origin' => $queryOrigin]);
+            }
         }
 
         $parentSpan->startChild($context);
