@@ -3,12 +3,13 @@
 namespace Sentry\Laravel\Tests\Tracing;
 
 use ReflectionClass;
-use Orchestra\Testbench\TestCase;
+use Sentry\Laravel\Tests\SentryLaravelTestCase;
+use Sentry\Laravel\Tracing\BacktraceHelper;
 use RuntimeException;
 use Sentry\Laravel\Tests\ExpectsException;
 use Sentry\Laravel\Tracing\EventHandler;
 
-class EventHandlerTest extends TestCase
+class EventHandlerTest extends SentryLaravelTestCase
 {
     use ExpectsException;
 
@@ -16,7 +17,7 @@ class EventHandlerTest extends TestCase
     {
         $this->safeExpectException(RuntimeException::class);
 
-        $handler = new EventHandler($this->app, []);
+        $handler = new EventHandler($this->app, $this->app->make(BacktraceHelper::class), []);
 
         $handler->thisIsNotAHandlerAndShouldThrowAnException();
     }
@@ -30,7 +31,7 @@ class EventHandlerTest extends TestCase
 
     private function tryAllEventHandlerMethods(array $methods): void
     {
-        $handler = new EventHandler($this->app, []);
+        $handler = new EventHandler($this->app, $this->app->make(BacktraceHelper::class), []);
 
         $methods = array_map(static function ($method) {
             return "{$method}Handler";

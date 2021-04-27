@@ -8,8 +8,10 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 use Illuminate\View\Engines\EngineResolver;
 use Illuminate\View\Factory as ViewFactory;
+use InvalidArgumentException;
 use Laravel\Lumen\Application as Lumen;
 use Sentry\Laravel\BaseServiceProvider;
+use Sentry\Serializer\RepresentationSerializer;
 
 class ServiceProvider extends BaseServiceProvider
 {
@@ -39,6 +41,15 @@ class ServiceProvider extends BaseServiceProvider
     {
         $this->app->singleton(Middleware::class);
 
+        $this->app->singleton(BacktraceHelper::class, function () {
+            /** @var \Sentry\State\Hub $sentry */
+            $sentry = $this->app->make(self::$abstract);
+
+            $options = $sentry->getClient()->getOptions();
+
+            return new BacktraceHelper($options, new RepresentationSerializer($options));
+        });
+
         if (!$this->app instanceof Lumen) {
             $this->app->booted(function () {
                 $this->app->make(Middleware::class)->setBootedTimestamp();
@@ -48,7 +59,11 @@ class ServiceProvider extends BaseServiceProvider
 
     private function bindEvents(array $tracingConfig): void
     {
-        $handler = new EventHandler($this->app, $tracingConfig);
+        $handler = new EventHandler(
+            $this->app,
+            $this->app->make(BacktraceHelper::class),
+            $tracingConfig
+        );
 
         $handler->subscribe();
 

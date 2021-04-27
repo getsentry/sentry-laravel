@@ -37,6 +37,9 @@ return [
         // Capture SQL queries as spans
         'sql_queries' => true,
 
+        // Try to find out where the SQL query originated from and add it to the query spans
+        'sql_origin' => true,
+
         // Capture views as spans
         'views' => true,
     ],

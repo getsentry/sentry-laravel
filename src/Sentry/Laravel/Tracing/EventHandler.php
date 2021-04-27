@@ -54,6 +54,13 @@ class EventHandler
     private $traceSqlQueries;
 
     /**
+     * Indicates if we should we add SQL query origin data to query spans.
+     *
+     * @var bool
+     */
+    private $traceSqlQueryOrigins;
+
+    /**
      * Indicates if we should trace queue job spans.
      *
      * @var bool
@@ -82,16 +89,27 @@ class EventHandler
     private $currentQueueJobSpan;
 
     /**
+     * The backtrace helper.
+     *
+     * @var \Sentry\Laravel\Tracing\BacktraceHelper
+     */
+    private $backtraceHelper;
+
+    /**
      * EventHandler constructor.
      *
      * @param \Illuminate\Contracts\Container\Container $container
+     * @param \Sentry\Laravel\Tracing\BacktraceHelper   $backtraceHelper
      * @param array                                     $config
      */
-    public function __construct(Container $container, array $config)
+    public function __construct(Container $container, BacktraceHelper $backtraceHelper, array $config)
     {
         $this->container = $container;
+        $this->backtraceHelper = $backtraceHelper;
 
         $this->traceSqlQueries = ($config['sql_queries'] ?? true) === true;
+        $this->traceSqlQueryOrigins = ($config['sql_origin'] ?? true) === true;
+
         $this->traceQueueJobs = ($config['queue_jobs'] ?? false) === true;
         $this->traceQueueJobsAsTransactions = ($config['queue_job_transactions'] ?? false) === true;
     }
@@ -210,10 +228,36 @@ class EventHandler
         $context->setStartTimestamp(microtime(true) - $time / 1000);
         $context->setEndTimestamp($context->getStartTimestamp() + $time / 1000);
 
+        if ($this->traceSqlQueryOrigins) {
+            $queryOrigin = $this->resolveQueryOriginFromBacktrace($context);
+
+            if ($queryOrigin !== null) {
+                $context->setData(['sql.origin' => $queryOrigin]);
+            }
+        }
+
         $parentSpan->startChild($context);
     }
 
     /**
+     * Try to find the origin of the SQL query that was just executed.
+     *
+     * @return string|null
+     */
+    private function resolveQueryOriginFromBacktrace(): ?string
+    {
+        $firstAppFrame = $this->backtraceHelper->findFirstInAppFrameForBacktrace(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS));
+
+        if ($firstAppFrame === null) {
+            return null;
+        }
+
+        $filePath = $this->backtraceHelper->getOriginalViewPathForFrameOfCompiledViewPath($firstAppFrame) ?? $firstAppFrame->getFile();
+
+        return "{$filePath}:{$firstAppFrame->getLine()}";
+    }
+
+    /*
      * Since Laravel 5.2
      *
      * @param \Illuminate\Queue\Events\JobProcessing $event
