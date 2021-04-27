@@ -123,7 +123,11 @@ class EventHandler
         $context->setStartTimestamp(microtime(true) - $time / 1000);
         $context->setEndTimestamp($context->getStartTimestamp() + $time / 1000);
 
-        $this->resolveQuerySourceFromBacktrace($context);
+        $queryOrigin = $this->resolveQueryOriginFromBacktrace($context);
+
+        if ($queryOrigin !== null) {
+            $context->setData(['sql.origin' => $queryOrigin]);
+        }
 
         $parentSpan->startChild($context);
     }
@@ -131,18 +135,18 @@ class EventHandler
     /**
      * Try to find the origin of the SQL query that was just executed.
      *
-     * @param \Sentry\Tracing\SpanContext $context
+     * @return string|null
      */
-    private function resolveQuerySourceFromBacktrace(SpanContext $context): void
+    private function resolveQueryOriginFromBacktrace(): ?string
     {
         $firstAppFrame = $this->backtraceHelper->findFirstInAppFrameForBacktrace(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS));
 
-        if ($firstAppFrame !== null) {
-            $filePath = $this->backtraceHelper->getOriginalViewPathForFrameOfCompiledViewPath($firstAppFrame) ?? $firstAppFrame->getFile();
-
-            $context->setData([
-                'sql.origin' => "{$filePath}:{$firstAppFrame->getLine()}",
-            ]);
+        if ($firstAppFrame === null) {
+            return null;
         }
+
+        $filePath = $this->backtraceHelper->getOriginalViewPathForFrameOfCompiledViewPath($firstAppFrame) ?? $firstAppFrame->getFile();
+
+        return "{$filePath}:{$firstAppFrame->getLine()}";
     }
 }
