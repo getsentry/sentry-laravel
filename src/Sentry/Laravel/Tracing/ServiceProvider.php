@@ -8,6 +8,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 use Illuminate\View\Engines\EngineResolver;
 use Illuminate\View\Factory as ViewFactory;
+use InvalidArgumentException;
 use Laravel\Lumen\Application as Lumen;
 use Sentry\Laravel\BaseServiceProvider;
 use Sentry\Serializer\RepresentationSerializer;
