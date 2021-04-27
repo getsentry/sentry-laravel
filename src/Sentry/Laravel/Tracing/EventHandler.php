@@ -292,13 +292,6 @@ class EventHandler
             return;
         }
 
-        $this->parentQueueJobSpan = $parentSpan;
-
-        // Resolve name exists only from Laravel 5.3+
-        $resolvedJobName = method_exists($event->job, 'resolveName')
-            ? $event->job->resolveName()
-            : null;
-
         if ($parentSpan === null) {
             $traceParent = $event->job->payload()[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] ?? null;
 
@@ -306,7 +299,10 @@ class EventHandler
                 ? new TransactionContext
                 : TransactionContext::fromSentryTrace($traceParent);
 
-            $context->setName($resolvedJobName ?? $event->job->getName());
+            // If the parent transaction was not sampled we also stop the queue job from being recorded
+            if ($context->getParentSampled() === false) {
+                return;
+            }
         } else {
             $context = new SpanContext;
         }
@@ -319,8 +315,16 @@ class EventHandler
         ];
 
         // Resolve name exists only from Laravel 5.3+
+        $resolvedJobName = method_exists($event->job, 'resolveName')
+            ? $event->job->resolveName()
+            : null;
+
         if ($resolvedJobName !== null) {
             $job['resolved'] = $resolvedJobName;
+        }
+
+        if ($context instanceof TransactionContext) {
+            $context->setName($resolvedJobName ?? $event->job->getName());
         }
 
         $context->setOp('queue.job');
@@ -333,6 +337,8 @@ class EventHandler
         } else {
             $this->currentQueueJobSpan = $parentSpan->startChild($context);
         }
+
+        $this->parentQueueJobSpan = $parentSpan;
 
         SentrySdk::getCurrentHub()->setSpan($this->currentQueueJobSpan);
     }
