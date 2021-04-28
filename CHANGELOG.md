@@ -8,6 +8,7 @@
 - Fix repeated booted callback registration from performance tracing middleware (#475)
 - Add tracing support for queue jobs (#478)
 - Add options to disable query and view tracing (#478)
+- Remove string representation of exception from exceptions logged through log channels (#482)
 
 ## 2.4.2
 
