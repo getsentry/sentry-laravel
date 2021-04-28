@@ -19,7 +19,8 @@ class LogChannel extends LogManager
             $this->app->make(HubInterface::class),
             $config['level'] ?? Logger::DEBUG,
             $config['bubble'] ?? true,
-            $config['report_exceptions'] ?? true
+            $config['report_exceptions'] ?? true,
+            isset($config['formatter']) && $config['formatter'] !== 'default'
         );
 
         return new Logger(

@@ -44,16 +44,26 @@ class SentryHandler extends AbstractProcessingHandler
     private $reportExceptions;
 
     /**
+     * Indicates if we should use the formatted message instead of just the message.
+     *
+     * @var bool
+     */
+    private $useFormattedMessage;
+
+    /**
      * @param Hub  $hub
      * @param int  $level  The minimum logging level at which this handler will be triggered
      * @param bool $bubble Whether the messages that are handled can bubble up the stack or not
+     * @param bool $reportExceptions
+     * @param bool $useFormattedMessage
      */
-    public function __construct(Hub $hub, $level = Logger::DEBUG, bool $bubble = true, bool $reportExceptions = true)
+    public function __construct(Hub $hub, $level = Logger::DEBUG, bool $bubble = true, bool $reportExceptions = true, bool $useFormattedMessage = false)
     {
         parent::__construct($level, $bubble);
 
-        $this->hub = $hub;
-        $this->reportExceptions = $reportExceptions;
+        $this->hub                 = $hub;
+        $this->reportExceptions    = $reportExceptions;
+        $this->useFormattedMessage = $useFormattedMessage;
     }
 
     /**
@@ -224,7 +234,12 @@ class SentryHandler extends AbstractProcessingHandler
                 if ($isException) {
                     $this->hub->captureException($record['context']['exception']);
                 } else {
-                    $this->hub->captureMessage($record['message'] ?? $record['formatted'], $this->getLogLevel($record['level']));
+                    $this->hub->captureMessage(
+                        $this->useFormattedMessage || empty($record['message'])
+                            ? $record['formatted']
+                            : $record['message'],
+                        $this->getLogLevel($record['level'])
+                    );
                 }
             }
         );
