@@ -198,10 +198,6 @@ class SentryHandler extends AbstractProcessingHandler
                             $event->setRelease($this->release);
                         }
 
-                        if (isset($record['context']['exception']) && $record['context']['exception'] instanceof \Throwable) {
-                            $event->setMessage($record['formatted']);
-                        }
-
                         return $event;
                     }
                 );
