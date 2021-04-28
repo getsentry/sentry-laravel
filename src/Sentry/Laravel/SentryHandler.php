@@ -37,15 +37,23 @@ class SentryHandler extends AbstractProcessingHandler
     protected $batchFormatter;
 
     /**
+     * Indicates if we should report exceptions, if `false` this handler will ignore records with an exception set in the context.
+     *
+     * @var bool
+     */
+    private $reportExceptions;
+
+    /**
      * @param Hub  $hub
      * @param int  $level  The minimum logging level at which this handler will be triggered
      * @param bool $bubble Whether the messages that are handled can bubble up the stack or not
      */
-    public function __construct(Hub $hub, $level = Logger::DEBUG, bool $bubble = true)
+    public function __construct(Hub $hub, $level = Logger::DEBUG, bool $bubble = true, bool $reportExceptions = true)
     {
         parent::__construct($level, $bubble);
 
         $this->hub = $hub;
+        $this->reportExceptions = $reportExceptions;
     }
 
     /**
@@ -150,8 +158,14 @@ class SentryHandler extends AbstractProcessingHandler
      */
     protected function write(array $record): void
     {
+        $isException = isset($record['context']['exception']) && $record['context']['exception'] instanceof \Throwable;
+
+        if (!$this->reportExceptions && $isException) {
+            return;
+        }
+
         $this->hub->withScope(
-            function (Scope $scope) use ($record) {
+            function (Scope $scope) use ($record, $isException) {
                 if (!empty($record['context']['extra'])) {
                     foreach ($record['context']['extra'] as $key => $tag) {
                         $scope->setExtra($key, $tag);
@@ -207,7 +221,7 @@ class SentryHandler extends AbstractProcessingHandler
                     }
                 );
 
-                if (isset($record['context']['exception']) && $record['context']['exception'] instanceof \Throwable) {
+                if ($isException) {
                     $this->hub->captureException($record['context']['exception']);
                 } else {
                     $this->hub->captureMessage($record['message'] ?? $record['formatted'], $this->getLogLevel($record['level']));

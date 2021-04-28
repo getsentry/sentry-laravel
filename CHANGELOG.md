@@ -10,6 +10,7 @@
 - Add options to disable query and view tracing (#478)
 - Remove string representation of exception from exceptions logged through log channels (#482)
 - Use message from Monolog record to prevent bloating the log message being recorded with timestamps and log log level (#482)
+- Add `report_exceptions` option to the Sentry log channel that can be set to `false` to not report exceptions (#482)
 
 ## 2.4.2
 
