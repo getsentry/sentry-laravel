@@ -2,6 +2,7 @@
 
 namespace Sentry\Laravel;
 
+use Monolog\DateTimeImmutable;
 use Monolog\Logger;
 use Monolog\Formatter\LineFormatter;
 use Monolog\Formatter\FormatterInterface;
@@ -196,6 +197,10 @@ class SentryHandler extends AbstractProcessingHandler
 
                         if (!empty($this->release) && !$event->getRelease()) {
                             $event->setRelease($this->release);
+                        }
+
+                        if (isset($record['datetime']) && $record['datetime'] instanceof DateTimeImmutable) {
+                            $event->setTimestamp($record['datetime']->getTimestamp());
                         }
 
                         return $event;
