@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix problem with queue tracing when triggered from unit tests or when missing a queue name in the event
+
 ## 2.5.0
 
 - Add `sql.origin` to SQL query spans with the file and line where the SQL query originated from (#398)
