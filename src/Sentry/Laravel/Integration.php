@@ -4,7 +4,7 @@ namespace Sentry\Laravel;
 
 use Illuminate\Routing\Route;
 use Illuminate\Support\Str;
-use Sentry\FlushableClientInterface;
+use Sentry\ClientInterface;
 use Sentry\SentrySdk;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\Transaction;
@@ -113,7 +113,7 @@ class Integration implements IntegrationInterface
     {
         $client = SentrySdk::getCurrentHub()->getClient();
 
-        if ($client instanceof FlushableClientInterface) {
+        if ($client instanceof ClientInterface) {
             $client->flush();
         }
     }
