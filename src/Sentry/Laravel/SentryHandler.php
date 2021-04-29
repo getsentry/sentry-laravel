@@ -2,6 +2,7 @@
 
 namespace Sentry\Laravel;
 
+use Monolog\DateTimeImmutable;
 use Monolog\Logger;
 use Monolog\Formatter\LineFormatter;
 use Monolog\Formatter\FormatterInterface;
@@ -36,15 +37,33 @@ class SentryHandler extends AbstractProcessingHandler
     protected $batchFormatter;
 
     /**
+     * Indicates if we should report exceptions, if `false` this handler will ignore records with an exception set in the context.
+     *
+     * @var bool
+     */
+    private $reportExceptions;
+
+    /**
+     * Indicates if we should use the formatted message instead of just the message.
+     *
+     * @var bool
+     */
+    private $useFormattedMessage;
+
+    /**
      * @param Hub  $hub
      * @param int  $level  The minimum logging level at which this handler will be triggered
      * @param bool $bubble Whether the messages that are handled can bubble up the stack or not
+     * @param bool $reportExceptions
+     * @param bool $useFormattedMessage
      */
-    public function __construct(Hub $hub, $level = Logger::DEBUG, bool $bubble = true)
+    public function __construct(Hub $hub, $level = Logger::DEBUG, bool $bubble = true, bool $reportExceptions = true, bool $useFormattedMessage = false)
     {
         parent::__construct($level, $bubble);
 
-        $this->hub = $hub;
+        $this->hub                 = $hub;
+        $this->reportExceptions    = $reportExceptions;
+        $this->useFormattedMessage = $useFormattedMessage;
     }
 
     /**
@@ -149,8 +168,14 @@ class SentryHandler extends AbstractProcessingHandler
      */
     protected function write(array $record): void
     {
+        $isException = isset($record['context']['exception']) && $record['context']['exception'] instanceof \Throwable;
+
+        if (!$this->reportExceptions && $isException) {
+            return;
+        }
+
         $this->hub->withScope(
-            function (Scope $scope) use ($record) {
+            function (Scope $scope) use ($record, $isException) {
                 if (!empty($record['context']['extra'])) {
                     foreach ($record['context']['extra'] as $key => $tag) {
                         $scope->setExtra($key, $tag);
@@ -198,18 +223,23 @@ class SentryHandler extends AbstractProcessingHandler
                             $event->setRelease($this->release);
                         }
 
-                        if (isset($record['context']['exception']) && $record['context']['exception'] instanceof \Throwable) {
-                            $event->setMessage($record['formatted']);
+                        if (isset($record['datetime']) && $record['datetime'] instanceof DateTimeImmutable) {
+                            $event->setTimestamp($record['datetime']->getTimestamp());
                         }
 
                         return $event;
                     }
                 );
 
-                if (isset($record['context']['exception']) && $record['context']['exception'] instanceof \Throwable) {
+                if ($isException) {
                     $this->hub->captureException($record['context']['exception']);
                 } else {
-                    $this->hub->captureMessage($record['formatted'], $this->getLogLevel($record['level']));
+                    $this->hub->captureMessage(
+                        $this->useFormattedMessage || empty($record['message'])
+                            ? $record['formatted']
+                            : $record['message'],
+                        $this->getLogLevel($record['level'])
+                    );
                 }
             }
         );

@@ -18,7 +18,9 @@ class LogChannel extends LogManager
         $handler = new SentryHandler(
             $this->app->make(HubInterface::class),
             $config['level'] ?? Logger::DEBUG,
-            $config['bubble'] ?? true
+            $config['bubble'] ?? true,
+            $config['report_exceptions'] ?? true,
+            isset($config['formatter']) && $config['formatter'] !== 'default'
         );
 
         return new Logger(
