@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2.5.0
+
 - Add `sql.origin` to SQL query spans with the file and line where the SQL query originated from (#398)
 - Remove wrapper around the context of log entry breadcrumbs (#405)
 - Ensure user integrations are always executed after SDK integrations (#474)
