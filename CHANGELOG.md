@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2.5.1
+
 - Fix problem with queue tracing when triggered from unit tests or when missing a queue name in the event
 
 ## 2.5.0
