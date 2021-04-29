@@ -148,10 +148,10 @@ class EventHandler
 
         // The payload create callback was introduced in Laravel 5.7 so we need to guard against older versions
         if (method_exists(Queue::class, 'createPayloadUsing')) {
-            Queue::createPayloadUsing(static function (string $connection, string $queue, array $payload): array {
+            Queue::createPayloadUsing(static function (?string $connection, ?string $queue, ?array $payload): ?array {
                 $currentSpan = Integration::currentTracingSpan();
 
-                if ($currentSpan !== null) {
+                if ($currentSpan !== null && $payload !== null) {
                     $payload[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] = $currentSpan->toTraceparent();
                 }
 
