@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2.5.2
+
 - Fix problem with parsing uploaded files from request after they have been moved (#487)
 
 ## 2.5.1
