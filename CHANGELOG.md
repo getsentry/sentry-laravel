@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Correctly call flush on the PHP SDK client (#484)
+- Fix errors on Laravel `5.x` caused by Laravel not using `nyholm/psr7` to generate PSR-7 request but older `zendframework/zend-diactoros` package which might not be available
 
 ## 2.5.2
 

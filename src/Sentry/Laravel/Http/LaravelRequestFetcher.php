@@ -2,7 +2,6 @@
 
 namespace Sentry\Laravel\Http;
 
-use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Contracts\Container\Container;
 use Psr\Http\Message\ServerRequestInterface;
 use Sentry\Integration\RequestFetcher;
@@ -37,10 +36,6 @@ class LaravelRequestFetcher implements RequestFetcherInterface
             return $this->container->make(self::CONTAINER_PSR7_INSTANCE_KEY);
         }
 
-        try {
-            return $this->container->make(ServerRequestInterface::class);
-        } catch (BindingResolutionException $e) {
-            return (new RequestFetcher)->fetchRequest();
-        }
+        return (new RequestFetcher)->fetchRequest();
     }
 }
