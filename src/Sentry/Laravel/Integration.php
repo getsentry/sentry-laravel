@@ -4,10 +4,8 @@ namespace Sentry\Laravel;
 
 use Illuminate\Routing\Route;
 use Illuminate\Support\Str;
-use Sentry\FlushableClientInterface;
 use Sentry\SentrySdk;
 use Sentry\Tracing\Span;
-use Sentry\Tracing\Transaction;
 use function Sentry\addBreadcrumb;
 use function Sentry\configureScope;
 use Sentry\Breadcrumb;
@@ -113,7 +111,7 @@ class Integration implements IntegrationInterface
     {
         $client = SentrySdk::getCurrentHub()->getClient();
 
-        if ($client instanceof FlushableClientInterface) {
+        if ($client !== null) {
             $client->flush();
         }
     }

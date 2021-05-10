@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Correctly call flush on the PHP SDK client (#484)
+
 ## 2.5.2
 
 - Fix problem with parsing uploaded files from request after they have been moved (#487)
