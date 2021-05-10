@@ -4,10 +4,8 @@ namespace Sentry\Laravel;
 
 use Illuminate\Routing\Route;
 use Illuminate\Support\Str;
-use Sentry\ClientInterface;
 use Sentry\SentrySdk;
 use Sentry\Tracing\Span;
-use Sentry\Tracing\Transaction;
 use function Sentry\addBreadcrumb;
 use function Sentry\configureScope;
 use Sentry\Breadcrumb;
