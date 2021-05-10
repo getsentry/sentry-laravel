@@ -12,6 +12,7 @@ use Sentry\ClientBuilderInterface;
 use Sentry\Integration as SdkIntegration;
 use Sentry\Laravel\Http\LaravelRequestFetcher;
 use Sentry\Laravel\Http\SetRequestIpMiddleware;
+use Sentry\Laravel\Http\SetRequestMiddleware;
 use Sentry\SentrySdk;
 use Sentry\State\Hub;
 use Sentry\State\HubInterface;
@@ -44,12 +45,14 @@ class ServiceProvider extends BaseServiceProvider
             $this->bindEvents();
 
             if ($this->app instanceof Lumen) {
+                $this->app->middleware(SetRequestMiddleware::class);
                 $this->app->middleware(SetRequestIpMiddleware::class);
             } elseif ($this->app->bound(HttpKernelInterface::class)) {
                 /** @var \Illuminate\Foundation\Http\Kernel $httpKernel */
                 $httpKernel = $this->app->make(HttpKernelInterface::class);
 
                 if ($httpKernel instanceof HttpKernel) {
+                    $httpKernel->pushMiddleware(SetRequestMiddleware::class);
                     $httpKernel->pushMiddleware(SetRequestIpMiddleware::class);
                 }
             }

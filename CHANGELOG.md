@@ -4,6 +4,10 @@
 
 - Correctly call flush on the PHP SDK client (#484)
 
+## 2.5.2
+
+- Fix problem with parsing uploaded files from request after they have been moved (#487)
+
 ## 2.5.1
 
 - Fix problem with queue tracing when triggered from unit tests or when missing a queue name in the event
