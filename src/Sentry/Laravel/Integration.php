@@ -113,7 +113,7 @@ class Integration implements IntegrationInterface
     {
         $client = SentrySdk::getCurrentHub()->getClient();
 
-        if ($client instanceof ClientInterface) {
+        if ($client !== null) {
             $client->flush();
         }
     }
