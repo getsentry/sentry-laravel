@@ -12,6 +12,7 @@ use Sentry\Event;
 use Sentry\Severity;
 use Sentry\State\Hub;
 use Sentry\State\Scope;
+use Throwable;
 
 class SentryHandler extends AbstractProcessingHandler
 {
@@ -168,14 +169,16 @@ class SentryHandler extends AbstractProcessingHandler
      */
     protected function write(array $record): void
     {
-        $isException = isset($record['context']['exception']) && $record['context']['exception'] instanceof \Throwable;
+        $exception = $record['context']['exception'] ?? null;
+        $isException = $exception instanceof Throwable;
+        unset($record['context']['exception']);
 
         if (!$this->reportExceptions && $isException) {
             return;
         }
 
         $this->hub->withScope(
-            function (Scope $scope) use ($record, $isException) {
+            function (Scope $scope) use ($record, $isException, $exception) {
                 if (!empty($record['context']['extra'])) {
                     foreach ($record['context']['extra'] as $key => $tag) {
                         $scope->setExtra($key, $tag);
@@ -206,14 +209,16 @@ class SentryHandler extends AbstractProcessingHandler
                     unset($record['context']['user']);
                 }
 
+                $logger = !empty($record['context']['logger']) ? $record['context']['logger'] : $record['channel'];
+                unset($record['context']['logger']);
+
+                if (!empty($record['context'])) {
+                    $scope->setExtra('log_context', $record['context']);
+                }
+
                 $scope->addEventProcessor(
-                    function (Event $event) use ($record) {
-                        if (!empty($record['context']['logger'])) {
-                            $event->setLogger($record['context']['logger']);
-                            unset($record['context']['logger']);
-                        } else {
-                            $event->setLogger($record['channel']);
-                        }
+                    function (Event $event) use ($record, $logger) {
+                        $event->setLogger($logger);
 
                         if (!empty($this->environment) && !$event->getEnvironment()) {
                             $event->setEnvironment($this->environment);
@@ -232,7 +237,7 @@ class SentryHandler extends AbstractProcessingHandler
                 );
 
                 if ($isException) {
-                    $this->hub->captureException($record['context']['exception']);
+                    $this->hub->captureException($exception);
                 } else {
                     $this->hub->captureMessage(
                         $this->useFormattedMessage || empty($record['message'])
