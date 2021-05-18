@@ -13,6 +13,7 @@ use InvalidArgumentException;
 use Laravel\Lumen\Application as Lumen;
 use Sentry\Laravel\BaseServiceProvider;
 use Sentry\Serializer\RepresentationSerializer;
+use Throwable;
 
 class ServiceProvider extends BaseServiceProvider
 {
@@ -35,6 +36,8 @@ class ServiceProvider extends BaseServiceProvider
                     $httpKernel->prependMiddleware(Middleware::class);
                 }
             }
+
+            $this->bootIntegrations();
         }
     }
 
@@ -114,5 +117,27 @@ class ServiceProvider extends BaseServiceProvider
         });
 
         return new ViewEngineDecorator($realEngine, $viewFactory);
+    }
+
+    private function bootIntegrations(): void
+    {
+        $enableDefaultIntegrations = $this->getUserConfig()['tracing']['default_integrations'] ?? true;
+
+        $defaultIntegrations = $enableDefaultIntegrations ? [
+            Integrations\LighthouseIntegration::class,
+        ] : [];
+
+        $integrations = array_merge(
+            $defaultIntegrations,
+            $this->getUserConfig()['tracing_integrations'] ?? []
+        );
+
+        foreach ($integrations as $tracingIntegration) {
+            try {
+                $this->app->make($tracingIntegration);
+            } catch (Throwable $e) {
+                report($e);
+            }
+        }
     }
 }

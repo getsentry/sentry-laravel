@@ -42,6 +42,9 @@ return [
 
         // Capture views as spans
         'views' => true,
+
+        // Indicates if the tracing integrations supplied by Sentry should be loaded
+        'default_integrations' => true,
     ],
 
     // @see: https://docs.sentry.io/platforms/php/configuration/options/#send-default-pii
