@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add all log context as `log_context` to events when using the log channel (#489)
+
 ## 2.5.3
 
 - Correctly call flush on the PHP SDK client (#484)
