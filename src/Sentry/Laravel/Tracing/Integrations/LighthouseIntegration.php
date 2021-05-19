@@ -15,20 +15,31 @@ use Sentry\Tracing\SpanContext;
 
 class LighthouseIntegration implements IntegrationInterface
 {
-    /** @var array<int, array{?string, \GraphQL\Language\AST\OperationDefinitionNode}> $operations */
+    /** @var array<int, array{?string, \GraphQL\Language\AST\OperationDefinitionNode}> */
     private $operations;
 
-    /** @var \Sentry\Tracing\Span|null $previousSpan */
+    /** @var \Sentry\Tracing\Span|null */
     private $previousSpan;
 
-    /** @var \Sentry\Tracing\Span|null $requestSpan */
+    /** @var \Sentry\Tracing\Span|null */
     private $requestSpan;
 
-    /** @var \Sentry\Tracing\Span|null $operationSpan */
+    /** @var \Sentry\Tracing\Span|null */
     private $operationSpan;
 
-    public function __construct(EventDispatcher $eventDispatcher)
+    /**
+     * Indicates if, when building the transaction name, the operation name should be ignored.
+     *
+     * @var bool
+     */
+    private $ignoreOperationName;
+
+    public function __construct(EventDispatcher $eventDispatcher, bool $ignoreOperationName = false)
     {
+        dd($ignoreOperationName);
+
+        $this->ignoreOperationName = $ignoreOperationName;
+
         $eventDispatcher->listen(StartRequest::class, [$this, 'handleStartRequest']);
         $eventDispatcher->listen(StartExecution::class, [$this, 'handleStartExecution']);
         $eventDispatcher->listen(EndExecution::class, [$this, 'handleEndExecution']);
@@ -130,7 +141,7 @@ class LighthouseIntegration implements IntegrationInterface
                 $groupedOperations[$operation->operation] = [];
             }
 
-            if ($operationName === null) {
+            if ($operationName === null || $this->ignoreOperationName) {
                 $groupedOperations[$operation->operation] = array_merge(
                     $groupedOperations[$operation->operation],
                     $this->extractOperationNames($operation)
@@ -158,7 +169,7 @@ class LighthouseIntegration implements IntegrationInterface
      */
     private function extractOperationNames(OperationDefinitionNode $operation): array
     {
-        if ($operation->name !== null) {
+        if (!$this->ignoreOperationName && $operation->name !== null) {
             return [$operation->name->value];
         }
 
@@ -176,7 +187,7 @@ class LighthouseIntegration implements IntegrationInterface
         return $selectionSet;
     }
 
-    public static function supported(): bool
+    public static function isApplicable(): bool
     {
         if (!class_exists(StartRequest::class) || !class_exists(StartExecution::class)) {
             return false;

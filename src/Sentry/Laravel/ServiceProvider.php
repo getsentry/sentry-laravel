@@ -235,7 +235,7 @@ class ServiceProvider extends BaseServiceProvider
         foreach ($userIntegrations as $userIntegration) {
             if ($userIntegration instanceof SdkIntegration\IntegrationInterface) {
                 $integrations[] = $userIntegration;
-            } elseif (\is_string($userIntegration) && $this->app->bound($userIntegration)) {
+            } elseif (\is_string($userIntegration)) {
                 $resolvedIntegration = $this->app->make($userIntegration);
 
                 if (!$resolvedIntegration instanceof SdkIntegration\IntegrationInterface) {

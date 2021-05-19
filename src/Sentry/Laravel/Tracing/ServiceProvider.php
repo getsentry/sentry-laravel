@@ -147,7 +147,7 @@ class ServiceProvider extends BaseServiceProvider
                 );
             }
 
-            if (!$tracingIntegration::supported()) {
+            if (!$tracingIntegration::isApplicable()) {
                 continue;
             }
 
