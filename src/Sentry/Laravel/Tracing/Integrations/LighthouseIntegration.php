@@ -2,8 +2,9 @@
 
 namespace Sentry\Laravel\Tracing\Integrations;
 
+use GraphQL\Language\AST\DocumentNode;
 use GraphQL\Language\AST\OperationDefinitionNode;
-use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
 use Nuwave\Lighthouse\Events\EndExecution;
 use Nuwave\Lighthouse\Events\EndRequest;
 use Nuwave\Lighthouse\Events\StartExecution;
@@ -12,9 +13,9 @@ use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
 use Sentry\Tracing\SpanContext;
 
-class LighthouseIntegration
+class LighthouseIntegration implements IntegrationInterface
 {
-    /** @var array<int, <string|null, \GraphQL\Language\AST\OperationDefinitionNode>> $operations */
+    /** @var array<int, array{?string, \GraphQL\Language\AST\OperationDefinitionNode}> $operations */
     private $operations;
 
     /** @var \Sentry\Tracing\Span|null $previousSpan */
@@ -26,16 +27,12 @@ class LighthouseIntegration
     /** @var \Sentry\Tracing\Span|null $operationSpan */
     private $operationSpan;
 
-    public function __construct(Dispatcher $evenDispatcher)
+    public function __construct(EventDispatcher $eventDispatcher)
     {
-        if (!class_exists(StartRequest::class)) {
-            return;
-        }
-
-        $evenDispatcher->listen(StartRequest::class, [$this, 'handleStartRequest']);
-        $evenDispatcher->listen(StartExecution::class, [$this, 'handleStartExecution']);
-        $evenDispatcher->listen(EndExecution::class, [$this, 'handleEndExecution']);
-        $evenDispatcher->listen(EndRequest::class, [$this, 'handleEndRequest']);
+        $eventDispatcher->listen(StartRequest::class, [$this, 'handleStartRequest']);
+        $eventDispatcher->listen(StartExecution::class, [$this, 'handleStartExecution']);
+        $eventDispatcher->listen(EndExecution::class, [$this, 'handleEndExecution']);
+        $eventDispatcher->listen(EndRequest::class, [$this, 'handleEndRequest']);
     }
 
     public function handleStartRequest(StartRequest $startRequest): void
@@ -46,12 +43,12 @@ class LighthouseIntegration
             return;
         }
 
-        $this->operations = [];
-
         $context = new SpanContext;
         $context->setOp('graphql.request');
 
-        $this->requestSpan = $this->previousSpan->startChild($context);
+        $this->operations    = [];
+        $this->requestSpan   = $this->previousSpan->startChild($context);
+        $this->operationSpan = null;
 
         SentrySdk::getCurrentHub()->setSpan($this->requestSpan);
     }
@@ -62,14 +59,18 @@ class LighthouseIntegration
             return;
         }
 
-        /** @var \GraphQL\Language\AST\OperationDefinitionNode|null $operationDefinition */
-        $operationDefinition = $startExecution->query->definitions[0] ?? null;
-
-        if ($operationDefinition === null) {
+        if (!$startExecution->query instanceof DocumentNode) {
             return;
         }
 
-        $this->operations[] = [$startExecution->operationName, $operationDefinition];
+        /** @var \GraphQL\Language\AST\OperationDefinitionNode|null $operationDefinition */
+        $operationDefinition = $startExecution->query->definitions[0] ?? null;
+
+        if (!$operationDefinition instanceof OperationDefinitionNode) {
+            return;
+        }
+
+        $this->operations[] = [$startExecution->operationName ?? null, $operationDefinition];
 
         $context = new SpanContext;
         $context->setOp(
@@ -116,6 +117,12 @@ class LighthouseIntegration
 
     private function updateTransaction(): void
     {
+        $transaction = SentrySdk::getCurrentHub()->getTransaction();
+
+        if ($transaction === null) {
+            return;
+        }
+
         $groupedOperations = [];
 
         foreach ($this->operations as [$operationName, $operation]) {
@@ -143,10 +150,12 @@ class LighthouseIntegration
 
         $transactionName = 'lighthouse?' . implode('&', $groupedOperations);
 
-        Integration::setTransaction($transactionName);
-        SentrySdk::getCurrentHub()->getTransaction()->setName($transactionName);
+        $transaction->setName($transactionName);
     }
 
+    /**
+     * @return array<int, string>
+     */
     private function extractOperationNames(OperationDefinitionNode $operation): array
     {
         if ($operation->name !== null) {
@@ -157,9 +166,9 @@ class LighthouseIntegration
 
         /** @var \GraphQL\Language\AST\FieldNode $selection */
         foreach ($operation->selectionSet->selections as $selection) {
-            $selectionSet[] = $selection->alias === null
-                ? $selection->name->value
-                : $selection->alias->value;
+            // Not respecting aliases because they are only relevant for clients
+            // and the tracing we extract here is targeted at server developers.
+            $selectionSet[] = $selection->name->value;
         }
 
         sort($selectionSet, SORT_STRING);
@@ -169,6 +178,10 @@ class LighthouseIntegration
 
     public static function supported(): bool
     {
-        return class_exists(StartRequest::class);
+        if (!class_exists(StartRequest::class) || !class_exists(StartExecution::class)) {
+            return false;
+        }
+
+        return property_exists(StartExecution::class, 'query');
     }
 }

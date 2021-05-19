@@ -7,6 +7,7 @@ use Illuminate\Foundation\Application as Laravel;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 use Illuminate\Log\LogManager;
 use Laravel\Lumen\Application as Lumen;
+use RuntimeException;
 use Sentry\ClientBuilder;
 use Sentry\ClientBuilderInterface;
 use Sentry\Integration as SdkIntegration;
@@ -23,9 +24,10 @@ class ServiceProvider extends BaseServiceProvider
      * List of configuration options that are Laravel specific and should not be sent to the base PHP SDK.
      */
     private const LARAVEL_SPECIFIC_OPTIONS = [
-        // We do not want these settings to hit the PHP SDK because it's Laravel specific and the SDK will throw errors
+        // We do not want these settings to hit the PHP SDK because they are Laravel specific and the PHP SDK will throw errors
         'tracing',
         'breadcrumbs',
+        'tracing_integrations',
         // We resolve the integrations through the container later, so we initially do not pass it to the SDK yet
         'integrations',
         // This is kept for backwards compatibility and can be dropped in a future breaking release
@@ -132,7 +134,7 @@ class ServiceProvider extends BaseServiceProvider
         }
 
         $this->app->bind(ClientBuilderInterface::class, function () {
-            $basePath = base_path();
+            $basePath   = base_path();
             $userConfig = $this->getUserConfig();
 
             foreach (self::LARAVEL_SPECIFIC_OPTIONS as $laravelSpecificOptionName) {
@@ -141,7 +143,7 @@ class ServiceProvider extends BaseServiceProvider
 
             $options = \array_merge(
                 [
-                    'prefixes' => [$basePath],
+                    'prefixes'       => [$basePath],
                     'in_app_exclude' => ["{$basePath}/vendor"],
                 ],
                 $userConfig
@@ -233,16 +235,27 @@ class ServiceProvider extends BaseServiceProvider
         foreach ($userIntegrations as $userIntegration) {
             if ($userIntegration instanceof SdkIntegration\IntegrationInterface) {
                 $integrations[] = $userIntegration;
-            } elseif (\is_string($userIntegration)) {
+            } elseif (\is_string($userIntegration) && $this->app->bound($userIntegration)) {
                 $resolvedIntegration = $this->app->make($userIntegration);
 
-                if (!($resolvedIntegration instanceof SdkIntegration\IntegrationInterface)) {
-                    throw new \RuntimeException('Sentry integrations should a instance of `\Sentry\Integration\IntegrationInterface`.');
+                if (!$resolvedIntegration instanceof SdkIntegration\IntegrationInterface) {
+                    throw new RuntimeException(
+                        sprintf(
+                            'Sentry integrations must be an instance of `%s` got `%s`.',
+                            SdkIntegration\IntegrationInterface::class,
+                            get_class($resolvedIntegration)
+                        )
+                    );
                 }
 
                 $integrations[] = $resolvedIntegration;
             } else {
-                throw new \RuntimeException('Sentry integrations should either be a container reference or a instance of `\Sentry\Integration\IntegrationInterface`.');
+                throw new RuntimeException(
+                    sprintf(
+                        'Sentry integrations must either be a valid container reference or an instance of `%s`.',
+                        SdkIntegration\IntegrationInterface::class
+                    )
+                );
             }
         }
 

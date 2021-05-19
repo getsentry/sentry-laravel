@@ -11,12 +11,17 @@ use Illuminate\View\Engines\EngineResolver;
 use Illuminate\View\Factory as ViewFactory;
 use InvalidArgumentException;
 use Laravel\Lumen\Application as Lumen;
+use RuntimeException;
 use Sentry\Laravel\BaseServiceProvider;
 use Sentry\Serializer\RepresentationSerializer;
 use Throwable;
 
 class ServiceProvider extends BaseServiceProvider
 {
+    protected const DEFAULT_INTEGRATIONS = [
+        Integrations\LighthouseIntegration::class,
+    ];
+
     public function boot(): void
     {
         if ($this->hasDsnSet()) {
@@ -121,18 +126,31 @@ class ServiceProvider extends BaseServiceProvider
 
     private function bootIntegrations(): void
     {
-        $enableDefaultIntegrations = $this->getUserConfig()['tracing']['default_integrations'] ?? true;
+        $userConfig = $this->getUserConfig();
 
-        $defaultIntegrations = $enableDefaultIntegrations ? [
-            Integrations\LighthouseIntegration::class,
-        ] : [];
+        $enableDefaultIntegrations = $userConfig['tracing']['default_integrations'] ?? true;
 
         $integrations = array_merge(
-            $defaultIntegrations,
-            $this->getUserConfig()['tracing_integrations'] ?? []
+            $enableDefaultIntegrations ? static::DEFAULT_INTEGRATIONS : [],
+            $userConfig['tracing_integrations'] ?? []
         );
 
+        /** @var \Sentry\Laravel\Tracing\Integrations\IntegrationInterface $tracingIntegration */
         foreach ($integrations as $tracingIntegration) {
+            if (!is_subclass_of($tracingIntegration, Integrations\IntegrationInterface::class)) {
+                throw new RuntimeException(
+                    sprintf(
+                        'Sentry tracing integrations must be an instance of `%s` got `%s`.',
+                        SdkIntegration\IntegrationInterface::class,
+                        get_class($tracingIntegration)
+                    )
+                );
+            }
+
+            if (!$tracingIntegration::supported()) {
+                continue;
+            }
+
             try {
                 $this->app->make($tracingIntegration);
             } catch (Throwable $e) {
