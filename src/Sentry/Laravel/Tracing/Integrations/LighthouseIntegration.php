@@ -36,8 +36,6 @@ class LighthouseIntegration implements IntegrationInterface
 
     public function __construct(EventDispatcher $eventDispatcher, bool $ignoreOperationName = false)
     {
-        dd($ignoreOperationName);
-
         $this->ignoreOperationName = $ignoreOperationName;
 
         $eventDispatcher->listen(StartRequest::class, [$this, 'handleStartRequest']);
@@ -84,13 +82,7 @@ class LighthouseIntegration implements IntegrationInterface
         $this->operations[] = [$startExecution->operationName ?? null, $operationDefinition];
 
         $context = new SpanContext;
-        $context->setOp(
-            sprintf(
-                'graphql.%s{%s}',
-                $operationDefinition->operation,
-                $startExecution->operationName ?? implode(',', $this->extractOperationNames($operationDefinition))
-            )
-        );
+        $context->setOp(sprintf('graphql.%s', $operationDefinition->operation));
 
         $this->operationSpan = $this->requestSpan->startChild($context);
 
