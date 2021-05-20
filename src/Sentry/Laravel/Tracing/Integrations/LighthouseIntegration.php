@@ -91,6 +91,8 @@ class LighthouseIntegration implements IntegrationInterface
 
         $this->operations[] = [$startExecution->operationName ?? null, $operationDefinition];
 
+        $this->updateTransactionName();
+
         $context = new SpanContext;
         $context->setOp(sprintf('graphql.%s', $operationDefinition->operation));
 
@@ -123,12 +125,12 @@ class LighthouseIntegration implements IntegrationInterface
         SentrySdk::getCurrentHub()->setSpan($this->previousSpan);
         $this->previousSpan = null;
 
-        $this->updateTransaction();
+        $this->updateTransactionName();
 
         $this->operations = [];
     }
 
-    private function updateTransaction(): void
+    private function updateTransactionName(): void
     {
         $transaction = SentrySdk::getCurrentHub()->getTransaction();
 
@@ -164,6 +166,8 @@ class LighthouseIntegration implements IntegrationInterface
         $transactionName = 'lighthouse?' . implode('&', $groupedOperations);
 
         $transaction->setName($transactionName);
+
+        Integration::setTransaction($transactionName);
     }
 
     /**
