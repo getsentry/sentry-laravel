@@ -9,6 +9,7 @@ use Nuwave\Lighthouse\Events\EndExecution;
 use Nuwave\Lighthouse\Events\EndRequest;
 use Nuwave\Lighthouse\Events\StartExecution;
 use Nuwave\Lighthouse\Events\StartRequest;
+use Sentry\Integration\IntegrationInterface;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
 use Sentry\Tracing\SpanContext;
@@ -27,6 +28,9 @@ class LighthouseIntegration implements IntegrationInterface
     /** @var \Sentry\Tracing\Span|null */
     private $operationSpan;
 
+    /** @var \Illuminate\Contracts\Events\Dispatcher */
+    private $eventDispatcher;
+
     /**
      * Indicates if, when building the transaction name, the operation name should be ignored.
      *
@@ -36,12 +40,18 @@ class LighthouseIntegration implements IntegrationInterface
 
     public function __construct(EventDispatcher $eventDispatcher, bool $ignoreOperationName = false)
     {
+        $this->eventDispatcher     = $eventDispatcher;
         $this->ignoreOperationName = $ignoreOperationName;
+    }
 
-        $eventDispatcher->listen(StartRequest::class, [$this, 'handleStartRequest']);
-        $eventDispatcher->listen(StartExecution::class, [$this, 'handleStartExecution']);
-        $eventDispatcher->listen(EndExecution::class, [$this, 'handleEndExecution']);
-        $eventDispatcher->listen(EndRequest::class, [$this, 'handleEndRequest']);
+    public function setupOnce(): void
+    {
+        if ($this->isApplicable()) {
+            $this->eventDispatcher->listen(StartRequest::class, [$this, 'handleStartRequest']);
+            $this->eventDispatcher->listen(StartExecution::class, [$this, 'handleStartExecution']);
+            $this->eventDispatcher->listen(EndExecution::class, [$this, 'handleEndExecution']);
+            $this->eventDispatcher->listen(EndRequest::class, [$this, 'handleEndRequest']);
+        }
     }
 
     public function handleStartRequest(StartRequest $startRequest): void
@@ -179,7 +189,7 @@ class LighthouseIntegration implements IntegrationInterface
         return $selectionSet;
     }
 
-    public static function isApplicable(): bool
+    private function isApplicable(): bool
     {
         if (!class_exists(StartRequest::class) || !class_exists(StartExecution::class)) {
             return false;

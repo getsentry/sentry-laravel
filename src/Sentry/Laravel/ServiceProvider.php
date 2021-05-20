@@ -14,6 +14,7 @@ use Sentry\Integration as SdkIntegration;
 use Sentry\Laravel\Http\LaravelRequestFetcher;
 use Sentry\Laravel\Http\SetRequestIpMiddleware;
 use Sentry\Laravel\Http\SetRequestMiddleware;
+use Sentry\Laravel\Tracing\ServiceProvider as TracingServiceProvider;
 use Sentry\SentrySdk;
 use Sentry\State\Hub;
 use Sentry\State\HubInterface;
@@ -230,9 +231,17 @@ class ServiceProvider extends BaseServiceProvider
             new Integration\ExceptionContextIntegration,
         ];
 
-        $userIntegrations = $this->getUserConfig()['integrations'] ?? [];
+        $userConfig = $this->getUserConfig();
 
-        foreach ($userIntegrations as $userIntegration) {
+        $integrationsToResolve = $userConfig['integrations'] ?? [];
+
+        $enableDefaultTracingIntegrations = $userConfig['tracing']['default_integrations'] ?? true;
+
+        if ($enableDefaultTracingIntegrations && $this->couldHavePerformanceTracingEnabled()) {
+            $integrationsToResolve = array_merge($integrationsToResolve, TracingServiceProvider::DEFAULT_INTEGRATIONS);
+        }
+
+        foreach ($integrationsToResolve as $userIntegration) {
             if ($userIntegration instanceof SdkIntegration\IntegrationInterface) {
                 $integrations[] = $userIntegration;
             } elseif (\is_string($userIntegration)) {

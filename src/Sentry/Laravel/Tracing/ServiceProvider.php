@@ -11,20 +11,18 @@ use Illuminate\View\Engines\EngineResolver;
 use Illuminate\View\Factory as ViewFactory;
 use InvalidArgumentException;
 use Laravel\Lumen\Application as Lumen;
-use RuntimeException;
 use Sentry\Laravel\BaseServiceProvider;
 use Sentry\Serializer\RepresentationSerializer;
-use Throwable;
 
 class ServiceProvider extends BaseServiceProvider
 {
-    protected const DEFAULT_INTEGRATIONS = [
+    public const DEFAULT_INTEGRATIONS = [
         Integrations\LighthouseIntegration::class,
     ];
 
     public function boot(): void
     {
-        if ($this->hasDsnSet()) {
+        if ($this->hasDsnSet() && $this->couldHavePerformanceTracingEnabled()) {
             $tracingConfig = $this->getUserConfig()['tracing'] ?? [];
 
             $this->bindEvents($tracingConfig);
@@ -41,8 +39,6 @@ class ServiceProvider extends BaseServiceProvider
                     $httpKernel->prependMiddleware(Middleware::class);
                 }
             }
-
-            $this->bootIntegrations();
         }
     }
 
@@ -122,40 +118,5 @@ class ServiceProvider extends BaseServiceProvider
         });
 
         return new ViewEngineDecorator($realEngine, $viewFactory);
-    }
-
-    private function bootIntegrations(): void
-    {
-        $userConfig = $this->getUserConfig();
-
-        $enableDefaultIntegrations = $userConfig['tracing']['default_integrations'] ?? true;
-
-        $integrations = array_merge(
-            $enableDefaultIntegrations ? static::DEFAULT_INTEGRATIONS : [],
-            $userConfig['tracing_integrations'] ?? []
-        );
-
-        /** @var \Sentry\Laravel\Tracing\Integrations\IntegrationInterface $tracingIntegration */
-        foreach ($integrations as $tracingIntegration) {
-            if (!is_subclass_of($tracingIntegration, Integrations\IntegrationInterface::class)) {
-                throw new RuntimeException(
-                    sprintf(
-                        'Sentry tracing integrations must be an instance of `%s` got `%s`.',
-                        SdkIntegration\IntegrationInterface::class,
-                        get_class($tracingIntegration)
-                    )
-                );
-            }
-
-            if (!$tracingIntegration::isApplicable()) {
-                continue;
-            }
-
-            try {
-                $this->app->make($tracingIntegration);
-            } catch (Throwable $e) {
-                report($e);
-            }
-        }
     }
 }
