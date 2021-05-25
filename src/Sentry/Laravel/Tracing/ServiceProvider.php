@@ -16,9 +16,13 @@ use Sentry\Serializer\RepresentationSerializer;
 
 class ServiceProvider extends BaseServiceProvider
 {
+    public const DEFAULT_INTEGRATIONS = [
+        Integrations\LighthouseIntegration::class,
+    ];
+
     public function boot(): void
     {
-        if ($this->hasDsnSet()) {
+        if ($this->hasDsnSet() && $this->couldHavePerformanceTracingEnabled()) {
             $tracingConfig = $this->getUserConfig()['tracing'] ?? [];
 
             $this->bindEvents($tracingConfig);

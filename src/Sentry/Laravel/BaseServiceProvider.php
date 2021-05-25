@@ -36,4 +36,18 @@ abstract class BaseServiceProvider extends ServiceProvider
 
         return empty($config) ? [] : $config;
     }
+
+    /**
+     * Checks if the config is set in such a way that performance tracing could be enabled.
+     *
+     * Because of `traces_sampler` being dynamic we can never be 100% confident but that is also not important.
+     *
+     * @return bool
+     */
+    protected function couldHavePerformanceTracingEnabled(): bool
+    {
+        $config = $this->getUserConfig();
+
+        return !empty($config['traces_sample_rate']) || !empty($config['traces_sampler']);
+    }
 }

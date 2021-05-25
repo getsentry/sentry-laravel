@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Add all log context as `log_context` to events when using the log channel (#489)
+- Add integration to improve performance tracing for [Laravel Lighthouse](https://github.com/nuwave/lighthouse) (#490)
 
 ## 2.5.3
 
