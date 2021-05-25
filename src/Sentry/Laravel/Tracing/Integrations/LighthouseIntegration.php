@@ -125,8 +125,6 @@ class LighthouseIntegration implements IntegrationInterface
         SentrySdk::getCurrentHub()->setSpan($this->previousSpan);
         $this->previousSpan = null;
 
-        $this->updateTransactionName();
-
         $this->operations = [];
     }
 
@@ -153,6 +151,10 @@ class LighthouseIntegration implements IntegrationInterface
             } else {
                 $groupedOperations[$operation->operation][] = $operationName;
             }
+        }
+
+        if (empty($groupedOperations)) {
+            return;
         }
 
         array_walk($groupedOperations, static function (array &$operations, string $operationType) {
