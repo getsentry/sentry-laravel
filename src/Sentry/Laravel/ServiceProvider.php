@@ -102,6 +102,10 @@ class ServiceProvider extends BaseServiceProvider
 
         $handler->subscribe();
 
+        if ($this->app->bound('octane')) {
+            $handler->subscribeOctaneEvents($this->app->octane);
+        }
+
         if ($this->app->bound('queue')) {
             $handler->subscribeQueueEvents($this->app->queue);
         }
