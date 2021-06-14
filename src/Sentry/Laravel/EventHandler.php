@@ -591,7 +591,7 @@ class EventHandler
             Breadcrumb::LEVEL_INFO,
             Breadcrumb::TYPE_DEFAULT,
             'octane.task',
-            'Processing Octane task',
+            'Processing Octane task'
         ));
     }
 
@@ -612,7 +612,7 @@ class EventHandler
             Breadcrumb::LEVEL_INFO,
             Breadcrumb::TYPE_DEFAULT,
             'octane.tick',
-            'Processing Octane tick',
+            'Processing Octane tick'
         ));
     }
 
