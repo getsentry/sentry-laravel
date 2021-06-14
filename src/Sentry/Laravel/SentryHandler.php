@@ -53,10 +53,10 @@ class SentryHandler extends AbstractProcessingHandler
 
     /**
      * @param HubInterface $hub
-     * @param int  $level  The minimum logging level at which this handler will be triggered
-     * @param bool $bubble Whether the messages that are handled can bubble up the stack or not
-     * @param bool $reportExceptions
-     * @param bool $useFormattedMessage
+     * @param int          $level  The minimum logging level at which this handler will be triggered
+     * @param bool         $bubble Whether the messages that are handled can bubble up the stack or not
+     * @param bool         $reportExceptions
+     * @param bool         $useFormattedMessage
      */
     public function __construct(HubInterface $hub, $level = Logger::DEBUG, bool $bubble = true, bool $reportExceptions = true, bool $useFormattedMessage = false)
     {
