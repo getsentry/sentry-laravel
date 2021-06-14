@@ -2,6 +2,7 @@
 
 namespace Sentry\Laravel;
 
+use Illuminate\Container\Container;
 use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
 use Illuminate\Foundation\Application as Laravel;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
@@ -167,7 +168,7 @@ class ServiceProvider extends BaseServiceProvider
             return $clientBuilder;
         });
 
-        $this->app->singleton(HubInterface::class, function () {
+        $this->app->singleton(HubInterface::class, function ($app) {
             /** @var \Sentry\ClientBuilderInterface $clientBuilder */
             $clientBuilder = $this->app->make(ClientBuilderInterface::class);
 
@@ -175,7 +176,7 @@ class ServiceProvider extends BaseServiceProvider
 
             $userIntegrations = $this->resolveIntegrationsFromUserConfig();
 
-            $options->setIntegrations(function (array $integrations) use ($options, $userIntegrations) {
+            $options->setIntegrations(function (array $integrations) use ($options, $userIntegrations, $app) {
                 if ($options->hasDefaultIntegrations()) {
                     // Remove the default error and fatal exception listeners to let Laravel handle those
                     // itself. These event are still bubbling up through the documented changes in the users
@@ -204,7 +205,7 @@ class ServiceProvider extends BaseServiceProvider
                     });
 
                     $integrations[] = new SdkIntegration\RequestIntegration(
-                        new LaravelRequestFetcher($this->app)
+                        new LaravelRequestFetcher($app)
                     );
                 }
 

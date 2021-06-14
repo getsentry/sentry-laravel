@@ -3,7 +3,7 @@
 namespace Sentry\Laravel\Http;
 
 use Closure;
-use Illuminate\Contracts\Container\Container;
+use Illuminate\Container\Container;
 use Illuminate\Http\Request;
 use Psr\Http\Message\ServerRequestInterface;
 use Sentry\State\HubInterface;
@@ -16,18 +16,6 @@ use Throwable;
 class SetRequestMiddleware
 {
     /**
-     * The Laravel container.
-     *
-     * @var \Illuminate\Contracts\Container\Container
-     */
-    private $container;
-
-    public function __construct(Container $container)
-    {
-        $this->container = $container;
-    }
-
-    /**
      * Handle an incoming request.
      *
      * @param \Illuminate\Http\Request $request
@@ -37,11 +25,13 @@ class SetRequestMiddleware
      */
     public function handle(Request $request, Closure $next)
     {
-        if ($this->container->bound(HubInterface::class)) {
+        $container = Container::getInstance();
+
+        if ($container->bound(HubInterface::class)) {
             try {
-                $this->container->instance(
+                $container->instance(
                     LaravelRequestFetcher::CONTAINER_PSR7_INSTANCE_KEY,
-                    $this->container->make(ServerRequestInterface::class)
+                    $container->make(ServerRequestInterface::class)
                 );
             } catch (Throwable $e) {
                 // Ignore problems getting the PSR-7 server request instance here
