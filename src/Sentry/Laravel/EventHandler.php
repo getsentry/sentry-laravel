@@ -17,15 +17,7 @@ use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\Events\WorkerStopping;
 use Illuminate\Queue\QueueManager;
-use Laravel\Octane\Octane;
-use Laravel\Octane\Events\RequestReceived;
-use Laravel\Octane\Events\RequestTerminated;
-use Laravel\Octane\Events\WorkerErrorOccurred;
-use Laravel\Octane\Events\WorkerStopping as OctaneWorkerStopping;
-use Laravel\Octane\Events\TaskReceived;
-use Laravel\Octane\Events\TaskTerminated;
-use Laravel\Octane\Events\TickReceived;
-use Laravel\Octane\Events\TickTerminated;
+use Laravel\Octane\Events as Octane;
 use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Routing\Route;
 use RuntimeException;
@@ -41,13 +33,13 @@ class EventHandler
      * @var array
      */
     protected static $eventHandlerMap = [
-        'router.matched' => 'routerMatched',                         // Until Laravel 5.1
+        'router.matched'                         => 'routerMatched',                         // Until Laravel 5.1
         'Illuminate\Routing\Events\RouteMatched' => 'routeMatched',  // Since Laravel 5.2
 
-        'illuminate.query' => 'query',                                 // Until Laravel 5.1
+        'illuminate.query'                         => 'query',                                 // Until Laravel 5.1
         'Illuminate\Database\Events\QueryExecuted' => 'queryExecuted', // Since Laravel 5.2
 
-        'illuminate.log' => 'log',                                // Until Laravel 5.3
+        'illuminate.log'                      => 'log',                                // Until Laravel 5.3
         'Illuminate\Log\Events\MessageLogged' => 'messageLogged', // Since Laravel 5.4
 
         'Illuminate\Console\Events\CommandStarting' => 'commandStarting', // Since Laravel 5.5
@@ -69,28 +61,29 @@ class EventHandler
      * @var array
      */
     protected static $queueEventHandlerMap = [
-        'Illuminate\Queue\Events\JobProcessing' => 'queueJobProcessing', // Since Laravel 5.2
-        'Illuminate\Queue\Events\JobProcessed' => 'queueJobProcessed', // Since Laravel 5.2
+        'Illuminate\Queue\Events\JobProcessing'        => 'queueJobProcessing',        // Since Laravel 5.2
+        'Illuminate\Queue\Events\JobProcessed'         => 'queueJobProcessed',         // Since Laravel 5.2
         'Illuminate\Queue\Events\JobExceptionOccurred' => 'queueJobExceptionOccurred', // Since Laravel 5.2
-        'Illuminate\Queue\Events\WorkerStopping' => 'queueWorkerStopping', // Since Laravel 5.2
+        'Illuminate\Queue\Events\WorkerStopping'       => 'queueWorkerStopping',       // Since Laravel 5.2
     ];
 
     /**
-     * Map queue event handlers to events.
+     * Map Octane event handlers to events.
      *
      * @var array
      */
     protected static $octaneEventHandlerMap = [
-        'Laravel\Octane\Events\RequestReceived' => 'octaneRequestReceived', //Handle an incoming request
-        //'Laravel\Octane\Events\RequestHandled' => '', //Unclear if this is needed
-        'Laravel\Octane\Events\RequestTerminated' => 'octaneRequestTerminated', //"Shut down" the application after a request
-        //'Laravel\Octane\Events\WorkerStarting' => '', //Unclear if this is needed
-        'Laravel\Octane\Events\WorkerErrorOccurred' => 'octaneWorkerErrorOccurred', //Error within worker
-        'Laravel\Octane\Events\WorkerStopping' => 'octaneWorkerStopping', //Terminate the worker.
-        'Laravel\Octane\Events\TaskReceived' => 'octaneTaskReceived', //Start a Concurrent Task
-        'Laravel\Octane\Events\TaskTerminated' => 'octaneTaskTerminated', //End a Concurrent Task
-        'Laravel\Octane\Events\TickReceived' => 'octaneTickReceived', //Handle an incoming tick.
-        'Laravel\Octane\Events\TickTerminated' => 'octaneTickTerminated' //Handle an incoming tick.
+        'Laravel\Octane\Events\RequestReceived'   => 'octaneRequestReceived',
+        'Laravel\Octane\Events\RequestTerminated' => 'octaneRequestTerminated',
+
+        'Laravel\Octane\Events\TaskReceived'   => 'octaneTaskReceived',
+        'Laravel\Octane\Events\TaskTerminated' => 'octaneTaskTerminated',
+
+        'Laravel\Octane\Events\TickReceived'   => 'octaneTickReceived',
+        'Laravel\Octane\Events\TickTerminated' => 'octaneTickTerminated',
+
+        'Laravel\Octane\Events\WorkerErrorOccurred' => 'octaneWorkerErrorOccurred',
+        'Laravel\Octane\Events\WorkerStopping'      => 'octaneWorkerStopping',
     ];
 
     /**
@@ -173,11 +166,11 @@ class EventHandler
     {
         $this->container = $container;
 
-        $this->recordSqlQueries = ($config['breadcrumbs.sql_queries'] ?? $config['breadcrumbs']['sql_queries'] ?? true) === true;
-        $this->recordSqlBindings = ($config['breadcrumbs.sql_bindings'] ?? $config['breadcrumbs']['sql_bindings'] ?? false) === true;
-        $this->recordLaravelLogs = ($config['breadcrumbs.logs'] ?? $config['breadcrumbs']['logs'] ?? true) === true;
-        $this->recordQueueInfo = ($config['breadcrumbs.queue_info'] ?? $config['breadcrumbs']['queue_info'] ?? true) === true;
-        $this->recordCommandInfo = ($config['breadcrumbs.command_info'] ?? $config['breadcrumbs']['command_info'] ?? true) === true;
+        $this->recordSqlQueries     = ($config['breadcrumbs.sql_queries'] ?? $config['breadcrumbs']['sql_queries'] ?? true) === true;
+        $this->recordSqlBindings    = ($config['breadcrumbs.sql_bindings'] ?? $config['breadcrumbs']['sql_bindings'] ?? false) === true;
+        $this->recordLaravelLogs    = ($config['breadcrumbs.logs'] ?? $config['breadcrumbs']['logs'] ?? true) === true;
+        $this->recordQueueInfo      = ($config['breadcrumbs.queue_info'] ?? $config['breadcrumbs']['queue_info'] ?? true) === true;
+        $this->recordCommandInfo    = ($config['breadcrumbs.command_info'] ?? $config['breadcrumbs']['command_info'] ?? true) === true;
         $this->recordOctaneTickInfo = ($config['breadcrumbs.octane_tick_info'] ?? $config['breadcrumbs']['octane_tick_info'] ?? true) === true;
         $this->recordOctaneTaskInfo = ($config['breadcrumbs.octane_task_info'] ?? $config['breadcrumbs']['octane_task_info'] ?? true) === true;
     }
@@ -218,10 +211,8 @@ class EventHandler
 
     /**
      * Attach all queue event handlers.
-     *
-     * @param \Laravel\Octane\Octane $queue
      */
-    public function subscribeOctaneEvents(Octane $queue): void
+    public function subscribeOctaneEvents(): void
     {
         /** @var \Illuminate\Contracts\Events\Dispatcher $dispatcher */
         try {
@@ -243,8 +234,9 @@ class EventHandler
     public function subscribeQueueEvents(QueueManager $queue): void
     {
         $queue->looping(function () {
-            $this->cleanupScopeForQueuedJob();
-            $this->afterQueuedJob();
+            $this->cleanupScopeForTaskWithinLongRunningProcessWhen($this->pushedQueueScope);
+
+            $this->pushedQueueScope = false;
         });
 
         /** @var \Illuminate\Contracts\Events\Dispatcher $dispatcher */
@@ -421,33 +413,6 @@ class EventHandler
     }
 
     /**
-     * Translates common log levels to Sentry breadcrumb levels.
-     *
-     * @param string $level Log level. Maybe any standard.
-     *
-     * @return string Breadcrumb level.
-     */
-    protected function logLevelToBreadcrumbLevel(string $level): string
-    {
-        switch (strtolower($level)) {
-            case 'debug':
-                return Breadcrumb::LEVEL_DEBUG;
-            case 'warning':
-                return Breadcrumb::LEVEL_WARNING;
-            case 'error':
-                return Breadcrumb::LEVEL_ERROR;
-            case 'critical':
-            case 'alert':
-            case 'emergency':
-                return Breadcrumb::LEVEL_FATAL;
-            case 'info':
-            case 'notice':
-            default:
-                return Breadcrumb::LEVEL_INFO;
-        }
-    }
-
-    /**
      * Since Laravel 5.3
      *
      * @param \Illuminate\Auth\Events\Authenticated $event
@@ -485,16 +450,20 @@ class EventHandler
      */
     protected function queueJobProcessingHandler(JobProcessing $event)
     {
-        $this->prepareScopeForQueuedJob();
+        $this->cleanupScopeForTaskWithinLongRunningProcessWhen($this->pushedQueueScope);
+
+        $this->prepareScopeForTaskWithinLongRunningProcess();
+
+        $this->pushedQueueScope = true;
 
         if (!$this->recordQueueInfo) {
             return;
         }
 
         $job = [
-            'job' => $event->job->getName(),
-            'queue' => $event->job->getQueue(),
-            'attempts' => $event->job->attempts(),
+            'job'        => $event->job->getName(),
+            'queue'      => $event->job->getQueue(),
+            'attempts'   => $event->job->attempts(),
             'connection' => $event->connectionName,
         ];
 
@@ -519,7 +488,7 @@ class EventHandler
      */
     protected function queueJobExceptionOccurredHandler(JobExceptionOccurred $event)
     {
-        $this->afterQueuedJob();
+        $this->afterTaskWithinLongRunningProcess();
     }
 
     /**
@@ -529,7 +498,7 @@ class EventHandler
      */
     protected function queueJobProcessedHandler(JobProcessed $event)
     {
-        $this->afterQueuedJob();
+        $this->afterTaskWithinLongRunningProcess();
     }
 
     /**
@@ -600,88 +569,18 @@ class EventHandler
         Integration::flushEvents();
     }
 
-    private function afterQueuedJob(): void
+    protected function octaneRequestReceivedHandler(Octane\RequestReceived $event): void
     {
-        // Flush any and all events that were possibly generated by queue jobs
-        Integration::flushEvents();
-    }
-
-    private function prepareScopeForQueuedJob(): void
-    {
-        $this->cleanupScopeForQueuedJob();
-
-        SentrySdk::getCurrentHub()->pushScope();
-
-        $this->pushedQueueScope = true;
-
-        // When a job starts, we want to make sure the scope is cleared of breadcrumbs
-        SentrySdk::getCurrentHub()->configureScope(static function (Scope $scope) {
-            $scope->clearBreadcrumbs();
-        });
-    }
-
-    private function cleanupScopeForQueuedJob(): void
-    {
-        if (!$this->pushedQueueScope) {
-            return;
-        }
-
-        SentrySdk::getCurrentHub()->popScope();
-
-        $this->pushedQueueScope = false;
-    }
-
-    /**
-     * Octane Request Received
-     *
-     * @param \Laravel\Octane\Events\RequestReceived $event
-     */
-    protected function octaneRequestReceivedHandler(
-        RequestReceived $event
-    ) {
         $this->prepareScopeForOctane();
-
-        Integration::addBreadcrumb(new Breadcrumb(
-            Breadcrumb::LEVEL_INFO,
-            Breadcrumb::TYPE_DEFAULT,
-            'octane.request.received',
-            'Octane Request Received',
-            [] //Metadata
-        ));
     }
 
-    /**
-     * @param \Laravel\Octane\Events\RequestTerminated $event
-     */
-    protected function octaneRequestTerminatedHandler(
-        RequestTerminated $event
-    ) {
-        $this->octaneTerminated();
-    }
-
-    /**
-     * @param \Laravel\Octane\Events\WorkerErrorOccurred $event
-     */
-    protected function octaneWorkerErrorOccurredHandler(WorkerErrorOccurred $event)
+    protected function octaneRequestTerminatedHandler(Octane\RequestTerminated $event): void
     {
-        $this->octaneTerminated();
+        $this->cleanupScopeForOctane();
     }
 
-    /**
-     * @param \Laravel\Octane\Events\WorkerStopping $event
-     */
-    protected function octaneWorkerStoppingHandler(OctaneWorkerStopping $event)
+    protected function octaneTaskReceivedHandler(Octane\TaskReceived $event): void
     {
-        // Flush any and all events that were possibly generated by octane workers
-        Integration::flushEvents();
-    }
-
-    /**
-     * @param \Laravel\Octane\Events\TaskReceived $event
-     */
-    protected function octaneTaskReceivedHandler(
-        TaskReceived $event
-    ) {
         $this->prepareScopeForOctane();
 
         if (!$this->recordOctaneTaskInfo) {
@@ -691,27 +590,18 @@ class EventHandler
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,
             Breadcrumb::TYPE_DEFAULT,
-            'octane.task.received',
-            'Octane Task Received',
-            [] //Metadata
+            'octane.task',
+            'Processing Octane task',
         ));
     }
 
-    /**
-     * @param \Laravel\Octane\Events\TaskTerminated $event
-     */
-    protected function octaneTaskTerminatedHandler(
-        TaskTerminated $event
-    ) {
-        $this->octaneTerminated();
+    protected function octaneTaskTerminatedHandler(Octane\TaskTerminated $event): void
+    {
+        $this->cleanupScopeForOctane();
     }
 
-    /**
-     * @param \Laravel\Octane\Events\TickReceived $event
-     */
-    protected function octaneTickReceivedHandler(
-        TickReceived $event
-    ) {
+    protected function octaneTickReceivedHandler(Octane\TickReceived $event): void
+    {
         $this->prepareScopeForOctane();
 
         if (!$this->recordOctaneTickInfo) {
@@ -721,34 +611,85 @@ class EventHandler
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,
             Breadcrumb::TYPE_DEFAULT,
-            'octane.tick.received',
-            'Octane Tick Received',
-            [] //Metadata
+            'octane.tick',
+            'Processing Octane tick',
         ));
     }
 
-    /**
-     * @param \Laravel\Octane\Events\TickTerminated $event
-     */
-    protected function octaneTickTerminatedHandler(
-        TickTerminated $event
-    ) {
-        $this->octaneTerminated();
+    protected function octaneTickTerminatedHandler(Octane\TickTerminated $event): void
+    {
+        $this->cleanupScopeForOctane();
     }
 
-    private function octaneTerminated(): void
+    protected function octaneWorkerErrorOccurredHandler(Octane\WorkerErrorOccurred $event): void
     {
-        // Flush any and all events that were possibly generated by queue jobs
-        Integration::flushEvents();
+        $this->afterTaskWithinLongRunningProcess();
+    }
+
+    protected function octaneWorkerStoppingHandler(Octane\WorkerStopping $event): void
+    {
+        $this->afterTaskWithinLongRunningProcess();
     }
 
     private function prepareScopeForOctane(): void
     {
         $this->cleanupScopeForOctane();
 
-        SentrySdk::getCurrentHub()->pushScope();
+        $this->prepareScopeForTaskWithinLongRunningProcess();
 
         $this->pushedOctaneScope = true;
+    }
+
+    private function cleanupScopeForOctane(): void
+    {
+        $this->cleanupScopeForTaskWithinLongRunningProcessWhen($this->pushedOctaneScope);
+
+        $this->pushedOctaneScope = false;
+    }
+
+    /**
+     * Translates common log levels to Sentry breadcrumb levels.
+     *
+     * @param string $level Log level. Maybe any standard.
+     *
+     * @return string Breadcrumb level.
+     */
+    private function logLevelToBreadcrumbLevel(string $level): string
+    {
+        switch (strtolower($level)) {
+            case 'debug':
+                return Breadcrumb::LEVEL_DEBUG;
+            case 'warning':
+                return Breadcrumb::LEVEL_WARNING;
+            case 'error':
+                return Breadcrumb::LEVEL_ERROR;
+            case 'critical':
+            case 'alert':
+            case 'emergency':
+                return Breadcrumb::LEVEL_FATAL;
+            case 'info':
+            case 'notice':
+            default:
+                return Breadcrumb::LEVEL_INFO;
+        }
+    }
+
+    /**
+     * Should be called after a task within a long running process has ended so events can be flushed.
+     */
+    private function afterTaskWithinLongRunningProcess(): void
+    {
+        // Flush any and all events that were possibly generated by queue jobs
+        Integration::flushEvents();
+    }
+
+    /**
+     * Should be called before starting a task within a long running process, this is done to prevent
+     * the task to have effect on the scope for the next task to run within the long running process.
+     */
+    private function prepareScopeForTaskWithinLongRunningProcess(): void
+    {
+        SentrySdk::getCurrentHub()->pushScope();
 
         // When a job starts, we want to make sure the scope is cleared of breadcrumbs
         SentrySdk::getCurrentHub()->configureScope(static function (Scope $scope) {
@@ -756,14 +697,21 @@ class EventHandler
         });
     }
 
-    private function cleanupScopeForOctane(): void
+    /**
+     * Cleanup a previously prepared scope.
+     *
+     * @param bool $when Only cleanup the scope when this is true.
+     *
+     * @see prepareScopeForTaskWithinLongRunningProcess
+     */
+    private function cleanupScopeForTaskWithinLongRunningProcessWhen(bool $when): void
     {
-        if (!$this->pushedOctaneScope) {
+        if (!$when) {
             return;
         }
 
-        SentrySdk::getCurrentHub()->popScope();
+        $this->afterTaskWithinLongRunningProcess();
 
-        $this->pushedOctaneScope = false;
+        SentrySdk::getCurrentHub()->popScope();
     }
 }
