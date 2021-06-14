@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Replace type hint of concrete type (`Sentry\State\Hub`) with interface (`Sentry\State\HubInterface`) in `SentryHandler` constructor (#496)
+
 ## 2.6.0
 
 - Add all log context as `log_context` to events when using the log channel (#489)

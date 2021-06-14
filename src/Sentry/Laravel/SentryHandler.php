@@ -10,7 +10,7 @@ use Monolog\Handler\AbstractProcessingHandler;
 use Sentry\Breadcrumb;
 use Sentry\Event;
 use Sentry\Severity;
-use Sentry\State\Hub;
+use Sentry\State\HubInterface;
 use Sentry\State\Scope;
 use Throwable;
 
@@ -28,7 +28,7 @@ class SentryHandler extends AbstractProcessingHandler
     protected $release;
 
     /**
-     * @var Hub the hub object that sends the message to the server
+     * @var HubInterface the hub object that sends the message to the server
      */
     protected $hub;
 
@@ -52,13 +52,13 @@ class SentryHandler extends AbstractProcessingHandler
     private $useFormattedMessage;
 
     /**
-     * @param Hub  $hub
-     * @param int  $level  The minimum logging level at which this handler will be triggered
-     * @param bool $bubble Whether the messages that are handled can bubble up the stack or not
-     * @param bool $reportExceptions
-     * @param bool $useFormattedMessage
+     * @param HubInterface $hub
+     * @param int          $level  The minimum logging level at which this handler will be triggered
+     * @param bool         $bubble Whether the messages that are handled can bubble up the stack or not
+     * @param bool         $reportExceptions
+     * @param bool         $useFormattedMessage
      */
-    public function __construct(Hub $hub, $level = Logger::DEBUG, bool $bubble = true, bool $reportExceptions = true, bool $useFormattedMessage = false)
+    public function __construct(HubInterface $hub, $level = Logger::DEBUG, bool $bubble = true, bool $reportExceptions = true, bool $useFormattedMessage = false)
     {
         parent::__construct($level, $bubble);
 
