@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Replace type hint of concrete type (`Sentry\State\Hub`) with interface (`Sentry\State\HubInterface`) in `SentryHandler` constructor (#496)
+- Use latest version of the Sentry PHP SDK (#499)
 
 ## 2.6.0
 
