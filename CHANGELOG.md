@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add support for Laravel Octane (#495)
+
 ## 2.7.0
 
 - Replace type hint of concrete type (`Sentry\State\Hub`) with interface (`Sentry\State\HubInterface`) in `SentryHandler` constructor (#496)
