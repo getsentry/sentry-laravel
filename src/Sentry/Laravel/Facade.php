@@ -3,6 +3,9 @@
 namespace Sentry\Laravel;
 
 use Sentry\State\HubInterface;
+use Sentry\Tracing\Span;
+use Sentry\Tracing\Transaction;
+use Sentry\Tracing\TransactionContext;
 
 /**
  * @method static bool addBreadcrumb(\Sentry\Breadcrumb $breadcrumb)
@@ -18,6 +21,10 @@ use Sentry\State\HubInterface;
  * @method static \Sentry\ClientInterface|null getClient()
  * @method static void bindClient(\Sentry\ClientInterface $client)
  * @method static string|null getLastEventId()
+ * @method static Transaction|null startTransaction(TransactionContext $context)
+ * @method static Transaction|null getTransaction(): 
+ * @method static Span|null getSpan()
+ * @method static HubInterface setSpan(Span|null $span)
  */
 class Facade extends \Illuminate\Support\Facades\Facade
 {
