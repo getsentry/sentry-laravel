@@ -144,7 +144,7 @@ class SentryHandler extends AbstractProcessingHandler
      *
      * @return \Sentry\Severity
      */
-    protected function getLogLevel($logLevel)
+    protected function getLogLevel(int $logLevel): Severity
     {
         switch ($logLevel) {
             case Logger::DEBUG:
@@ -154,12 +154,13 @@ class SentryHandler extends AbstractProcessingHandler
                 return Severity::info();
             case Logger::WARNING:
                 return Severity::warning();
-            case Logger::ERROR:
-                return Severity::error();
             case Logger::ALERT:
             case Logger::EMERGENCY:
             case Logger::CRITICAL:
                 return Severity::fatal();
+            case Logger::ERROR:
+            default:
+                return Severity::error();
         }
     }
 
@@ -218,6 +219,7 @@ class SentryHandler extends AbstractProcessingHandler
 
                 $scope->addEventProcessor(
                     function (Event $event) use ($record, $logger) {
+                        $event->setLevel($this->getLogLevel($record['level']));
                         $event->setLogger($logger);
 
                         if (!empty($this->environment) && !$event->getEnvironment()) {
@@ -242,8 +244,7 @@ class SentryHandler extends AbstractProcessingHandler
                     $this->hub->captureMessage(
                         $this->useFormattedMessage || empty($record['message'])
                             ? $record['formatted']
-                            : $record['message'],
-                        $this->getLogLevel($record['level'])
+                            : $record['message']
                     );
                 }
             }
