@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Update phpdoc on facade for better IDE autocompletion (#504)
+
 ## 2.7.0
 
 - Replace type hint of concrete type (`Sentry\State\Hub`) with interface (`Sentry\State\HubInterface`) in `SentryHandler` constructor (#496)
