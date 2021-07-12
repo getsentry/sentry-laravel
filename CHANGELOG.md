@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Update phpdoc on facade for better IDE autocompletion (#504)
+- Exceptions captured using log channels (Monolog) will now have the correct severity set (#505)
 
 ## 2.7.0
 
