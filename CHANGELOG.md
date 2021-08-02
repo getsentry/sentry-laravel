@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2.8.0
+
 - Update phpdoc on facade for better IDE autocompletion (#504)
 - Exceptions captured using log channels (Monolog) will now have the correct severity set (#505)
 - Tags passed through log channels (Monolog) context are cast as string to prevent type errors (#507)
