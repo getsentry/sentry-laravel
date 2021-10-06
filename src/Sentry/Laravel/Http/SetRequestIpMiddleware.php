@@ -3,7 +3,7 @@
 namespace Sentry\Laravel\Http;
 
 use Closure;
-use Illuminate\Contracts\Container\Container;
+use Illuminate\Container\Container;
 use Illuminate\Http\Request;
 use Sentry\State\HubInterface;
 use Sentry\State\Scope;
@@ -16,18 +16,6 @@ use Sentry\State\Scope;
 class SetRequestIpMiddleware
 {
     /**
-     * The Laravel container.
-     *
-     * @var \Illuminate\Contracts\Container\Container
-     */
-    private $container;
-
-    public function __construct(Container $container)
-    {
-        $this->container = $container;
-    }
-
-    /**
      * Handle an incoming request.
      *
      * @param \Illuminate\Http\Request $request
@@ -37,9 +25,11 @@ class SetRequestIpMiddleware
      */
     public function handle(Request $request, Closure $next)
     {
-        if ($this->container->bound(HubInterface::class)) {
+        $container = Container::getInstance();
+
+        if ($container->bound(HubInterface::class)) {
             /** @var \Sentry\State\HubInterface $sentry */
-            $sentry = $this->container->make(HubInterface::class);
+            $sentry = $container->make(HubInterface::class);
 
             $client = $sentry->getClient();
 

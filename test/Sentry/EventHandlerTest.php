@@ -41,6 +41,13 @@ class EventHandlerTest extends TestCase
         );
     }
 
+    public function test_all_mapped_octane_event_handlers_exist()
+    {
+        $this->tryAllEventHandlerMethods(
+            $this->getStaticPropertyValueFromClass(EventHandler::class, 'octaneEventHandlerMap')
+        );
+    }
+
     private function tryAllEventHandlerMethods(array $methods): void
     {
         $handler = new EventHandler($this->app, []);

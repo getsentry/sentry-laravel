@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add support for Laravel Octane (#495)
 - Fix bug in Sentry log channel handler checking an undefined variable resulting in an error (#515)
 - Add `action_level` configuration option for Sentry log channel which configures a Monolog `FingersCrossedHandler` (#516)
 
