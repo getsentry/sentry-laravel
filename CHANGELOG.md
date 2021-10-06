@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Fix bug in Sentry log channel handler checking an undefined variable resulting in an error (#515)
+- Add `action_level` configuration option for Sentry log channel which configures a Monolog `FingersCrossedHandler` (#516)
+
 ## 2.8.0
 
 - Update phpdoc on facade for better IDE autocompletion (#504)
