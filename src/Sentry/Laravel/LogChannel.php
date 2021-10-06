@@ -2,6 +2,7 @@
 
 namespace Sentry\Laravel;
 
+use Monolog\Handler\FingersCrossedHandler;
 use Monolog\Logger;
 use Illuminate\Log\LogManager;
 use Sentry\State\HubInterface;
@@ -22,6 +23,10 @@ class LogChannel extends LogManager
             $config['report_exceptions'] ?? true,
             isset($config['formatter']) && $config['formatter'] !== 'default'
         );
+
+        if (isset($config['action_level'])) {
+            $handler = new FingersCrossedHandler($handler, $config['action_level']);
+        }
 
         return new Logger(
             $this->parseChannel($config),
