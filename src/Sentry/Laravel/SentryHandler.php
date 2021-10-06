@@ -90,7 +90,7 @@ class SentryHandler extends AbstractProcessingHandler
         $record = array_reduce(
             $records,
             function ($highest, $record) {
-                if ($record['level'] > $highest['level']) {
+                if ($highest === null || $record['level'] > $highest['level']) {
                     return $record;
                 }
 
@@ -144,7 +144,7 @@ class SentryHandler extends AbstractProcessingHandler
      *
      * @return \Sentry\Severity
      */
-    protected function getLogLevel($logLevel)
+    protected function getLogLevel(int $logLevel): Severity
     {
         switch ($logLevel) {
             case Logger::DEBUG:
@@ -154,12 +154,13 @@ class SentryHandler extends AbstractProcessingHandler
                 return Severity::info();
             case Logger::WARNING:
                 return Severity::warning();
-            case Logger::ERROR:
-                return Severity::error();
             case Logger::ALERT:
             case Logger::EMERGENCY:
             case Logger::CRITICAL:
                 return Severity::fatal();
+            case Logger::ERROR:
+            default:
+                return Severity::error();
         }
     }
 
@@ -188,7 +189,7 @@ class SentryHandler extends AbstractProcessingHandler
 
                 if (!empty($record['context']['tags'])) {
                     foreach ($record['context']['tags'] as $key => $tag) {
-                        $scope->setTag($key, $tag);
+                        $scope->setTag($key, (string)$tag);
                     }
                     unset($record['context']['tags']);
                 }
@@ -205,7 +206,7 @@ class SentryHandler extends AbstractProcessingHandler
                 }
 
                 if (!empty($record['context']['user'])) {
-                    $scope->setUser((array)$record['context']['user'], true);
+                    $scope->setUser((array)$record['context']['user']);
                     unset($record['context']['user']);
                 }
 
@@ -218,6 +219,7 @@ class SentryHandler extends AbstractProcessingHandler
 
                 $scope->addEventProcessor(
                     function (Event $event) use ($record, $logger) {
+                        $event->setLevel($this->getLogLevel($record['level']));
                         $event->setLogger($logger);
 
                         if (!empty($this->environment) && !$event->getEnvironment()) {
@@ -242,8 +244,7 @@ class SentryHandler extends AbstractProcessingHandler
                     $this->hub->captureMessage(
                         $this->useFormattedMessage || empty($record['message'])
                             ? $record['formatted']
-                            : $record['message'],
-                        $this->getLogLevel($record['level'])
+                            : $record['message']
                     );
                 }
             }

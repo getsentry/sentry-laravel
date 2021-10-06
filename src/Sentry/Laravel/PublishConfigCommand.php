@@ -19,7 +19,7 @@ class PublishConfigCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'sentry:publish {--dsn=}';
+    protected $signature = 'sentry:publish {--dsn=} {--without-performance-monitoring} {--without-test}';
 
     /**
      * The console command description.
@@ -65,7 +65,7 @@ class PublishConfigCommand extends Command
             $args = array_merge($args, ['--dsn' => $dsn]);
         }
 
-        if ($this->confirm('Enable Performance Monitoring?', true)) {
+        if ($this->confirm('Enable Performance Monitoring?', !$this->option('without-performance-monitoring'))) {
             $this->setEnvironmentValue(['SENTRY_TRACES_SAMPLE_RATE' => 1.0]);
 
             $this->info('[Sentry] Added `SENTRY_TRACES_SAMPLE_RATE=1` to your .env file.');
@@ -76,7 +76,7 @@ class PublishConfigCommand extends Command
             $testCommandPrompt = 'Want to send a test Event?';
         }
 
-        if ($this->confirm($testCommandPrompt, true)) {
+        if ($this->confirm($testCommandPrompt, !$this->option('without-test'))) {
             $this->call('sentry:test', $args);
         }
     }

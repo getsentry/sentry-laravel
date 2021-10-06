@@ -3,6 +3,15 @@
 ## Unreleased
 
 - Add support for Laravel Octane (#495)
+- Fix bug in Sentry log channel handler checking an undefined variable resulting in an error (#515)
+- Add `action_level` configuration option for Sentry log channel which configures a Monolog `FingersCrossedHandler` (#516)
+
+## 2.8.0
+
+- Update phpdoc on facade for better IDE autocompletion (#504)
+- Exceptions captured using log channels (Monolog) will now have the correct severity set (#505)
+- Tags passed through log channels (Monolog) context are cast as string to prevent type errors (#507)
+- Add options to the `artisan sentry:publish` command to better support `--no-interaction` mode (#509) 
 
 ## 2.7.0
 
