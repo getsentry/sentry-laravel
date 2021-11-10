@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Improve output and DX for `sentry:test` and `sentry:publish` commands (#522)
+
 ## 2.9.0
 
 - Add support for Laravel Octane (#495)
