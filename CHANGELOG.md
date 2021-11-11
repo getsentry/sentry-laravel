@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2.10.0
+
 - Improve output and DX for `sentry:test` and `sentry:publish` commands (#522)
 
 ## 2.9.0
