@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2.10.1
+
 - Fix compatibility with Laravel <= 6 of the `sentry:test` and `sentry:publish` commands
 
 ## 2.10.0
