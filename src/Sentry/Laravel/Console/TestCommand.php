@@ -71,7 +71,7 @@ class TestCommand extends Command
 
             $this->printDebugTips();
 
-            return self::FAILURE;
+            return 1;
         }
 
         try {
@@ -82,7 +82,7 @@ class TestCommand extends Command
         } catch (Exception $e) {
             $this->error($e->getMessage());
 
-            return self::FAILURE;
+            return 1;
         }
 
         // We set a logger so we can surface errors thrown internally by the SDK
@@ -115,7 +115,7 @@ class TestCommand extends Command
 
             $this->printDebugTips();
 
-            return self::FAILURE;
+            return 1;
         }
 
         $this->info("Test event sent with ID: {$eventId}");
@@ -145,7 +145,7 @@ class TestCommand extends Command
 
                 $this->printDebugTips();
 
-                return self::FAILURE;
+                return 1;
             }
 
             $this->info("Transaction sent with ID: {$transactionId}");
@@ -153,7 +153,7 @@ class TestCommand extends Command
 
         error_reporting($old_error_reporting);
 
-        return self::SUCCESS;
+        return 1;
     }
 
     /**

@@ -50,7 +50,7 @@ class PublishCommand extends Command
                 if (empty($dsnFromInput)) {
                     $this->error('Please provide a valid DSN using the `--dsn` option or setting `SENTRY_LARAVEL_DSN` in your `.env` file!');
 
-                    return self::FAILURE;
+                    return 1;
                 }
 
                 $dsn = $dsnFromInput;
@@ -75,8 +75,8 @@ class PublishCommand extends Command
         if ($this->confirm($testCommandPrompt, !$this->option('without-test'))) {
             $testResult = $this->call('sentry:test', $arg);
 
-            if ($testResult === self::FAILURE) {
-                return self::FAILURE;
+            if ($testResult === 1) {
+                return 1;
             }
         }
 
@@ -84,10 +84,10 @@ class PublishCommand extends Command
         $this->call('vendor:publish', ['--provider' => ServiceProvider::class]);
 
         if (!$this->setEnvValues($env)) {
-            return self::FAILURE;
+            return 1;
         }
 
-        return self::SUCCESS;
+        return 0;
     }
 
     private function setEnvValues(array $values): bool
