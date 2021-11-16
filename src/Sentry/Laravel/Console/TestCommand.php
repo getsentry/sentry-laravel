@@ -76,7 +76,7 @@ class TestCommand extends Command
 
         try {
             $clientBuilder = ClientBuilder::create([
-                'dsn'                => $dsn,
+                'dsn' => $dsn,
                 'traces_sample_rate' => 1.0,
             ]);
         } catch (Exception $e) {
@@ -153,7 +153,7 @@ class TestCommand extends Command
 
         error_reporting($old_error_reporting);
 
-        return 1;
+        return 0;
     }
 
     /**

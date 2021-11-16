@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix `sentry:test` command not having correct exit code on success
+
 ## 2.10.1
 
 - Fix compatibility with Laravel <= 6 of the `sentry:test` and `sentry:publish` commands
