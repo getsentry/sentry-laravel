@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2.10.2
+
 - Fix `sentry:test` command not having correct exit code on success
 
 ## 2.10.1
