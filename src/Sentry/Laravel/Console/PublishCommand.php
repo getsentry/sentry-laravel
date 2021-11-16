@@ -72,19 +72,19 @@ class PublishCommand extends Command
             $env['SENTRY_TRACES_SAMPLE_RATE'] = '0';
         }
 
+        $this->info('Publishing Sentry config...');
+        $this->call('vendor:publish', ['--provider' => ServiceProvider::class]);
+
+        if (!$this->setEnvValues($env)) {
+            return 1;
+        }
+
         if ($this->confirm($testCommandPrompt, !$this->option('without-test'))) {
             $testResult = $this->call('sentry:test', $arg);
 
             if ($testResult === 1) {
                 return 1;
             }
-        }
-
-        $this->info('Publishing Sentry config...');
-        $this->call('vendor:publish', ['--provider' => ServiceProvider::class]);
-
-        if (!$this->setEnvValues($env)) {
-            return 1;
         }
 
         return 0;
