@@ -239,7 +239,7 @@ class EventHandler
         }
 
         $context = new SpanContext();
-        $context->setOp('sql.query');
+        $context->setOp('db.sql.query');
         $context->setDescription($query);
         $context->setStartTimestamp(microtime(true) - $time / 1000);
         $context->setEndTimestamp($context->getStartTimestamp() + $time / 1000);
@@ -327,7 +327,7 @@ class EventHandler
             $context->setName($resolvedJobName ?? $event->job->getName());
         }
 
-        $context->setOp('queue.job');
+        $context->setOp('queue.process');
         $context->setData($job);
         $context->setStartTimestamp(microtime(true));
 
