@@ -22,7 +22,7 @@
     ],
     "require": {
         "php": "^7.2 | ^8.0",
-        "illuminate/support": "5.0 - 5.8 | ^6.0 | ^7.0 | ^8.0",
+        "illuminate/support": "5.0 - 5.8 | ^6.0 | ^7.0 | ^8.0 | ^9.0",
         "sentry/sentry": "^3.3",
         "sentry/sdk": "^3.1",
         "symfony/psr-http-message-bridge": "^1.0 | ^2.0",
@@ -33,8 +33,8 @@
     },
     "require-dev": {
         "phpunit/phpunit": "^5.7 | ^6.5 | ^7.5 | ^8.4 | ^9.3",
-        "laravel/framework": "5.0 - 5.8 | ^6.0 | ^7.0 | ^8.0",
-        "orchestra/testbench": "3.1 - 3.8 | ^4.7 | ^5.1 | ^6.0",
+        "laravel/framework": "5.0 - 5.8 | ^6.0 | ^7.0 | ^8.0 | ^9.0",
+        "orchestra/testbench": "3.1 - 3.8 | ^4.7 | ^5.1 | ^6.0 | ^7.0",
         "friendsofphp/php-cs-fixer": "2.18.*",
         "mockery/mockery": "1.3.*"
     },
