@@ -34,7 +34,17 @@ jobs:
 
           # All versions below only support PHP ^7.3 (Laravel requirement)
           - { laravel: ^8.0,  testbench: ^6.0, phpunit: 9.3.* }
+
+          # All versions below only support PHP ^8.0 (Laravel requirement)
+          - { laravel: ^9.0,  testbench: ^7.0, phpunit: 9.5.* }
         exclude:
+          - php: "7.2"
+            packages: { laravel: ^9.0,  testbench: ^7.0, phpunit: 9.5.* }
+          - php: "7.3"
+            packages: { laravel: ^9.0,  testbench: ^7.0, phpunit: 9.5.* }
+          - php: "7.4"
+            packages: { laravel: ^9.0,  testbench: ^7.0, phpunit: 9.5.* }
+
           - php: "7.2"
             packages: { laravel: ^8.0,  testbench: ^6.0, phpunit: 9.3.* }
 
