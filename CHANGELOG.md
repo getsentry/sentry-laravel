@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Add support for Laravel 9 (#534)
+- Fix double wrapping the log channel in a `FingersCrossedHandler` on Laravel `v8.97` and newer when `action_level` option is set on the Log channel config (#534)
 
 ## 2.10.2
 
