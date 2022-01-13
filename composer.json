@@ -28,6 +28,11 @@
         "symfony/psr-http-message-bridge": "^1.0 | ^2.0",
         "nyholm/psr7": "^1.0"
     },
+    "autoload": {
+        "psr-0": {
+            "Sentry\\Laravel\\": "src/"
+        }
+    },
     "suggest": {
         "zendframework/zend-diactoros": "When using Laravel >=5.1 - <=6.9 this package can help get more accurate request info, not used on Laravel >=6.10 anymore (https://laravel.com/docs/5.8/requests#psr7-requests)"
     },
@@ -37,11 +42,6 @@
         "orchestra/testbench": "3.1 - 3.8 | ^4.7 | ^5.1 | ^6.0 | ^7.0",
         "friendsofphp/php-cs-fixer": "2.18.*",
         "mockery/mockery": "1.3.*"
-    },
-    "autoload": {
-        "psr-0": {
-            "Sentry\\Laravel\\": "src/"
-        }
     },
     "autoload-dev": {
         "psr-4": {
@@ -76,5 +76,7 @@
                 "Sentry": "Sentry\\Laravel\\Facade"
             }
         }
-    }
+    },
+    "prefer-stable": true,
+    "minimum-stability": "dev"
 }
