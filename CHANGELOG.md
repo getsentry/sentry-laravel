@@ -4,6 +4,7 @@
 
 - Add support for Laravel 9 (#534)
 - Fix double wrapping the log channel in a `FingersCrossedHandler` on Laravel `v8.97` and newer when `action_level` option is set on the Log channel config (#534)
+- Update span operation names to match what Sentry server is expecting (#533)
 
 ## 2.10.2
 
