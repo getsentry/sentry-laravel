@@ -187,12 +187,13 @@ class Middleware
                 'action' => $route->getActionName(),
                 'method' => $request->getMethod(),
             ]);
-        } else if (is_array($route) && sizeof($route) === 3) {
-            $path = $request->path();
+        } elseif (is_array($route) && count($route) === 3) {
             $template = array_reduce(
                 array_keys($route[2]),
-                fn ($carry, $key) => str_replace($route[2][$key], "{{$key}}", $carry),
-                $request->path(),
+                static function ($carry, $key) use ($route) {
+                    return str_replace($route[2][$key], "{{$key}}", $carry);
+                },
+                $request->path()
             );
 
             $this->updateTransactionNameIfDefault($template);
