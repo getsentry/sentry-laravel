@@ -123,7 +123,7 @@ class Middleware
         $bootstrapSpan = $this->addAppBootstrapSpan($request);
 
         $appContextStart = new SpanContext();
-        $appContextStart->setOp('app.handle');
+        $appContextStart->setOp('laravel.handle');
         $appContextStart->setStartTimestamp($bootstrapSpan ? $bootstrapSpan->getEndTimestamp() : microtime(true));
 
         $this->appSpan = $this->transaction->startChild($appContextStart);
@@ -144,7 +144,7 @@ class Middleware
         }
 
         $spanContextStart = new SpanContext();
-        $spanContextStart->setOp('app.bootstrap');
+        $spanContextStart->setOp('laravel.bootstrap');
         $spanContextStart->setStartTimestamp($laravelStartTime);
         $spanContextStart->setEndTimestamp($this->bootedTimestamp);
 
@@ -168,7 +168,7 @@ class Middleware
         }
 
         $autoload = new SpanContext();
-        $autoload->setOp('autoload');
+        $autoload->setOp('laravel.autoload');
         $autoload->setStartTimestamp($bootstrap->getStartTimestamp());
         $autoload->setEndTimestamp(SENTRY_AUTOLOAD);
 
