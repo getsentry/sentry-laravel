@@ -197,6 +197,14 @@ class Middleware
             );
 
             $this->updateTransactionNameIfDefault($template);
+
+            $action = $route[1];
+
+            $this->transaction->setData([
+                'name' => $action['as'] ?? null,
+                'action' => $action['uses'] ?? 'Closure',
+                'method' => $request->getMethod(),
+            ]);
         }
 
         $this->updateTransactionNameIfDefault('/' . ltrim($request->path(), '/'));
