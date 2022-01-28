@@ -10,6 +10,18 @@ use Sentry\Tracing\TransactionContext;
 
 class ServiceProviderWithSamplerFromConfigTest extends SentryLaravelTestCase
 {
+    /**
+     * @var SamplingContext
+     */
+    public $samplingContext;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->samplingContext = SamplingContext::getDefault(new TransactionContext());
+        TestSentryService::$testCase = $this;
+    }
 
     public function testEmptyTracesSampler(): void
     {
@@ -23,7 +35,8 @@ class ServiceProviderWithSamplerFromConfigTest extends SentryLaravelTestCase
     public function testTracesSamplerWithClosure(): void
     {
         $this->resetApplicationWithConfig([
-            'sentry.traces_sampler' => function (TransactionContext $context) {
+            'sentry.traces_sampler' => function (SamplingContext $context) {
+                $this->assertSame($this->samplingContext, $context);
                 return 5;
             },
         ]);
@@ -34,7 +47,8 @@ class ServiceProviderWithSamplerFromConfigTest extends SentryLaravelTestCase
     public function testTracesSamplerWithClosureAndDependencyInjection(): void
     {
         $this->resetApplicationWithConfig([
-            'sentry.traces_sampler' => function (TransactionContext $context, Container $container) {
+            'sentry.traces_sampler' => function (SamplingContext $context, Container $container) {
+                $this->assertSame($this->samplingContext, $context);
                 $this->assertSame($this->app->make(Container::class), $container);
                 return 5;
             },
@@ -110,12 +124,11 @@ class ServiceProviderWithSamplerFromConfigTest extends SentryLaravelTestCase
     protected function assertSampler(?float $expected): void
     {
         $options = $this->getHubFromContainer()->getClient()->getOptions();
-        $samplingContext = SamplingContext::getDefault(new TransactionContext());
 
         $tracesSampler = $options->getTracesSampler();
 
         $sampleRate = null !== $tracesSampler
-            ? $tracesSampler($samplingContext)
+            ? $tracesSampler($this->samplingContext)
             : null;
 
         $this->assertEquals($expected, $sampleRate);
