@@ -6,7 +6,6 @@ namespace Sentry\Laravel\Tracing;
 
 use Illuminate\Contracts\Container\Container;
 use ReflectionClass;
-use ReflectionMethod;
 use Sentry\Tracing\SamplingContext;
 
 class CallableProxy
@@ -24,7 +23,7 @@ class CallableProxy
     /**
      * @param array|callable|null $tracesSampler
      *
-     * @return array|callable
+     * @return array|callable|null
      */
     public function proxyTraceSampler($tracesSampler)
     {

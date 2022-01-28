@@ -141,7 +141,7 @@ class ServiceProvider extends BaseServiceProvider
             Integration::setControllersBaseNamespace($userConfig['controllers_base_namespace']);
         }
 
-        $this->app->bind(ClientBuilderInterface::class, function (Application $app) {
+        $this->app->bind(ClientBuilderInterface::class, function ($app) {
             $basePath   = base_path();
             $userConfig = $this->getUserConfig();
 
@@ -159,6 +159,7 @@ class ServiceProvider extends BaseServiceProvider
 
             if (isset($options['traces_sampler']) === true) {
                 /** @var CallableProxy $proxy */
+                /** @var Application $app */
                 $proxy = $app->make(CallableProxy::class);
 
                 $options['traces_sampler'] = $proxy->proxyTraceSampler($options['traces_sampler']);
