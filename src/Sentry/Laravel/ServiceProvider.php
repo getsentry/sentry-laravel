@@ -2,6 +2,7 @@
 
 namespace Sentry\Laravel;
 
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
 use Illuminate\Foundation\Application as Laravel;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
@@ -17,6 +18,7 @@ use Sentry\Laravel\Http\LaravelRequestFetcher;
 use Sentry\Laravel\Http\SetRequestIpMiddleware;
 use Sentry\Laravel\Http\SetRequestMiddleware;
 use Sentry\Laravel\Tracing\ServiceProvider as TracingServiceProvider;
+use Sentry\Laravel\Tracing\CallableProxy;
 use Sentry\SentrySdk;
 use Sentry\State\Hub;
 use Sentry\State\HubInterface;
@@ -139,7 +141,7 @@ class ServiceProvider extends BaseServiceProvider
             Integration::setControllersBaseNamespace($userConfig['controllers_base_namespace']);
         }
 
-        $this->app->bind(ClientBuilderInterface::class, function () {
+        $this->app->bind(ClientBuilderInterface::class, function (Application $app) {
             $basePath   = base_path();
             $userConfig = $this->getUserConfig();
 
@@ -155,9 +157,16 @@ class ServiceProvider extends BaseServiceProvider
                 $userConfig
             );
 
+            if (isset($options['traces_sampler']) === true) {
+                /** @var CallableProxy $proxy */
+                $proxy = $app->make(CallableProxy::class);
+
+                $options['traces_sampler'] = $proxy->proxyTraceSampler($options['traces_sampler']);
+            }
+
             // When we get no environment from the (user) configuration we default to the Laravel environment
             if (empty($options['environment'])) {
-                $options['environment'] = $this->app->environment();
+                $options['environment'] = $app->environment();
             }
 
             $clientBuilder = ClientBuilder::create($options);
