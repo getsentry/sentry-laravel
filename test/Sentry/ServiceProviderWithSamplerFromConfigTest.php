@@ -53,7 +53,7 @@ class ServiceProviderWithSamplerFromConfigTest extends SentryLaravelTestCase
 
     public function testTracesSamplerWithStaticMethodInClassButDoesNotExists(): void
     {
-        $this->expectExceptionMessage('Class "asd" does not exist');
+        $this->expectExceptionMessage('does not exist');
         $this->resetApplicationWithConfig([
             'sentry.traces_sampler' => ['asd', 'asd'],
         ]);
