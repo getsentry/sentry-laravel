@@ -17,9 +17,10 @@ use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\Events\WorkerStopping;
 use Illuminate\Queue\QueueManager;
-use Laravel\Octane\Events as Octane;
 use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Routing\Route;
+use Laravel\Octane\Events as Octane;
+use Laravel\Sanctum\Events\TokenAuthenticated;
 use RuntimeException;
 use Sentry\Breadcrumb;
 use Sentry\SentrySdk;
@@ -53,6 +54,7 @@ class EventHandler
      */
     protected static $authEventHandlerMap = [
         'Illuminate\Auth\Events\Authenticated' => 'authenticated', // Since Laravel 5.3
+        'Laravel\Sanctum\Events\TokenAuthenticated' => 'sanctumTokenAuthenticated', // Since Sanctum 2.13
     ];
 
     /**
@@ -423,6 +425,31 @@ class EventHandler
             'id' => $event->user->getAuthIdentifier(),
         ];
 
+        $userData = array_merge($userData, $this->makeUserScopeFromRequest());
+
+        $this->configureUserScope($userData);
+    }
+
+    /**
+     * Since Sanctum 2.13
+     *
+     * @param \Laravel\Sanctum\Events\TokenAuthenticated $event
+     */
+    protected function sanctumTokenAuthenticatedHandler($event)
+    {
+        $userData = [
+            'id' => $event->token->tokenable->getAuthIdentifier(),
+        ];
+
+        $userData = array_merge($userData, $this->makeUserScopeFromRequest());
+
+        $this->configureUserScope($userData);
+    }
+
+    protected function makeUserScopeFromRequest()
+    {
+        $userData = [];
+
         try {
             /** @var \Illuminate\Http\Request $request */
             $request = $this->container->make('request');
@@ -438,6 +465,11 @@ class EventHandler
             // If there is no request bound we cannot get the IP address from it
         }
 
+        return $userData;
+    }
+
+    protected function configureUserScope(array $userData)
+    {
         Integration::configureScope(static function (Scope $scope) use ($userData): void {
             $scope->setUser($userData);
         });
