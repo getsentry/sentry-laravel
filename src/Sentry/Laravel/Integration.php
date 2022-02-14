@@ -30,7 +30,7 @@ class Integration implements IntegrationInterface
      */
     public function setupOnce(): void
     {
-        Scope::addGlobalEventProcessor(function (Event $event): Event {
+        Scope::addGlobalEventProcessor(static function (Event $event): Event {
             $self = SentrySdk::getCurrentHub()->getIntegration(self::class);
 
             if (!$self instanceof self) {
