@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix deprecation notice in route name extraction (#543)
+
 ## 2.11.0
 
 - Add support for Laravel 9 (#534)

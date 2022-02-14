@@ -279,7 +279,7 @@ class EventHandler
      */
     protected function routerMatchedHandler(Route $route)
     {
-        $routeName = Integration::extractNameForRoute($route) ?? '<unlabeled transaction>';
+        $routeName = Integration::extractNameForRoute($route);
 
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,
