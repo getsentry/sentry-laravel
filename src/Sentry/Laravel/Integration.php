@@ -121,9 +121,9 @@ class Integration implements IntegrationInterface
      *
      * @param \Illuminate\Routing\Route $route
      *
-     * @return string|null
+     * @return string
      */
-    public static function extractNameForRoute(Route $route): ?string
+    public static function extractNameForRoute(Route $route): string
     {
         $routeName = null;
 
