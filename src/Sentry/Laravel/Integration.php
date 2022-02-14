@@ -164,7 +164,7 @@ class Integration implements IntegrationInterface
         return $routeName;
     }
 
-    private static function extractNameForActionRoute(string $actionName): ?string
+    private static function extractNameForActionRoute(string $actionName): string
     {
         $routeName = ltrim($actionName, '\\');
 
