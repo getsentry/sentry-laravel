@@ -127,44 +127,56 @@ class Integration implements IntegrationInterface
     {
         $routeName = null;
 
-        if (empty($routeName) && $route->getName()) {
-            // someaction (route name/alias)
-            $routeName = $route->getName();
-
-            // Laravel 7 route caching generates a route names if the user didn't specify one
-            // theirselfs to optimize route matching. These route names are useless to the
-            // developer so if we encounter a generated route name we discard the value
-            if (Str::contains($routeName, 'generated::')) {
-                $routeName = null;
-            }
-
-            // If the route name ends with a `.` we assume an incomplete group name prefix
-            // we discard this value since it will most likely not mean anything to the
-            // developer and will be duplicated by other unnamed routes in the group
-            if (null !== $routeName && Str::endsWith($routeName, '.')) {
-                $routeName = null;
-            }
+        // someaction (route name/alias)
+        if ($route->getName()) {
+            $routeName = self::extractNameForNamedRoute($route->getName());
         }
 
+        // Some\Controller@someAction (controller action)
         if (empty($routeName) && $route->getActionName()) {
-            // Some\Controller@someAction (controller action)
-            $routeName = ltrim($route->getActionName(), '\\');
-
-            $baseNamespace = self::$baseControllerNamespace ?? '';
-
-            // Strip away the base namespace from the action name
-            if (!empty($baseNamespace)) {
-                // @see: Str::after, but this is not available before Laravel 5.4 so we use a inlined version
-                $routeName = array_reverse(explode($baseNamespace . '\\', $routeName, 2))[0];
-            }
+            $routeName = self::extractNameForActionRoute($route->getActionName());
         }
 
+        // /someaction // Fallback to the url
         if (empty($routeName) || $routeName === 'Closure') {
-            // /someaction // Fallback to the url
             $routeName = '/' . ltrim($route->uri(), '/');
         }
 
         return $routeName;
+    }
+
+    private static function extractNameForNamedRoute(string $routeName): ?string
+    {
+        // Laravel 7 route caching generates a route names if the user didn't specify one
+        // theirselfs to optimize route matching. These route names are useless to the
+        // developer so if we encounter a generated route name we discard the value
+        if (Str::contains($routeName, 'generated::')) {
+            return null;
+        }
+
+        // If the route name ends with a `.` we assume an incomplete group name prefix
+        // we discard this value since it will most likely not mean anything to the
+        // developer and will be duplicated by other unnamed routes in the group
+        if (Str::endsWith($routeName, '.')) {
+            return null;
+        }
+
+        return $routeName;
+    }
+
+    private static function extractNameForActionRoute(string $actionName): ?string
+    {
+        $routeName = ltrim($actionName, '\\');
+
+        $baseNamespace = self::$baseControllerNamespace ?? '';
+
+        if (empty($baseNamespace)) {
+            return $routeName;
+        }
+
+        // Strip away the base namespace from the action name
+        // @see: Str::after, but this is not available before Laravel 5.4 so we use a inlined version
+        return array_reverse(explode($baseNamespace . '\\', $routeName, 2))[0];
     }
 
     /**
