@@ -141,7 +141,7 @@ class Integration implements IntegrationInterface
             // If the route name ends with a `.` we assume an incomplete group name prefix
             // we discard this value since it will most likely not mean anything to the
             // developer and will be duplicated by other unnamed routes in the group
-            if (Str::endsWith($routeName, '.')) {
+            if (null !== $routeName && Str::endsWith($routeName, '.')) {
                 $routeName = null;
             }
         }
