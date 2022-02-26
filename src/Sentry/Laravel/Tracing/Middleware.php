@@ -180,7 +180,9 @@ class Middleware
         $route = $request->route();
 
         if ($route instanceof Route) {
-            $this->updateTransactionNameIfDefault(Integration::extractNameForRoute($route));
+            $this->updateTransactionNameIfDefault(
+                Integration::extractNameForRoute($route)
+            );
 
             $this->transaction->setData([
                 'name' => $route->getName(),
@@ -188,17 +190,11 @@ class Middleware
                 'method' => $request->getMethod(),
             ]);
         } elseif (is_array($route) && count($route) === 3) {
-            $template = array_reduce(
-                array_keys($route[2]),
-                static function ($carry, $key) use ($route) {
-                    return str_replace($route[2][$key], "{{$key}}", $carry);
-                },
-                $request->path()
+            $this->updateTransactionNameIfDefault(
+                Integration::extractNameForLumenRoute($route, $request->path())
             );
 
-            $this->updateTransactionNameIfDefault($template);
-
-            $action = $route[1];
+            $action = $route[1] ?? [];
 
             $this->transaction->setData([
                 'name' => $action['as'] ?? null,
