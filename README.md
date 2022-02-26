@@ -22,25 +22,26 @@ Laravel integration for [Sentry](https://sentry.io/).
 - Laravel `>= 6.x.x` on PHP `>= 7.2` is supported starting from `1.2.0`
 - Laravel `>= 7.x.x` on PHP `>= 7.2` is supported starting from `1.7.0`
 - Laravel `>= 8.x.x` on PHP `>= 7.3` is supported starting from `1.9.0`
+- Laravel `>= 9.x.x` on PHP `>= 8.0` is supported starting from `2.11.0`
 
 Please note that of version `>= 2.0.0` we require PHP Version `>= 7.2` because we are using our new [PHP SDK](https://github.com/getsentry/sentry-php) underneath. 
 
 ## Installation
 
-- [Laravel 7.x & 8.x](https://docs.sentry.io/platforms/php/guides/laravel/)
-- [Laravel 5.x & 6.x](https://docs.sentry.io/platforms/php/guides/laravel/configuration/other-versions/laravel5-6/)
-- [Laravel 4.x](https://docs.sentry.io/platforms/php/guides/laravel/configuration/other-versions/laravel4/)
-- [Lumen](https://docs.sentry.io/platforms/php/guides/laravel/configuration/other-versions/lumen/)
+- [Laravel 8.x & 9.x](https://docs.sentry.io/platforms/php/guides/laravel/)
+- [Laravel 5.x, 6.x & 7.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel5-6-7/)
+- [Laravel 4.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel4/)
+- [Lumen](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/lumen/)
 
 ## Contributing
 
-Dependencies are managed through composer:
+Dependencies are managed through [Composer](https://getcomposer.org/):
 
 ```
 $ composer install
 ```
 
-Tests can then be run via phpunit:
+Tests can then be run via [PHPUnit](https://phpunit.de/):
 
 ```
 $ vendor/bin/phpunit
@@ -49,5 +50,5 @@ $ vendor/bin/phpunit
 ## Links
 
 * [Documentation](https://docs.sentry.io/platforms/php/guides/laravel/)
-* [Bug Tracker](http://github.com/getsentry/sentry-laravel/issues)
-* [Code](http://github.com/getsentry/sentry-laravel)
+* [Bug Tracker](https://github.com/getsentry/sentry-laravel/issues)
+* [Code](https://github.com/getsentry/sentry-laravel)
