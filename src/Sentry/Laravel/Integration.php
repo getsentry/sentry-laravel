@@ -145,28 +145,82 @@ class Integration implements IntegrationInterface
         return $routeName;
     }
 
-    private static function extractNameForNamedRoute(string $routeName): ?string
+    /**
+     * Extract the readable name for a Lumen route.
+     *
+     * @param array  $routeData The array of route data
+     * @param string $path      The path of the request
+     *
+     * @return string
+     */
+    public static function extractNameForLumenRoute(array $routeData, string $path): string
+    {
+        $routeName = null;
+
+        $route = $routeData[1] ?? [];
+
+        // someaction (route name/alias)
+        if (!empty($route['as'])) {
+            $routeName = self::extractNameForNamedRoute($route['as']);
+        }
+
+        // Some\Controller@someAction (controller action)
+        if (empty($routeName) && !empty($route['uses'])) {
+            $routeName = self::extractNameForActionRoute($route['uses']);
+        }
+
+        // /someaction // Fallback to the url
+        if (empty($routeName) || $routeName === 'Closure') {
+            $routeUri = array_reduce(
+                array_keys($routeData[2]),
+                static function ($carry, $key) use ($routeData) {
+                    return str_replace($routeData[2][$key], "{{$key}}", $carry);
+                },
+                $path
+            );
+
+            $routeName = '/' . ltrim($routeUri, '/');
+        }
+
+        return $routeName;
+    }
+
+    /**
+     * Take a route name and return it only if it's a usable route name.
+     *
+     * @param string $name
+     *
+     * @return string|null
+     */
+    private static function extractNameForNamedRoute(string $name): ?string
     {
         // Laravel 7 route caching generates a route names if the user didn't specify one
         // theirselfs to optimize route matching. These route names are useless to the
         // developer so if we encounter a generated route name we discard the value
-        if (Str::contains($routeName, 'generated::')) {
+        if (Str::contains($name, 'generated::')) {
             return null;
         }
 
         // If the route name ends with a `.` we assume an incomplete group name prefix
         // we discard this value since it will most likely not mean anything to the
         // developer and will be duplicated by other unnamed routes in the group
-        if (Str::endsWith($routeName, '.')) {
+        if (Str::endsWith($name, '.')) {
             return null;
         }
 
-        return $routeName;
+        return $name;
     }
 
-    private static function extractNameForActionRoute(string $actionName): string
+    /**
+     * Take a controller action and strip away the base namespace if needed.
+     *
+     * @param string $action
+     *
+     * @return string
+     */
+    private static function extractNameForActionRoute(string $action): string
     {
-        $routeName = ltrim($actionName, '\\');
+        $routeName = ltrim($action, '\\');
 
         $baseNamespace = self::$baseControllerNamespace ?? '';
 
