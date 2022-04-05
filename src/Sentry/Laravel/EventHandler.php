@@ -421,13 +421,9 @@ class EventHandler
      */
     protected function authenticatedHandler(Authenticated $event)
     {
-        $userData = [
+        $this->configureUserScopeWithRequest([
             'id' => $event->user->getAuthIdentifier(),
-        ];
-
-        $userData = array_merge($userData, $this->makeUserScopeFromRequest());
-
-        $this->configureUserScope($userData);
+        ]);
     }
 
     /**
@@ -437,19 +433,20 @@ class EventHandler
      */
     protected function sanctumTokenAuthenticatedHandler(Sanctum\TokenAuthenticated $event)
     {
-        $userData = [
+        $this->configureUserScopeWithRequest([
             'id' => $event->token->tokenable->getAuthIdentifier(),
-        ];
-
-        $userData = array_merge($userData, $this->makeUserScopeFromRequest());
-
-        $this->configureUserScope($userData);
+        ]);
     }
 
-    protected function makeUserScopeFromRequest()
+    /**
+     * Configures the user scope with the user data and values from the HTTP request.
+     *
+     * @param array $userData
+     *
+     * @return void
+     */
+    private function configureUserScopeWithRequest(array $userData): void
     {
-        $userData = [];
-
         try {
             /** @var \Illuminate\Http\Request $request */
             $request = $this->container->make('request');
@@ -465,11 +462,6 @@ class EventHandler
             // If there is no request bound we cannot get the IP address from it
         }
 
-        return $userData;
-    }
-
-    protected function configureUserScope(array $userData)
-    {
         Integration::configureScope(static function (Scope $scope) use ($userData): void {
             $scope->setUser($userData);
         });
