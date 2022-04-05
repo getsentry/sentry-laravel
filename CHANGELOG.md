@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Add support for normalized route names when using Lumen (#449)
+- Add support for adding the user ID to the user scope when using Laravel Sanctum (#542)
 
 ## 2.11.1
 
