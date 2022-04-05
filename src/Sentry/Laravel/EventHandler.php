@@ -20,7 +20,7 @@ use Illuminate\Queue\QueueManager;
 use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Routing\Route;
 use Laravel\Octane\Events as Octane;
-use Laravel\Sanctum\Events\TokenAuthenticated;
+use Laravel\Sanctum\Events as Sanctum;
 use RuntimeException;
 use Sentry\Breadcrumb;
 use Sentry\SentrySdk;
@@ -34,14 +34,14 @@ class EventHandler
      * @var array
      */
     protected static $eventHandlerMap = [
-        'router.matched'                         => 'routerMatched',                         // Until Laravel 5.1
-        'Illuminate\Routing\Events\RouteMatched' => 'routeMatched',  // Since Laravel 5.2
+        'router.matched' => 'routerMatched',                              // Until Laravel 5.1
+        'Illuminate\Routing\Events\RouteMatched' => 'routeMatched',       // Since Laravel 5.2
 
-        'illuminate.query'                         => 'query',                                 // Until Laravel 5.1
-        'Illuminate\Database\Events\QueryExecuted' => 'queryExecuted', // Since Laravel 5.2
+        'illuminate.query' => 'query',                                    // Until Laravel 5.1
+        'Illuminate\Database\Events\QueryExecuted' => 'queryExecuted',    // Since Laravel 5.2
 
-        'illuminate.log'                      => 'log',                                // Until Laravel 5.3
-        'Illuminate\Log\Events\MessageLogged' => 'messageLogged', // Since Laravel 5.4
+        'illuminate.log' => 'log',                                        // Until Laravel 5.3
+        'Illuminate\Log\Events\MessageLogged' => 'messageLogged',         // Since Laravel 5.4
 
         'Illuminate\Console\Events\CommandStarting' => 'commandStarting', // Since Laravel 5.5
         'Illuminate\Console\Events\CommandFinished' => 'commandFinished', // Since Laravel 5.5
@@ -53,7 +53,7 @@ class EventHandler
      * @var array
      */
     protected static $authEventHandlerMap = [
-        'Illuminate\Auth\Events\Authenticated' => 'authenticated', // Since Laravel 5.3
+        'Illuminate\Auth\Events\Authenticated' => 'authenticated',                  // Since Laravel 5.3
         'Laravel\Sanctum\Events\TokenAuthenticated' => 'sanctumTokenAuthenticated', // Since Sanctum 2.13
     ];
 
@@ -63,10 +63,10 @@ class EventHandler
      * @var array
      */
     protected static $queueEventHandlerMap = [
-        'Illuminate\Queue\Events\JobProcessing'        => 'queueJobProcessing',        // Since Laravel 5.2
-        'Illuminate\Queue\Events\JobProcessed'         => 'queueJobProcessed',         // Since Laravel 5.2
+        'Illuminate\Queue\Events\JobProcessed' => 'queueJobProcessed',                 // Since Laravel 5.2
+        'Illuminate\Queue\Events\JobProcessing' => 'queueJobProcessing',               // Since Laravel 5.2
+        'Illuminate\Queue\Events\WorkerStopping' => 'queueWorkerStopping',             // Since Laravel 5.2
         'Illuminate\Queue\Events\JobExceptionOccurred' => 'queueJobExceptionOccurred', // Since Laravel 5.2
-        'Illuminate\Queue\Events\WorkerStopping'       => 'queueWorkerStopping',       // Since Laravel 5.2
     ];
 
     /**
@@ -75,17 +75,17 @@ class EventHandler
      * @var array
      */
     protected static $octaneEventHandlerMap = [
-        'Laravel\Octane\Events\RequestReceived'   => 'octaneRequestReceived',
+        'Laravel\Octane\Events\RequestReceived' => 'octaneRequestReceived',
         'Laravel\Octane\Events\RequestTerminated' => 'octaneRequestTerminated',
 
-        'Laravel\Octane\Events\TaskReceived'   => 'octaneTaskReceived',
+        'Laravel\Octane\Events\TaskReceived' => 'octaneTaskReceived',
         'Laravel\Octane\Events\TaskTerminated' => 'octaneTaskTerminated',
 
-        'Laravel\Octane\Events\TickReceived'   => 'octaneTickReceived',
+        'Laravel\Octane\Events\TickReceived' => 'octaneTickReceived',
         'Laravel\Octane\Events\TickTerminated' => 'octaneTickTerminated',
 
         'Laravel\Octane\Events\WorkerErrorOccurred' => 'octaneWorkerErrorOccurred',
-        'Laravel\Octane\Events\WorkerStopping'      => 'octaneWorkerStopping',
+        'Laravel\Octane\Events\WorkerStopping' => 'octaneWorkerStopping',
     ];
 
     /**
@@ -168,11 +168,11 @@ class EventHandler
     {
         $this->container = $container;
 
-        $this->recordSqlQueries     = ($config['breadcrumbs.sql_queries'] ?? $config['breadcrumbs']['sql_queries'] ?? true) === true;
-        $this->recordSqlBindings    = ($config['breadcrumbs.sql_bindings'] ?? $config['breadcrumbs']['sql_bindings'] ?? false) === true;
-        $this->recordLaravelLogs    = ($config['breadcrumbs.logs'] ?? $config['breadcrumbs']['logs'] ?? true) === true;
-        $this->recordQueueInfo      = ($config['breadcrumbs.queue_info'] ?? $config['breadcrumbs']['queue_info'] ?? true) === true;
-        $this->recordCommandInfo    = ($config['breadcrumbs.command_info'] ?? $config['breadcrumbs']['command_info'] ?? true) === true;
+        $this->recordSqlQueries = ($config['breadcrumbs.sql_queries'] ?? $config['breadcrumbs']['sql_queries'] ?? true) === true;
+        $this->recordSqlBindings = ($config['breadcrumbs.sql_bindings'] ?? $config['breadcrumbs']['sql_bindings'] ?? false) === true;
+        $this->recordLaravelLogs = ($config['breadcrumbs.logs'] ?? $config['breadcrumbs']['logs'] ?? true) === true;
+        $this->recordQueueInfo = ($config['breadcrumbs.queue_info'] ?? $config['breadcrumbs']['queue_info'] ?? true) === true;
+        $this->recordCommandInfo = ($config['breadcrumbs.command_info'] ?? $config['breadcrumbs']['command_info'] ?? true) === true;
         $this->recordOctaneTickInfo = ($config['breadcrumbs.octane_tick_info'] ?? $config['breadcrumbs']['octane_tick_info'] ?? true) === true;
         $this->recordOctaneTaskInfo = ($config['breadcrumbs.octane_task_info'] ?? $config['breadcrumbs']['octane_task_info'] ?? true) === true;
     }
@@ -435,7 +435,7 @@ class EventHandler
      *
      * @param \Laravel\Sanctum\Events\TokenAuthenticated $event
      */
-    protected function sanctumTokenAuthenticatedHandler($event)
+    protected function sanctumTokenAuthenticatedHandler(Sanctum\TokenAuthenticated $event)
     {
         $userData = [
             'id' => $event->token->tokenable->getAuthIdentifier(),
@@ -493,9 +493,9 @@ class EventHandler
         }
 
         $job = [
-            'job'        => $event->job->getName(),
-            'queue'      => $event->job->getQueue(),
-            'attempts'   => $event->job->attempts(),
+            'job' => $event->job->getName(),
+            'queue' => $event->job->getQueue(),
+            'attempts' => $event->job->attempts(),
             'connection' => $event->connectionName,
         ];
 
