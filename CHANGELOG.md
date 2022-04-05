@@ -4,6 +4,7 @@
 
 - Add support for normalized route names when using Lumen (#449)
 - Add support for adding the user ID to the user scope when using Laravel Sanctum (#542)
+- Allow configuration of the [`send_default_pii`](https://docs.sentry.io/platforms/php/configuration/options/#send-default-pii) SDK option with the `SENTRY_SEND_DEFAULT_PII` env variable
 
 ## 2.11.1
 

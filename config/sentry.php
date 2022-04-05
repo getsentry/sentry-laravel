@@ -48,7 +48,7 @@ return [
     ],
 
     // @see: https://docs.sentry.io/platforms/php/configuration/options/#send-default-pii
-    'send_default_pii' => false,
+    'send_default_pii' => env('SENTRY_SEND_DEFAULT_PII', false),
 
     'traces_sample_rate' => (float)(env('SENTRY_TRACES_SAMPLE_RATE', 0.0)),
 
