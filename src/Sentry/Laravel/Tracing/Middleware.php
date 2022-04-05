@@ -180,11 +180,25 @@ class Middleware
         $route = $request->route();
 
         if ($route instanceof Route) {
-            $this->updateTransactionNameIfDefault(Integration::extractNameForRoute($route));
+            $this->updateTransactionNameIfDefault(
+                Integration::extractNameForRoute($route)
+            );
 
             $this->transaction->setData([
                 'name' => $route->getName(),
                 'action' => $route->getActionName(),
+                'method' => $request->getMethod(),
+            ]);
+        } elseif (is_array($route) && count($route) === 3) {
+            $this->updateTransactionNameIfDefault(
+                Integration::extractNameForLumenRoute($route, $request->path())
+            );
+
+            $action = $route[1] ?? [];
+
+            $this->transaction->setData([
+                'name' => $action['as'] ?? null,
+                'action' => $action['uses'] ?? 'Closure',
                 'method' => $request->getMethod(),
             ]);
         }

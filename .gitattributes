@@ -1,3 +1,10 @@
+/.github export-ignore
 /examples export-ignore
-/test export-ignore
 /scripts export-ignore
+/test export-ignore
+/.craft.yml export-ignore
+/.gitattributes export-ignore
+/.gitignore export-ignore
+/.php_cs export-ignore
+/Makefile export-ignore
+/phpunit.xml export-ignore
