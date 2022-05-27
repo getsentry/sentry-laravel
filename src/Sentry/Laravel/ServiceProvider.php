@@ -84,7 +84,7 @@ class ServiceProvider extends BaseServiceProvider
 
         $this->mergeConfigFrom(__DIR__ . '/../../../config/sentry.php', static::$abstract);
 
-        $this->configureAndRegisterClient($this->getUserConfig());
+        $this->configureAndRegisterClient();
 
         if (($logManager = $this->app->make('log')) instanceof LogManager) {
             $logManager->extend('sentry', function ($app, array $config) {
