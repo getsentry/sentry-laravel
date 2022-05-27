@@ -26,7 +26,7 @@ class ServiceProvider extends BaseServiceProvider
     /**
      * List of configuration options that are Laravel specific and should not be sent to the base PHP SDK.
      */
-    private const LARAVEL_SPECIFIC_OPTIONS = [
+    protected const LARAVEL_SPECIFIC_OPTIONS = [
         // We do not want these settings to hit the PHP SDK because they are Laravel specific and the PHP SDK will throw errors
         'tracing',
         'breadcrumbs',
@@ -143,7 +143,7 @@ class ServiceProvider extends BaseServiceProvider
             $basePath   = base_path();
             $userConfig = $this->getUserConfig();
 
-            foreach (self::LARAVEL_SPECIFIC_OPTIONS as $laravelSpecificOptionName) {
+            foreach (static::LARAVEL_SPECIFIC_OPTIONS as $laravelSpecificOptionName) {
                 unset($userConfig[$laravelSpecificOptionName]);
             }
 
