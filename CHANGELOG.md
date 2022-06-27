@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2.12.1
+
 - Fix incorrect `release` and `environment` values when using the `sentry:test` command
 
 ## 2.12.0
