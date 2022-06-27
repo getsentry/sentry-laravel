@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix incorrect `release` and `environment` values when using the `sentry:test` command
+
 ## 2.12.0
 
 - Add support for normalized route names when using [Laravel Lumen](https://lumen.laravel.com/docs/9.x) (#449)
