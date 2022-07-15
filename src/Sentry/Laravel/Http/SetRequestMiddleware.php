@@ -4,10 +4,10 @@ namespace Sentry\Laravel\Http;
 
 use Closure;
 use Illuminate\Container\Container;
+use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Http\Request;
 use Psr\Http\Message\ServerRequestInterface;
 use Sentry\State\HubInterface;
-use Throwable;
 
 /**
  * This middleware caches a PSR-7 version of the request as early as possible.
@@ -33,7 +33,7 @@ class SetRequestMiddleware
                     LaravelRequestFetcher::CONTAINER_PSR7_INSTANCE_KEY,
                     $container->make(ServerRequestInterface::class)
                 );
-            } catch (Throwable $e) {
+            } catch (BindingResolutionException $e) {
                 // Ignore problems getting the PSR-7 server request instance here
                 // In the Laravel request fetcher we have other fallbacks for that
             }
