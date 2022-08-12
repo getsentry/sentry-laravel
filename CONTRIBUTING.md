@@ -1,27 +1,32 @@
-# Contributing to Sentry SDK for Laravel
+<p align="center">
+  <a href="https://sentry.io/?utm_source=github&utm_medium=logo" target="_blank">
+    <img src="https://sentry-brand.storage.googleapis.com/sentry-wordmark-dark-280x84.png" alt="Sentry" width="280" height="84">
+  </a>
+</p>
 
-We welcome contributions to sentry-laravel by the community. See the [Contributing to Docs](https://docs.sentry.io/contributing/) page if you want to fix or update the documentation on the website.
+# Contributing to the Sentry SDK for Laravel
 
-## How to report a problem
+We welcome contributions to `sentry-laravel` by the community.
 
 Please search the [issue tracker](https://github.com/getsentry/sentry-laravel/issues) before creating a new issue (a problem or an improvement request). Please also ask in our [Sentry Community on Discord](https://discord.com/invite/Ww9hbqr) before submitting a new issue. There is a ton of great people in our Discord community ready to help you!
 
-If you feel that you can fix or implement it yourself, please read a few paragraphs below to learn how to submit your changes.
+If you feel that you can fix or implement it yourself, please read on to learn how to submit your changes.
 
 ## Submitting changes
 
 - Setup the development environment.
-- Clone sentry-laravel and prepare necessary changes.
+- Clone the `sentry-laravel` repository and prepare necessary changes.
 - Add tests for your changes to `tests/`.
 - Run tests and make sure all of them pass.
 - Submit a pull request, referencing any issues it addresses.
+- Make sure to update the `CHANGELOG.md` file below the `Unreleased` heading.
 
 We will review your pull request as soon as possible.
 Thank you for contributing!
 
 ## Development environment
 
-### Clone the repo:
+### Clone the repository
 
 ```bash
 git clone git@github.com:getsentry/sentry-laravel.git
@@ -29,7 +34,7 @@ git clone git@github.com:getsentry/sentry-laravel.git
 
 Make sure that you have PHP 7.2+ installed. Version 7.4 or higher is required to run style checkers. On macOS, we recommend using brew to install PHP. For Windows, we recommend an official PHP.net release.
 
-### Install the dependencies:
+### Install the dependencies
 
 Dependencies are managed through [Composer](https://getcomposer.org/):
 
@@ -42,7 +47,7 @@ composer install
 Tests can then be run via [PHPUnit](https://phpunit.de/):
 
 ```bash
-composer test
+vendor/bin/phpunit
 ```
 
 ## Releasing a new version
@@ -51,26 +56,26 @@ composer test
 
 Prerequisites:
 
-- All the changes that should be release must be in `master` branch.
+- All changes that should be released must be in the `master` branch.
 - Every commit should follow the [Commit Message Format](https://develop.sentry.dev/commit-messages/#commit-message-format) convention.
 
 Manual Process:
 
-- Update CHANGELOG.md witht the version to be released. Example commit: https://github.com/getsentry/sentry-laravel/commit/a167e95c3c97cc5f9f315e96ef07a800aec3b440.
+- Update CHANGELOG.md with the version to be released. Example commit: https://github.com/getsentry/sentry-laravel/commit/0c0aabd4976905e279c9e49193265dd51856c219.
 - On GitHub in the `sentry-laravel` repository go to "Actions" select the "Release" workflow.
-- Click on "Run workflow" on the right side, make sure the `master` branch is selected.
+- Click on "Run workflow" on the right side and make sure the `master` branch is selected.
 - Set "Version to release" input field. Here you decide if it is a major, minor or patch release. (See "Versioning Policy" below)
 - Click "Run Workflow"
 
-This will trigger [Craft](https://github.com/getsentry/craft) to prepare everything needed for a release. (For more information see [craft prepare](https://github.com/getsentry/craft#craft-prepare-preparing-a-new-release)) At the end of this process a release issue is created in the [Publish](https://github.com/getsentry/publish) repository. (Example release issue: https://github.com/getsentry/publish/issues/815)
+This will trigger [Craft](https://github.com/getsentry/craft) to prepare everything needed for a release. (For more information see [craft prepare](https://github.com/getsentry/craft#craft-prepare-preparing-a-new-release)) At the end of this process, a release issue is created in the [Publish](https://github.com/getsentry/publish) repository. (Example release issue: https://github.com/getsentry/publish/issues/815)
 
 Now one of the persons with release privileges (most probably your engineering manager) will review this Issue and then add the `accepted` label to the issue.
 
 There are always two persons involved in a release.
 
-If you are in a hurry and the release should be out immediatly there is a Slack channel called `#proj-release-approval` where you can see your release issue and where you can ping people to please have a look immediatly.
+If you are in a hurry and the release should be out immediately there is a Slack channel called `#proj-release-approval` where you can see your release issue and where you can ping people to please have a look immediately.
 
-When the release issue is labeled `accepted` [Craft](https://github.com/getsentry/craft) is triggered again to publish the release to all the right platforms. (See [craft publish](https://github.com/getsentry/craft#craft-publish-publishing-the-release) for more information). At the end of this process the release issue on GitHub will be closed and the release is completed! Congratulations!
+When the release issue is labeled `accepted` [Craft](https://github.com/getsentry/craft) is triggered again to publish the release to all the right platforms. (See [craft publish](https://github.com/getsentry/craft#craft-publish-publishing-the-release) for more information). At the end of this process, the release issue on GitHub will be closed and the release is completed! Congratulations!
 
 There is a sequence diagram visualizing all this in the [README.md](https://github.com/getsentry/publish) of the `Publish` repository.
 
@@ -84,7 +89,7 @@ This project follows [semver](https://semver.org/), with three additions:
 
 - Certain features (e.g. integrations) may be explicitly called out as "experimental" or "unstable" in the documentation. They come with their own versioning policy described in the documentation.
 
-We recommend to pin your version requirements against `1.x.*` or `1.x.y`.
+We recommend pinning your version requirements against `1.x.*` or `1.x.y`.
 Either one of the following is fine:
 
 ```json
@@ -92,7 +97,7 @@ Either one of the following is fine:
 "sentry/sentry": "^1",
 ```
 
-A major release `N` implies the previous release `N-1` will no longer receive updates. We generally do not backport bugfixes to older versions unless they are security relevant. However, feel free to ask for backports of specific commits on the bugtracker.
+A major release `N` implies the previous release `N-1` will no longer receive updates. We generally do not backport bugfixes to older versions unless they are security relevant. However, feel free to ask for backports of specific commits on the bug tracker.
 
 ## Commit message format guidelines
 
