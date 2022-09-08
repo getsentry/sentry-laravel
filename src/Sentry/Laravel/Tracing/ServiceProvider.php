@@ -72,9 +72,9 @@ class ServiceProvider extends BaseServiceProvider
 
         $handler->subscribe();
 
-        if ($this->app->bound(QueueManager::class)) {
+        if ($this->app->bound('queue')) {
             $handler->subscribeQueueEvents(
-                $this->app->make(QueueManager::class)
+                $this->app->make('queue')
             );
         }
     }
