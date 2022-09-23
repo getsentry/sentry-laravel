@@ -63,7 +63,7 @@ class LighthouseIntegration implements IntegrationInterface
         }
 
         $context = new SpanContext;
-        $context->setOp('graphql.request');
+        $context->setOp('db.graphql.request');
 
         $this->operations    = [];
         $this->requestSpan   = $this->previousSpan->startChild($context);
@@ -94,7 +94,7 @@ class LighthouseIntegration implements IntegrationInterface
         $this->updateTransactionName();
 
         $context = new SpanContext;
-        $context->setOp("graphql.{$operationDefinition->operation}");
+        $context->setOp("db.graphql.{$operationDefinition->operation}");
 
         $this->operationSpan = $this->requestSpan->startChild($context);
 
