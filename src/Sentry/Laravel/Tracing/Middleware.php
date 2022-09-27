@@ -12,6 +12,7 @@ use Sentry\State\HubInterface;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\TransactionContext;
+use Sentry\Tracing\TransactionSource;
 
 class Middleware
 {
@@ -103,12 +104,14 @@ class Middleware
     {
         $requestStartTime = $request->server('REQUEST_TIME_FLOAT', microtime(true));
         $sentryTraceHeader = $request->header('sentry-trace');
+        $baggageHeader = $request->header('baggage');
 
         $context = $sentryTraceHeader
-            ? TransactionContext::fromSentryTrace($sentryTraceHeader)
+            ? TransactionContext::fromHeaders($sentryTraceHeader, $baggageHeader)
             : new TransactionContext;
 
         $context->setOp('http.server');
+        $context->setSource(TransactionSource::url());
         $context->setData([
             'url' => '/' . ltrim($request->path(), '/'),
             'method' => strtoupper($request->method()),

@@ -247,7 +247,25 @@ class Integration implements IntegrationInterface
         }
 
         $content = sprintf('<meta name="sentry-trace" content="%s"/>', $span->toTraceparent());
-        // $content .= sprintf('<meta name="sentry-trace-data" content="%s"/>', $span->getDescription());
+
+        return $content;
+    }
+
+    /**
+     * Retrieve the meta tags with baggage information to link this request to front-end requests.
+     * This propagates the Dynamic Sampling Context.
+     *
+     * @return string
+     */
+    public static function sentryBaggageMeta(): string
+    {
+        $span = self::currentTracingSpan();
+
+        if ($span === null) {
+            return '';
+        }
+
+        $content = sprintf('<meta name="baggage" content="%s"/>', $span->toBaggage());
 
         return $content;
     }
