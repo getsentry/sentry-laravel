@@ -5,6 +5,7 @@ namespace Sentry\Laravel\Tracing;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Route;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
@@ -57,7 +58,7 @@ class Middleware
      * Handle the application termination.
      *
      * @param \Illuminate\Http\Request  $request
-     * @param \Illuminate\Http\Response $response
+     * @param \Illuminate\Http\Response|\Illuminate\Http\JsonResponse $response
      *
      * @return void
      */
@@ -76,7 +77,7 @@ class Middleware
                 $this->hydrateRequestData($request);
             }
 
-            if ($response instanceof Response) {
+            if ($response instanceof Response || $response instanceof JsonResponse) {
                 $this->hydrateResponseData($response);
             }
 
