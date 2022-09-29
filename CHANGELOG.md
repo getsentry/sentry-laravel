@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix status code not populated on transaction if response did not inherit from `Illuminate\Http\Response` like `Illuminate\Http\JsonResponse` (#573)
+
 ## 2.13.0
 
 - Only catch `BindingResolutionException` when trying to get the PSR-7 request object from the container
