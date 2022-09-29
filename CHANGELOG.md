@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Fix status code not always populated on transaction if response did not inherit from `Illuminate\Http\Response` like `Illuminate\Http\JsonResponse` (#573)
+- Fix status code not populated on transaction if response did not inherit from `Illuminate\Http\Response` like `Illuminate\Http\JsonResponse` (#573)
 
 ## 2.13.0
 
