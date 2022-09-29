@@ -4,8 +4,6 @@ namespace Sentry\Laravel\Tracing;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Route;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
@@ -13,6 +11,7 @@ use Sentry\State\HubInterface;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\TransactionContext;
+use Symfony\Component\HttpFoundation\Response;
 
 class Middleware
 {
@@ -57,8 +56,8 @@ class Middleware
     /**
      * Handle the application termination.
      *
-     * @param \Illuminate\Http\Request  $request
-     * @param \Illuminate\Http\Response|\Illuminate\Http\JsonResponse $response
+     * @param \Illuminate\Http\Request                   $request
+     * @param \Symfony\Component\HttpFoundation\Response $response
      *
      * @return void
      */
@@ -77,7 +76,7 @@ class Middleware
                 $this->hydrateRequestData($request);
             }
 
-            if ($response instanceof Response || $response instanceof JsonResponse) {
+            if ($response instanceof Response) {
                 $this->hydrateResponseData($response);
             }
 
@@ -209,7 +208,7 @@ class Middleware
 
     private function hydrateResponseData(Response $response): void
     {
-        $this->transaction->setHttpStatus($response->status());
+        $this->transaction->setHttpStatus($response->getStatusCode());
     }
 
     private function updateTransactionNameIfDefault(?string $name): void
