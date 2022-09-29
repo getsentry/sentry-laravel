@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix not listening to queue events because `QueueManager` is registered as `queue` in the container and not by it's class name (#568)
+
 ## 2.13.0
 
 - Only catch `BindingResolutionException` when trying to get the PSR-7 request object from the container
