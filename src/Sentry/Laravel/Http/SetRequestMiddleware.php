@@ -32,13 +32,13 @@ class SetRequestMiddleware
     }
 
     /**
-     * This code was copied from the Laravel codebase which was introduced in Laravel 6.x.
+     * This code was copied from the Laravel codebase which was introduced in Laravel 6.
      *
-     * The reason we have it copied here is because older (<6.x) versions of Laravel use a different
+     * The reason we have it copied here is because older (<6.0) versions of Laravel use a different
      * method to construct the PSR-7 request object which requires other packages to create that object
      * but most importantly it does not function when those packages are not available resulting in errors
      *
-     * So long story short, this is here to backport functionality to Laravel <6.x
+     * So long story short, this is here to backport functionality to Laravel <6.0
      * if we drop support for those versions in the future we can reconsider this and
      * move back to using the container binding provided by Laravel for the PSR-7 object
      *
