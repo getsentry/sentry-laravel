@@ -4,6 +4,7 @@
 
 - Fix not listening to queue events because `QueueManager` is registered as `queue` in the container and not by it's class name (#568)
 - Fix status code not populated on transaction if response did not inherit from `Illuminate\Http\Response` like `Illuminate\Http\JsonResponse` (#573)
+- Align Span Operations with new spec (#574)
 
 ## 2.13.0
 
