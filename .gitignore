@@ -1,7 +1,13 @@
-*.lock
-package.xml
-/vendor
+# IDE
 .idea
-.php_cs.cache
-docs/_build
+
+# Composer
+/vendor
+composer.lock
+
+# phpunit/phpunit
 .phpunit.result.cache
+
+# friendsofphp/php-cs-fixer
+/.php_cs.cache
+/.php-cs-fixer.cache
