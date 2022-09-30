@@ -206,7 +206,7 @@ class ServiceProvider extends BaseServiceProvider
                     });
 
                     $integrations[] = new SdkIntegration\RequestIntegration(
-                        new LaravelRequestFetcher($app)
+                        new LaravelRequestFetcher
                     );
                 }
 
