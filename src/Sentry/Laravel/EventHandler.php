@@ -445,16 +445,18 @@ class EventHandler
      */
     private function configureUserScopeFromModel($authUser): void
     {
+        $userData = [];
+
         // If the user is a Laravel Eloquent model we try to extract some common fields from it
-        $userData = $authUser instanceof Model
-            ? [
+        if ($authUser instanceof Model) {
+            $userData = [
                 'id' => $authUser instanceof Authenticatable
                     ? $authUser->getAuthIdentifier()
                     : $authUser->getKey(),
                 'email' => $authUser->getAttribute('email') ?? $authUser->getAttribute('mail'),
                 'username' => $authUser->getAttribute('username'),
-            ]
-            : [];
+            ];
+        }
 
         try {
             /** @var \Illuminate\Http\Request $request */
