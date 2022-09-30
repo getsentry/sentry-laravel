@@ -6,9 +6,11 @@ use Exception;
 use Illuminate\Auth\Events\Authenticated;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Http\Request;
 use Illuminate\Log\Events\MessageLogged;
@@ -421,9 +423,7 @@ class EventHandler
      */
     protected function authenticatedHandler(Authenticated $event)
     {
-        $this->configureUserScopeWithRequest([
-            'id' => $event->user->getAuthIdentifier(),
-        ]);
+        $this->configureUserScopeFromModel($event->user);
     }
 
     /**
@@ -433,20 +433,31 @@ class EventHandler
      */
     protected function sanctumTokenAuthenticatedHandler(Sanctum\TokenAuthenticated $event)
     {
-        $this->configureUserScopeWithRequest([
-            'id' => $event->token->tokenable->getAuthIdentifier(),
-        ]);
+        $this->configureUserScopeFromModel($event->token->tokenable);
     }
 
     /**
      * Configures the user scope with the user data and values from the HTTP request.
      *
-     * @param array $userData
+     * @param mixed $authUser
      *
      * @return void
      */
-    private function configureUserScopeWithRequest(array $userData): void
+    private function configureUserScopeFromModel($authUser): void
     {
+        $userData = [];
+
+        // If the user is a Laravel Eloquent model we try to extract some common fields from it
+        if ($authUser instanceof Model) {
+            $userData = [
+                'id' => $authUser instanceof Authenticatable
+                    ? $authUser->getAuthIdentifier()
+                    : $authUser->getKey(),
+                'email' => $authUser->getAttribute('email') ?? $authUser->getAttribute('mail'),
+                'username' => $authUser->getAttribute('username'),
+            ];
+        }
+
         try {
             /** @var \Illuminate\Http\Request $request */
             $request = $this->container->make('request');
@@ -463,7 +474,7 @@ class EventHandler
         }
 
         Integration::configureScope(static function (Scope $scope) use ($userData): void {
-            $scope->setUser($userData);
+            $scope->setUser(array_filter($userData));
         });
     }
 

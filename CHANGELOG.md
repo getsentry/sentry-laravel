@@ -6,6 +6,7 @@
 - Fix status code not populated on transaction if response did not inherit from `Illuminate\Http\Response` like `Illuminate\Http\JsonResponse` (#573)
 - Align Span Operations with new spec (#574)
 - Fix broken `SetRequestMiddleware` on Laravel < 6.0 (#575)
+- Also extract the authenticated user `email` and `username` attributes if available (#577)
 
 ## 2.13.0
 
