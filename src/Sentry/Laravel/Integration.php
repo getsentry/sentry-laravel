@@ -6,6 +6,7 @@ use Illuminate\Routing\Route;
 use Illuminate\Support\Str;
 use Sentry\SentrySdk;
 use Sentry\Tracing\Span;
+use Sentry\Tracing\TransactionSource;
 use function Sentry\addBreadcrumb;
 use function Sentry\configureScope;
 use Sentry\Breadcrumb;
@@ -122,27 +123,48 @@ class Integration implements IntegrationInterface
      * @param \Illuminate\Routing\Route $route
      *
      * @return string
+     *
+     * @internal   This helper is used in various places to extra meaninful info from a Laravel Route object.
+     * @deprecated This will be removed in version 3.0, use `extractNameAndSourceForRoute` instead.
      */
     public static function extractNameForRoute(Route $route): string
     {
+        return self::extractNameAndSourceForRoute($route)[0];
+    }
+
+    /**
+     * Extract the readable name for a route and the transaction source for where that route name came from.
+     *
+     * @param \Illuminate\Routing\Route $route
+     *
+     * @return array{0: string, 1: \Sentry\Tracing\TransactionSource}
+     *
+     * @internal This helper is used in various places to extra meaninful info from a Laravel Route object.
+     */
+    public static function extractNameAndSourceForRoute(Route $route): array
+    {
+        $source = null;
         $routeName = null;
 
-        // someaction (route name/alias)
+        // some.action (route name/alias)
         if ($route->getName()) {
+            $source = TransactionSource::component();
             $routeName = self::extractNameForNamedRoute($route->getName());
         }
 
         // Some\Controller@someAction (controller action)
         if (empty($routeName) && $route->getActionName()) {
+            $source = TransactionSource::component();
             $routeName = self::extractNameForActionRoute($route->getActionName());
         }
 
-        // /someaction // Fallback to the url
+        // /some/{action} // Fallback to the route uri (with parameter placeholders)
         if (empty($routeName) || $routeName === 'Closure') {
+            $source = TransactionSource::route();
             $routeName = '/' . ltrim($route->uri(), '/');
         }
 
-        return $routeName;
+        return [$routeName, $source];
     }
 
     /**
@@ -152,24 +174,45 @@ class Integration implements IntegrationInterface
      * @param string $path      The path of the request
      *
      * @return string
+     *
+     * @internal   This helper is used in various places to extra meaninful info from a Lumen route data.
+     * @deprecated This will be removed in version 3.0, use `extractNameAndSourceForLumenRoute` instead.
      */
     public static function extractNameForLumenRoute(array $routeData, string $path): string
     {
+        return self::extractNameAndSourceForLumenRoute($routeData, $path)[0];
+    }
+
+    /**
+     * Extract the readable name for a Lumen route and the transaction source for where that route name came from.
+     *
+     * @param array  $routeData The array of route data
+     * @param string $path      The path of the request
+     *
+     * @return array{0: string, 1: \Sentry\Tracing\TransactionSource}
+     *
+     * @internal This helper is used in various places to extra meaninful info from a Lumen route data.
+     */
+    public static function extractNameAndSourceForLumenRoute(array $routeData, string $path): array
+    {
+        $source = null;
         $routeName = null;
 
         $route = $routeData[1] ?? [];
 
-        // someaction (route name/alias)
+        // some.action (route name/alias)
         if (!empty($route['as'])) {
+            $source = TransactionSource::component();
             $routeName = self::extractNameForNamedRoute($route['as']);
         }
 
         // Some\Controller@someAction (controller action)
         if (empty($routeName) && !empty($route['uses'])) {
+            $source = TransactionSource::component();
             $routeName = self::extractNameForActionRoute($route['uses']);
         }
 
-        // /someaction // Fallback to the url
+        // /some/{action} // Fallback to the route uri (with parameter placeholders)
         if (empty($routeName) || $routeName === 'Closure') {
             $routeUri = array_reduce(
                 array_keys($routeData[2]),
@@ -179,10 +222,11 @@ class Integration implements IntegrationInterface
                 $path
             );
 
+            $source = TransactionSource::url();
             $routeName = '/' . ltrim($routeUri, '/');
         }
 
-        return $routeName;
+        return [$routeName, $source];
     }
 
     /**
@@ -247,7 +291,25 @@ class Integration implements IntegrationInterface
         }
 
         $content = sprintf('<meta name="sentry-trace" content="%s"/>', $span->toTraceparent());
-        // $content .= sprintf('<meta name="sentry-trace-data" content="%s"/>', $span->getDescription());
+
+        return $content;
+    }
+
+    /**
+     * Retrieve the meta tags with baggage information to link this request to front-end requests.
+     * This propagates the Dynamic Sampling Context.
+     *
+     * @return string
+     */
+    public static function sentryBaggageMeta(): string
+    {
+        $span = self::currentTracingSpan();
+
+        if ($span === null) {
+            return '';
+        }
+
+        $content = sprintf('<meta name="baggage" content="%s"/>', $span->toBaggage());
 
         return $content;
     }

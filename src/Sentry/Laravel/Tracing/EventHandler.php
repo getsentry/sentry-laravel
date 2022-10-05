@@ -16,10 +16,13 @@ use Sentry\SentrySdk;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\SpanStatus;
 use Sentry\Tracing\TransactionContext;
+use Sentry\Tracing\TransactionSource;
 
 class EventHandler
 {
     public const QUEUE_PAYLOAD_TRACE_PARENT_DATA = 'sentry_trace_parent_data';
+
+    public const QUEUE_PAYLOAD_BAGGAGE_DATA = 'sentry_baggage_data';
 
     /**
      * Map event handlers to events.
@@ -153,6 +156,7 @@ class EventHandler
 
                 if ($currentSpan !== null && $payload !== null) {
                     $payload[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] = $currentSpan->toTraceparent();
+                    $payload[self::QUEUE_PAYLOAD_BAGGAGE_DATA] = $currentSpan->toBaggage();
                 }
 
                 return $payload;
@@ -293,11 +297,10 @@ class EventHandler
         }
 
         if ($parentSpan === null) {
+            $baggage = $event->job->payload()[self::QUEUE_PAYLOAD_BAGGAGE_DATA] ?? null;
             $traceParent = $event->job->payload()[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] ?? null;
 
-            $context = $traceParent === null
-                ? new TransactionContext
-                : TransactionContext::fromSentryTrace($traceParent);
+            $context = TransactionContext::fromHeaders($traceParent ?? '', $baggage ?? '');
 
             // If the parent transaction was not sampled we also stop the queue job from being recorded
             if ($context->getParentSampled() === false) {
@@ -325,6 +328,7 @@ class EventHandler
 
         if ($context instanceof TransactionContext) {
             $context->setName($resolvedJobName ?? $event->job->getName());
+            $context->setSource(TransactionSource::task());
         }
 
         $context->setOp('queue.process');
