@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 2.14.0
+
+- Fix not listening to queue events because `QueueManager` is registered as `queue` in the container and not by it's class name (#568)
+- Fix status code not populated on transaction if response did not inherit from `Illuminate\Http\Response` like `Illuminate\Http\JsonResponse` (#573)
+- Align Span Operations with new spec (#574)
+- Fix broken `SetRequestMiddleware` on Laravel < 6.0 (#575)
+- Also extract the authenticated user `email` and `username` attributes if available (#577)
+
 ## 2.13.0
 
 - Only catch `BindingResolutionException` when trying to get the PSR-7 request object from the container
