@@ -297,12 +297,10 @@ class EventHandler
         }
 
         if ($parentSpan === null) {
-            $traceParent = $event->job->payload()[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] ?? null;
             $baggage = $event->job->payload()[self::QUEUE_PAYLOAD_BAGGAGE_DATA] ?? null;
+            $traceParent = $event->job->payload()[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] ?? null;
 
-            $context = $traceParent === null
-                ? new TransactionContext
-                : TransactionContext::fromHeaders($traceParent, $baggage);
+            $context = TransactionContext::fromHeaders($traceParent ?? '', $baggage ?? '');
 
             // If the parent transaction was not sampled we also stop the queue job from being recorded
             if ($context->getParentSampled() === false) {

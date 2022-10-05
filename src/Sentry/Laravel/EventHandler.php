@@ -283,7 +283,7 @@ class EventHandler
      */
     protected function routerMatchedHandler(Route $route)
     {
-        $routeName = Integration::extractNameForRoute($route);
+        [$routeName] = Integration::extractNameAndSourceForRoute($route);
 
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,
