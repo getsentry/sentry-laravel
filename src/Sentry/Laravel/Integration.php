@@ -124,6 +124,7 @@ class Integration implements IntegrationInterface
      *
      * @return string
      *
+     * @internal   This helper is used in various places to extra meaninful info from a Laravel Route object.
      * @deprecated This will be removed in version 3.0, use `extractNameAndSourceForRoute` instead.
      */
     public static function extractNameForRoute(Route $route): string
@@ -137,6 +138,8 @@ class Integration implements IntegrationInterface
      * @param \Illuminate\Routing\Route $route
      *
      * @return array{0: string, 1: \Sentry\Tracing\TransactionSource}
+     *
+     * @internal This helper is used in various places to extra meaninful info from a Laravel Route object.
      */
     public static function extractNameAndSourceForRoute(Route $route): array
     {
@@ -172,6 +175,7 @@ class Integration implements IntegrationInterface
      *
      * @return string
      *
+     * @internal   This helper is used in various places to extra meaninful info from a Lumen route data.
      * @deprecated This will be removed in version 3.0, use `extractNameAndSourceForLumenRoute` instead.
      */
     public static function extractNameForLumenRoute(array $routeData, string $path): string
@@ -186,6 +190,8 @@ class Integration implements IntegrationInterface
      * @param string $path      The path of the request
      *
      * @return array{0: string, 1: \Sentry\Tracing\TransactionSource}
+     *
+     * @internal This helper is used in various places to extra meaninful info from a Lumen route data.
      */
     public static function extractNameAndSourceForLumenRoute(array $routeData, string $path): array
     {
