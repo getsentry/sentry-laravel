@@ -10,6 +10,8 @@ use Illuminate\Database\Events as DatabaseEvents;
 use Illuminate\Queue\Events as QueueEvents;
 use Illuminate\Queue\Queue;
 use Illuminate\Queue\QueueManager;
+use Illuminate\Routing\Events as RoutingEvents;
+use Illuminate\Routing\Route;
 use RuntimeException;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
@@ -30,6 +32,9 @@ class EventHandler
      * @var array
      */
     protected static $eventHandlerMap = [
+        'router.matched' => 'routerMatched',                    // Until Laravel 5.1
+        RoutingEvents\RouteMatched::class => 'routeMatched',    // Since Laravel 5.2
+
         'illuminate.query' => 'query',                          // Until Laravel 5.1
         DatabaseEvents\QueryExecuted::class => 'queryExecuted', // Since Laravel 5.2
     ];
@@ -122,6 +127,11 @@ class EventHandler
 
     /**
      * Attach all event handlers.
+     *
+     * @uses self::routeMatchedHandler()
+     * @uses self::routerMatchedHandler()
+     * @uses self::queryHandler()
+     * @uses self::queryExecutedHandler()
      */
     public function subscribe(): void
     {
@@ -141,6 +151,10 @@ class EventHandler
      * Attach all queue event handlers.
      *
      * @param \Illuminate\Queue\QueueManager $queue
+     *
+     * @uses self::queueJobProcessedHandler()
+     * @uses self::queueJobProcessingHandler()
+     * @uses self::queueJobExceptionOccurredHandler()
      */
     public function subscribeQueueEvents(QueueManager $queue): void
     {
@@ -185,7 +199,7 @@ class EventHandler
      * @param string $method
      * @param array  $arguments
      */
-    public function __call($method, $arguments)
+    public function __call(string $method, array $arguments)
     {
         $handlerMethod = "{$method}Handler";
 
@@ -198,6 +212,35 @@ class EventHandler
         } catch (Exception $exception) {
             // Ignore
         }
+    }
+
+    /**
+     * Until Laravel 5.1
+     *
+     * @param Route $route
+     */
+    protected function routerMatchedHandler(Route $route): void
+    {
+        $transaction = Integration::currentTransaction();
+
+        if ($transaction === null) {
+            return;
+        }
+
+        [$transactionName, $transactionSource] = Integration::extractNameAndSourceForRoute($route);
+
+        $transaction->setName($transactionName);
+        $transaction->getMetadata()->setSource($transactionSource);
+    }
+
+    /**
+     * Since Laravel 5.2
+     *
+     * @param \Illuminate\Routing\Events\RouteMatched $match
+     */
+    protected function routeMatchedHandler(RoutingEvents\RouteMatched $match): void
+    {
+        $this->routerMatchedHandler($match->route);
     }
 
     /**
@@ -249,7 +292,7 @@ class EventHandler
         $context->setEndTimestamp($context->getStartTimestamp() + $time / 1000);
 
         if ($this->traceSqlQueryOrigins) {
-            $queryOrigin = $this->resolveQueryOriginFromBacktrace($context);
+            $queryOrigin = $this->resolveQueryOriginFromBacktrace();
 
             if ($queryOrigin !== null) {
                 $context->setData(['sql.origin' => $queryOrigin]);
@@ -277,12 +320,12 @@ class EventHandler
         return "{$filePath}:{$firstAppFrame->getLine()}";
     }
 
-    /*
+    /**
      * Since Laravel 5.2
      *
      * @param \Illuminate\Queue\Events\JobProcessing $event
      */
-    protected function queueJobProcessingHandler(QueueEvents\JobProcessing $event)
+    protected function queueJobProcessingHandler(QueueEvents\JobProcessing $event): void
     {
         $parentSpan = Integration::currentTracingSpan();
 
@@ -352,7 +395,7 @@ class EventHandler
      *
      * @param \Illuminate\Queue\Events\JobExceptionOccurred $event
      */
-    protected function queueJobExceptionOccurredHandler(QueueEvents\JobExceptionOccurred $event)
+    protected function queueJobExceptionOccurredHandler(QueueEvents\JobExceptionOccurred $event): void
     {
         $this->afterQueuedJob(SpanStatus::internalError());
     }
@@ -362,7 +405,7 @@ class EventHandler
      *
      * @param \Illuminate\Queue\Events\JobProcessed $event
      */
-    protected function queueJobProcessedHandler(QueueEvents\JobProcessed $event)
+    protected function queueJobProcessedHandler(QueueEvents\JobProcessed $event): void
     {
         $this->afterQueuedJob(SpanStatus::ok());
     }
