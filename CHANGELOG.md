@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix not setting the correct SDK ID and version when running the `sentry:test` command (#582)
+
 ## 2.14.0
 
 - Fix not listening to queue events because `QueueManager` is registered as `queue` in the container and not by it's class name (#568)
