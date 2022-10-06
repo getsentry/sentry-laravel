@@ -30,8 +30,7 @@ class EventHandler
      * @var array
      */
     protected static $eventHandlerMap = [
-        'illuminate.query' => 'query',                          // Until Laravel 5.1
-        DatabaseEvents\QueryExecuted::class => 'queryExecuted', // Since Laravel 5.2
+        DatabaseEvents\QueryExecuted::class => 'queryExecuted',
     ];
 
     /**
@@ -40,9 +39,9 @@ class EventHandler
      * @var array
      */
     protected static $queueEventHandlerMap = [
-        QueueEvents\JobProcessing::class => 'queueJobProcessing',               // Since Laravel 5.2
-        QueueEvents\JobProcessed::class => 'queueJobProcessed',                 // Since Laravel 5.2
-        QueueEvents\JobExceptionOccurred::class => 'queueJobExceptionOccurred', // Since Laravel 5.2
+        QueueEvents\JobProcessing::class => 'queueJobProcessing',
+        QueueEvents\JobProcessed::class => 'queueJobProcessed',
+        QueueEvents\JobExceptionOccurred::class => 'queueJobExceptionOccurred',
     ];
 
     /**
@@ -149,19 +148,16 @@ class EventHandler
             return;
         }
 
-        // The payload create callback was introduced in Laravel 5.7 so we need to guard against older versions
-        if (method_exists(Queue::class, 'createPayloadUsing')) {
-            Queue::createPayloadUsing(static function (?string $connection, ?string $queue, ?array $payload): ?array {
-                $currentSpan = Integration::currentTracingSpan();
+        Queue::createPayloadUsing(static function (?string $connection, ?string $queue, ?array $payload): ?array {
+            $currentSpan = Integration::currentTracingSpan();
 
-                if ($currentSpan !== null && $payload !== null) {
-                    $payload[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] = $currentSpan->toTraceparent();
-                    $payload[self::QUEUE_PAYLOAD_BAGGAGE_DATA] = $currentSpan->toBaggage();
-                }
+            if ($currentSpan !== null && $payload !== null) {
+                $payload[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] = $currentSpan->toTraceparent();
+                $payload[self::QUEUE_PAYLOAD_BAGGAGE_DATA] = $currentSpan->toBaggage();
+            }
 
-                return $payload;
-            });
-        }
+            return $payload;
+        });
 
         $queue->looping(function () {
             $this->afterQueuedJob();
@@ -185,7 +181,7 @@ class EventHandler
      * @param string $method
      * @param array  $arguments
      */
-    public function __call($method, $arguments)
+    public function __call(string $method, array $arguments)
     {
         $handlerMethod = "{$method}Handler";
 
@@ -200,36 +196,7 @@ class EventHandler
         }
     }
 
-    /**
-     * Until Laravel 5.1
-     *
-     * @param string $query
-     * @param array  $bindings
-     * @param int    $time
-     * @param string $connectionName
-     */
-    protected function queryHandler($query, $bindings, $time, $connectionName): void
-    {
-        $this->recordQuerySpan($query, $time);
-    }
-
-    /**
-     * Since Laravel 5.2
-     *
-     * @param \Illuminate\Database\Events\QueryExecuted $query
-     */
     protected function queryExecutedHandler(DatabaseEvents\QueryExecuted $query): void
-    {
-        $this->recordQuerySpan($query->sql, $query->time);
-    }
-
-    /**
-     * Helper to add an query breadcrumb.
-     *
-     * @param string     $query
-     * @param float|null $time
-     */
-    private function recordQuerySpan($query, $time): void
     {
         if (!$this->traceSqlQueries) {
             return;
@@ -244,12 +211,12 @@ class EventHandler
 
         $context = new SpanContext();
         $context->setOp('db.sql.query');
-        $context->setDescription($query);
-        $context->setStartTimestamp(microtime(true) - $time / 1000);
-        $context->setEndTimestamp($context->getStartTimestamp() + $time / 1000);
+        $context->setDescription($query->sql);
+        $context->setStartTimestamp(microtime(true) - $query->time / 1000);
+        $context->setEndTimestamp($context->getStartTimestamp() + $query->time / 1000);
 
         if ($this->traceSqlQueryOrigins) {
-            $queryOrigin = $this->resolveQueryOriginFromBacktrace($context);
+            $queryOrigin = $this->resolveQueryOriginFromBacktrace();
 
             if ($queryOrigin !== null) {
                 $context->setData(['sql.origin' => $queryOrigin]);
@@ -277,12 +244,7 @@ class EventHandler
         return "{$filePath}:{$firstAppFrame->getLine()}";
     }
 
-    /*
-     * Since Laravel 5.2
-     *
-     * @param \Illuminate\Queue\Events\JobProcessing $event
-     */
-    protected function queueJobProcessingHandler(QueueEvents\JobProcessing $event)
+    protected function queueJobProcessingHandler(QueueEvents\JobProcessing $event): void
     {
         $parentSpan = Integration::currentTracingSpan();
 
@@ -347,22 +309,12 @@ class EventHandler
         SentrySdk::getCurrentHub()->setSpan($this->currentQueueJobSpan);
     }
 
-    /**
-     * Since Laravel 5.2
-     *
-     * @param \Illuminate\Queue\Events\JobExceptionOccurred $event
-     */
-    protected function queueJobExceptionOccurredHandler(QueueEvents\JobExceptionOccurred $event)
+    protected function queueJobExceptionOccurredHandler(QueueEvents\JobExceptionOccurred $event): void
     {
         $this->afterQueuedJob(SpanStatus::internalError());
     }
 
-    /**
-     * Since Laravel 5.2
-     *
-     * @param \Illuminate\Queue\Events\JobProcessed $event
-     */
-    protected function queueJobProcessedHandler(QueueEvents\JobProcessed $event)
+    protected function queueJobProcessedHandler(QueueEvents\JobProcessed $event): void
     {
         $this->afterQueuedJob(SpanStatus::ok());
     }

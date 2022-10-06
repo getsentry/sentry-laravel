@@ -80,7 +80,7 @@ try {
 
 - Laravel `<= 4.2.x` is supported until `0.8.x`
 - Laravel `<= 5.7.x` on PHP `<= 7.0` is supported until `0.11.x`
-- Laravel `>= 5.x.x` on PHP `>= 7.1` is supported in all versions
+- Laravel `>= 5.x.x` on PHP `>= 7.1` is supported until `2.14.x`
 - Laravel `>= 6.x.x` on PHP `>= 7.2` is supported starting from `1.2.0`
 - Laravel `>= 7.x.x` on PHP `>= 7.2` is supported starting from `1.7.0`
 - Laravel `>= 8.x.x` on PHP `>= 7.3` is supported starting from `1.9.0`

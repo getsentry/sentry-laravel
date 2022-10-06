@@ -2,6 +2,10 @@
 
 namespace Sentry\Laravel\Tests;
 
+use Illuminate\Database\Connection;
+use Illuminate\Database\Events\QueryExecuted;
+use Mockery;
+
 class SqlQueriesInBreadcrumbsTest extends SentryLaravelTestCase
 {
     public function testSqlQueriesAreRecordedWhenEnabled()
@@ -12,12 +16,15 @@ class SqlQueriesInBreadcrumbsTest extends SentryLaravelTestCase
 
         $this->assertTrue($this->app['config']->get('sentry.breadcrumbs.sql_queries'));
 
-        $this->dispatchLaravelEvent('illuminate.query', [
+        $connection = Mockery::mock(Connection::class)
+            ->shouldReceive('getName')->andReturn('test');
+
+        $this->dispatchLaravelEvent(new QueryExecuted(
             $query = 'SELECT * FROM breadcrumbs WHERE bindings = ?;',
             ['1'],
             10,
-            'test',
-        ]);
+            $connection
+        ));
 
         $lastBreadcrumb = $this->getLastBreadcrumb();
 
