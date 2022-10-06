@@ -7,6 +7,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Str;
 use Psr\Log\AbstractLogger;
 use Sentry\ClientBuilder;
+use Sentry\Laravel\Version;
 use Sentry\State\Hub;
 use Sentry\State\HubInterface;
 use Sentry\Tracing\SpanContext;
@@ -98,6 +99,10 @@ class TestCommand extends Command
 
             return 1;
         }
+
+        // Set the Laravel SDK identifier and version
+        $clientBuilder->setSdkIdentifier(Version::SDK_IDENTIFIER);
+        $clientBuilder->setSdkVersion(Version::SDK_VERSION);
 
         // We set a logger so we can surface errors thrown internally by the SDK
         $clientBuilder->setLogger(new class($this) extends AbstractLogger {
