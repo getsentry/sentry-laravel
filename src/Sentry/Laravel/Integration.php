@@ -119,21 +119,6 @@ class Integration implements IntegrationInterface
     }
 
     /**
-     * Extract the readable name for a route.
-     *
-     * @param \Illuminate\Routing\Route $route
-     *
-     * @return string
-     *
-     * @internal   This helper is used in various places to extra meaninful info from a Laravel Route object.
-     * @deprecated This will be removed in version 3.0, use `extractNameAndSourceForRoute` instead.
-     */
-    public static function extractNameForRoute(Route $route): string
-    {
-        return self::extractNameAndSourceForRoute($route)[0];
-    }
-
-    /**
      * Extract the readable name for a route and the transaction source for where that route name came from.
      *
      * @param \Illuminate\Routing\Route $route
