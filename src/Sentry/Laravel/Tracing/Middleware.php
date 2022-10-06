@@ -91,9 +91,8 @@ class Middleware
      * @param float|null $timestamp The unix timestamp of the booted event, default to `microtime(true)` if not `null`.
      *
      * @return void
-     * @internal This method should only be invoked right after the application has finished "booting":
-     *           For Laravel this is from the application `booted` callback.
-     *           For Lumen this is right before returning from the `bootstrap/app.php` file.
+     *
+     * @internal This method should only be invoked right after the application has finished "booting".
      */
     public function setBootedTimestamp(?float $timestamp = null): void
     {
@@ -188,18 +187,6 @@ class Middleware
             $this->transaction->setData([
                 'name' => $route->getName(),
                 'action' => $route->getActionName(),
-                'method' => $request->getMethod(),
-            ]);
-        } elseif (is_array($route) && count($route) === 3) {
-            [$transactionName, $transactionSource] = Integration::extractNameAndSourceForLumenRoute($route, $request->path());
-
-            $this->updateTransactionNameIfDefault($transactionName, $transactionSource);
-
-            $action = $route[1] ?? [];
-
-            $this->transaction->setData([
-                'name' => $action['as'] ?? null,
-                'action' => $action['uses'] ?? 'Closure',
                 'method' => $request->getMethod(),
             ]);
         }
