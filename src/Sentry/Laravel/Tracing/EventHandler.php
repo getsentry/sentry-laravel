@@ -295,24 +295,18 @@ class EventHandler
             $context = new SpanContext;
         }
 
+        $resolvedJobName = $event->job->resolveName();
+
         $job = [
             'job' => $event->job->getName(),
             'queue' => $event->job->getQueue(),
+            'resolved' => $event->job->resolveName(),
             'attempts' => $event->job->attempts(),
             'connection' => $event->connectionName,
         ];
 
-        // Resolve name exists only from Laravel 5.3+
-        $resolvedJobName = method_exists($event->job, 'resolveName')
-            ? $event->job->resolveName()
-            : null;
-
-        if ($resolvedJobName !== null) {
-            $job['resolved'] = $resolvedJobName;
-        }
-
         if ($context instanceof TransactionContext) {
-            $context->setName($resolvedJobName ?? $event->job->getName());
+            $context->setName($resolvedJobName);
             $context->setSource(TransactionSource::task());
         }
 
