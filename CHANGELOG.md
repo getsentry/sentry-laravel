@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Drop support for Laravel Lumen (#579)
 - Drop support for Laravel 5.x (#581)
 
 ## 2.14.0

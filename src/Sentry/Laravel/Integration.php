@@ -168,68 +168,6 @@ class Integration implements IntegrationInterface
     }
 
     /**
-     * Extract the readable name for a Lumen route.
-     *
-     * @param array  $routeData The array of route data
-     * @param string $path      The path of the request
-     *
-     * @return string
-     *
-     * @internal   This helper is used in various places to extra meaninful info from a Lumen route data.
-     * @deprecated This will be removed in version 3.0, use `extractNameAndSourceForLumenRoute` instead.
-     */
-    public static function extractNameForLumenRoute(array $routeData, string $path): string
-    {
-        return self::extractNameAndSourceForLumenRoute($routeData, $path)[0];
-    }
-
-    /**
-     * Extract the readable name for a Lumen route and the transaction source for where that route name came from.
-     *
-     * @param array  $routeData The array of route data
-     * @param string $path      The path of the request
-     *
-     * @return array{0: string, 1: \Sentry\Tracing\TransactionSource}
-     *
-     * @internal This helper is used in various places to extra meaninful info from a Lumen route data.
-     */
-    public static function extractNameAndSourceForLumenRoute(array $routeData, string $path): array
-    {
-        $source = null;
-        $routeName = null;
-
-        $route = $routeData[1] ?? [];
-
-        // some.action (route name/alias)
-        if (!empty($route['as'])) {
-            $source = TransactionSource::component();
-            $routeName = self::extractNameForNamedRoute($route['as']);
-        }
-
-        // Some\Controller@someAction (controller action)
-        if (empty($routeName) && !empty($route['uses'])) {
-            $source = TransactionSource::component();
-            $routeName = self::extractNameForActionRoute($route['uses']);
-        }
-
-        // /some/{action} // Fallback to the route uri (with parameter placeholders)
-        if (empty($routeName) || $routeName === 'Closure') {
-            $routeUri = array_reduce(
-                array_keys($routeData[2]),
-                static function ($carry, $key) use ($routeData) {
-                    return str_replace($routeData[2][$key], "{{$key}}", $carry);
-                },
-                $path
-            );
-
-            $source = TransactionSource::url();
-            $routeName = '/' . ltrim($routeUri, '/');
-        }
-
-        return [$routeName, $source];
-    }
-
-    /**
      * Take a route name and return it only if it's a usable route name.
      *
      * @param string $name
