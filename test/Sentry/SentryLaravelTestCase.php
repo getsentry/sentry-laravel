@@ -42,14 +42,9 @@ abstract class SentryLaravelTestCase extends LaravelTestCase
         $this->refreshApplication();
     }
 
-    protected function dispatchLaravelEvent($event, array $payload = [])
+    protected function dispatchLaravelEvent($event, array $payload = []): void
     {
-        $dispatcher = $this->app['events'];
-
-        // Laravel 5.4+ uses the dispatch method to dispatch/fire events
-        return method_exists($dispatcher, 'dispatch')
-            ? $dispatcher->dispatch($event, $payload)
-            : $dispatcher->fire($event, $payload);
+        $this->app['events']->dispatch($event, $payload);
     }
 
     protected function getHubFromContainer(): HubInterface

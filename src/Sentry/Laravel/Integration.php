@@ -211,8 +211,7 @@ class Integration implements IntegrationInterface
         }
 
         // Strip away the base namespace from the action name
-        // @see: Str::after, but this is not available before Laravel 5.4 so we use a inlined version
-        return array_reverse(explode($baseNamespace . '\\', $routeName, 2))[0];
+        return ltrim(Str::after($routeName, $baseNamespace), '\\');
     }
 
     /**
