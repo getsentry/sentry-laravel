@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Drop support for Laravel Lumen (#579)
+
 ## 2.14.0
 
 - Fix not listening to queue events because `QueueManager` is registered as `queue` in the container and not by it's class name (#568)
