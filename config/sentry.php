@@ -45,6 +45,9 @@ return [
 
         // Indicates if the tracing integrations supplied by Sentry should be loaded
         'default_integrations' => true,
+
+        // Indicates that requests without a matching route should be traced
+        'missing_routes' => false,
     ],
 
     // @see: https://docs.sentry.io/platforms/php/configuration/options/#send-default-pii

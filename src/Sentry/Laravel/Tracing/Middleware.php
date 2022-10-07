@@ -63,6 +63,11 @@ class Middleware
     public function terminate(Request $request, $response): void
     {
         if ($this->transaction !== null && app()->bound(HubInterface::class)) {
+            // We stop here if a route has not been matched unless we are configured to trace missing routes
+            if (config('sentry.tracing.missing_routes', false) === false && $request->route() === null) {
+                return;
+            }
+
             if ($this->appSpan !== null) {
                 $this->appSpan->finish();
             }
