@@ -23,11 +23,6 @@ class Integration implements IntegrationInterface
     private static $transaction;
 
     /**
-     * @var null|string
-     */
-    private static $baseControllerNamespace;
-
-    /**
      * {@inheritdoc}
      */
     public function setupOnce(): void
@@ -96,14 +91,6 @@ class Integration implements IntegrationInterface
     }
 
     /**
-     * @param null|string $namespace
-     */
-    public static function setControllersBaseNamespace(?string $namespace): void
-    {
-        self::$baseControllerNamespace = $namespace !== null ? trim($namespace, '\\') : null;
-    }
-
-    /**
      * Block until all async events are processed for the HTTP transport.
      *
      * @internal This is not part of the public API and is here temporarily until
@@ -129,75 +116,10 @@ class Integration implements IntegrationInterface
      */
     public static function extractNameAndSourceForRoute(Route $route): array
     {
-        $source = null;
-        $routeName = null;
-
-        // some.action (route name/alias)
-        if ($route->getName()) {
-            $source = TransactionSource::component();
-            $routeName = self::extractNameForNamedRoute($route->getName());
-        }
-
-        // Some\Controller@someAction (controller action)
-        if (empty($routeName) && $route->getActionName()) {
-            $source = TransactionSource::component();
-            $routeName = self::extractNameForActionRoute($route->getActionName());
-        }
-
-        // /some/{action} // Fallback to the route uri (with parameter placeholders)
-        if (empty($routeName) || $routeName === 'Closure') {
-            $source = TransactionSource::route();
-            $routeName = '/' . ltrim($route->uri(), '/');
-        }
-
-        return [$routeName, $source];
-    }
-
-    /**
-     * Take a route name and return it only if it's a usable route name.
-     *
-     * @param string $name
-     *
-     * @return string|null
-     */
-    private static function extractNameForNamedRoute(string $name): ?string
-    {
-        // Laravel 7 route caching generates a route names if the user didn't specify one
-        // theirselfs to optimize route matching. These route names are useless to the
-        // developer so if we encounter a generated route name we discard the value
-        if (Str::contains($name, 'generated::')) {
-            return null;
-        }
-
-        // If the route name ends with a `.` we assume an incomplete group name prefix
-        // we discard this value since it will most likely not mean anything to the
-        // developer and will be duplicated by other unnamed routes in the group
-        if (Str::endsWith($name, '.')) {
-            return null;
-        }
-
-        return $name;
-    }
-
-    /**
-     * Take a controller action and strip away the base namespace if needed.
-     *
-     * @param string $action
-     *
-     * @return string
-     */
-    private static function extractNameForActionRoute(string $action): string
-    {
-        $routeName = ltrim($action, '\\');
-
-        $baseNamespace = self::$baseControllerNamespace ?? '';
-
-        if (empty($baseNamespace)) {
-            return $routeName;
-        }
-
-        // Strip away the base namespace from the action name
-        return ltrim(Str::after($routeName, $baseNamespace), '\\');
+        return [
+            '/' . ltrim($route->uri(), '/'),
+            TransactionSource::route()
+        ];
     }
 
     /**
