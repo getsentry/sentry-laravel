@@ -135,9 +135,7 @@ class Integration implements IntegrationInterface
             return '';
         }
 
-        $content = sprintf('<meta name="sentry-trace" content="%s"/>', $span->toTraceparent());
-
-        return $content;
+        return sprintf('<meta name="sentry-trace" content="%s"/>', $span->toTraceparent());
     }
 
     /**
@@ -154,9 +152,7 @@ class Integration implements IntegrationInterface
             return '';
         }
 
-        $content = sprintf('<meta name="baggage" content="%s"/>', $span->toBaggage());
-
-        return $content;
+        return sprintf('<meta name="baggage" content="%s"/>', $span->toBaggage());
     }
 
     /**
