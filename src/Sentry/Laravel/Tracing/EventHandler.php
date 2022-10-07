@@ -121,6 +121,8 @@ class EventHandler
 
     /**
      * Attach all event handlers.
+     *
+     * @uses self::queryExecutedHandler()
      */
     public function subscribe(): void
     {
@@ -140,6 +142,10 @@ class EventHandler
      * Attach all queue event handlers.
      *
      * @param \Illuminate\Queue\QueueManager $queue
+     *
+     * @uses self::queueJobProcessingHandler()
+     * @uses self::queueJobProcessedHandler()
+     * @uses self::queueJobExceptionOccurredHandler()
      */
     public function subscribeQueueEvents(QueueManager $queue): void
     {
