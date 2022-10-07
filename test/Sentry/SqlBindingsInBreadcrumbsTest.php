@@ -2,9 +2,13 @@
 
 namespace Sentry\Laravel\Tests;
 
+use Illuminate\Database\Connection;
+use Illuminate\Database\Events\QueryExecuted;
+use Mockery;
+
 class SqlBindingsInBreadcrumbsTest extends SentryLaravelTestCase
 {
-    public function testSqlBindingsAreRecordedWhenEnabled()
+    public function testSqlBindingsAreRecordedWhenEnabled(): void
     {
         $this->resetApplicationWithConfig([
             'sentry.breadcrumbs.sql_bindings' => true,
@@ -12,12 +16,15 @@ class SqlBindingsInBreadcrumbsTest extends SentryLaravelTestCase
 
         $this->assertTrue($this->app['config']->get('sentry.breadcrumbs.sql_bindings'));
 
-        $this->dispatchLaravelEvent('illuminate.query', [
+        $connection = Mockery::mock(Connection::class)
+            ->shouldReceive('getName')->andReturn('test');
+
+        $this->dispatchLaravelEvent(new QueryExecuted(
             $query = 'SELECT * FROM breadcrumbs WHERE bindings = ?;',
             $bindings = ['1'],
             10,
-            'test',
-        ]);
+            $connection
+        ));
 
         $lastBreadcrumb = $this->getLastBreadcrumb();
 
@@ -25,7 +32,7 @@ class SqlBindingsInBreadcrumbsTest extends SentryLaravelTestCase
         $this->assertEquals($bindings, $lastBreadcrumb->getMetadata()['bindings']);
     }
 
-    public function testSqlBindingsAreRecordedWhenDisabled()
+    public function testSqlBindingsAreRecordedWhenDisabled(): void
     {
         $this->resetApplicationWithConfig([
             'sentry.breadcrumbs.sql_bindings' => false,
@@ -33,12 +40,15 @@ class SqlBindingsInBreadcrumbsTest extends SentryLaravelTestCase
 
         $this->assertFalse($this->app['config']->get('sentry.breadcrumbs.sql_bindings'));
 
-        $this->dispatchLaravelEvent('illuminate.query', [
+        $connection = Mockery::mock(Connection::class)
+            ->shouldReceive('getName')->andReturn('test');
+
+        $this->dispatchLaravelEvent(new QueryExecuted(
             $query = 'SELECT * FROM breadcrumbs WHERE bindings <> ?;',
             ['1'],
             10,
-            'test',
-        ]);
+            $connection
+        ));
 
         $lastBreadcrumb = $this->getLastBreadcrumb();
 

@@ -23,10 +23,6 @@ class IntegrationTest extends SentryLaravelTestCase
 
     public function testTransactionIsSetWhenRouteMatchedEventIsFired(): void
     {
-        if (!class_exists(RouteMatched::class)) {
-            $this->markTestSkipped('RouteMatched event class does not exist on this version of Laravel.');
-        }
-
         Integration::setTransaction(null);
 
         $event = new RouteMatched(
@@ -35,17 +31,6 @@ class IntegrationTest extends SentryLaravelTestCase
         );
 
         $this->dispatchLaravelEvent($event);
-
-        $this->assertSame($routeUrl, Integration::getTransaction());
-    }
-
-    public function testTransactionIsSetWhenRouterMatchedEventIsFired(): void
-    {
-        Integration::setTransaction(null);
-
-        $this->dispatchLaravelEvent('router.matched', [
-            new Route('GET', $routeUrl = '/sentry-router-matched-event', []),
-        ]);
 
         $this->assertSame($routeUrl, Integration::getTransaction());
     }

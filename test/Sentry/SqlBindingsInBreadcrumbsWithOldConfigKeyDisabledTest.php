@@ -3,6 +3,9 @@
 namespace Sentry\Laravel\Tests;
 
 use Illuminate\Config\Repository;
+use Illuminate\Database\Connection;
+use Illuminate\Database\Events\QueryExecuted;
+use Mockery;
 
 class SqlBindingsInBreadcrumbsWithOldConfigKeyDisabledTest extends SentryLaravelTestCase
 {
@@ -17,16 +20,19 @@ class SqlBindingsInBreadcrumbsWithOldConfigKeyDisabledTest extends SentryLaravel
         $app['config'] = new Repository($config);
     }
 
-    public function testSqlBindingsAreRecordedWhenDisabledByOldConfigKey()
+    public function testSqlBindingsAreRecordedWhenDisabledByOldConfigKey(): void
     {
         $this->assertFalse($this->app['config']->get('sentry')['breadcrumbs.sql_bindings']);
 
-        $this->dispatchLaravelEvent('illuminate.query', [
+        $connection = Mockery::mock(Connection::class)
+            ->shouldReceive('getName')->andReturn('test');
+
+        $this->dispatchLaravelEvent(new QueryExecuted(
             $query = 'SELECT * FROM breadcrumbs WHERE bindings = ?;',
             ['1'],
             10,
-            'test',
-        ]);
+            $connection
+        ));
 
         $lastBreadcrumb = $this->getLastBreadcrumb();
 

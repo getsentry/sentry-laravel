@@ -11,13 +11,6 @@ use Sentry\Laravel\ServiceProvider;
 class PublishCommand extends Command
 {
     /**
-     * Laravel 5.0.x: The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $name = 'sentry:publish';
-
-    /**
      * The name and signature of the console command.
      *
      * @var string

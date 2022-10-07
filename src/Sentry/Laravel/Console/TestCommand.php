@@ -7,21 +7,16 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Str;
 use Psr\Log\AbstractLogger;
 use Sentry\ClientBuilder;
+use Sentry\Laravel\Version;
 use Sentry\State\Hub;
 use Sentry\State\HubInterface;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\TransactionContext;
+use Sentry\Tracing\TransactionSource;
 use Throwable;
 
 class TestCommand extends Command
 {
-    /**
-     * Laravel 5.0.x: The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $name = 'sentry:test';
-
     /**
      * The name and signature of the console command.
      *
@@ -98,6 +93,10 @@ class TestCommand extends Command
 
             return 1;
         }
+
+        // Set the Laravel SDK identifier and version
+        $clientBuilder->setSdkIdentifier(Version::SDK_IDENTIFIER);
+        $clientBuilder->setSdkVersion(Version::SDK_VERSION);
 
         // We set a logger so we can surface errors thrown internally by the SDK
         $clientBuilder->setLogger(new class($this) extends AbstractLogger {

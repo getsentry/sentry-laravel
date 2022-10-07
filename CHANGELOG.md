@@ -5,6 +5,8 @@
 - Drop support for Laravel Lumen (#579)
 - Set the tracing transaction name on the `Illuminate\Routing\Events\RouteMatched` instead of at the end of the request (#580)
 - Remove `Sentry\Integration::extractNameForRoute()`, it's alternative `Sentry\Integration::extractNameAndSourceForRoute()` is marked as `@internal` (#580)
+- Drop support for Laravel 5.x (#581)
+- Fix not setting the correct SDK ID and version when running the `sentry:test` command (#582)
 
 ## 2.14.0
 

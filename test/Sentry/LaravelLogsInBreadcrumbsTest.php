@@ -2,9 +2,12 @@
 
 namespace Sentry\Laravel\Tests;
 
+use Illuminate\Log\Events\MessageLogged;
+use Mockery;
+
 class LaravelLogsInBreadcrumbsTest extends SentryLaravelTestCase
 {
-    public function testLaravelLogsAreRecordedWhenEnabled()
+    public function testLaravelLogsAreRecordedWhenEnabled(): void
     {
         $this->resetApplicationWithConfig([
             'sentry.breadcrumbs.logs' => true,
@@ -12,11 +15,11 @@ class LaravelLogsInBreadcrumbsTest extends SentryLaravelTestCase
 
         $this->assertTrue($this->app['config']->get('sentry.breadcrumbs.logs'));
 
-        $this->dispatchLaravelEvent('illuminate.log', [
+        $this->dispatchLaravelEvent(new MessageLogged(
             $level = 'debug',
             $message = 'test message',
-            $context = ['1'],
-        ]);
+            $context = ['1']
+        ));
 
         $lastBreadcrumb = $this->getLastBreadcrumb();
 
@@ -25,7 +28,7 @@ class LaravelLogsInBreadcrumbsTest extends SentryLaravelTestCase
         $this->assertEquals($context, $lastBreadcrumb->getMetadata());
     }
 
-    public function testLaravelLogsAreRecordedWhenDisabled()
+    public function testLaravelLogsAreRecordedWhenDisabled(): void
     {
         $this->resetApplicationWithConfig([
             'sentry.breadcrumbs.logs' => false,

@@ -78,16 +78,21 @@ try {
 
 ## Laravel Version Compatibility
 
-- Laravel Lumen is supported until `2.14.x`
-- Laravel `<= 4.2.x` is supported until `0.8.x`
-- Laravel `<= 5.7.x` on PHP `<= 7.0` is supported until `0.11.x`
-- Laravel `>= 5.x.x` on PHP `>= 7.1` is supported in all versions
+The Laravel versions listed below are all currently supported:
+
 - Laravel `>= 6.x.x` on PHP `>= 7.2` is supported starting from `1.2.0`
 - Laravel `>= 7.x.x` on PHP `>= 7.2` is supported starting from `1.7.0`
 - Laravel `>= 8.x.x` on PHP `>= 7.3` is supported starting from `1.9.0`
 - Laravel `>= 9.x.x` on PHP `>= 8.0` is supported starting from `2.11.0`
 
-Please note that of version `>= 2.0.0` we require PHP Version `>= 7.2` because we are using our new [PHP SDK](https://github.com/getsentry/sentry-php) underneath.
+Please note that starting with version `>= 2.0.0` we require PHP Version `>= 7.2` because we are using our new [PHP SDK](https://github.com/getsentry/sentry-php) underneath.
+
+The Laravel and Lumen version listed below were supported in previous versions:
+
+- Laravel `<= 4.2.x` is supported until `0.8.x`
+- Laravel `<= 5.7.x` on PHP `<= 7.0` is supported until `0.11.x`
+- Laravel `>= 5.x.x` on PHP `>= 7.1` is supported until `2.14.x`
+- Laravel Lumen is supported until `2.14.x`
 
 ## Contributing to the SDK
 

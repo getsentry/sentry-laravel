@@ -10,10 +10,6 @@ class CommandInfoInBreadcrumbsTest extends SentryLaravelTestCase
 {
     public function testCommandInfoAreRecordedWhenEnabled()
     {
-        if ($this->shouldSkip()) {
-            $this->markTestSkipped('Laravel version <5.5 does not contain the events tested.');
-        }
-
         $this->resetApplicationWithConfig([
             'sentry.breadcrumbs.command_info' => true,
         ]);
@@ -30,10 +26,6 @@ class CommandInfoInBreadcrumbsTest extends SentryLaravelTestCase
 
     public function testCommandInfoAreRecordedWhenDisabled()
     {
-        if ($this->shouldSkip()) {
-            $this->markTestSkipped('Laravel version <5.5 does not contain the events tested.');
-        }
-
         $this->resetApplicationWithConfig([
             'sentry.breadcrumbs.command_info' => false,
         ]);
@@ -59,10 +51,5 @@ class CommandInfoInBreadcrumbsTest extends SentryLaravelTestCase
                 new BufferedOutput()
             )
         );
-    }
-
-    private function shouldSkip()
-    {
-        return !class_exists(CommandStarting::class);
     }
 }
