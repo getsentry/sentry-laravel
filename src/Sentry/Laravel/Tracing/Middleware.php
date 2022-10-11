@@ -11,7 +11,6 @@ use Sentry\State\HubInterface;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\TransactionContext;
-use Sentry\Tracing\TransactionSource;
 use Symfony\Component\HttpFoundation\Response;
 
 class Middleware
@@ -102,11 +101,11 @@ class Middleware
     private function startTransaction(Request $request, HubInterface $sentry): void
     {
         $requestStartTime = $request->server('REQUEST_TIME_FLOAT', microtime(true));
+        $sentryTraceHeader = $request->header('sentry-trace');
 
-        $context = TransactionContext::fromHeaders(
-            $request->header('sentry-trace', ''),
-            $request->header('baggage', '')
-        );
+        $context = $sentryTraceHeader
+            ? TransactionContext::fromSentryTrace($sentryTraceHeader)
+            : new TransactionContext;
 
         $context->setOp('http.server');
         $context->setData([
@@ -180,9 +179,9 @@ class Middleware
         $route = $request->route();
 
         if ($route instanceof Route) {
-            [$transactionName, $transactionSource] = Integration::extractNameAndSourceForRoute($route);
-
-            $this->updateTransactionNameIfDefault($transactionName, $transactionSource);
+            $this->updateTransactionNameIfDefault(
+                Integration::extractNameForRoute($route)
+            );
 
             $this->transaction->setData([
                 'name' => $route->getName(),
@@ -191,7 +190,7 @@ class Middleware
             ]);
         }
 
-        $this->updateTransactionNameIfDefault('/' . ltrim($request->path(), '/'), TransactionSource::url());
+        $this->updateTransactionNameIfDefault('/' . ltrim($request->path(), '/'));
     }
 
     private function hydrateResponseData(Response $response): void
@@ -199,7 +198,7 @@ class Middleware
         $this->transaction->setHttpStatus($response->getStatusCode());
     }
 
-    private function updateTransactionNameIfDefault(?string $name, ?TransactionSource $source): void
+    private function updateTransactionNameIfDefault(?string $name): void
     {
         // Ignore empty names (and `null`) for caller convenience
         if (empty($name)) {
@@ -214,6 +213,5 @@ class Middleware
         }
 
         $this->transaction->setName($name);
-        $this->transaction->getMetadata()->setSource($source ?? TransactionSource::custom());
     }
 }

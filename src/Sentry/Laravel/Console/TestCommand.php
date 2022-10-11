@@ -139,7 +139,6 @@ class TestCommand extends Command
             $transactionContext = new TransactionContext();
             $transactionContext->setSampled(true);
             $transactionContext->setName('Sentry Test Transaction');
-            $transactionContext->setSource(TransactionSource::custom());
             $transactionContext->setOp('sentry.test');
 
             $transaction = $hub->startTransaction($transactionContext);

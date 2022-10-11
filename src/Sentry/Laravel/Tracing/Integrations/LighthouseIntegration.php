@@ -13,7 +13,6 @@ use Sentry\Integration\IntegrationInterface;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
 use Sentry\Tracing\SpanContext;
-use Sentry\Tracing\TransactionSource;
 
 class LighthouseIntegration implements IntegrationInterface
 {
@@ -158,7 +157,7 @@ class LighthouseIntegration implements IntegrationInterface
             return;
         }
 
-        array_walk($groupedOperations, static function (&$operations, string $operationType) {
+        array_walk($groupedOperations, static function (array &$operations, string $operationType) {
             sort($operations, SORT_STRING);
 
             $operations = "{$operationType}{" . implode(',', $operations) . '}';
@@ -169,7 +168,6 @@ class LighthouseIntegration implements IntegrationInterface
         $transactionName = 'lighthouse?' . implode('&', $groupedOperations);
 
         $transaction->setName($transactionName);
-        $transaction->getMetadata()->setSource(TransactionSource::custom());
 
         Integration::setTransaction($transactionName);
     }
