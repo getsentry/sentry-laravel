@@ -11,6 +11,7 @@
 - Laravel versions 5.1 - 5.8 are no longer supported
     - Drop support for Laravel 5.x (#581)
 - Remove `Sentry\Integration::extractNameForRoute()`, it's alternative `Sentry\Integration::extractNameAndSourceForRoute()` is marked as `@internal` (#580)
+- Remove extracting route name or controller for transaction names (#583). This unifies the transaction names to a more concise format.
 
 **Other changes**
 
