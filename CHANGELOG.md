@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix extracting command input resulting in errors when calling Artisan commands programatically with `null` as an argument value (#589)
+
 ## 2.14.1
 
 - Fix not setting the correct SDK ID and version when running the `sentry:test` command (#582)
