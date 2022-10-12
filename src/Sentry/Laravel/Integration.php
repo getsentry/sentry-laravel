@@ -216,6 +216,17 @@ class Integration implements IntegrationInterface
 
     /**
      * Retrieve the meta tags with tracing information to link this request to front-end requests.
+     * This propagates the Dynamic Sampling Context.
+     *
+     * @return string
+     */
+    public static function sentryMeta(): string
+    {
+        return self::sentryTracingMeta() . self::sentryBaggageMeta();
+    }
+
+    /**
+     * Retrieve the `sentry-trace` meta tag with tracing information to link this request to front-end requests.
      *
      * @return string
      */
@@ -227,13 +238,11 @@ class Integration implements IntegrationInterface
             return '';
         }
 
-        $content = sprintf('<meta name="sentry-trace" content="%s"/>', $span->toTraceparent());
-
-        return $content;
+        return sprintf('<meta name="sentry-trace" content="%s"/>', $span->toTraceparent());
     }
 
     /**
-     * Retrieve the meta tags with baggage information to link this request to front-end requests.
+     * Retrieve the `baggage` meta tag with information to link this request to front-end requests.
      * This propagates the Dynamic Sampling Context.
      *
      * @return string
@@ -246,9 +255,7 @@ class Integration implements IntegrationInterface
             return '';
         }
 
-        $content = sprintf('<meta name="baggage" content="%s"/>', $span->toBaggage());
-
-        return $content;
+        return sprintf('<meta name="baggage" content="%s"/>', $span->toBaggage());
     }
 
     /**
