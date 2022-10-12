@@ -64,7 +64,9 @@
     },
     "extra": {
         "branch-alias": {
-            "dev-master": "2.x-dev",
+            "dev-3.x": "3.x-dev",
+            "dev-2.x": "2.x-dev",
+            "dev-1.x": "1.x-dev",
             "dev-0.x": "0.x-dev"
         },
         "laravel": {
