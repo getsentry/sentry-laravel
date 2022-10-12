@@ -4,15 +4,13 @@ namespace Sentry\Laravel\Tracing;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Routing\Route;
-use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
 use Sentry\State\HubInterface;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\TransactionContext;
 use Sentry\Tracing\TransactionSource;
-use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class Middleware
 {
@@ -45,7 +43,7 @@ class Middleware
      *
      * @return mixed
      */
-    public function handle($request, Closure $next)
+    public function handle(Request $request, Closure $next)
     {
         if (app()->bound(HubInterface::class)) {
             $this->startTransaction($request, app(HubInterface::class));
@@ -57,14 +55,19 @@ class Middleware
     /**
      * Handle the application termination.
      *
-     * @param \Illuminate\Http\Request                   $request
-     * @param \Symfony\Component\HttpFoundation\Response $response
+     * @param \Illuminate\Http\Request $request
+     * @param mixed                    $response
      *
      * @return void
      */
-    public function terminate($request, $response): void
+    public function terminate(Request $request, $response): void
     {
         if ($this->transaction !== null && app()->bound(HubInterface::class)) {
+            // We stop here if a route has not been matched unless we are configured to trace missing routes
+            if (config('sentry.tracing.missing_routes', false) === false && $request->route() === null) {
+                return;
+            }
+
             if ($this->appSpan !== null) {
                 $this->appSpan->finish();
             }
@@ -73,11 +76,7 @@ class Middleware
             // If the transaction is not on the scope during finish, the trace.context is wrong
             SentrySdk::getCurrentHub()->setSpan($this->transaction);
 
-            if ($request instanceof Request) {
-                $this->hydrateRequestData($request);
-            }
-
-            if ($response instanceof Response) {
+            if ($response instanceof SymfonyResponse) {
                 $this->hydrateResponseData($response);
             }
 
@@ -108,12 +107,17 @@ class Middleware
             $request->header('baggage', '')
         );
 
+        $requestPath = '/' . ltrim($request->path(), '/');
+
         $context->setOp('http.server');
+        $context->setName($requestPath);
+        $context->setSource(TransactionSource::url());
+        $context->setStartTimestamp($requestStartTime);
+
         $context->setData([
-            'url' => '/' . ltrim($request->path(), '/'),
+            'url' => $requestPath,
             'method' => strtoupper($request->method()),
         ]);
-        $context->setStartTimestamp($requestStartTime);
 
         $this->transaction = $sentry->startTransaction($context);
 
@@ -122,7 +126,7 @@ class Middleware
 
         $bootstrapSpan = $this->addAppBootstrapSpan($request);
 
-        $appContextStart = new SpanContext();
+        $appContextStart = new SpanContext;
         $appContextStart->setOp('middleware.handle');
         $appContextStart->setStartTimestamp($bootstrapSpan ? $bootstrapSpan->getEndTimestamp() : microtime(true));
 
@@ -143,7 +147,7 @@ class Middleware
             return null;
         }
 
-        $spanContextStart = new SpanContext();
+        $spanContextStart = new SpanContext;
         $spanContextStart->setOp('app.bootstrap');
         $spanContextStart->setStartTimestamp($laravelStartTime);
         $spanContextStart->setEndTimestamp($this->bootedTimestamp);
@@ -175,45 +179,8 @@ class Middleware
         $bootstrap->startChild($autoload);
     }
 
-    private function hydrateRequestData(Request $request): void
-    {
-        $route = $request->route();
-
-        if ($route instanceof Route) {
-            [$transactionName, $transactionSource] = Integration::extractNameAndSourceForRoute($route);
-
-            $this->updateTransactionNameIfDefault($transactionName, $transactionSource);
-
-            $this->transaction->setData([
-                'name' => $route->getName(),
-                'action' => $route->getActionName(),
-                'method' => $request->getMethod(),
-            ]);
-        }
-
-        $this->updateTransactionNameIfDefault('/' . ltrim($request->path(), '/'), TransactionSource::url());
-    }
-
-    private function hydrateResponseData(Response $response): void
+    private function hydrateResponseData(SymfonyResponse $response): void
     {
         $this->transaction->setHttpStatus($response->getStatusCode());
-    }
-
-    private function updateTransactionNameIfDefault(?string $name, ?TransactionSource $source): void
-    {
-        // Ignore empty names (and `null`) for caller convenience
-        if (empty($name)) {
-            return;
-        }
-
-        // If the transaction already has a name other than the default
-        // ignore the new name, this will most occur if the user has set a
-        // transaction name themself before the application reaches this point
-        if ($this->transaction->getName() !== TransactionContext::DEFAULT_NAME) {
-            return;
-        }
-
-        $this->transaction->setName($name);
-        $this->transaction->getMetadata()->setSource($source ?? TransactionSource::custom());
     }
 }

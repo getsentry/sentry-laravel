@@ -7,9 +7,11 @@ use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Events as DatabaseEvents;
+use Illuminate\Http\Client\Events as HttpClientEvents;
 use Illuminate\Queue\Events as QueueEvents;
 use Illuminate\Queue\Queue;
 use Illuminate\Queue\QueueManager;
+use Illuminate\Routing\Events as RoutingEvents;
 use RuntimeException;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
@@ -30,7 +32,11 @@ class EventHandler
      * @var array
      */
     protected static $eventHandlerMap = [
+        RoutingEvents\RouteMatched::class => 'routeMatched',
         DatabaseEvents\QueryExecuted::class => 'queryExecuted',
+        HttpClientEvents\RequestSending::class => 'httpClientRequestSending',
+        HttpClientEvents\ResponseReceived::class => 'httpClientResponseReceived',
+        HttpClientEvents\ConnectionFailed::class => 'httpClientConnectionFailed',
     ];
 
     /**
@@ -94,6 +100,20 @@ class EventHandler
     private $currentQueueJobSpan;
 
     /**
+     * Holds a reference to the parent http client request span.
+     *
+     * @var \Sentry\Tracing\Span|null
+     */
+    private $parentHttpClientRequestSpan;
+
+    /**
+     * Holds a reference to the current http client request span.
+     *
+     * @var \Sentry\Tracing\Span|null
+     */
+    private $currentHttpClientRequestSpan;
+
+    /**
      * The backtrace helper.
      *
      * @var \Sentry\Laravel\Tracing\BacktraceHelper
@@ -122,6 +142,7 @@ class EventHandler
     /**
      * Attach all event handlers.
      *
+     * @uses self::routeMatchedHandler()
      * @uses self::queryExecutedHandler()
      */
     public function subscribe(): void
@@ -202,6 +223,20 @@ class EventHandler
         }
     }
 
+    protected function routeMatchedHandler(RoutingEvents\RouteMatched $match): void
+    {
+        $transaction = Integration::currentTransaction();
+
+        if ($transaction === null) {
+            return;
+        }
+
+        [$transactionName, $transactionSource] = Integration::extractNameAndSourceForRoute($match->route);
+
+        $transaction->setName($transactionName);
+        $transaction->getMetadata()->setSource($transactionSource);
+    }
+
     protected function queryExecutedHandler(DatabaseEvents\QueryExecuted $query): void
     {
         if (!$this->traceSqlQueries) {
@@ -250,6 +285,56 @@ class EventHandler
         return "{$filePath}:{$firstAppFrame->getLine()}";
     }
 
+    protected function httpClientRequestSendingHandler(HttpClientEvents\RequestSending $event): void
+    {
+        $parentSpan = Integration::currentTracingSpan();
+
+        if ($parentSpan === null) {
+            return;
+        }
+
+        $context = new SpanContext;
+
+        $context->setOp('http.client');
+        $context->setDescription($event->request->method() . ' ' . $event->request->url());
+        $context->setStartTimestamp(microtime(true));
+
+        $this->currentHttpClientRequestSpan = $parentSpan->startChild($context);
+
+        $this->parentHttpClientRequestSpan = $parentSpan;
+
+        SentrySdk::getCurrentHub()->setSpan($this->currentHttpClientRequestSpan);
+    }
+
+    protected function httpClientResponseReceivedHandler(HttpClientEvents\ResponseReceived $event): void
+    {
+        if ($this->currentHttpClientRequestSpan !== null) {
+            $this->currentHttpClientRequestSpan->setHttpStatus($event->response->status());
+            $this->afterHttpClientRequest();
+        }
+    }
+
+    protected function httpClientConnectionFailedHandler(HttpClientEvents\ConnectionFailed $event): void
+    {
+        if ($this->currentHttpClientRequestSpan !== null) {
+            $this->currentHttpClientRequestSpan->setStatus(SpanStatus::internalError());
+            $this->afterHttpClientRequest();
+        }
+    }
+
+    private function afterHttpClientRequest(): void
+    {
+        if ($this->currentHttpClientRequestSpan === null) {
+            return;
+        }
+
+        $this->currentHttpClientRequestSpan->finish();
+        $this->currentHttpClientRequestSpan = null;
+
+        SentrySdk::getCurrentHub()->setSpan($this->parentHttpClientRequestSpan);
+        $this->parentHttpClientRequestSpan = null;
+    }
+
     protected function queueJobProcessingHandler(QueueEvents\JobProcessing $event): void
     {
         $parentSpan = Integration::currentTracingSpan();
@@ -278,24 +363,18 @@ class EventHandler
             $context = new SpanContext;
         }
 
+        $resolvedJobName = $event->job->resolveName();
+
         $job = [
             'job' => $event->job->getName(),
             'queue' => $event->job->getQueue(),
+            'resolved' => $event->job->resolveName(),
             'attempts' => $event->job->attempts(),
             'connection' => $event->connectionName,
         ];
 
-        // Resolve name exists only from Laravel 5.3+
-        $resolvedJobName = method_exists($event->job, 'resolveName')
-            ? $event->job->resolveName()
-            : null;
-
-        if ($resolvedJobName !== null) {
-            $job['resolved'] = $resolvedJobName;
-        }
-
         if ($context instanceof TransactionContext) {
-            $context->setName($resolvedJobName ?? $event->job->getName());
+            $context->setName($resolvedJobName);
             $context->setSource(TransactionSource::task());
         }
 
