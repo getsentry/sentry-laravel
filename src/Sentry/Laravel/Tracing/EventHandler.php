@@ -7,6 +7,7 @@ use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Events as DatabaseEvents;
+use Illuminate\Http\Client\Events as HttpClientEvents;
 use Illuminate\Queue\Events as QueueEvents;
 use Illuminate\Queue\Queue;
 use Illuminate\Queue\QueueManager;
@@ -33,6 +34,9 @@ class EventHandler
     protected static $eventHandlerMap = [
         RoutingEvents\RouteMatched::class => 'routeMatched',
         DatabaseEvents\QueryExecuted::class => 'queryExecuted',
+        HttpClientEvents\RequestSending::class => 'httpClientRequestSending',
+        HttpClientEvents\ResponseReceived::class => 'httpClientResponseReceived',
+        HttpClientEvents\ConnectionFailed::class => 'httpClientConnectionFailed',
     ];
 
     /**
@@ -94,6 +98,20 @@ class EventHandler
      * @var \Sentry\Tracing\Transaction|\Sentry\Tracing\Span|null
      */
     private $currentQueueJobSpan;
+
+    /**
+     * Holds a reference to the parent http client request span.
+     *
+     * @var \Sentry\Tracing\Span|null
+     */
+    private $parentHttpClientRequestSpan;
+
+    /**
+     * Holds a reference to the current http client request span.
+     *
+     * @var \Sentry\Tracing\Span|null
+     */
+    private $currentHttpClientRequestSpan;
 
     /**
      * The backtrace helper.
@@ -265,6 +283,56 @@ class EventHandler
         $filePath = $this->backtraceHelper->getOriginalViewPathForFrameOfCompiledViewPath($firstAppFrame) ?? $firstAppFrame->getFile();
 
         return "{$filePath}:{$firstAppFrame->getLine()}";
+    }
+
+    protected function httpClientRequestSendingHandler(HttpClientEvents\RequestSending $event): void
+    {
+        $parentSpan = Integration::currentTracingSpan();
+
+        if ($parentSpan === null) {
+            return;
+        }
+
+        $context = new SpanContext;
+
+        $context->setOp('http.client');
+        $context->setDescription($event->request->method() . ' ' . $event->request->url());
+        $context->setStartTimestamp(microtime(true));
+
+        $this->currentHttpClientRequestSpan = $parentSpan->startChild($context);
+
+        $this->parentHttpClientRequestSpan = $parentSpan;
+
+        SentrySdk::getCurrentHub()->setSpan($this->currentHttpClientRequestSpan);
+    }
+
+    protected function httpClientResponseReceivedHandler(HttpClientEvents\ResponseReceived $event): void
+    {
+        if ($this->currentHttpClientRequestSpan !== null) {
+            $this->currentHttpClientRequestSpan->setHttpStatus($event->response->status());
+            $this->afterHttpClientRequest();
+        }
+    }
+
+    protected function httpClientConnectionFailedHandler(HttpClientEvents\ConnectionFailed $event): void
+    {
+        if ($this->currentHttpClientRequestSpan !== null) {
+            $this->currentHttpClientRequestSpan->setStatus(SpanStatus::internalError());
+            $this->afterHttpClientRequest();
+        }
+    }
+
+    private function afterHttpClientRequest(): void
+    {
+        if ($this->currentHttpClientRequestSpan === null) {
+            return;
+        }
+
+        $this->currentHttpClientRequestSpan->finish();
+        $this->currentHttpClientRequestSpan = null;
+
+        SentrySdk::getCurrentHub()->setSpan($this->parentHttpClientRequestSpan);
+        $this->parentHttpClientRequestSpan = null;
     }
 
     protected function queueJobProcessingHandler(QueueEvents\JobProcessing $event): void
