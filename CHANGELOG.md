@@ -7,6 +7,7 @@
 - Remove `Sentry\Integration::extractNameForRoute()`, it's alternative `Sentry\Integration::extractNameAndSourceForRoute()` is marked as `@internal` (#580)
 - Drop support for Laravel 5.x (#581)
 - Fix not setting the correct SDK ID and version when running the `sentry:test` command (#582)
+- Transaction names now only show the parameterized URL (`/some/{route}`) instead of the route name or controller class (#583)
 
 ## 2.14.0
 

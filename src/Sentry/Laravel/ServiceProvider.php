@@ -33,7 +33,8 @@ class ServiceProvider extends BaseServiceProvider
         'integrations',
         // This is kept for backwards compatibility and can be dropped in a future breaking release
         'breadcrumbs.sql_bindings',
-        // The base namespace for controllers to strip of the beginning of controller class names
+
+        // This config option is no longer in use but to prevent errors when upgrading we leave it here to be discarded
         'controllers_base_namespace',
     ];
 
@@ -125,12 +126,6 @@ class ServiceProvider extends BaseServiceProvider
      */
     protected function configureAndRegisterClient(): void
     {
-        $userConfig = $this->getUserConfig();
-
-        if (isset($userConfig['controllers_base_namespace'])) {
-            Integration::setControllersBaseNamespace($userConfig['controllers_base_namespace']);
-        }
-
         $this->app->bind(ClientBuilderInterface::class, function () {
             $basePath   = base_path();
             $userConfig = $this->getUserConfig();
@@ -161,7 +156,7 @@ class ServiceProvider extends BaseServiceProvider
             return $clientBuilder;
         });
 
-        $this->app->singleton(HubInterface::class, function ($app) {
+        $this->app->singleton(HubInterface::class, function () {
             /** @var \Sentry\ClientBuilderInterface $clientBuilder */
             $clientBuilder = $this->app->make(ClientBuilderInterface::class);
 
@@ -169,7 +164,7 @@ class ServiceProvider extends BaseServiceProvider
 
             $userIntegrations = $this->resolveIntegrationsFromUserConfig();
 
-            $options->setIntegrations(function (array $integrations) use ($options, $userIntegrations, $app) {
+            $options->setIntegrations(function (array $integrations) use ($options, $userIntegrations) {
                 if ($options->hasDefaultIntegrations()) {
                     // Remove the default error and fatal exception listeners to let Laravel handle those
                     // itself. These event are still bubbling up through the documented changes in the users
