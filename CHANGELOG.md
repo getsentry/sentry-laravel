@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2.14.2
+
 - Fix extracting command input resulting in errors when calling Artisan commands programatically with `null` as an argument value (#589)
 
 ## 2.14.1
