@@ -3,7 +3,7 @@
 namespace Sentry\Laravel\Tests;
 
 use Illuminate\Console\Events\CommandStarting;
-use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 
 class CommandInfoInBreadcrumbsTest extends SentryLaravelTestCase
@@ -47,7 +47,7 @@ class CommandInfoInBreadcrumbsTest extends SentryLaravelTestCase
             CommandStarting::class,
             new CommandStarting(
                 'test:command',
-                new ArrayInput(['--foo' => 'bar']),
+                new ArgvInput(['artisan', '--foo=bar']),
                 new BufferedOutput()
             )
         );

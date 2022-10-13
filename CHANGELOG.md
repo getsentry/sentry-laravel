@@ -20,6 +20,10 @@
 - Add tracing span for Laravel HTTP client requests (#585)
 - Simplify Sentry meta tag retrieval, by adding `Sentry\Laravel\Integration::sentryMeta()` (#586)
 
+## 2.14.2
+
+- Fix extracting command input resulting in errors when calling Artisan commands programatically with `null` as an argument value (#589)
+
 ## 2.14.1
 
 - Fix not setting the correct SDK ID and version when running the `sentry:test` command (#582)
