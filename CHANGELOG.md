@@ -2,10 +2,23 @@
 
 ## Unreleased
 
-- Drop support for Laravel Lumen (#579)
-- Set the tracing transaction name on the `Illuminate\Routing\Events\RouteMatched` instead of at the end of the request (#580)
+## 3.0.0
+
+**Breaking changes**
+
+- Laravel Lumen is no longer supported
+    - Drop support for Laravel Lumen (#579)
+- Laravel versions 5.0 - 5.8 are no longer supported
+    - Drop support for Laravel 5.x (#581)
 - Remove `Sentry\Integration::extractNameForRoute()`, it's alternative `Sentry\Integration::extractNameAndSourceForRoute()` is marked as `@internal` (#580)
-- Drop support for Laravel 5.x (#581)
+- Remove extracting route name or controller for transaction names (#583). This unifies the transaction names to a more concise format.
+
+**Other changes**
+
+- Add support for Dynamic Sampling (#572)
+- Set the tracing transaction name on the `Illuminate\Routing\Events\RouteMatched` instead of at the end of the request (#580)
+- Add tracing span for Laravel HTTP client requests (#585)
+- Simplify Sentry meta tag retrieval, by adding `Sentry\Laravel\Integration::sentryMeta()` (#586)
 
 ## 2.14.1
 
