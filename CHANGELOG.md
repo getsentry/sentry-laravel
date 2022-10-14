@@ -12,6 +12,7 @@
     - Drop support for Laravel 5.x (#581)
 - Remove `Sentry\Integration::extractNameForRoute()`, it's alternative `Sentry\Integration::extractNameAndSourceForRoute()` is marked as `@internal` (#580)
 - Remove extracting route name or controller for transaction names (#583). This unifies the transaction names to a more concise format.
+- Remove internal `Sentry\Integration::currentTransaction()` and `Sentry\Integration::currentTracingSpan()`, use `SentrySdk::getCurrentHub()->getTransaction()` and `SentrySdk::getCurrentHub()->getSpan()` directly (#592)
 
 **Other changes**
 
@@ -19,6 +20,7 @@
 - Set the tracing transaction name on the `Illuminate\Routing\Events\RouteMatched` instead of at the end of the request (#580)
 - Add tracing span for Laravel HTTP client requests (#585)
 - Simplify Sentry meta tag retrieval, by adding `Sentry\Laravel\Integration::sentryMeta()` (#586)
+- Fix tracing with nested queue jobs (mostly when running jobs in the `sync` driver) (#592)
 
 ## 2.14.2
 
