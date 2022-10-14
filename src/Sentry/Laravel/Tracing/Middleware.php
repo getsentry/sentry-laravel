@@ -29,13 +29,6 @@ class Middleware
     protected $appSpan;
 
     /**
-     * The span for the `route` part of the application.
-     *
-     * @var \Sentry\Tracing\Span|null
-     */
-    protected $routeSpan;
-
-    /**
      * The timestamp of application bootstrap completion.
      *
      * @var float|null
@@ -56,16 +49,7 @@ class Middleware
             $this->startTransaction($request, app(HubInterface::class));
         }
 
-        $response = $next($request);
-
-        if ($this->routeSpan) {
-            $this->routeSpan->finish();
-            $this->routeSpan = null;
-
-            SentrySdk::getCurrentHub()->setSpan($this->appSpan);
-        }
-
-        return $response;
+        return $next($request);
     }
 
     /**
@@ -112,11 +96,6 @@ class Middleware
     public function setBootedTimestamp(?float $timestamp = null): void
     {
         $this->bootedTimestamp = $timestamp ?? microtime(true);
-    }
-
-    public function setRouteSpan(Span $span): void
-    {
-        $this->routeSpan = $span;
     }
 
     private function startTransaction(Request $request, HubInterface $sentry): void
