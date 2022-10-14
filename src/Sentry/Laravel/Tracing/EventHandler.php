@@ -144,6 +144,9 @@ class EventHandler
      *
      * @uses self::routeMatchedHandler()
      * @uses self::queryExecutedHandler()
+     * @uses self::httpClientRequestSendingHandler()
+     * @uses self::httpClientResponseReceivedHandler()
+     * @uses self::httpClientConnectionFailedHandler()
      */
     public function subscribe(): void
     {
