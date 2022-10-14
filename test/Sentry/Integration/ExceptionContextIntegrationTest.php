@@ -7,7 +7,6 @@ use Sentry\Event;
 use Sentry\EventHint;
 use Sentry\Laravel\Integration\ExceptionContextIntegration;
 use Sentry\Laravel\Tests\TestCase;
-use Sentry\SentrySdk;
 use Sentry\State\Scope;
 use function Sentry\withScope;
 
@@ -58,7 +57,7 @@ class ExceptionContextIntegrationTest extends TestCase
         ];
     }
 
-    private function generateExceptionWithContext($context)
+    private function generateExceptionWithContext($context): Exception
     {
         return new class($context) extends Exception {
             private $context;

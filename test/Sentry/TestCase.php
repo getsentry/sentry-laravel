@@ -4,6 +4,7 @@ namespace Sentry\Laravel\Tests;
 
 use ReflectionMethod;
 use Sentry\Breadcrumb;
+use Sentry\ClientInterface;
 use Sentry\State\Scope;
 use ReflectionProperty;
 use Sentry\Laravel\Tracing;
@@ -50,6 +51,11 @@ abstract class TestCase extends LaravelTestCase
     protected function getHubFromContainer(): HubInterface
     {
         return $this->app->make('sentry');
+    }
+
+    protected function getClientFromContainer(): ClientInterface
+    {
+        return $this->getHubFromContainer()->getClient();
     }
 
     protected function getCurrentScope(): Scope

@@ -22,28 +22,28 @@ class EventHandlerTest extends TestCase
     public function testAllMappedEventHandlersExist(): void
     {
         $this->tryAllEventHandlerMethods(
-            $this->getStaticPropertyValueFromClass(EventHandler::class, 'eventHandlerMap')
+            $this->getEventHandlerMapFromEventHandler('eventHandlerMap')
         );
     }
 
     public function testAllMappedAuthEventHandlersExist(): void
     {
         $this->tryAllEventHandlerMethods(
-            $this->getStaticPropertyValueFromClass(EventHandler::class, 'authEventHandlerMap')
+            $this->getEventHandlerMapFromEventHandler('authEventHandlerMap')
         );
     }
 
     public function testAllMappedQueueEventHandlersExist(): void
     {
         $this->tryAllEventHandlerMethods(
-            $this->getStaticPropertyValueFromClass(EventHandler::class, 'queueEventHandlerMap')
+            $this->getEventHandlerMapFromEventHandler('queueEventHandlerMap')
         );
     }
 
     public function testAllMappedOctaneEventHandlersExist(): void
     {
         $this->tryAllEventHandlerMethods(
-            $this->getStaticPropertyValueFromClass(EventHandler::class, 'octaneEventHandlerMap')
+            $this->getEventHandlerMapFromEventHandler('octaneEventHandlerMap')
         );
     }
 
@@ -60,12 +60,12 @@ class EventHandlerTest extends TestCase
         }
     }
 
-    private function getStaticPropertyValueFromClass($className, $attributeName)
+    private function getEventHandlerMapFromEventHandler($eventHandlerMapName)
     {
-        $class = new ReflectionClass($className);
+        $class = new ReflectionClass(EventHandler::class);
 
         $attributes = $class->getStaticProperties();
 
-        return $attributes[$attributeName];
+        return $attributes[$eventHandlerMapName];
     }
 }

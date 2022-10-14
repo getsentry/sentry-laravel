@@ -40,8 +40,7 @@ class ConsoleEventsTest extends TestCase
 
     private function dispatchCommandStartEvent(): void
     {
-        $this->app['events']->dispatch(
-            CommandStarting::class,
+        $this->dispatchLaravelEvent(
             new CommandStarting(
                 'test:command',
                 new ArgvInput(['artisan', '--foo=bar']),

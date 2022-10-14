@@ -1,11 +1,11 @@
 <?php
 
-namespace Sentry\Laravel\Tests;
+namespace Sentry\Laravel\Tests\EventHandler;
 
 use Illuminate\Log\Events\MessageLogged;
-use Mockery;
+use Sentry\Laravel\Tests\TestCase;
 
-class LaravelLogsInBreadcrumbsTest extends TestCase
+class LogEventsTest extends TestCase
 {
     public function testLaravelLogsAreRecordedWhenEnabled(): void
     {
@@ -36,11 +36,7 @@ class LaravelLogsInBreadcrumbsTest extends TestCase
 
         $this->assertFalse($this->app['config']->get('sentry.breadcrumbs.logs'));
 
-        $this->dispatchLaravelEvent('illuminate.log', [
-            $level = 'debug',
-            $message = 'test message',
-            $context = ['1'],
-        ]);
+        $this->dispatchLaravelEvent(new MessageLogged('debug', 'test message'));
 
         $this->assertEmpty($this->getCurrentBreadcrumbs());
     }

@@ -2,43 +2,44 @@
 
 namespace Sentry\Laravel\Tests;
 
+use Orchestra\Testbench\TestCase;
 use Sentry\Laravel\Facade;
 use Sentry\Laravel\ServiceProvider;
 use Sentry\State\HubInterface;
 
-class ServiceProviderTest extends \Orchestra\Testbench\TestCase
+class ServiceProviderTest extends TestCase
 {
-    protected function getEnvironmentSetUp($app)
+    protected function getEnvironmentSetUp($app): void
     {
-        $app['config']->set('sentry.dsn', 'http://publickey:secretkey@sentry.dev/123');
+        $app['config']->set('sentry.dsn', 'https://publickey:secretkey@sentry.dev/123');
         $app['config']->set('sentry.error_types', E_ALL ^ E_DEPRECATED ^ E_USER_DEPRECATED);
     }
 
-    protected function getPackageProviders($app)
+    protected function getPackageProviders($app): array
     {
         return [
             ServiceProvider::class,
         ];
     }
 
-    protected function getPackageAliases($app)
+    protected function getPackageAliases($app): array
     {
         return [
             'Sentry' => Facade::class,
         ];
     }
 
-    public function testIsBound()
+    public function testIsBound(): void
     {
         $this->assertTrue(app()->bound('sentry'));
-        $this->assertInstanceOf(HubInterface::class, app('sentry'));
         $this->assertSame(app('sentry'), Facade::getFacadeRoot());
+        $this->assertInstanceOf(HubInterface::class, app('sentry'));
     }
 
     /**
      * @depends testIsBound
      */
-    public function testEnvironment()
+    public function testEnvironment(): void
     {
         $this->assertEquals('testing', app('sentry')->getClient()->getOptions()->getEnvironment());
     }
@@ -46,12 +47,12 @@ class ServiceProviderTest extends \Orchestra\Testbench\TestCase
     /**
      * @depends testIsBound
      */
-    public function testDsnWasSetFromConfig()
+    public function testDsnWasSetFromConfig(): void
     {
         /** @var \Sentry\Options $options */
         $options = app('sentry')->getClient()->getOptions();
 
-        $this->assertEquals('http://sentry.dev', $options->getDsn()->getScheme() . '://' . $options->getDsn()->getHost());
+        $this->assertEquals('https://sentry.dev', $options->getDsn()->getScheme() . '://' . $options->getDsn()->getHost());
         $this->assertEquals(123, $options->getDsn()->getProjectId());
         $this->assertEquals('publickey', $options->getDsn()->getPublicKey());
         $this->assertEquals('secretkey', $options->getDsn()->getSecretKey());
@@ -60,7 +61,7 @@ class ServiceProviderTest extends \Orchestra\Testbench\TestCase
     /**
      * @depends testIsBound
      */
-    public function testErrorTypesWasSetFromConfig()
+    public function testErrorTypesWasSetFromConfig(): void
     {
         $this->assertEquals(
             E_ALL ^ E_DEPRECATED ^ E_USER_DEPRECATED,
