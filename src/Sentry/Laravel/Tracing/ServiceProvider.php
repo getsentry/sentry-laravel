@@ -2,6 +2,8 @@
 
 namespace Sentry\Laravel\Tracing;
 
+use Illuminate\Contracts\Container\BindingResolutionException;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
 use Illuminate\Contracts\View\Engine;
 use Illuminate\Contracts\View\View;
@@ -59,17 +61,21 @@ class ServiceProvider extends BaseServiceProvider
     private function bindEvents(array $tracingConfig): void
     {
         $handler = new EventHandler(
-            $this->app,
-            $this->app->make(BacktraceHelper::class),
-            $tracingConfig
+            $tracingConfig,
+            $this->app->make(BacktraceHelper::class)
         );
 
-        $handler->subscribe();
+        try {
+            /** @var \Illuminate\Contracts\Events\Dispatcher $dispatcher */
+            $dispatcher = $this->app->make(Dispatcher::class);
 
-        if ($this->app->bound('queue')) {
-            $handler->subscribeQueueEvents(
-                $this->app->make('queue')
-            );
+            $handler->subscribe($dispatcher);
+
+            if ($this->app->bound('queue')) {
+                $handler->subscribeQueueEvents($dispatcher, $this->app->make('queue'));
+            }
+        } catch (BindingResolutionException $e) {
+            // If we cannot resolve the event dispatcher we also cannot listen to events
         }
     }
 

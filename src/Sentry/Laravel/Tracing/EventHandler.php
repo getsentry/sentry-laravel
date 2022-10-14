@@ -3,8 +3,6 @@
 namespace Sentry\Laravel\Tracing;
 
 use Exception;
-use Illuminate\Contracts\Container\BindingResolutionException;
-use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Events as DatabaseEvents;
 use Illuminate\Http\Client\Events as HttpClientEvents;
@@ -23,9 +21,8 @@ use Sentry\Tracing\TransactionSource;
 
 class EventHandler
 {
-    public const QUEUE_PAYLOAD_TRACE_PARENT_DATA = 'sentry_trace_parent_data';
-
     public const QUEUE_PAYLOAD_BAGGAGE_DATA = 'sentry_baggage_data';
+    public const QUEUE_PAYLOAD_TRACE_PARENT_DATA = 'sentry_trace_parent_data';
 
     /**
      * Map event handlers to events.
@@ -50,13 +47,6 @@ class EventHandler
         QueueEvents\JobProcessed::class => 'queueJobProcessed',
         QueueEvents\JobExceptionOccurred::class => 'queueJobExceptionOccurred',
     ];
-
-    /**
-     * The Laravel container.
-     *
-     * @var \Illuminate\Contracts\Container\Container
-     */
-    private $container;
 
     /**
      * Indicates if we should we add SQL queries as spans.
@@ -87,32 +77,18 @@ class EventHandler
     private $traceQueueJobsAsTransactions;
 
     /**
-     * Holds a reference to the parent http client request span.
-     *
-     * @var \Sentry\Tracing\Span|null
-     */
-    private $parentHttpClientRequestSpan;
-
-    /**
-     * Holds a reference to the current http client request span.
-     *
-     * @var \Sentry\Tracing\Span|null
-     */
-    private $currentHttpClientRequestSpan;
-
-    /**
      * Hold the stack of parent spans that need to be put back on the scope.
      *
      * @var array<int, \Sentry\Tracing\Span|null>
      */
-    private array $parentSpanStack = [];
+    private $parentSpanStack = [];
 
     /**
      * Hold the stack of current spans that need to be finished still.
      *
      * @var array<int, \Sentry\Tracing\Span|null>
      */
-    private array $currentSpanStack = [];
+    private $currentSpanStack = [];
 
     /**
      * The backtrace helper.
@@ -123,21 +99,16 @@ class EventHandler
 
     /**
      * EventHandler constructor.
-     *
-     * @param \Illuminate\Contracts\Container\Container $container
-     * @param \Sentry\Laravel\Tracing\BacktraceHelper   $backtraceHelper
-     * @param array                                     $config
      */
-    public function __construct(Container $container, BacktraceHelper $backtraceHelper, array $config)
+    public function __construct(array $config, BacktraceHelper $backtraceHelper)
     {
-        $this->container = $container;
-        $this->backtraceHelper = $backtraceHelper;
-
         $this->traceSqlQueries = ($config['sql_queries'] ?? true) === true;
         $this->traceSqlQueryOrigins = ($config['sql_origin'] ?? true) === true;
 
         $this->traceQueueJobs = ($config['queue_jobs'] ?? false) === true;
         $this->traceQueueJobsAsTransactions = ($config['queue_job_transactions'] ?? false) === true;
+
+        $this->backtraceHelper = $backtraceHelper;
     }
 
     /**
@@ -149,30 +120,21 @@ class EventHandler
      * @uses self::httpClientResponseReceivedHandler()
      * @uses self::httpClientConnectionFailedHandler()
      */
-    public function subscribe(): void
+    public function subscribe(Dispatcher $dispatcher): void
     {
-        try {
-            /** @var \Illuminate\Contracts\Events\Dispatcher $dispatcher */
-            $dispatcher = $this->container->make(Dispatcher::class);
-
-            foreach (static::$eventHandlerMap as $eventName => $handler) {
-                $dispatcher->listen($eventName, [$this, $handler]);
-            }
-        } catch (BindingResolutionException $e) {
-            // If we cannot resolve the event dispatcher we also cannot listen to events
+        foreach (static::$eventHandlerMap as $eventName => $handler) {
+            $dispatcher->listen($eventName, [$this, $handler]);
         }
     }
 
     /**
      * Attach all queue event handlers.
      *
-     * @param \Illuminate\Queue\QueueManager $queue
-     *
      * @uses self::queueJobProcessingHandler()
      * @uses self::queueJobProcessedHandler()
      * @uses self::queueJobExceptionOccurredHandler()
      */
-    public function subscribeQueueEvents(QueueManager $queue): void
+    public function subscribeQueueEvents(Dispatcher $dispatcher, QueueManager $queue): void
     {
         // If both types of queue job tracing is disabled also do not register the events
         if (!$this->traceQueueJobs && !$this->traceQueueJobsAsTransactions) {
@@ -180,7 +142,7 @@ class EventHandler
         }
 
         Queue::createPayloadUsing(static function (?string $connection, ?string $queue, ?array $payload): ?array {
-            $currentSpan = Integration::currentTracingSpan();
+            $currentSpan = SentrySdk::getCurrentHub()->getSpan();
 
             if ($currentSpan !== null && $payload !== null) {
                 $payload[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] = $currentSpan->toTraceparent();
@@ -190,19 +152,8 @@ class EventHandler
             return $payload;
         });
 
-//        $queue->looping(function () {
-//            $this->afterQueuedJob();
-//        });
-
-        try {
-            /** @var \Illuminate\Contracts\Events\Dispatcher $dispatcher */
-            $dispatcher = $this->container->make(Dispatcher::class);
-
-            foreach (static::$queueEventHandlerMap as $eventName => $handler) {
-                $dispatcher->listen($eventName, [$this, $handler]);
-            }
-        } catch (BindingResolutionException $e) {
-            // If we cannot resolve the event dispatcher we also cannot listen to events
+        foreach (static::$queueEventHandlerMap as $eventName => $handler) {
+            $dispatcher->listen($eventName, [$this, $handler]);
         }
     }
 
@@ -222,14 +173,14 @@ class EventHandler
 
         try {
             call_user_func_array([$this, $handlerMethod], $arguments);
-        } catch (Exception $exception) {
-            // Ignore
+        } catch (Exception $e) {
+            // Ignore to prevent bubbling up errors in the SDK
         }
     }
 
     protected function routeMatchedHandler(RoutingEvents\RouteMatched $match): void
     {
-        $transaction = Integration::currentTransaction();
+        $transaction = SentrySdk::getCurrentHub()->getTransaction();
 
         if ($transaction === null) {
             return;
@@ -247,7 +198,7 @@ class EventHandler
             return;
         }
 
-        $parentSpan = Integration::currentTracingSpan();
+        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
 
         // If there is no tracing span active there is no need to handle the event
         if ($parentSpan === null) {
@@ -291,7 +242,7 @@ class EventHandler
 
     protected function httpClientRequestSendingHandler(HttpClientEvents\RequestSending $event): void
     {
-        $parentSpan = Integration::currentTracingSpan();
+        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
 
         if ($parentSpan === null) {
             return;
@@ -303,47 +254,32 @@ class EventHandler
         $context->setDescription($event->request->method() . ' ' . $event->request->url());
         $context->setStartTimestamp(microtime(true));
 
-        $this->currentHttpClientRequestSpan = $parentSpan->startChild($context);
-
-        $this->parentHttpClientRequestSpan = $parentSpan;
-
-        SentrySdk::getCurrentHub()->setSpan($this->currentHttpClientRequestSpan);
+        $this->pushSpan($parentSpan->startChild($context));
     }
 
     protected function httpClientResponseReceivedHandler(HttpClientEvents\ResponseReceived $event): void
     {
-        if ($this->currentHttpClientRequestSpan !== null) {
-            $this->currentHttpClientRequestSpan->setHttpStatus($event->response->status());
-            $this->afterHttpClientRequest();
+        $span = $this->popSpan();
+
+        if ($span !== null) {
+            $span->finish();
+            $span->setHttpStatus($event->response->status());
         }
     }
 
     protected function httpClientConnectionFailedHandler(HttpClientEvents\ConnectionFailed $event): void
     {
-        if ($this->currentHttpClientRequestSpan !== null) {
-            $this->currentHttpClientRequestSpan->setStatus(SpanStatus::internalError());
-            $this->afterHttpClientRequest();
+        $span = $this->popSpan();
+
+        if ($span !== null) {
+            $span->finish();
+            $span->setStatus(SpanStatus::internalError());
         }
-    }
-
-    private function afterHttpClientRequest(): void
-    {
-        if ($this->currentHttpClientRequestSpan === null) {
-            return;
-        }
-
-        $this->currentHttpClientRequestSpan->finish();
-        $this->currentHttpClientRequestSpan = null;
-
-        SentrySdk::getCurrentHub()->setSpan($this->parentHttpClientRequestSpan);
-        $this->parentHttpClientRequestSpan = null;
     }
 
     protected function queueJobProcessingHandler(QueueEvents\JobProcessing $event): void
     {
         $parentSpan = SentrySdk::getCurrentHub()->getSpan();
-
-        logger()->debug('queueJobProcessingHandler, current span: ' . $parentSpan?->getSpanId());
 
         // If there is no tracing span active and we don't trace jobs as transactions there is no need to handle the event
         if ($parentSpan === null && !$this->traceQueueJobsAsTransactions) {
@@ -393,7 +329,6 @@ class EventHandler
             $span = SentrySdk::getCurrentHub()->startTransaction($context);
         } else {
             $span = $parentSpan->startChild($context);
-            logger()->debug('Starting child of ' . $parentSpan->getSpanId() . ', child is ' . $span->getSpanId());
         }
 
         $this->pushSpan($span);
@@ -423,15 +358,13 @@ class EventHandler
 
     private function pushSpan(Span $span): void
     {
-//        logger()->debug('push: got ' . count($this->currentSpanStack) . ' spans on the stack');
+        $hub = SentrySdk::getCurrentHub();
 
-        $this->parentSpanStack[] = SentrySdk::getCurrentHub()->getSpan();
+        $this->parentSpanStack[] = $hub->getSpan();
 
-        SentrySdk::getCurrentHub()->setSpan($span);
+        $hub->setSpan($span);
 
         $this->currentSpanStack[] = $span;
-
-        logger()->debug('push: new span is ' . $span->getSpanId() . ', current: ' . SentrySdk::getCurrentHub()->getSpan()->getSpanId());
     }
 
     private function popSpan(): ?Span
@@ -440,13 +373,9 @@ class EventHandler
             return null;
         }
 
-//        logger()->debug('pop: got ' . count($this->currentSpanStack) . ' spans on the stack');
-
         $parent = array_pop($this->parentSpanStack);
 
         SentrySdk::getCurrentHub()->setSpan($parent);
-
-        logger()->debug('pop: new span is ' . $parent->getSpanId() . ', current: ' . SentrySdk::getCurrentHub()->getSpan()->getSpanId());
 
         return array_pop($this->currentSpanStack);
     }

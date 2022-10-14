@@ -140,9 +140,9 @@ class EventHandler
     /**
      * Indicates if we pushed a scope for the queue.
      *
-     * @var bool
+     * @var int
      */
-    private $pushedQueueScope = false;
+    private $pushedQueueScopeCount = 0;
 
     /**
      * Indicates if we pushed a scope for Octane.
@@ -173,76 +173,40 @@ class EventHandler
     /**
      * Attach all event handlers.
      */
-    public function subscribe(): void
+    public function subscribe(Dispatcher $dispatcher): void
     {
-        /** @var \Illuminate\Contracts\Events\Dispatcher $dispatcher */
-        try {
-            $dispatcher = $this->container->make(Dispatcher::class);
-
-            foreach (static::$eventHandlerMap as $eventName => $handler) {
-                $dispatcher->listen($eventName, [$this, $handler]);
-            }
-        } catch (BindingResolutionException $e) {
-            // If we cannot resolve the event dispatcher we also cannot listen to events
+        foreach (static::$eventHandlerMap as $eventName => $handler) {
+            $dispatcher->listen($eventName, [$this, $handler]);
         }
     }
 
     /**
      * Attach all authentication event handlers.
      */
-    public function subscribeAuthEvents(): void
+    public function subscribeAuthEvents(Dispatcher $dispatcher): void
     {
-        /** @var \Illuminate\Contracts\Events\Dispatcher $dispatcher */
-        try {
-            $dispatcher = $this->container->make(Dispatcher::class);
-
-            foreach (static::$authEventHandlerMap as $eventName => $handler) {
-                $dispatcher->listen($eventName, [$this, $handler]);
-            }
-        } catch (BindingResolutionException $e) {
-            // If we cannot resolve the event dispatcher we also cannot listen to events
+        foreach (static::$authEventHandlerMap as $eventName => $handler) {
+            $dispatcher->listen($eventName, [$this, $handler]);
         }
     }
 
     /**
      * Attach all queue event handlers.
      */
-    public function subscribeOctaneEvents(): void
+    public function subscribeOctaneEvents(Dispatcher $dispatcher): void
     {
-        /** @var \Illuminate\Contracts\Events\Dispatcher $dispatcher */
-        try {
-            $dispatcher = $this->container->make(Dispatcher::class);
-
-            foreach (static::$octaneEventHandlerMap as $eventName => $handler) {
-                $dispatcher->listen($eventName, [$this, $handler]);
-            }
-        } catch (BindingResolutionException $e) {
-            // If we cannot resolve the event dispatcher we also cannot listen to events
+        foreach (static::$octaneEventHandlerMap as $eventName => $handler) {
+            $dispatcher->listen($eventName, [$this, $handler]);
         }
     }
 
     /**
      * Attach all queue event handlers.
-     *
-     * @param \Illuminate\Queue\QueueManager $queue
      */
-    public function subscribeQueueEvents(QueueManager $queue): void
+    public function subscribeQueueEvents(Dispatcher $dispatcher): void
     {
-        $queue->looping(function () {
-            $this->cleanupScopeForTaskWithinLongRunningProcessWhen($this->pushedQueueScope);
-
-            $this->pushedQueueScope = false;
-        });
-
-        /** @var \Illuminate\Contracts\Events\Dispatcher $dispatcher */
-        try {
-            $dispatcher = $this->container->make(Dispatcher::class);
-
-            foreach (static::$queueEventHandlerMap as $eventName => $handler) {
-                $dispatcher->listen($eventName, [$this, $handler]);
-            }
-        } catch (BindingResolutionException $e) {
-            // If we cannot resolve the event dispatcher we also cannot listen to events
+        foreach (static::$queueEventHandlerMap as $eventName => $handler) {
+            $dispatcher->listen($eventName, [$this, $handler]);
         }
     }
 
@@ -382,11 +346,9 @@ class EventHandler
 
     protected function queueJobProcessingHandler(QueueEvents\JobProcessing $event): void
     {
-        $this->cleanupScopeForTaskWithinLongRunningProcessWhen($this->pushedQueueScope);
-
         $this->prepareScopeForTaskWithinLongRunningProcess();
 
-        $this->pushedQueueScope = true;
+        ++$this->pushedQueueScopeCount;
 
         if (!$this->recordQueueInfo) {
             return;
@@ -415,11 +377,15 @@ class EventHandler
 
     protected function queueJobExceptionOccurredHandler(QueueEvents\JobExceptionOccurred $event): void
     {
+        $this->cleanupScopeForTaskWithinLongRunningProcessWhen($this->pushedQueueScopeCount > 0);
+
         $this->afterTaskWithinLongRunningProcess();
     }
 
     protected function queueJobProcessedHandler(QueueEvents\JobProcessed $event): void
     {
+        $this->cleanupScopeForTaskWithinLongRunningProcessWhen($this->pushedQueueScopeCount > 0);
+
         $this->afterTaskWithinLongRunningProcess();
     }
 

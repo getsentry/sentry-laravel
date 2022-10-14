@@ -17,7 +17,7 @@ class EventHandlerTest extends SentryLaravelTestCase
     {
         $this->safeExpectException(RuntimeException::class);
 
-        $handler = new EventHandler($this->app, $this->app->make(BacktraceHelper::class), []);
+        $handler = new EventHandler([], $this->app->make(BacktraceHelper::class));
 
         $handler->thisIsNotAHandlerAndShouldThrowAnException();
     }
@@ -31,7 +31,7 @@ class EventHandlerTest extends SentryLaravelTestCase
 
     private function tryAllEventHandlerMethods(array $methods): void
     {
-        $handler = new EventHandler($this->app, $this->app->make(BacktraceHelper::class), []);
+        $handler = new EventHandler([], $this->app->make(BacktraceHelper::class));
 
         $methods = array_map(static function ($method) {
             return "{$method}Handler";
