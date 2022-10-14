@@ -12,7 +12,7 @@
     - Drop support for Laravel 5.x (#581)
 - Remove `Sentry\Integration::extractNameForRoute()`, it's alternative `Sentry\Integration::extractNameAndSourceForRoute()` is marked as `@internal` (#580)
 - Remove extracting route name or controller for transaction names (#583). This unifies the transaction names to a more concise format.
-- Remove internal `Sentry\Integration::currentTransaction()` and `Sentry\Integration::currentTracingSpan()`, use `SentrySdk::getCurrentHub()->getTransaction()` and `SentrySdk::getCurrentHub()->getSpan()` directly (#592)
+- Remove internal `Sentry\Integration::currentTracingSpan()`, use `SentrySdk::getCurrentHub()->getSpan()` if you were using this internal method. (#592)
 
 **Other changes**
 
