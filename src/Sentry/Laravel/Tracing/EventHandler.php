@@ -15,6 +15,7 @@ use Illuminate\Routing\Events as RoutingEvents;
 use RuntimeException;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
+use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\SpanStatus;
 use Sentry\Tracing\TransactionContext;
@@ -86,20 +87,6 @@ class EventHandler
     private $traceQueueJobsAsTransactions;
 
     /**
-     * Holds a reference to the parent queue job span.
-     *
-     * @var \Sentry\Tracing\Span|null
-     */
-    private $parentQueueJobSpan;
-
-    /**
-     * Holds a reference to the current queue job span or transaction.
-     *
-     * @var \Sentry\Tracing\Transaction|\Sentry\Tracing\Span|null
-     */
-    private $currentQueueJobSpan;
-
-    /**
      * Holds a reference to the parent http client request span.
      *
      * @var \Sentry\Tracing\Span|null
@@ -112,6 +99,20 @@ class EventHandler
      * @var \Sentry\Tracing\Span|null
      */
     private $currentHttpClientRequestSpan;
+
+    /**
+     * Hold the stack of parent spans that need to be put back on the scope.
+     *
+     * @var array<int, \Sentry\Tracing\Span|null>
+     */
+    private array $parentSpanStack = [];
+
+    /**
+     * Hold the stack of current spans that need to be finished still.
+     *
+     * @var array<int, \Sentry\Tracing\Span|null>
+     */
+    private array $currentSpanStack = [];
 
     /**
      * The backtrace helper.
@@ -189,9 +190,9 @@ class EventHandler
             return $payload;
         });
 
-        $queue->looping(function () {
-            $this->afterQueuedJob();
-        });
+//        $queue->looping(function () {
+//            $this->afterQueuedJob();
+//        });
 
         try {
             /** @var \Illuminate\Contracts\Events\Dispatcher $dispatcher */
@@ -340,7 +341,9 @@ class EventHandler
 
     protected function queueJobProcessingHandler(QueueEvents\JobProcessing $event): void
     {
-        $parentSpan = Integration::currentTracingSpan();
+        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+
+        logger()->debug('queueJobProcessingHandler, current span: ' . $parentSpan?->getSpanId());
 
         // If there is no tracing span active and we don't trace jobs as transactions there is no need to handle the event
         if ($parentSpan === null && !$this->traceQueueJobsAsTransactions) {
@@ -371,7 +374,7 @@ class EventHandler
         $job = [
             'job' => $event->job->getName(),
             'queue' => $event->job->getQueue(),
-            'resolved' => $event->job->resolveName(),
+            'resolved' => $resolvedJobName,
             'attempts' => $event->job->attempts(),
             'connection' => $event->connectionName,
         ];
@@ -387,14 +390,13 @@ class EventHandler
 
         // When the parent span is null we start a new transaction otherwise we start a child of the current span
         if ($parentSpan === null) {
-            $this->currentQueueJobSpan = SentrySdk::getCurrentHub()->startTransaction($context);
+            $span = SentrySdk::getCurrentHub()->startTransaction($context);
         } else {
-            $this->currentQueueJobSpan = $parentSpan->startChild($context);
+            $span = $parentSpan->startChild($context);
+            logger()->debug('Starting child of ' . $parentSpan->getSpanId() . ', child is ' . $span->getSpanId());
         }
 
-        $this->parentQueueJobSpan = $parentSpan;
-
-        SentrySdk::getCurrentHub()->setSpan($this->currentQueueJobSpan);
+        $this->pushSpan($span);
     }
 
     protected function queueJobExceptionOccurredHandler(QueueEvents\JobExceptionOccurred $event): void
@@ -409,15 +411,43 @@ class EventHandler
 
     private function afterQueuedJob(?SpanStatus $status = null): void
     {
-        if ($this->currentQueueJobSpan === null) {
+        $span = $this->popSpan();
+
+        if ($span === null) {
             return;
         }
 
-        $this->currentQueueJobSpan->setStatus($status);
-        $this->currentQueueJobSpan->finish();
-        $this->currentQueueJobSpan = null;
+        $span->setStatus($status);
+        $span->finish();
+    }
 
-        SentrySdk::getCurrentHub()->setSpan($this->parentQueueJobSpan);
-        $this->parentQueueJobSpan = null;
+    private function pushSpan(Span $span): void
+    {
+//        logger()->debug('push: got ' . count($this->currentSpanStack) . ' spans on the stack');
+
+        $this->parentSpanStack[] = SentrySdk::getCurrentHub()->getSpan();
+
+        SentrySdk::getCurrentHub()->setSpan($span);
+
+        $this->currentSpanStack[] = $span;
+
+        logger()->debug('push: new span is ' . $span->getSpanId() . ', current: ' . SentrySdk::getCurrentHub()->getSpan()->getSpanId());
+    }
+
+    private function popSpan(): ?Span
+    {
+        if (count($this->currentSpanStack) === 0) {
+            return null;
+        }
+
+//        logger()->debug('pop: got ' . count($this->currentSpanStack) . ' spans on the stack');
+
+        $parent = array_pop($this->parentSpanStack);
+
+        SentrySdk::getCurrentHub()->setSpan($parent);
+
+        logger()->debug('pop: new span is ' . $parent->getSpanId() . ', current: ' . SentrySdk::getCurrentHub()->getSpan()->getSpanId());
+
+        return array_pop($this->currentSpanStack);
     }
 }
