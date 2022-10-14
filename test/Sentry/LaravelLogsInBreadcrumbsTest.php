@@ -5,7 +5,7 @@ namespace Sentry\Laravel\Tests;
 use Illuminate\Log\Events\MessageLogged;
 use Mockery;
 
-class LaravelLogsInBreadcrumbsTest extends SentryLaravelTestCase
+class LaravelLogsInBreadcrumbsTest extends TestCase
 {
     public function testLaravelLogsAreRecordedWhenEnabled(): void
     {

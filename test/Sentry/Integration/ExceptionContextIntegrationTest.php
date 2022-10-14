@@ -6,12 +6,12 @@ use Exception;
 use Sentry\Event;
 use Sentry\EventHint;
 use Sentry\Laravel\Integration\ExceptionContextIntegration;
-use Sentry\Laravel\Tests\SentryLaravelTestCase;
+use Sentry\Laravel\Tests\TestCase;
 use Sentry\SentrySdk;
 use Sentry\State\Scope;
 use function Sentry\withScope;
 
-class ExceptionContextIntegrationTest extends SentryLaravelTestCase
+class ExceptionContextIntegrationTest extends TestCase
 {
     public function testExceptionContextIntegrationIsRegistered(): void
     {

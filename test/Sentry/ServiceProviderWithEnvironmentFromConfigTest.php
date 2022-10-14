@@ -2,9 +2,9 @@
 
 namespace Sentry;
 
-use Sentry\Laravel\Tests\SentryLaravelTestCase;
+use Sentry\Laravel\Tests\TestCase;
 
-class ServiceProviderWithEnvironmentFromConfigTest extends SentryLaravelTestCase
+class ServiceProviderWithEnvironmentFromConfigTest extends TestCase
 {
     public function testSentryEnvironmentDefaultsToLaravelEnvironment()
     {

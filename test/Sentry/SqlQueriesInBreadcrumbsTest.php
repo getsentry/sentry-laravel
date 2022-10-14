@@ -6,7 +6,7 @@ use Illuminate\Database\Connection;
 use Illuminate\Database\Events\QueryExecuted;
 use Mockery;
 
-class SqlQueriesInBreadcrumbsTest extends SentryLaravelTestCase
+class SqlQueriesInBreadcrumbsTest extends TestCase
 {
     public function testSqlQueriesAreRecordedWhenEnabled()
     {

@@ -7,9 +7,9 @@ use Illuminate\Database\Connection;
 use Illuminate\Database\Events\QueryExecuted;
 use Mockery;
 
-class SqlBindingsInBreadcrumbsWithOldConfigKeyEnabledTest extends SentryLaravelTestCase
+class SqlBindingsInBreadcrumbsWithOldConfigKeyEnabledTest extends TestCase
 {
-    protected function getEnvironmentSetUp($app)
+    protected function getEnvironmentSetUp($app): void
     {
         parent::getEnvironmentSetUp($app);
 

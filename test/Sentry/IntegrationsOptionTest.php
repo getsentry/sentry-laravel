@@ -9,11 +9,9 @@ use Sentry\Integration\ErrorListenerIntegration;
 use Sentry\Integration\ExceptionListenerIntegration;
 use Sentry\Integration\FatalErrorListenerIntegration;
 
-class IntegrationsOptionTest extends SentryLaravelTestCase
+class IntegrationsOptionTest extends TestCase
 {
-    use ExpectsException;
-
-    protected function getEnvironmentSetUp($app)
+    protected function getEnvironmentSetUp($app): void
     {
         parent::getEnvironmentSetUp($app);
 
@@ -60,7 +58,7 @@ class IntegrationsOptionTest extends SentryLaravelTestCase
      */
     public function testCustomIntegrationThrowsExceptionIfNotResolvable()
     {
-        $this->safeExpectException(Exception::class);
+        $this->expectException(Exception::class);
 
         $this->resetApplicationWithConfig([
             'sentry.integrations' => [
@@ -71,7 +69,7 @@ class IntegrationsOptionTest extends SentryLaravelTestCase
 
     public function testIncorrectIntegrationEntryThrowsException()
     {
-        $this->safeExpectException(RuntimeException::class);
+        $this->expectException(RuntimeException::class);
 
         $this->resetApplicationWithConfig([
             'sentry.integrations' => [

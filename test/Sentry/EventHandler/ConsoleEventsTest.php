@@ -1,14 +1,15 @@
 <?php
 
-namespace Sentry\Laravel\Tests;
+namespace Sentry\Laravel\Tests\EventHandler;
 
 use Illuminate\Console\Events\CommandStarting;
+use Sentry\Laravel\Tests\TestCase;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 
-class CommandInfoInBreadcrumbsTest extends SentryLaravelTestCase
+class ConsoleEventsTest extends TestCase
 {
-    public function testCommandInfoAreRecordedWhenEnabled()
+    public function testCommandBreadcrumbIsRecordedWhenEnabled(): void
     {
         $this->resetApplicationWithConfig([
             'sentry.breadcrumbs.command_info' => true,
@@ -24,7 +25,7 @@ class CommandInfoInBreadcrumbsTest extends SentryLaravelTestCase
         $this->assertEquals('--foo=bar', $lastBreadcrumb->getMetadata()['input']);
     }
 
-    public function testCommandInfoAreRecordedWhenDisabled()
+    public function testCommandBreadcrumIsNotRecordedWhenDisabled(): void
     {
         $this->resetApplicationWithConfig([
             'sentry.breadcrumbs.command_info' => false,
@@ -37,13 +38,9 @@ class CommandInfoInBreadcrumbsTest extends SentryLaravelTestCase
         $this->assertEmpty($this->getCurrentBreadcrumbs());
     }
 
-    private function dispatchCommandStartEvent()
+    private function dispatchCommandStartEvent(): void
     {
-        $dispatcher = $this->app['events'];
-
-        $method = method_exists($dispatcher, 'dispatch') ? 'dispatch' : 'fire';
-
-        $this->app['events']->$method(
+        $this->app['events']->dispatch(
             CommandStarting::class,
             new CommandStarting(
                 'test:command',

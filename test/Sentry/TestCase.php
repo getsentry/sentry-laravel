@@ -11,14 +11,14 @@ use Sentry\State\HubInterface;
 use Sentry\Laravel\ServiceProvider;
 use Orchestra\Testbench\TestCase as LaravelTestCase;
 
-abstract class SentryLaravelTestCase extends LaravelTestCase
+abstract class TestCase extends LaravelTestCase
 {
     protected $setupConfig = [
         // Set config here before refreshing the app to set it in the container before Sentry is loaded
         // or use the `$this->resetApplicationWithConfig([ /* config */ ]);` helper method
     ];
 
-    protected function getEnvironmentSetUp($app)
+    protected function getEnvironmentSetUp($app): void
     {
         $app['config']->set('sentry.dsn', 'http://publickey:secretkey@sentry.dev/123');
 
@@ -27,7 +27,7 @@ abstract class SentryLaravelTestCase extends LaravelTestCase
         }
     }
 
-    protected function getPackageProviders($app)
+    protected function getPackageProviders($app): array
     {
         return [
             ServiceProvider::class,
@@ -35,7 +35,7 @@ abstract class SentryLaravelTestCase extends LaravelTestCase
         ];
     }
 
-    protected function resetApplicationWithConfig(array $config)
+    protected function resetApplicationWithConfig(array $config): void
     {
         $this->setupConfig = $config;
 
