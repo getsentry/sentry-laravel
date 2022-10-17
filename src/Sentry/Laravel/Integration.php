@@ -3,10 +3,7 @@
 namespace Sentry\Laravel;
 
 use Illuminate\Routing\Route;
-use Illuminate\Support\Str;
 use Sentry\SentrySdk;
-use Sentry\Tracing\Span;
-use Sentry\Tracing\Transaction;
 use Sentry\Tracing\TransactionSource;
 use function Sentry\addBreadcrumb;
 use function Sentry\configureScope;
@@ -118,7 +115,7 @@ class Integration implements IntegrationInterface
     {
         return [
             '/' . ltrim($route->uri(), '/'),
-            TransactionSource::route()
+            TransactionSource::route(),
         ];
     }
 
@@ -140,7 +137,7 @@ class Integration implements IntegrationInterface
      */
     public static function sentryTracingMeta(): string
     {
-        $span = self::currentTracingSpan();
+        $span = SentrySdk::getCurrentHub()->getSpan();
 
         if ($span === null) {
             return '';
@@ -157,36 +154,12 @@ class Integration implements IntegrationInterface
      */
     public static function sentryBaggageMeta(): string
     {
-        $span = self::currentTracingSpan();
+        $span = SentrySdk::getCurrentHub()->getSpan();
 
         if ($span === null) {
             return '';
         }
 
         return sprintf('<meta name="baggage" content="%s"/>', $span->toBaggage());
-    }
-
-    /**
-     * Get the current active tracing span from the scope.
-     *
-     * @return \Sentry\Tracing\Transaction|null
-     *
-     * @internal This is used internally as an easy way to retrieve the current active transaction.
-     */
-    public static function currentTransaction(): ?Transaction
-    {
-        return SentrySdk::getCurrentHub()->getTransaction();
-    }
-
-    /**
-     * Get the current active tracing span from the scope.
-     *
-     * @return \Sentry\Tracing\Span|null
-     *
-     * @internal This is used internally as an easy way to retrieve the current active tracing span.
-     */
-    public static function currentTracingSpan(): ?Span
-    {
-        return SentrySdk::getCurrentHub()->getSpan();
     }
 }
