@@ -35,6 +35,9 @@ class EventHandler
         HttpClientEvents\RequestSending::class => 'httpClientRequestSending',
         HttpClientEvents\ResponseReceived::class => 'httpClientResponseReceived',
         HttpClientEvents\ConnectionFailed::class => 'httpClientConnectionFailed',
+        DatabaseEvents\TransactionBeginning::class => 'transactionBeginning',
+        DatabaseEvents\TransactionCommitted::class => 'transactionCommitted',
+        DatabaseEvents\TransactionRolledBack::class => 'transactionRolledBack',
     ];
 
     /**
@@ -116,6 +119,9 @@ class EventHandler
      *
      * @uses self::routeMatchedHandler()
      * @uses self::queryExecutedHandler()
+     * @uses self::transactionBeginningHandler()
+     * @uses self::transactionCommittedHandler()
+     * @uses self::transactionRolledBackHandler()
      * @uses self::httpClientRequestSendingHandler()
      * @uses self::httpClientResponseReceivedHandler()
      * @uses self::httpClientConnectionFailedHandler()
@@ -240,6 +246,40 @@ class EventHandler
         return "{$filePath}:{$firstAppFrame->getLine()}";
     }
 
+    protected function transactionBeginningHandler(DatabaseEvents\TransactionBeginning $event): void
+    {
+        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+
+        if ($parentSpan === null) {
+            return;
+        }
+
+        $context = new SpanContext;
+        $context->setOp('db.transaction');
+
+        $this->pushSpan($parentSpan->startChild($context));
+    }
+
+    protected function transactionCommittedHandler(DatabaseEvents\TransactionCommitted $event): void
+    {
+        $span = $this->popSpan();
+
+        if ($span !== null) {
+            $span->finish();
+            $span->setStatus(SpanStatus::ok());
+        }
+    }
+
+    protected function transactionRolledBackHandler(DatabaseEvents\TransactionRolledBack $event): void
+    {
+        $span = $this->popSpan();
+
+        if ($span !== null) {
+            $span->finish();
+            $span->setStatus(SpanStatus::internalError());
+        }
+    }
+
     protected function httpClientRequestSendingHandler(HttpClientEvents\RequestSending $event): void
     {
         $parentSpan = SentrySdk::getCurrentHub()->getSpan();
@@ -252,7 +292,6 @@ class EventHandler
 
         $context->setOp('http.client');
         $context->setDescription($event->request->method() . ' ' . $event->request->url());
-        $context->setStartTimestamp(microtime(true));
 
         $this->pushSpan($parentSpan->startChild($context));
     }

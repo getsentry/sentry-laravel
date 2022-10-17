@@ -22,6 +22,7 @@
 - Simplify Sentry meta tag retrieval, by adding `Sentry\Laravel\Integration::sentryMeta()` (#586)
 - Fix tracing with nested queue jobs (mostly when running jobs in the `sync` driver) (#592)
 - Add a `http.route` span, this span indicates the time that is spent inside a controller method or route closure (#593)
+- Add a `db.transaction` span, this span indicates the time that is spent inside a database transaction (#594)
 
 ## 2.14.2
 
