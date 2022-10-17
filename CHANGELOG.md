@@ -4,6 +4,15 @@
 
 ## 3.0.0
 
+**New features**
+
+- We are now creating more spans to give you better insights into the performance of your application
+    - Add a `http.client` span. This span indicates the time that is spent when using the Laravel HTTP client (#585)
+    - Add a `http.route` span. This span indicates the time that is spent inside a controller method or route closure (#593)
+    - Add a `db.transaction` span. This span indicates the time that is spent inside a database transaction (#594)
+- Add support for [Dynamic Sampling](https://docs.sentry.io/product/data-management-settings/dynamic-sampling/), allowing developers to set a server-side sampling rate without the need to re-deploy their applications
+    - Add support for Dynamic Sampling (#572)
+
 **Breaking changes**
 
 - Laravel Lumen is no longer supported
@@ -11,18 +20,14 @@
 - Laravel versions 5.0 - 5.8 are no longer supported
     - Drop support for Laravel 5.x (#581)
 - Remove `Sentry\Integration::extractNameForRoute()`, it's alternative `Sentry\Integration::extractNameAndSourceForRoute()` is marked as `@internal` (#580)
-- Remove extracting route name or controller for transaction names (#583). This unifies the transaction names to a more concise format.
-- Remove internal `Sentry\Integration::currentTracingSpan()`, use `SentrySdk::getCurrentHub()->getSpan()` if you were using this internal method. (#592)
+- Remove internal `Sentry\Integration::currentTracingSpan()`, use `SentrySdk::getCurrentHub()->getSpan()` if you were using this internal method (#592)
 
 **Other changes**
 
-- Add support for Dynamic Sampling (#572)
 - Set the tracing transaction name on the `Illuminate\Routing\Events\RouteMatched` instead of at the end of the request (#580)
-- Add tracing span for Laravel HTTP client requests (#585)
+- Remove extracting route name or controller for transaction names (#583). This unifies the transaction names to a more concise format.
 - Simplify Sentry meta tag retrieval, by adding `Sentry\Laravel\Integration::sentryMeta()` (#586)
 - Fix tracing with nested queue jobs (mostly when running jobs in the `sync` driver) (#592)
-- Add a `http.route` span, this span indicates the time that is spent inside a controller method or route closure (#593)
-- Add a `db.transaction` span, this span indicates the time that is spent inside a database transaction (#594)
 
 ## 2.14.2
 
