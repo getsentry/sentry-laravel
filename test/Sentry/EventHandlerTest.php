@@ -9,42 +9,41 @@ use Orchestra\Testbench\TestCase;
 
 class EventHandlerTest extends TestCase
 {
-    use ExpectsException;
-
-    public function test_missing_event_handler_throws_exception()
+    public function testMissingEventHandlerThrowsException(): void
     {
         $handler = new EventHandler($this->app, []);
 
-        $this->safeExpectException(RuntimeException::class);
+        $this->expectException(RuntimeException::class);
 
+        /** @noinspection PhpUndefinedMethodInspection */
         $handler->thisIsNotAHandlerAndShouldThrowAnException();
     }
 
-    public function test_all_mapped_event_handlers_exist()
+    public function testAllMappedEventHandlersExist(): void
     {
         $this->tryAllEventHandlerMethods(
-            $this->getStaticPropertyValueFromClass(EventHandler::class, 'eventHandlerMap')
+            $this->getEventHandlerMapFromEventHandler('eventHandlerMap')
         );
     }
 
-    public function test_all_mapped_auth_event_handlers_exist()
+    public function testAllMappedAuthEventHandlersExist(): void
     {
         $this->tryAllEventHandlerMethods(
-            $this->getStaticPropertyValueFromClass(EventHandler::class, 'authEventHandlerMap')
+            $this->getEventHandlerMapFromEventHandler('authEventHandlerMap')
         );
     }
 
-    public function test_all_mapped_queue_event_handlers_exist()
+    public function testAllMappedQueueEventHandlersExist(): void
     {
         $this->tryAllEventHandlerMethods(
-            $this->getStaticPropertyValueFromClass(EventHandler::class, 'queueEventHandlerMap')
+            $this->getEventHandlerMapFromEventHandler('queueEventHandlerMap')
         );
     }
 
-    public function test_all_mapped_octane_event_handlers_exist()
+    public function testAllMappedOctaneEventHandlersExist(): void
     {
         $this->tryAllEventHandlerMethods(
-            $this->getStaticPropertyValueFromClass(EventHandler::class, 'octaneEventHandlerMap')
+            $this->getEventHandlerMapFromEventHandler('octaneEventHandlerMap')
         );
     }
 
@@ -61,12 +60,12 @@ class EventHandlerTest extends TestCase
         }
     }
 
-    private function getStaticPropertyValueFromClass($className, $attributeName)
+    private function getEventHandlerMapFromEventHandler($eventHandlerMapName)
     {
-        $class = new ReflectionClass($className);
+        $class = new ReflectionClass(EventHandler::class);
 
         $attributes = $class->getStaticProperties();
 
-        return $attributes[$attributeName];
+        return $attributes[$eventHandlerMapName];
     }
 }
