@@ -32,6 +32,9 @@
         "laravel/lumen-framework": "*"
     },
     "autoload": {
+        "files": [
+            "src/Sentry/Laravel/functions.php"
+        ],
         "psr-0": {
             "Sentry\\Laravel\\": "src/"
         }
