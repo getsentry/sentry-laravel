@@ -2,6 +2,8 @@
 
 namespace Sentry\Laravel;
 
+use Illuminate\Contracts\Container\BindingResolutionException;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
 use Illuminate\Foundation\Application as Laravel;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
@@ -95,18 +97,25 @@ class ServiceProvider extends BaseServiceProvider
 
         $handler = new EventHandler($this->app, $userConfig);
 
-        $handler->subscribe();
+        try {
+            /** @var \Illuminate\Contracts\Events\Dispatcher $dispatcher */
+            $dispatcher = $this->app->make(Dispatcher::class);
 
-        if ($this->app->bound('octane')) {
-            $handler->subscribeOctaneEvents();
-        }
+            $handler->subscribe($dispatcher);
 
-        if ($this->app->bound('queue')) {
-            $handler->subscribeQueueEvents($this->app->make('queue'));
-        }
+            if ($this->app->bound('octane')) {
+                $handler->subscribeOctaneEvents($dispatcher);
+            }
 
-        if (isset($userConfig['send_default_pii']) && $userConfig['send_default_pii'] !== false) {
-            $handler->subscribeAuthEvents();
+            if ($this->app->bound('queue')) {
+                $handler->subscribeQueueEvents($dispatcher, $this->app->make('queue'));
+            }
+
+            if (isset($userConfig['send_default_pii']) && $userConfig['send_default_pii'] !== false) {
+                $handler->subscribeAuthEvents($dispatcher);
+            }
+        } catch (BindingResolutionException $e) {
+            // If we cannot resolve the event dispatcher we also cannot listen to events
         }
     }
 

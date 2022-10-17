@@ -57,7 +57,7 @@ class LighthouseIntegration implements IntegrationInterface
 
     public function handleStartRequest(StartRequest $startRequest): void
     {
-        $this->previousSpan = Integration::currentTracingSpan();
+        $this->previousSpan = SentrySdk::getCurrentHub()->getSpan();
 
         if ($this->previousSpan === null) {
             return;
