@@ -206,7 +206,6 @@ class EventHandler
 
         $parentSpan = SentrySdk::getCurrentHub()->getSpan();
 
-        // If there is no tracing span active there is no need to handle the event
         if ($parentSpan === null) {
             return;
         }
