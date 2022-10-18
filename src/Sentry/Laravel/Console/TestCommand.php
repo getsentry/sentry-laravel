@@ -12,17 +12,11 @@ use Sentry\State\Hub;
 use Sentry\State\HubInterface;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\TransactionContext;
+use Sentry\Tracing\TransactionSource;
 use Throwable;
 
 class TestCommand extends Command
 {
-    /**
-     * Laravel 5.0.x: The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $name = 'sentry:test';
-
     /**
      * The name and signature of the console command.
      *
@@ -145,6 +139,7 @@ class TestCommand extends Command
             $transactionContext = new TransactionContext();
             $transactionContext->setSampled(true);
             $transactionContext->setName('Sentry Test Transaction');
+            $transactionContext->setSource(TransactionSource::custom());
             $transactionContext->setOp('sentry.test');
 
             $transaction = $hub->startTransaction($transactionContext);

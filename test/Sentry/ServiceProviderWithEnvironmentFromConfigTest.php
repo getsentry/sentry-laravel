@@ -2,36 +2,36 @@
 
 namespace Sentry;
 
-use Sentry\Laravel\Tests\SentryLaravelTestCase;
+use Sentry\Laravel\Tests\TestCase;
 
-class ServiceProviderWithEnvironmentFromConfigTest extends SentryLaravelTestCase
+class ServiceProviderWithEnvironmentFromConfigTest extends TestCase
 {
-    public function testSentryEnvironmentDefaultsToLaravelEnvironment()
+    public function testSentryEnvironmentDefaultsToLaravelEnvironment(): void
     {
         $this->assertEquals('testing', app()->environment());
     }
 
-    public function testEmptySentryEnvironmentDefaultsToLaravelEnvironment()
+    public function testEmptySentryEnvironmentDefaultsToLaravelEnvironment(): void
     {
         $this->resetApplicationWithConfig([
             'sentry.environment' => '',
         ]);
 
-        $this->assertEquals('testing', $this->getHubFromContainer()->getClient()->getOptions()->getEnvironment());
+        $this->assertEquals('testing', $this->getClientFromContainer()->getOptions()->getEnvironment());
 
         $this->resetApplicationWithConfig([
             'sentry.environment' => null,
         ]);
 
-        $this->assertEquals('testing', $this->getHubFromContainer()->getClient()->getOptions()->getEnvironment());
+        $this->assertEquals('testing', $this->getClientFromContainer()->getOptions()->getEnvironment());
     }
 
-    public function testSentryEnvironmentDefaultGetsOverriddenByConfig()
+    public function testSentryEnvironmentDefaultGetsOverriddenByConfig(): void
     {
         $this->resetApplicationWithConfig([
-            'sentry.environment' => 'not_testing',
+            'sentry.environment' => 'override_env',
         ]);
 
-        $this->assertEquals('not_testing', $this->getHubFromContainer()->getClient()->getOptions()->getEnvironment());
+        $this->assertEquals('override_env', $this->getClientFromContainer()->getOptions()->getEnvironment());
     }
 }

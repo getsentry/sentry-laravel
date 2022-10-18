@@ -2,33 +2,34 @@
 
 namespace Sentry\Laravel\Tests;
 
+use Orchestra\Testbench\TestCase;
 use Sentry\Laravel\Facade;
 use Sentry\Laravel\ServiceProvider;
 use Sentry\State\HubInterface;
 
-class ServiceProviderWithCustomAliasTest extends \Orchestra\Testbench\TestCase
+class ServiceProviderWithCustomAliasTest extends TestCase
 {
-    protected function getEnvironmentSetUp($app)
+    protected function getEnvironmentSetUp($app): void
     {
         $app['config']->set('custom-sentry.dsn', 'http://publickey:secretkey@sentry.dev/123');
         $app['config']->set('custom-sentry.error_types', E_ALL ^ E_DEPRECATED ^ E_USER_DEPRECATED);
     }
 
-    protected function getPackageProviders($app)
+    protected function getPackageProviders($app): array
     {
         return [
             CustomSentryServiceProvider::class,
         ];
     }
 
-    protected function getPackageAliases($app)
+    protected function getPackageAliases($app): array
     {
         return [
             'CustomSentry' => CustomSentryFacade::class,
         ];
     }
 
-    public function testIsBound()
+    public function testIsBound(): void
     {
         $this->assertTrue(app()->bound('custom-sentry'));
         $this->assertInstanceOf(HubInterface::class, app('custom-sentry'));
@@ -38,7 +39,7 @@ class ServiceProviderWithCustomAliasTest extends \Orchestra\Testbench\TestCase
     /**
      * @depends testIsBound
      */
-    public function testEnvironment()
+    public function testEnvironment(): void
     {
         $this->assertEquals('testing', app('custom-sentry')->getClient()->getOptions()->getEnvironment());
     }
@@ -46,7 +47,7 @@ class ServiceProviderWithCustomAliasTest extends \Orchestra\Testbench\TestCase
     /**
      * @depends testIsBound
      */
-    public function testDsnWasSetFromConfig()
+    public function testDsnWasSetFromConfig(): void
     {
         /** @var \Sentry\Options $options */
         $options = app('custom-sentry')->getClient()->getOptions();
@@ -60,7 +61,7 @@ class ServiceProviderWithCustomAliasTest extends \Orchestra\Testbench\TestCase
     /**
      * @depends testIsBound
      */
-    public function testErrorTypesWasSetFromConfig()
+    public function testErrorTypesWasSetFromConfig(): void
     {
         $this->assertEquals(
             E_ALL ^ E_DEPRECATED ^ E_USER_DEPRECATED,
@@ -76,7 +77,7 @@ class CustomSentryServiceProvider extends ServiceProvider
 
 class CustomSentryFacade extends Facade
 {
-    protected static function getFacadeAccessor()
+    protected static function getFacadeAccessor(): string
     {
         return 'custom-sentry';
     }

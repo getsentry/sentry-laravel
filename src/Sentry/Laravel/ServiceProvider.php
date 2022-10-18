@@ -2,11 +2,12 @@
 
 namespace Sentry\Laravel;
 
+use Illuminate\Contracts\Container\BindingResolutionException;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
 use Illuminate\Foundation\Application as Laravel;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 use Illuminate\Log\LogManager;
-use Laravel\Lumen\Application as Lumen;
 use RuntimeException;
 use Sentry\ClientBuilder;
 use Sentry\ClientBuilderInterface;
@@ -34,7 +35,8 @@ class ServiceProvider extends BaseServiceProvider
         'integrations',
         // This is kept for backwards compatibility and can be dropped in a future breaking release
         'breadcrumbs.sql_bindings',
-        // The base namespace for controllers to strip of the beginning of controller class names
+
+        // This config option is no longer in use but to prevent errors when upgrading we leave it here to be discarded
         'controllers_base_namespace',
     ];
 
@@ -48,10 +50,7 @@ class ServiceProvider extends BaseServiceProvider
         if ($this->hasDsnSet()) {
             $this->bindEvents();
 
-            if ($this->app instanceof Lumen) {
-                $this->app->middleware(SetRequestMiddleware::class);
-                $this->app->middleware(SetRequestIpMiddleware::class);
-            } elseif ($this->app->bound(HttpKernelInterface::class)) {
+            if ($this->app->bound(HttpKernelInterface::class)) {
                 /** @var \Illuminate\Foundation\Http\Kernel $httpKernel */
                 $httpKernel = $this->app->make(HttpKernelInterface::class);
 
@@ -78,10 +77,6 @@ class ServiceProvider extends BaseServiceProvider
      */
     public function register(): void
     {
-        if ($this->app instanceof Lumen) {
-            $this->app->configure(static::$abstract);
-        }
-
         $this->mergeConfigFrom(__DIR__ . '/../../../config/sentry.php', static::$abstract);
 
         $this->configureAndRegisterClient();
@@ -102,18 +97,25 @@ class ServiceProvider extends BaseServiceProvider
 
         $handler = new EventHandler($this->app, $userConfig);
 
-        $handler->subscribe();
+        try {
+            /** @var \Illuminate\Contracts\Events\Dispatcher $dispatcher */
+            $dispatcher = $this->app->make(Dispatcher::class);
 
-        if ($this->app->bound('octane')) {
-            $handler->subscribeOctaneEvents();
-        }
+            $handler->subscribe($dispatcher);
 
-        if ($this->app->bound('queue')) {
-            $handler->subscribeQueueEvents($this->app->make('queue'));
-        }
+            if ($this->app->bound('octane')) {
+                $handler->subscribeOctaneEvents($dispatcher);
+            }
 
-        if (isset($userConfig['send_default_pii']) && $userConfig['send_default_pii'] !== false) {
-            $handler->subscribeAuthEvents();
+            if ($this->app->bound('queue')) {
+                $handler->subscribeQueueEvents($dispatcher, $this->app->make('queue'));
+            }
+
+            if (isset($userConfig['send_default_pii']) && $userConfig['send_default_pii'] !== false) {
+                $handler->subscribeAuthEvents($dispatcher);
+            }
+        } catch (BindingResolutionException $e) {
+            // If we cannot resolve the event dispatcher we also cannot listen to events
         }
     }
 
@@ -133,12 +135,6 @@ class ServiceProvider extends BaseServiceProvider
      */
     protected function configureAndRegisterClient(): void
     {
-        $userConfig = $this->getUserConfig();
-
-        if (isset($userConfig['controllers_base_namespace'])) {
-            Integration::setControllersBaseNamespace($userConfig['controllers_base_namespace']);
-        }
-
         $this->app->bind(ClientBuilderInterface::class, function () {
             $basePath   = base_path();
             $userConfig = $this->getUserConfig();
@@ -169,7 +165,7 @@ class ServiceProvider extends BaseServiceProvider
             return $clientBuilder;
         });
 
-        $this->app->singleton(HubInterface::class, function ($app) {
+        $this->app->singleton(HubInterface::class, function () {
             /** @var \Sentry\ClientBuilderInterface $clientBuilder */
             $clientBuilder = $this->app->make(ClientBuilderInterface::class);
 
@@ -177,7 +173,7 @@ class ServiceProvider extends BaseServiceProvider
 
             $userIntegrations = $this->resolveIntegrationsFromUserConfig();
 
-            $options->setIntegrations(function (array $integrations) use ($options, $userIntegrations, $app) {
+            $options->setIntegrations(function (array $integrations) use ($options, $userIntegrations) {
                 if ($options->hasDefaultIntegrations()) {
                     // Remove the default error and fatal exception listeners to let Laravel handle those
                     // itself. These event are still bubbling up through the documented changes in the users

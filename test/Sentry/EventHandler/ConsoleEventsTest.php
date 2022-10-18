@@ -1,19 +1,16 @@
 <?php
 
-namespace Sentry\Laravel\Tests;
+namespace Sentry\Laravel\Tests\EventHandler;
 
 use Illuminate\Console\Events\CommandStarting;
+use Sentry\Laravel\Tests\TestCase;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 
-class CommandInfoInBreadcrumbsTest extends SentryLaravelTestCase
+class ConsoleEventsTest extends TestCase
 {
-    public function testCommandInfoAreRecordedWhenEnabled()
+    public function testCommandBreadcrumbIsRecordedWhenEnabled(): void
     {
-        if ($this->shouldSkip()) {
-            $this->markTestSkipped('Laravel version <5.5 does not contain the events tested.');
-        }
-
         $this->resetApplicationWithConfig([
             'sentry.breadcrumbs.command_info' => true,
         ]);
@@ -28,12 +25,8 @@ class CommandInfoInBreadcrumbsTest extends SentryLaravelTestCase
         $this->assertEquals('--foo=bar', $lastBreadcrumb->getMetadata()['input']);
     }
 
-    public function testCommandInfoAreRecordedWhenDisabled()
+    public function testCommandBreadcrumIsNotRecordedWhenDisabled(): void
     {
-        if ($this->shouldSkip()) {
-            $this->markTestSkipped('Laravel version <5.5 does not contain the events tested.');
-        }
-
         $this->resetApplicationWithConfig([
             'sentry.breadcrumbs.command_info' => false,
         ]);
@@ -45,24 +38,14 @@ class CommandInfoInBreadcrumbsTest extends SentryLaravelTestCase
         $this->assertEmpty($this->getCurrentBreadcrumbs());
     }
 
-    private function dispatchCommandStartEvent()
+    private function dispatchCommandStartEvent(): void
     {
-        $dispatcher = $this->app['events'];
-
-        $method = method_exists($dispatcher, 'dispatch') ? 'dispatch' : 'fire';
-
-        $this->app['events']->$method(
-            CommandStarting::class,
+        $this->dispatchLaravelEvent(
             new CommandStarting(
                 'test:command',
                 new ArgvInput(['artisan', '--foo=bar']),
                 new BufferedOutput()
             )
         );
-    }
-
-    private function shouldSkip()
-    {
-        return !class_exists(CommandStarting::class);
     }
 }

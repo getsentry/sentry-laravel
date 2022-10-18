@@ -14,7 +14,7 @@ class LogChannel extends LogManager
      *
      * @return Logger
      */
-    public function __invoke(array $config): Logger
+    public function __invoke(array $config = []): Logger
     {
         $handler = new SentryHandler(
             $this->app->make(HubInterface::class),

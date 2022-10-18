@@ -3,24 +3,19 @@
 namespace Sentry\Laravel;
 
 use Exception;
-use Illuminate\Auth\Events\Authenticated;
-use Illuminate\Console\Events\CommandFinished;
-use Illuminate\Console\Events\CommandStarting;
+use Illuminate\Auth\Events as AuthEvents;
+use Illuminate\Console\Events as ConsoleEvents;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\Events as DatabaseEvents;
 use Illuminate\Http\Request;
-use Illuminate\Log\Events\MessageLogged;
-use Illuminate\Queue\Events\JobExceptionOccurred;
-use Illuminate\Queue\Events\JobProcessed;
-use Illuminate\Queue\Events\JobProcessing;
-use Illuminate\Queue\Events\WorkerStopping;
+use Illuminate\Log\Events as LogEvents;
+use Illuminate\Queue\Events as QueueEvents;
 use Illuminate\Queue\QueueManager;
-use Illuminate\Routing\Events\RouteMatched;
-use Illuminate\Routing\Route;
+use Illuminate\Routing\Events as RoutingEvents;
 use Laravel\Octane\Events as Octane;
 use Laravel\Sanctum\Events as Sanctum;
 use RuntimeException;
@@ -38,17 +33,11 @@ class EventHandler
      * @var array
      */
     protected static $eventHandlerMap = [
-        'router.matched' => 'routerMatched',                              // Until Laravel 5.1
-        'Illuminate\Routing\Events\RouteMatched' => 'routeMatched',       // Since Laravel 5.2
-
-        'illuminate.query' => 'query',                                    // Until Laravel 5.1
-        'Illuminate\Database\Events\QueryExecuted' => 'queryExecuted',    // Since Laravel 5.2
-
-        'illuminate.log' => 'log',                                        // Until Laravel 5.3
-        'Illuminate\Log\Events\MessageLogged' => 'messageLogged',         // Since Laravel 5.4
-
-        'Illuminate\Console\Events\CommandStarting' => 'commandStarting', // Since Laravel 5.5
-        'Illuminate\Console\Events\CommandFinished' => 'commandFinished', // Since Laravel 5.5
+        LogEvents\MessageLogged::class => 'messageLogged',
+        RoutingEvents\RouteMatched::class => 'routeMatched',
+        DatabaseEvents\QueryExecuted::class => 'queryExecuted',
+        ConsoleEvents\CommandStarting::class => 'commandStarting',
+        ConsoleEvents\CommandFinished::class => 'commandFinished',
     ];
 
     /**
@@ -57,8 +46,8 @@ class EventHandler
      * @var array
      */
     protected static $authEventHandlerMap = [
-        'Illuminate\Auth\Events\Authenticated' => 'authenticated',                  // Since Laravel 5.3
-        'Laravel\Sanctum\Events\TokenAuthenticated' => 'sanctumTokenAuthenticated', // Since Sanctum 2.13
+        AuthEvents\Authenticated::class => 'authenticated',
+        Sanctum\TokenAuthenticated::class => 'sanctumTokenAuthenticated', // Since Sanctum 2.13
     ];
 
     /**
@@ -67,10 +56,10 @@ class EventHandler
      * @var array
      */
     protected static $queueEventHandlerMap = [
-        'Illuminate\Queue\Events\JobProcessed' => 'queueJobProcessed',                 // Since Laravel 5.2
-        'Illuminate\Queue\Events\JobProcessing' => 'queueJobProcessing',               // Since Laravel 5.2
-        'Illuminate\Queue\Events\WorkerStopping' => 'queueWorkerStopping',             // Since Laravel 5.2
-        'Illuminate\Queue\Events\JobExceptionOccurred' => 'queueJobExceptionOccurred', // Since Laravel 5.2
+        QueueEvents\JobProcessed::class => 'queueJobProcessed',
+        QueueEvents\JobProcessing::class => 'queueJobProcessing',
+        QueueEvents\WorkerStopping::class => 'queueWorkerStopping',
+        QueueEvents\JobExceptionOccurred::class => 'queueJobExceptionOccurred',
     ];
 
     /**
@@ -79,17 +68,17 @@ class EventHandler
      * @var array
      */
     protected static $octaneEventHandlerMap = [
-        'Laravel\Octane\Events\RequestReceived' => 'octaneRequestReceived',
-        'Laravel\Octane\Events\RequestTerminated' => 'octaneRequestTerminated',
+        Octane\RequestReceived::class => 'octaneRequestReceived',
+        Octane\RequestTerminated::class => 'octaneRequestTerminated',
 
-        'Laravel\Octane\Events\TaskReceived' => 'octaneTaskReceived',
-        'Laravel\Octane\Events\TaskTerminated' => 'octaneTaskTerminated',
+        Octane\TaskReceived::class => 'octaneTaskReceived',
+        Octane\TaskTerminated::class => 'octaneTaskTerminated',
 
-        'Laravel\Octane\Events\TickReceived' => 'octaneTickReceived',
-        'Laravel\Octane\Events\TickTerminated' => 'octaneTickTerminated',
+        Octane\TickReceived::class => 'octaneTickReceived',
+        Octane\TickTerminated::class => 'octaneTickTerminated',
 
-        'Laravel\Octane\Events\WorkerErrorOccurred' => 'octaneWorkerErrorOccurred',
-        'Laravel\Octane\Events\WorkerStopping' => 'octaneWorkerStopping',
+        Octane\WorkerErrorOccurred::class => 'octaneWorkerErrorOccurred',
+        Octane\WorkerStopping::class => 'octaneWorkerStopping',
     ];
 
     /**
@@ -151,9 +140,9 @@ class EventHandler
     /**
      * Indicates if we pushed a scope for the queue.
      *
-     * @var bool
+     * @var int
      */
-    private $pushedQueueScope = false;
+    private $pushedQueueScopeCount = 0;
 
     /**
      * Indicates if we pushed a scope for Octane.
@@ -184,76 +173,40 @@ class EventHandler
     /**
      * Attach all event handlers.
      */
-    public function subscribe(): void
+    public function subscribe(Dispatcher $dispatcher): void
     {
-        /** @var \Illuminate\Contracts\Events\Dispatcher $dispatcher */
-        try {
-            $dispatcher = $this->container->make(Dispatcher::class);
-
-            foreach (static::$eventHandlerMap as $eventName => $handler) {
-                $dispatcher->listen($eventName, [$this, $handler]);
-            }
-        } catch (BindingResolutionException $e) {
-            // If we cannot resolve the event dispatcher we also cannot listen to events
+        foreach (static::$eventHandlerMap as $eventName => $handler) {
+            $dispatcher->listen($eventName, [$this, $handler]);
         }
     }
 
     /**
      * Attach all authentication event handlers.
      */
-    public function subscribeAuthEvents(): void
+    public function subscribeAuthEvents(Dispatcher $dispatcher): void
     {
-        /** @var \Illuminate\Contracts\Events\Dispatcher $dispatcher */
-        try {
-            $dispatcher = $this->container->make(Dispatcher::class);
-
-            foreach (static::$authEventHandlerMap as $eventName => $handler) {
-                $dispatcher->listen($eventName, [$this, $handler]);
-            }
-        } catch (BindingResolutionException $e) {
-            // If we cannot resolve the event dispatcher we also cannot listen to events
+        foreach (static::$authEventHandlerMap as $eventName => $handler) {
+            $dispatcher->listen($eventName, [$this, $handler]);
         }
     }
 
     /**
      * Attach all queue event handlers.
      */
-    public function subscribeOctaneEvents(): void
+    public function subscribeOctaneEvents(Dispatcher $dispatcher): void
     {
-        /** @var \Illuminate\Contracts\Events\Dispatcher $dispatcher */
-        try {
-            $dispatcher = $this->container->make(Dispatcher::class);
-
-            foreach (static::$octaneEventHandlerMap as $eventName => $handler) {
-                $dispatcher->listen($eventName, [$this, $handler]);
-            }
-        } catch (BindingResolutionException $e) {
-            // If we cannot resolve the event dispatcher we also cannot listen to events
+        foreach (static::$octaneEventHandlerMap as $eventName => $handler) {
+            $dispatcher->listen($eventName, [$this, $handler]);
         }
     }
 
     /**
      * Attach all queue event handlers.
-     *
-     * @param \Illuminate\Queue\QueueManager $queue
      */
-    public function subscribeQueueEvents(QueueManager $queue): void
+    public function subscribeQueueEvents(Dispatcher $dispatcher): void
     {
-        $queue->looping(function () {
-            $this->cleanupScopeForTaskWithinLongRunningProcessWhen($this->pushedQueueScope);
-
-            $this->pushedQueueScope = false;
-        });
-
-        /** @var \Illuminate\Contracts\Events\Dispatcher $dispatcher */
-        try {
-            $dispatcher = $this->container->make(Dispatcher::class);
-
-            foreach (static::$queueEventHandlerMap as $eventName => $handler) {
-                $dispatcher->listen($eventName, [$this, $handler]);
-            }
-        } catch (BindingResolutionException $e) {
-            // If we cannot resolve the event dispatcher we also cannot listen to events
+        foreach (static::$queueEventHandlerMap as $eventName => $handler) {
+            $dispatcher->listen($eventName, [$this, $handler]);
         }
     }
 
@@ -263,7 +216,7 @@ class EventHandler
      * @param string $method
      * @param array  $arguments
      */
-    public function __call($method, $arguments)
+    public function __call(string $method, array $arguments)
     {
         $handlerMethod = "{$method}Handler";
 
@@ -278,14 +231,9 @@ class EventHandler
         }
     }
 
-    /**
-     * Until Laravel 5.1
-     *
-     * @param Route $route
-     */
-    protected function routerMatchedHandler(Route $route)
+    protected function routeMatchedHandler(RoutingEvents\RouteMatched $match): void
     {
-        $routeName = Integration::extractNameForRoute($route);
+        [$routeName] = Integration::extractNameAndSourceForRoute($match->route);
 
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,
@@ -297,106 +245,32 @@ class EventHandler
         Integration::setTransaction($routeName);
     }
 
-    /**
-     * Since Laravel 5.2
-     *
-     * @param \Illuminate\Routing\Events\RouteMatched $match
-     */
-    protected function routeMatchedHandler(RouteMatched $match)
-    {
-        $this->routerMatchedHandler($match->route);
-    }
-
-    /**
-     * Until Laravel 5.1
-     *
-     * @param string $query
-     * @param array  $bindings
-     * @param int    $time
-     * @param string $connectionName
-     */
-    protected function queryHandler($query, $bindings, $time, $connectionName)
+    protected function queryExecutedHandler(DatabaseEvents\QueryExecuted $query): void
     {
         if (!$this->recordSqlQueries) {
             return;
         }
 
-        $this->addQueryBreadcrumb($query, $bindings, $time, $connectionName);
-    }
+        $data = ['connectionName' => $query->connectionName];
 
-    /**
-     * Since Laravel 5.2
-     *
-     * @param \Illuminate\Database\Events\QueryExecuted $query
-     */
-    protected function queryExecutedHandler(QueryExecuted $query)
-    {
-        if (!$this->recordSqlQueries) {
-            return;
-        }
-
-        $this->addQueryBreadcrumb($query->sql, $query->bindings, $query->time, $query->connectionName);
-    }
-
-    /**
-     * Helper to add an query breadcrumb.
-     *
-     * @param string     $query
-     * @param array      $bindings
-     * @param float|null $time
-     * @param string     $connectionName
-     */
-    private function addQueryBreadcrumb($query, $bindings, $time, $connectionName)
-    {
-        $data = ['connectionName' => $connectionName];
-
-        if ($time !== null) {
-            $data['executionTimeMs'] = $time;
+        if ($query->time !== null) {
+            $data['executionTimeMs'] = $query->time;
         }
 
         if ($this->recordSqlBindings) {
-            $data['bindings'] = $bindings;
+            $data['bindings'] = $query->bindings;
         }
 
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,
             Breadcrumb::TYPE_DEFAULT,
             'sql.query',
-            $query,
+            $query->sql,
             $data
         ));
     }
 
-    /**
-     * Until Laravel 5.3
-     *
-     * @param string     $level
-     * @param string     $message
-     * @param array|null $context
-     */
-    protected function logHandler($level, $message, $context)
-    {
-        $this->addLogBreadcrumb($level, $message, is_array($context) ? $context : []);
-    }
-
-    /**
-     * Since Laravel 5.4
-     *
-     * @param \Illuminate\Log\Events\MessageLogged $logEntry
-     */
-    protected function messageLoggedHandler(MessageLogged $logEntry)
-    {
-        $this->addLogBreadcrumb($logEntry->level, $logEntry->message, $logEntry->context);
-    }
-
-    /**
-     * Helper to add an log breadcrumb.
-     *
-     * @param string      $level   Log level. May be any standard.
-     * @param string|null $message Log message.
-     * @param array       $context Log context.
-     */
-    private function addLogBreadcrumb(string $level, ?string $message, array $context = []): void
+    protected function messageLoggedHandler(LogEvents\MessageLogged $logEntry): void
     {
         if (!$this->recordLaravelLogs) {
             return;
@@ -405,35 +279,25 @@ class EventHandler
         // A log message with `null` as value will not be recorded by Laravel
         // however empty strings are logged so we mimick that behaviour to
         // check for `null` to stay consistent with how Laravel logs it
-        if ($message === null) {
+        if ($logEntry->message === null) {
             return;
         }
 
         Integration::addBreadcrumb(new Breadcrumb(
-            $this->logLevelToBreadcrumbLevel($level),
+            $this->logLevelToBreadcrumbLevel($logEntry->level),
             Breadcrumb::TYPE_DEFAULT,
-            'log.' . $level,
-            $message,
-            $context
+            'log.' . $logEntry->level,
+            $logEntry->message,
+            $logEntry->context
         ));
     }
 
-    /**
-     * Since Laravel 5.3
-     *
-     * @param \Illuminate\Auth\Events\Authenticated $event
-     */
-    protected function authenticatedHandler(Authenticated $event)
+    protected function authenticatedHandler(AuthEvents\Authenticated $event): void
     {
         $this->configureUserScopeFromModel($event->user);
     }
 
-    /**
-     * Since Sanctum 2.13
-     *
-     * @param \Laravel\Sanctum\Events\TokenAuthenticated $event
-     */
-    protected function sanctumTokenAuthenticatedHandler(Sanctum\TokenAuthenticated $event)
+    protected function sanctumTokenAuthenticatedHandler(Sanctum\TokenAuthenticated $event): void
     {
         $this->configureUserScopeFromModel($event->token->tokenable);
     }
@@ -480,18 +344,11 @@ class EventHandler
         });
     }
 
-    /**
-     * Since Laravel 5.2
-     *
-     * @param \Illuminate\Queue\Events\JobProcessing $event
-     */
-    protected function queueJobProcessingHandler(JobProcessing $event)
+    protected function queueJobProcessingHandler(QueueEvents\JobProcessing $event): void
     {
-        $this->cleanupScopeForTaskWithinLongRunningProcessWhen($this->pushedQueueScope);
-
         $this->prepareScopeForTaskWithinLongRunningProcess();
 
-        $this->pushedQueueScope = true;
+        ++$this->pushedQueueScopeCount;
 
         if (!$this->recordQueueInfo) {
             return;
@@ -518,43 +375,27 @@ class EventHandler
         ));
     }
 
-    /**
-     * Since Laravel 5.2
-     *
-     * @param \Illuminate\Queue\Events\JobExceptionOccurred $event
-     */
-    protected function queueJobExceptionOccurredHandler(JobExceptionOccurred $event)
+    protected function queueJobExceptionOccurredHandler(QueueEvents\JobExceptionOccurred $event): void
     {
+        $this->cleanupScopeForTaskWithinLongRunningProcessWhen($this->pushedQueueScopeCount > 0);
+
         $this->afterTaskWithinLongRunningProcess();
     }
 
-    /**
-     * Since Laravel 5.2
-     *
-     * @param \Illuminate\Queue\Events\JobProcessed $event
-     */
-    protected function queueJobProcessedHandler(JobProcessed $event)
+    protected function queueJobProcessedHandler(QueueEvents\JobProcessed $event): void
     {
+        $this->cleanupScopeForTaskWithinLongRunningProcessWhen($this->pushedQueueScopeCount > 0);
+
         $this->afterTaskWithinLongRunningProcess();
     }
 
-    /**
-     * Since Laravel 5.2
-     *
-     * @param \Illuminate\Queue\Events\WorkerStopping $event
-     */
-    protected function queueWorkerStoppingHandler(WorkerStopping $event)
+    protected function queueWorkerStoppingHandler(QueueEvents\WorkerStopping $event): void
     {
         // Flush any and all events that were possibly generated by queue jobs
         Integration::flushEvents();
     }
 
-    /**
-     * Since Laravel 5.5
-     *
-     * @param \Illuminate\Console\Events\CommandStarting $event
-     */
-    protected function commandStartingHandler(CommandStarting $event)
+    protected function commandStartingHandler(ConsoleEvents\CommandStarting $event): void
     {
         if ($event->command) {
             Integration::configureScope(static function (Scope $scope) use ($event): void {
@@ -577,12 +418,7 @@ class EventHandler
         }
     }
 
-    /**
-     * Since Laravel 5.5
-     *
-     * @param \Illuminate\Console\Events\CommandFinished $event
-     */
-    protected function commandFinishedHandler(CommandFinished $event)
+    protected function commandFinishedHandler(ConsoleEvents\CommandFinished $event): void
     {
         if ($this->recordCommandInfo) {
             Integration::addBreadcrumb(new Breadcrumb(

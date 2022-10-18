@@ -4,7 +4,6 @@ namespace Sentry\Laravel\Tracing;
 
 use Illuminate\Contracts\View\Engine;
 use Illuminate\View\Factory;
-use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
 use Sentry\Tracing\SpanContext;
 
@@ -29,7 +28,7 @@ final class ViewEngineDecorator implements Engine
      */
     public function get($path, array $data = []): string
     {
-        $parentSpan = Integration::currentTracingSpan();
+        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
 
         if ($parentSpan === null) {
             return $this->engine->get($path, $data);

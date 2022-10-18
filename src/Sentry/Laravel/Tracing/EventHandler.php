@@ -3,22 +3,25 @@
 namespace Sentry\Laravel\Tracing;
 
 use Exception;
-use Illuminate\Contracts\Container\BindingResolutionException;
-use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Events as DatabaseEvents;
+use Illuminate\Http\Client\Events as HttpClientEvents;
 use Illuminate\Queue\Events as QueueEvents;
 use Illuminate\Queue\Queue;
 use Illuminate\Queue\QueueManager;
+use Illuminate\Routing\Events as RoutingEvents;
 use RuntimeException;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
+use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\SpanStatus;
 use Sentry\Tracing\TransactionContext;
+use Sentry\Tracing\TransactionSource;
 
 class EventHandler
 {
+    public const QUEUE_PAYLOAD_BAGGAGE_DATA = 'sentry_baggage_data';
     public const QUEUE_PAYLOAD_TRACE_PARENT_DATA = 'sentry_trace_parent_data';
 
     /**
@@ -27,8 +30,14 @@ class EventHandler
      * @var array
      */
     protected static $eventHandlerMap = [
-        'illuminate.query' => 'query',                          // Until Laravel 5.1
-        DatabaseEvents\QueryExecuted::class => 'queryExecuted', // Since Laravel 5.2
+        RoutingEvents\RouteMatched::class => 'routeMatched',
+        DatabaseEvents\QueryExecuted::class => 'queryExecuted',
+        HttpClientEvents\RequestSending::class => 'httpClientRequestSending',
+        HttpClientEvents\ResponseReceived::class => 'httpClientResponseReceived',
+        HttpClientEvents\ConnectionFailed::class => 'httpClientConnectionFailed',
+        DatabaseEvents\TransactionBeginning::class => 'transactionBeginning',
+        DatabaseEvents\TransactionCommitted::class => 'transactionCommitted',
+        DatabaseEvents\TransactionRolledBack::class => 'transactionRolledBack',
     ];
 
     /**
@@ -37,17 +46,10 @@ class EventHandler
      * @var array
      */
     protected static $queueEventHandlerMap = [
-        QueueEvents\JobProcessing::class => 'queueJobProcessing',               // Since Laravel 5.2
-        QueueEvents\JobProcessed::class => 'queueJobProcessed',                 // Since Laravel 5.2
-        QueueEvents\JobExceptionOccurred::class => 'queueJobExceptionOccurred', // Since Laravel 5.2
+        QueueEvents\JobProcessing::class => 'queueJobProcessing',
+        QueueEvents\JobProcessed::class => 'queueJobProcessed',
+        QueueEvents\JobExceptionOccurred::class => 'queueJobExceptionOccurred',
     ];
-
-    /**
-     * The Laravel container.
-     *
-     * @var \Illuminate\Contracts\Container\Container
-     */
-    private $container;
 
     /**
      * Indicates if we should we add SQL queries as spans.
@@ -78,18 +80,18 @@ class EventHandler
     private $traceQueueJobsAsTransactions;
 
     /**
-     * Holds a reference to the parent queue job span.
+     * Hold the stack of parent spans that need to be put back on the scope.
      *
-     * @var \Sentry\Tracing\Span|null
+     * @var array<int, \Sentry\Tracing\Span|null>
      */
-    private $parentQueueJobSpan;
+    private $parentSpanStack = [];
 
     /**
-     * Holds a reference to the current queue job span or transaction.
+     * Hold the stack of current spans that need to be finished still.
      *
-     * @var \Sentry\Tracing\Transaction|\Sentry\Tracing\Span|null
+     * @var array<int, \Sentry\Tracing\Span|null>
      */
-    private $currentQueueJobSpan;
+    private $currentSpanStack = [];
 
     /**
      * The backtrace helper.
@@ -100,78 +102,64 @@ class EventHandler
 
     /**
      * EventHandler constructor.
-     *
-     * @param \Illuminate\Contracts\Container\Container $container
-     * @param \Sentry\Laravel\Tracing\BacktraceHelper   $backtraceHelper
-     * @param array                                     $config
      */
-    public function __construct(Container $container, BacktraceHelper $backtraceHelper, array $config)
+    public function __construct(array $config, BacktraceHelper $backtraceHelper)
     {
-        $this->container = $container;
-        $this->backtraceHelper = $backtraceHelper;
-
         $this->traceSqlQueries = ($config['sql_queries'] ?? true) === true;
         $this->traceSqlQueryOrigins = ($config['sql_origin'] ?? true) === true;
 
         $this->traceQueueJobs = ($config['queue_jobs'] ?? false) === true;
         $this->traceQueueJobsAsTransactions = ($config['queue_job_transactions'] ?? false) === true;
+
+        $this->backtraceHelper = $backtraceHelper;
     }
 
     /**
      * Attach all event handlers.
+     *
+     * @uses self::routeMatchedHandler()
+     * @uses self::queryExecutedHandler()
+     * @uses self::transactionBeginningHandler()
+     * @uses self::transactionCommittedHandler()
+     * @uses self::transactionRolledBackHandler()
+     * @uses self::httpClientRequestSendingHandler()
+     * @uses self::httpClientResponseReceivedHandler()
+     * @uses self::httpClientConnectionFailedHandler()
      */
-    public function subscribe(): void
+    public function subscribe(Dispatcher $dispatcher): void
     {
-        try {
-            /** @var \Illuminate\Contracts\Events\Dispatcher $dispatcher */
-            $dispatcher = $this->container->make(Dispatcher::class);
-
-            foreach (static::$eventHandlerMap as $eventName => $handler) {
-                $dispatcher->listen($eventName, [$this, $handler]);
-            }
-        } catch (BindingResolutionException $e) {
-            // If we cannot resolve the event dispatcher we also cannot listen to events
+        foreach (static::$eventHandlerMap as $eventName => $handler) {
+            $dispatcher->listen($eventName, [$this, $handler]);
         }
     }
 
     /**
      * Attach all queue event handlers.
      *
-     * @param \Illuminate\Queue\QueueManager $queue
+     * @uses self::queueJobProcessingHandler()
+     * @uses self::queueJobProcessedHandler()
+     * @uses self::queueJobExceptionOccurredHandler()
      */
-    public function subscribeQueueEvents(QueueManager $queue): void
+    public function subscribeQueueEvents(Dispatcher $dispatcher, QueueManager $queue): void
     {
         // If both types of queue job tracing is disabled also do not register the events
         if (!$this->traceQueueJobs && !$this->traceQueueJobsAsTransactions) {
             return;
         }
 
-        // The payload create callback was introduced in Laravel 5.7 so we need to guard against older versions
-        if (method_exists(Queue::class, 'createPayloadUsing')) {
-            Queue::createPayloadUsing(static function (?string $connection, ?string $queue, ?array $payload): ?array {
-                $currentSpan = Integration::currentTracingSpan();
+        Queue::createPayloadUsing(static function (?string $connection, ?string $queue, ?array $payload): ?array {
+            $currentSpan = SentrySdk::getCurrentHub()->getSpan();
 
-                if ($currentSpan !== null && $payload !== null) {
-                    $payload[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] = $currentSpan->toTraceparent();
-                }
+            if ($currentSpan !== null && $payload !== null) {
+                $payload[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] = $currentSpan->toTraceparent();
+                $payload[self::QUEUE_PAYLOAD_BAGGAGE_DATA] = $currentSpan->toBaggage();
+            }
 
-                return $payload;
-            });
-        }
-
-        $queue->looping(function () {
-            $this->afterQueuedJob();
+            return $payload;
         });
 
-        try {
-            /** @var \Illuminate\Contracts\Events\Dispatcher $dispatcher */
-            $dispatcher = $this->container->make(Dispatcher::class);
-
-            foreach (static::$queueEventHandlerMap as $eventName => $handler) {
-                $dispatcher->listen($eventName, [$this, $handler]);
-            }
-        } catch (BindingResolutionException $e) {
-            // If we cannot resolve the event dispatcher we also cannot listen to events
+        foreach (static::$queueEventHandlerMap as $eventName => $handler) {
+            $dispatcher->listen($eventName, [$this, $handler]);
         }
     }
 
@@ -181,7 +169,7 @@ class EventHandler
      * @param string $method
      * @param array  $arguments
      */
-    public function __call($method, $arguments)
+    public function __call(string $method, array $arguments)
     {
         $handlerMethod = "{$method}Handler";
 
@@ -191,47 +179,32 @@ class EventHandler
 
         try {
             call_user_func_array([$this, $handlerMethod], $arguments);
-        } catch (Exception $exception) {
-            // Ignore
+        } catch (Exception $e) {
+            // Ignore to prevent bubbling up errors in the SDK
         }
     }
 
-    /**
-     * Until Laravel 5.1
-     *
-     * @param string $query
-     * @param array  $bindings
-     * @param int    $time
-     * @param string $connectionName
-     */
-    protected function queryHandler($query, $bindings, $time, $connectionName): void
+    protected function routeMatchedHandler(RoutingEvents\RouteMatched $match): void
     {
-        $this->recordQuerySpan($query, $time);
+        $transaction = SentrySdk::getCurrentHub()->getTransaction();
+
+        if ($transaction === null) {
+            return;
+        }
+
+        [$transactionName, $transactionSource] = Integration::extractNameAndSourceForRoute($match->route);
+
+        $transaction->setName($transactionName);
+        $transaction->getMetadata()->setSource($transactionSource);
     }
 
-    /**
-     * Since Laravel 5.2
-     *
-     * @param \Illuminate\Database\Events\QueryExecuted $query
-     */
     protected function queryExecutedHandler(DatabaseEvents\QueryExecuted $query): void
-    {
-        $this->recordQuerySpan($query->sql, $query->time);
-    }
-
-    /**
-     * Helper to add an query breadcrumb.
-     *
-     * @param string     $query
-     * @param float|null $time
-     */
-    private function recordQuerySpan($query, $time): void
     {
         if (!$this->traceSqlQueries) {
             return;
         }
 
-        $parentSpan = Integration::currentTracingSpan();
+        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
 
         // If there is no tracing span active there is no need to handle the event
         if ($parentSpan === null) {
@@ -240,12 +213,12 @@ class EventHandler
 
         $context = new SpanContext();
         $context->setOp('db.sql.query');
-        $context->setDescription($query);
-        $context->setStartTimestamp(microtime(true) - $time / 1000);
-        $context->setEndTimestamp($context->getStartTimestamp() + $time / 1000);
+        $context->setDescription($query->sql);
+        $context->setStartTimestamp(microtime(true) - $query->time / 1000);
+        $context->setEndTimestamp($context->getStartTimestamp() + $query->time / 1000);
 
         if ($this->traceSqlQueryOrigins) {
-            $queryOrigin = $this->resolveQueryOriginFromBacktrace($context);
+            $queryOrigin = $this->resolveQueryOriginFromBacktrace();
 
             if ($queryOrigin !== null) {
                 $context->setData(['sql.origin' => $queryOrigin]);
@@ -273,14 +246,79 @@ class EventHandler
         return "{$filePath}:{$firstAppFrame->getLine()}";
     }
 
-    /*
-     * Since Laravel 5.2
-     *
-     * @param \Illuminate\Queue\Events\JobProcessing $event
-     */
-    protected function queueJobProcessingHandler(QueueEvents\JobProcessing $event)
+    protected function transactionBeginningHandler(DatabaseEvents\TransactionBeginning $event): void
     {
-        $parentSpan = Integration::currentTracingSpan();
+        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+
+        if ($parentSpan === null) {
+            return;
+        }
+
+        $context = new SpanContext;
+        $context->setOp('db.transaction');
+
+        $this->pushSpan($parentSpan->startChild($context));
+    }
+
+    protected function transactionCommittedHandler(DatabaseEvents\TransactionCommitted $event): void
+    {
+        $span = $this->popSpan();
+
+        if ($span !== null) {
+            $span->finish();
+            $span->setStatus(SpanStatus::ok());
+        }
+    }
+
+    protected function transactionRolledBackHandler(DatabaseEvents\TransactionRolledBack $event): void
+    {
+        $span = $this->popSpan();
+
+        if ($span !== null) {
+            $span->finish();
+            $span->setStatus(SpanStatus::internalError());
+        }
+    }
+
+    protected function httpClientRequestSendingHandler(HttpClientEvents\RequestSending $event): void
+    {
+        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+
+        if ($parentSpan === null) {
+            return;
+        }
+
+        $context = new SpanContext;
+
+        $context->setOp('http.client');
+        $context->setDescription($event->request->method() . ' ' . $event->request->url());
+
+        $this->pushSpan($parentSpan->startChild($context));
+    }
+
+    protected function httpClientResponseReceivedHandler(HttpClientEvents\ResponseReceived $event): void
+    {
+        $span = $this->popSpan();
+
+        if ($span !== null) {
+            $span->finish();
+            $span->setHttpStatus($event->response->status());
+        }
+    }
+
+    protected function httpClientConnectionFailedHandler(HttpClientEvents\ConnectionFailed $event): void
+    {
+        $span = $this->popSpan();
+
+        if ($span !== null) {
+            $span->finish();
+            $span->setStatus(SpanStatus::internalError());
+        }
+    }
+
+    protected function queueJobProcessingHandler(QueueEvents\JobProcessing $event): void
+    {
+        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
 
         // If there is no tracing span active and we don't trace jobs as transactions there is no need to handle the event
         if ($parentSpan === null && !$this->traceQueueJobsAsTransactions) {
@@ -293,11 +331,10 @@ class EventHandler
         }
 
         if ($parentSpan === null) {
+            $baggage = $event->job->payload()[self::QUEUE_PAYLOAD_BAGGAGE_DATA] ?? null;
             $traceParent = $event->job->payload()[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] ?? null;
 
-            $context = $traceParent === null
-                ? new TransactionContext
-                : TransactionContext::fromSentryTrace($traceParent);
+            $context = TransactionContext::fromHeaders($traceParent ?? '', $baggage ?? '');
 
             // If the parent transaction was not sampled we also stop the queue job from being recorded
             if ($context->getParentSampled() === false) {
@@ -307,24 +344,19 @@ class EventHandler
             $context = new SpanContext;
         }
 
+        $resolvedJobName = $event->job->resolveName();
+
         $job = [
             'job' => $event->job->getName(),
             'queue' => $event->job->getQueue(),
+            'resolved' => $resolvedJobName,
             'attempts' => $event->job->attempts(),
             'connection' => $event->connectionName,
         ];
 
-        // Resolve name exists only from Laravel 5.3+
-        $resolvedJobName = method_exists($event->job, 'resolveName')
-            ? $event->job->resolveName()
-            : null;
-
-        if ($resolvedJobName !== null) {
-            $job['resolved'] = $resolvedJobName;
-        }
-
         if ($context instanceof TransactionContext) {
-            $context->setName($resolvedJobName ?? $event->job->getName());
+            $context->setName($resolvedJobName);
+            $context->setSource(TransactionSource::task());
         }
 
         $context->setOp('queue.process');
@@ -333,47 +365,57 @@ class EventHandler
 
         // When the parent span is null we start a new transaction otherwise we start a child of the current span
         if ($parentSpan === null) {
-            $this->currentQueueJobSpan = SentrySdk::getCurrentHub()->startTransaction($context);
+            $span = SentrySdk::getCurrentHub()->startTransaction($context);
         } else {
-            $this->currentQueueJobSpan = $parentSpan->startChild($context);
+            $span = $parentSpan->startChild($context);
         }
 
-        $this->parentQueueJobSpan = $parentSpan;
-
-        SentrySdk::getCurrentHub()->setSpan($this->currentQueueJobSpan);
+        $this->pushSpan($span);
     }
 
-    /**
-     * Since Laravel 5.2
-     *
-     * @param \Illuminate\Queue\Events\JobExceptionOccurred $event
-     */
-    protected function queueJobExceptionOccurredHandler(QueueEvents\JobExceptionOccurred $event)
+    protected function queueJobExceptionOccurredHandler(QueueEvents\JobExceptionOccurred $event): void
     {
         $this->afterQueuedJob(SpanStatus::internalError());
     }
 
-    /**
-     * Since Laravel 5.2
-     *
-     * @param \Illuminate\Queue\Events\JobProcessed $event
-     */
-    protected function queueJobProcessedHandler(QueueEvents\JobProcessed $event)
+    protected function queueJobProcessedHandler(QueueEvents\JobProcessed $event): void
     {
         $this->afterQueuedJob(SpanStatus::ok());
     }
 
     private function afterQueuedJob(?SpanStatus $status = null): void
     {
-        if ($this->currentQueueJobSpan === null) {
+        $span = $this->popSpan();
+
+        if ($span === null) {
             return;
         }
 
-        $this->currentQueueJobSpan->setStatus($status);
-        $this->currentQueueJobSpan->finish();
-        $this->currentQueueJobSpan = null;
+        $span->setStatus($status);
+        $span->finish();
+    }
 
-        SentrySdk::getCurrentHub()->setSpan($this->parentQueueJobSpan);
-        $this->parentQueueJobSpan = null;
+    private function pushSpan(Span $span): void
+    {
+        $hub = SentrySdk::getCurrentHub();
+
+        $this->parentSpanStack[] = $hub->getSpan();
+
+        $hub->setSpan($span);
+
+        $this->currentSpanStack[] = $span;
+    }
+
+    private function popSpan(): ?Span
+    {
+        if (count($this->currentSpanStack) === 0) {
+            return null;
+        }
+
+        $parent = array_pop($this->parentSpanStack);
+
+        SentrySdk::getCurrentHub()->setSpan($parent);
+
+        return array_pop($this->currentSpanStack);
     }
 }

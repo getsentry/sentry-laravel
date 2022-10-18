@@ -4,6 +4,7 @@ namespace Sentry\Laravel\Tests;
 
 use ReflectionMethod;
 use Sentry\Breadcrumb;
+use Sentry\ClientInterface;
 use Sentry\State\Scope;
 use ReflectionProperty;
 use Sentry\Laravel\Tracing;
@@ -11,14 +12,14 @@ use Sentry\State\HubInterface;
 use Sentry\Laravel\ServiceProvider;
 use Orchestra\Testbench\TestCase as LaravelTestCase;
 
-abstract class SentryLaravelTestCase extends LaravelTestCase
+abstract class TestCase extends LaravelTestCase
 {
     protected $setupConfig = [
         // Set config here before refreshing the app to set it in the container before Sentry is loaded
         // or use the `$this->resetApplicationWithConfig([ /* config */ ]);` helper method
     ];
 
-    protected function getEnvironmentSetUp($app)
+    protected function getEnvironmentSetUp($app): void
     {
         $app['config']->set('sentry.dsn', 'http://publickey:secretkey@sentry.dev/123');
 
@@ -27,7 +28,7 @@ abstract class SentryLaravelTestCase extends LaravelTestCase
         }
     }
 
-    protected function getPackageProviders($app)
+    protected function getPackageProviders($app): array
     {
         return [
             ServiceProvider::class,
@@ -35,26 +36,26 @@ abstract class SentryLaravelTestCase extends LaravelTestCase
         ];
     }
 
-    protected function resetApplicationWithConfig(array $config)
+    protected function resetApplicationWithConfig(array $config): void
     {
         $this->setupConfig = $config;
 
         $this->refreshApplication();
     }
 
-    protected function dispatchLaravelEvent($event, array $payload = [])
+    protected function dispatchLaravelEvent($event, array $payload = []): void
     {
-        $dispatcher = $this->app['events'];
-
-        // Laravel 5.4+ uses the dispatch method to dispatch/fire events
-        return method_exists($dispatcher, 'dispatch')
-            ? $dispatcher->dispatch($event, $payload)
-            : $dispatcher->fire($event, $payload);
+        $this->app['events']->dispatch($event, $payload);
     }
 
     protected function getHubFromContainer(): HubInterface
     {
         return $this->app->make('sentry');
+    }
+
+    protected function getClientFromContainer(): ClientInterface
+    {
+        return $this->getHubFromContainer()->getClient();
     }
 
     protected function getCurrentScope(): Scope
