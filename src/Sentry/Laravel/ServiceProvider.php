@@ -238,7 +238,7 @@ class ServiceProvider extends BaseServiceProvider
 
         $enableDefaultTracingIntegrations = $userConfig['tracing']['default_integrations'] ?? true;
 
-        if ($enableDefaultTracingIntegrations && $this->couldHavePerformanceTracingEnabled()) {
+        if ($enableDefaultTracingIntegrations) {
             $integrationsToResolve = array_merge($integrationsToResolve, TracingServiceProvider::DEFAULT_INTEGRATIONS);
         }
 

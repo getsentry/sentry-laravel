@@ -62,26 +62,29 @@ class Middleware
      */
     public function terminate(Request $request, $response): void
     {
-        if ($this->transaction !== null && app()->bound(HubInterface::class)) {
-            // We stop here if a route has not been matched unless we are configured to trace missing routes
-            if (config('sentry.tracing.missing_routes', false) === false && $request->route() === null) {
-                return;
-            }
-
-            if ($this->appSpan !== null) {
-                $this->appSpan->finish();
-            }
-
-            // Make sure we set the transaction and not have a child span in the Sentry SDK
-            // If the transaction is not on the scope during finish, the trace.context is wrong
-            SentrySdk::getCurrentHub()->setSpan($this->transaction);
-
-            if ($response instanceof SymfonyResponse) {
-                $this->hydrateResponseData($response);
-            }
-
-            $this->transaction->finish();
+        // If there is no transaction or the HubInterface is not bound in the container there is nothing for us to do
+        if ($this->transaction !== null || !app()->bound(HubInterface::class)) {
+            return;
         }
+
+        // We stop here if a route has not been matched unless we are configured to trace missing routes
+        if (config('sentry.tracing.missing_routes', false) === false && $request->route() === null) {
+            return;
+        }
+
+        if ($this->appSpan !== null) {
+            $this->appSpan->finish();
+        }
+
+        // Make sure we set the transaction and not have a child span in the Sentry SDK
+        // If the transaction is not on the scope during finish, the trace.context is wrong
+        SentrySdk::getCurrentHub()->setSpan($this->transaction);
+
+        if ($response instanceof SymfonyResponse) {
+            $this->hydrateResponseData($response);
+        }
+
+        $this->transaction->finish();
     }
 
     /**
@@ -119,7 +122,14 @@ class Middleware
             'method' => strtoupper($request->method()),
         ]);
 
-        $this->transaction = $sentry->startTransaction($context);
+        $transaction = $sentry->startTransaction($context);
+
+        // If this transaction is not sampled, don't set it either and stop doing work from this point on
+        if (!$transaction->getSampled()) {
+            return;
+        }
+
+        $this->transaction = $transaction;
 
         // Setting the Transaction on the Hub
         SentrySdk::getCurrentHub()->setSpan($this->transaction);
