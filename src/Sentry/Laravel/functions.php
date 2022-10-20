@@ -30,6 +30,12 @@ function trace(callable $trace, SpanContext $context)
             $scope->setSpan($span);
         }
 
-        return $trace($scope);
+        try {
+            return $trace($scope);
+        } finally {
+            if (isset($span)) {
+                $span->finish();
+            }
+        }
     });
 }
