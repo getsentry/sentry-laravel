@@ -18,20 +18,18 @@ use Sentry\Tracing\SpanContext;
  */
 function trace(callable $trace, SpanContext $context)
 {
-    $hub = SentrySdk::getCurrentHub();
+    return SentrySdk::getCurrentHub()->withScope(function (Scope $scope) use ($context, $trace) {
+        $parentSpan = $scope->getSpan();
 
-    $parentSpan = $hub->getSpan();
+        // If there's no span set on the scope there is no transaction
+        // active currently. If that is the case we don't create a unused
+        // span and we immediately execute the callable and return the result
+        if ($parentSpan === null) {
+            return $trace(null);
+        }
 
-    // If there is no span set on the hub, there is no transaction
-    // active currently. If that is the case we don't create a unused
-    // span and we immediately execute the callable and return the result
-    if ($parentSpan === null) {
-        return $trace(null);
-    }
+        $span = $parentSpan->startChild($context);
 
-    $span = $parentSpan->startChild($context);
-
-    return $hub->withScope(function (Scope $scope) use ($span, $trace) {
         $scope->setSpan($span);
 
         return $trace($scope);
