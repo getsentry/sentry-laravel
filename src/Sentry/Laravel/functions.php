@@ -3,19 +3,20 @@
 namespace Sentry\Laravel;
 
 use Sentry\SentrySdk;
+use Sentry\State\Scope;
 use Sentry\Tracing\SpanContext;
 
 /**
- * Execute the given callable while wrapping it in a span added to the current transaction.
+ * Execute the given callable while wrapping it in a span added as a child to the current transaction and active span.
  *
- * If there is currently no transaction active this is a no-op.
+ * If there is no transaction active this is a no-op and the scope passed to the trace callable will be `null`.
  *
- * @param callable                    $toMeasure The callable that is going to be measured
- * @param \Sentry\Tracing\SpanContext $context   The context of the span to be created
+ * @param callable(\Sentry\State\Scope|null): mixed $trace   The callable that is going to be traced
+ * @param \Sentry\Tracing\SpanContext               $context The context of the span to be created
  *
  * @return mixed
  */
-function measure(callable $toMeasure, SpanContext $context)
+function trace(callable $trace, SpanContext $context)
 {
     $hub = SentrySdk::getCurrentHub();
 
@@ -25,24 +26,14 @@ function measure(callable $toMeasure, SpanContext $context)
     // active currently. If that is the case we don't create a unused
     // span and we immediately execute the callable and return the result
     if ($parentSpan === null) {
-        return $toMeasure();
+        return $trace(null);
     }
 
     $span = $parentSpan->startChild($context);
 
-    // Set the new child span as the current span on the hub so
-    // that if the callable also generates it's own spans they are
-    // going to be nexted under this span instead of our parent span.
-    $hub->setSpan($span);
+    return $hub->withScope(function (Scope $scope) use ($span, $trace) {
+        $scope->setSpan($span);
 
-    try {
-        return $toMeasure();
-    } finally {
-        $span->finish();
-
-        // Revert the current span back to the parent span
-        // This ensures that after we are done next spans are
-        // correctly nested under the parent span as is expected
-        $hub->setSpan($parentSpan);
-    }
+        return $trace($scope);
+    });
 }
