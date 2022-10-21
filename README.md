@@ -8,13 +8,14 @@ _Bad software is everywhere, and we're tired of it. Sentry is on a mission to he
 
 # Official Sentry SDK for Laravel
 
-[![Build Status](https://img.shields.io/github/checks-status/getsentry/sentry-laravel/master)](https://github.com/getsentry/sentry-laravel/actions)
-[![Composer page link -- version](https://img.shields.io/packagist/v/getsentry/sentry-lararvel.svg)](https://packagist.org/packages/sentry/sentry-laravel)
+[![CI](https://github.com/getsentry/sentry-laravel/actions/workflows/ci.yaml/badge.svg)](https://github.com/getsentry/sentry-laravel/actions/workflows/ci.yaml)
+[![Latest Stable Version](https://poser.pugx.org/sentry/sentry-laravel/v/stable)](https://packagist.org/packages/sentry/sentry-laravel)
+[![License](https://poser.pugx.org/sentry/sentry-laravel/license)](https://packagist.org/packages/sentry/sentry-laravel)
+[![Total Downloads](https://poser.pugx.org/sentry/sentry-laravel/downloads)](https://packagist.org/packages/sentry/sentry-laravel)
+[![Monthly Downloads](https://poser.pugx.org/sentry/sentry-laravel/d/monthly)](https://packagist.org/packages/sentry/sentry-laravel)
 [![Discord](https://img.shields.io/discord/621778831602221064)](https://discord.gg/cWnMQeA)
 
 This is the official Laravel SDK for [Sentry](https://sentry.io/)
-
----
 
 ## Getting Started
 
@@ -23,7 +24,8 @@ The installation step below work on the latest versions of the Laravel framework
 For other Laravel or Lumen versions see:
 
 - [Laravel 8.x & 9.x](https://docs.sentry.io/platforms/php/guides/laravel/)
-- [Laravel 5.x, 6.x & 7.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel5-6-7/)
+- [Laravel 6.x & 7.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel6-7/)
+- [Laravel 5.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel5/)
 - [Laravel 4.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel4/)
 - [Lumen](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/lumen/)
 
