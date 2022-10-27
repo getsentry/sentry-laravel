@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Remove incorrect checks if performance tracing should be enabled and rely on the transaction sampling decision instead (#600)
+- Fix `SENTRY_RELEASE` .env variable not working when using config caching (#603)
 
 ## 3.0.0
 
