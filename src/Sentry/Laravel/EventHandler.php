@@ -14,7 +14,6 @@ use Illuminate\Database\Events as DatabaseEvents;
 use Illuminate\Http\Request;
 use Illuminate\Log\Events as LogEvents;
 use Illuminate\Queue\Events as QueueEvents;
-use Illuminate\Queue\QueueManager;
 use Illuminate\Routing\Events as RoutingEvents;
 use Laravel\Octane\Events as Octane;
 use Laravel\Sanctum\Events as Sanctum;

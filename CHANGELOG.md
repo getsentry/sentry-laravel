@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Remove incorrect checks if performance tracing should be enabled and rely on the transaction sampling decision instead (#600)
+
 ## 3.0.0
 
 **New features**
