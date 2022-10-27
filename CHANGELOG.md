@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Remove incorrect checks if performance tracing should be enabled and rely on the transaction sampling decision instead (#600)
+- 
 ## 3.0.0
 
 **New features**
@@ -21,7 +23,6 @@
     - Drop support for Laravel 5.x (#581)
 - Remove `Sentry\Integration::extractNameForRoute()`, it's alternative `Sentry\Integration::extractNameAndSourceForRoute()` is marked as `@internal` (#580)
 - Remove internal `Sentry\Integration::currentTracingSpan()`, use `SentrySdk::getCurrentHub()->getSpan()` if you were using this internal method (#592)
-- Remove incorrect checks if performance tracing should be enabled and rely on the transaction sampling decision instead (#600)
 
 **Other changes**
 

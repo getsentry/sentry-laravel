@@ -12,6 +12,9 @@ abstract class TracingRoutingDispatcher
     {
         $parentSpan = SentrySdk::getCurrentHub()->getSpan();
 
+        // When there is no span we can skip creating
+        // the span and just immediately return with the
+        // callable result because there is no transaction.
         if ($parentSpan === null) {
             return $dispatch();
         }
