@@ -26,22 +26,29 @@ class ServiceProvider extends BaseServiceProvider
 
     public function boot(): void
     {
-        if ($this->hasDsnSet() && $this->couldHavePerformanceTracingEnabled()) {
-            $tracingConfig = $this->getUserConfig()['tracing'] ?? [];
+        // If there is no DSN set we register nothing since it's impossible for us to send traces without a DSN set
+        if (!$this->hasDsnSet()) {
+            return;
+        }
 
-            $this->bindEvents($tracingConfig);
+        $this->app->booted(function () {
+            $this->app->make(Middleware::class)->setBootedTimestamp();
+        });
 
-            $this->bindViewEngine($tracingConfig);
+        $tracingConfig = $this->getUserConfig()['tracing'] ?? [];
 
-            $this->decorateRoutingDispatchers();
+        $this->bindEvents($tracingConfig);
 
-            if ($this->app->bound(HttpKernelInterface::class)) {
-                /** @var \Illuminate\Foundation\Http\Kernel $httpKernel */
-                $httpKernel = $this->app->make(HttpKernelInterface::class);
+        $this->bindViewEngine($tracingConfig);
 
-                if ($httpKernel instanceof HttpKernel) {
-                    $httpKernel->prependMiddleware(Middleware::class);
-                }
+        $this->decorateRoutingDispatchers();
+
+        if ($this->app->bound(HttpKernelInterface::class)) {
+            /** @var \Illuminate\Foundation\Http\Kernel $httpKernel */
+            $httpKernel = $this->app->make(HttpKernelInterface::class);
+
+            if ($httpKernel instanceof HttpKernel) {
+                $httpKernel->prependMiddleware(Middleware::class);
             }
         }
     }
@@ -57,10 +64,6 @@ class ServiceProvider extends BaseServiceProvider
             $options = $sentry->getClient()->getOptions();
 
             return new BacktraceHelper($options, new RepresentationSerializer($options));
-        });
-
-        $this->app->booted(function () {
-            $this->app->make(Middleware::class)->setBootedTimestamp();
         });
     }
 

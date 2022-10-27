@@ -250,6 +250,7 @@ class EventHandler
     {
         $parentSpan = SentrySdk::getCurrentHub()->getSpan();
 
+        // If there is no tracing span active there is no need to handle the event
         if ($parentSpan === null) {
             return;
         }
@@ -284,6 +285,7 @@ class EventHandler
     {
         $parentSpan = SentrySdk::getCurrentHub()->getSpan();
 
+        // If there is no tracing span active there is no need to handle the event
         if ($parentSpan === null) {
             return;
         }
@@ -387,12 +389,10 @@ class EventHandler
     {
         $span = $this->popSpan();
 
-        if ($span === null) {
-            return;
+        if ($span !== null) {
+            $span->finish();
+            $span->setStatus($status);
         }
-
-        $span->setStatus($status);
-        $span->finish();
     }
 
     private function pushSpan(Span $span): void
