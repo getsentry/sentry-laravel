@@ -63,7 +63,7 @@ class Middleware
     public function terminate(Request $request, $response): void
     {
         // If there is no transaction or the HubInterface is not bound in the container there is nothing for us to do
-        if ($this->transaction !== null || !app()->bound(HubInterface::class)) {
+        if ($this->transaction === null || !app()->bound(HubInterface::class)) {
             return;
         }
 
