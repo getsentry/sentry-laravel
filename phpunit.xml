@@ -12,9 +12,9 @@
       <directory>./test/Sentry/</directory>
     </testsuite>
   </testsuites>
-  <filter>
-    <whitelist>
+  <coverage>
+    <include>
       <directory suffix=".php">./src/Sentry/</directory>
-    </whitelist>
-  </filter>
+    </include>
+  </coverage>
 </phpunit>
