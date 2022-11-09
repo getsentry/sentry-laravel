@@ -3,9 +3,14 @@
 namespace Sentry\Laravel;
 
 use Illuminate\Routing\Route;
+use Sentry\EventHint;
+use Sentry\EventId;
+use Sentry\ExceptionMechanism;
 use Sentry\SentrySdk;
 use Sentry\Tracing\TransactionSource;
+use Throwable;
 use function Sentry\addBreadcrumb;
+use function Sentry\captureEvent;
 use function Sentry\configureScope;
 use Sentry\Breadcrumb;
 use Sentry\Event;
@@ -161,5 +166,31 @@ class Integration implements IntegrationInterface
         }
 
         return sprintf('<meta name="baggage" content="%s"/>', $span->toBaggage());
+    }
+
+    /**
+     * Capture a unhandled exception and report it to Sentry.
+     *
+     * @param \Throwable $throwable
+     *
+     * @return \Sentry\EventId|null
+     */
+    public static function captureUnhandledException(Throwable $throwable): ?EventId
+    {
+        $client = SentrySdk::getCurrentHub()->getClient();
+
+        // When Sentry is not configured, because for example no DSN
+        // is set the client can be null. If that is the case we cannot
+        // transmit the event so, exit early to prevent doing useless work
+        if ($client === null) {
+            return null;
+        }
+
+        $hint = EventHint::fromArray([
+            'exception' => $throwable,
+            'mechanism' => new ExceptionMechanism(ExceptionMechanism::TYPE_GENERIC, false),
+        ]);
+
+        return $client->captureEvent(Event::createEvent(), $hint);
     }
 }
