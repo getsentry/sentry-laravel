@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 3.1.0
+
 - Add new method to report unhandled exceptions from the Laravel error handler (#608)
 
 ## 3.0.1
