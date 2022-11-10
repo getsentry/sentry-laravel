@@ -4,7 +4,7 @@
 
 ## 3.1.0
 
-- Add new method to report unhandled exceptions from the Laravel error handler (#608)
+- Unhandled exceptions are now correctly marked as `handled: false` and displayed as such on the issues list and detail page (#608)
    - Make sure to update your `App/Exceptions/Handler.php` file to enable this new behaviour. See https://docs.sentry.io/platforms/php/guides/laravel/
 
 ## 3.0.1
