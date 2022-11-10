@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add new method to report unhandled exceptions from the Laravel error handler (#608)
+
 ## 3.0.1
 
 - Remove incorrect checks if performance tracing should be enabled and rely on the transaction sampling decision instead (#600)
