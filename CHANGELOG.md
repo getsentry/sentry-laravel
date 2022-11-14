@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 3.1.1
+
 - Fix missing scope information on unhandled exceptions (#611)
 
 ## 3.1.0
