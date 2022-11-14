@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix missing scope information on unhandled exceptions (#611)
+
 ## 3.1.0
 
 - Unhandled exceptions are now correctly marked as `handled: false` and displayed as such on the issues list and detail page (#608)

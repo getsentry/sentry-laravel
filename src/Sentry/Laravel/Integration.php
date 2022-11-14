@@ -177,20 +177,10 @@ class Integration implements IntegrationInterface
      */
     public static function captureUnhandledException(Throwable $throwable): ?EventId
     {
-        $client = SentrySdk::getCurrentHub()->getClient();
-
-        // When Sentry is not configured, because for example no DSN
-        // is set the client can be null. If that is the case we cannot
-        // transmit the event so, exit early to prevent doing useless work
-        if ($client === null) {
-            return null;
-        }
-
         $hint = EventHint::fromArray([
-            'exception' => $throwable,
             'mechanism' => new ExceptionMechanism(ExceptionMechanism::TYPE_GENERIC, false),
         ]);
 
-        return $client->captureEvent(Event::createEvent(), $hint);
+        return SentrySdk::getCurrentHub()->captureException($throwable, $hint);
     }
 }
