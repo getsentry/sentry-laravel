@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Set `traces_sample_rate` to `null` by default (#616)
+
 ## 3.1.1
 
 - Fix missing scope information on unhandled exceptions (#611)
