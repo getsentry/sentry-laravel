@@ -2,7 +2,6 @@
 
 namespace Sentry\Laravel;
 
-use Illuminate\Foundation\Exceptions\Handler;
 use Illuminate\Routing\Route;
 use Sentry\EventHint;
 use Sentry\EventId;
@@ -11,7 +10,6 @@ use Sentry\SentrySdk;
 use Sentry\Tracing\TransactionSource;
 use Throwable;
 use function Sentry\addBreadcrumb;
-use function Sentry\captureEvent;
 use function Sentry\configureScope;
 use Sentry\Breadcrumb;
 use Sentry\Event;
@@ -204,15 +202,15 @@ class Integration implements IntegrationInterface
         // We limit the amount of backtrace frames since it is very unlikely to be any deeper
         $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10);
 
-        // We are looking for `Illuminate\Foundation\Exceptions\Handler::report()` to be called
+        // We are looking for `$handler->report()` to be called from the `report()` function
         foreach ($trace as $frameIndex => $frame) {
             // We need a frame with a class and function defined, we can skip frames missing either
             if (!isset($frame['class'], $frame['function'])) {
                 continue;
             }
 
-            // Check if the frame was indeed `Illuminate\Foundation\Exceptions\Handler::report()`
-            if ($frame['class'] !== Handler::class || $frame['function'] !== 'report') {
+            // Check if the frame was indeed `$handler->report()`
+            if ($frame['type'] !== '->' || $frame['function'] !== 'report') {
                 continue;
             }
 
