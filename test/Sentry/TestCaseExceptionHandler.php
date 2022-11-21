@@ -4,8 +4,12 @@ namespace Sentry\Laravel\Tests;
 
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Sentry\Laravel\Integration;
-use Throwable;
 
+/**
+ * This is a proxy class so we can inject the Sentry bits while running tests and handle exceptions like "normal".
+ *
+ * All type hints are remove from this class to prevent issues when running lower PHP versions where Throwable is not yet a thing.
+ */
 class TestCaseExceptionHandler implements ExceptionHandler
 {
     private $handler;
@@ -15,24 +19,24 @@ class TestCaseExceptionHandler implements ExceptionHandler
         $this->handler = $handler;
     }
 
-    public function report(Throwable $e)
+    public function report($e)
     {
         Integration::captureUnhandledException($e);
 
         $this->handler->report($e);
     }
 
-    public function shouldReport(Throwable $e)
+    public function shouldReport($e)
     {
         return $this->handler->shouldReport($e);
     }
 
-    public function render($request, Throwable $e)
+    public function render($request, $e)
     {
         return $this->handler->render($request, $e);
     }
 
-    public function renderForConsole($output, Throwable $e)
+    public function renderForConsole($output, $e)
     {
         $this->handler->render($output, $e);
     }
