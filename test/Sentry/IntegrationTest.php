@@ -6,7 +6,9 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Routing\Route;
 use Mockery;
+use RuntimeException;
 use Sentry\Event;
+use Sentry\ExceptionMechanism;
 use Sentry\Laravel\Integration;
 use Sentry\State\Scope;
 use Sentry\Tracing\TransactionSource;
@@ -109,6 +111,36 @@ class IntegrationTest extends TestCase
         $route = (new Route('GET', $url = '/foo', []))->name('group-name.');
 
         $this->assetRouteNameAndSource($route, $url, TransactionSource::route());
+    }
+
+    public function testExceptionReportedUsingReportHelperIsNotMarkedAsUnhandled(): void
+    {
+        $testException = new RuntimeException('This was handled');
+
+        report($testException);
+
+        $this->assertCount(1, $this->lastSentryEvents);
+
+        [, $hint] = $this->lastSentryEvents[0];
+
+        $this->assertEquals($testException, $hint->exception);
+        $this->assertNotNull($hint->mechanism);
+        $this->assertTrue($hint->mechanism->isHandled());
+    }
+
+    public function testExceptionIsNotMarkedAsUnhandled(): void
+    {
+        $testException = new RuntimeException('This was not handled');
+
+        Integration::captureUnhandledException($testException);
+
+        $this->assertCount(1, $this->lastSentryEvents);
+
+        [, $hint] = $this->lastSentryEvents[0];
+
+        $this->assertEquals($testException, $hint->exception);
+        $this->assertNotNull($hint->mechanism);
+        $this->assertFalse($hint->mechanism->isHandled());
     }
 
     private function assetRouteNameAndSource(Route $route, string $expectedName, TransactionSource $expectedSource): void
