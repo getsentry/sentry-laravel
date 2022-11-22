@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Set `traces_sample_rate` to `null` by default (#616)
 - Fix exceptions sent via the `report()` helper being marked as unhandled (#617)
 
 ## 3.1.1
