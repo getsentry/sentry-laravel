@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix exceptions sent via the `report()` helper being marked as unhandled (#617)
+
 ## 3.1.1
 
 - Fix missing scope information on unhandled exceptions (#611)

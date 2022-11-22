@@ -2,15 +2,20 @@
 
 namespace Sentry\Laravel\Tests;
 
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use ReflectionMethod;
 use Sentry\Breadcrumb;
 use Sentry\ClientInterface;
+use Sentry\Event;
+use Sentry\EventHint;
+use Sentry\Laravel\Integration;
 use Sentry\State\Scope;
 use ReflectionProperty;
 use Sentry\Laravel\Tracing;
 use Sentry\State\HubInterface;
 use Sentry\Laravel\ServiceProvider;
 use Orchestra\Testbench\TestCase as LaravelTestCase;
+use Throwable;
 
 abstract class TestCase extends LaravelTestCase
 {
@@ -19,13 +24,28 @@ abstract class TestCase extends LaravelTestCase
         // or use the `$this->resetApplicationWithConfig([ /* config */ ]);` helper method
     ];
 
+    /** @var array<int, array{0: Event, 1: EventHint}> */
+    protected $lastSentryEvents = [];
+
     protected function getEnvironmentSetUp($app): void
     {
+        $this->lastSentryEvents = [];
+
+        $app['config']->set('sentry.before_send', function (Event $event, EventHint $hint) {
+            $this->lastSentryEvents[] = [$event, $hint];
+
+            return null;
+        });
+
         $app['config']->set('sentry.dsn', 'http://publickey:secretkey@sentry.dev/123');
 
         foreach ($this->setupConfig as $key => $value) {
             $app['config']->set($key, $value);
         }
+
+        $app->extend(ExceptionHandler::class, function (ExceptionHandler $handler) {
+            return new TestCaseExceptionHandler($handler);
+        });
     }
 
     protected function getPackageProviders($app): array
