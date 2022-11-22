@@ -3,6 +3,16 @@
 ## Unreleased
 
 - Set `traces_sample_rate` to `null` by default (#616)
+    - Make sure to update your `config/sentry.php`.
+
+      Replace
+      ```
+      'traces_sample_rate' => (float)(env('SENTRY_TRACES_SAMPLE_RATE', 0.0)),
+      ```
+      with
+      ```
+      'traces_sample_rate' => env('SENTRY_TRACES_SAMPLE_RATE') === null ? null : (float)env('SENTRY_TRACES_SAMPLE_RATE'),
+      ```
 - Fix exceptions sent via the `report()` helper being marked as unhandled (#617)
 
 ## 3.1.1
