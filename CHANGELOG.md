@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 3.1.2
+
 - Set `traces_sample_rate` to `null` by default (#616)
     - Make sure to update your `config/sentry.php`.
 
