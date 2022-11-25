@@ -40,12 +40,12 @@ composer require sentry/sentry-laravel
 Enable capturing unhandled exception to report to Sentry by making the following change to your `App/Exceptions/Handler.php`:
 
 ```php {filename:App/Exceptions/Handler.php}
+use Sentry\Laravel\Integration;
+
 public function register()
 {
     $this->reportable(function (Throwable $e) {
-        if (app()->bound('sentry')) {
-            app('sentry')->captureException($e);
-        }
+        Integration::captureUnhandledException($e);
     });
 }
 ```
