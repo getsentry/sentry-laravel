@@ -200,7 +200,7 @@ class Integration implements IntegrationInterface
     private static function makeAnEducatedGuessIfTheExceptionMaybeWasHandled(): bool
     {
         // We limit the amount of backtrace frames since it is very unlikely to be any deeper
-        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10);
+        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 20);
 
         // We are looking for `$handler->report()` to be called from the `report()` function
         foreach ($trace as $frameIndex => $frame) {
@@ -228,7 +228,7 @@ class Integration implements IntegrationInterface
             }
 
             // If we reached this point we can be pretty sure the `report` function was called
-            // and we can can come to the educated conclusion the exception was indeed handled
+            // and we can come to the educated conclusion the exception was indeed handled
             return true;
         }
 
