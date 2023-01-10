@@ -4,6 +4,7 @@ namespace Sentry\Laravel;
 
 use Monolog\DateTimeImmutable;
 use Monolog\Logger;
+use Monolog\LogRecord;
 use Monolog\Formatter\LineFormatter;
 use Monolog\Formatter\FormatterInterface;
 use Monolog\Handler\AbstractProcessingHandler;
@@ -168,7 +169,7 @@ class SentryHandler extends AbstractProcessingHandler
      * {@inheritdoc}
      * @suppress PhanTypeMismatchArgument
      */
-    protected function write(array $record): void
+    protected function write(array|LogRecord $record): void
     {
         $exception = $record['context']['exception'] ?? null;
         $isException = $exception instanceof Throwable;
