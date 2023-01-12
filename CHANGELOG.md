@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 3.1.3
+
+- Increase debug trace limit count to 20 in `Integration::makeAnEducatedGuessIfTheExceptionMaybeWasHandled()` (#622)
+    - Look futher into the backtrace to check if `report()` was called.
+- Run the testsuite against PHP 8.2 (#624)
+
 ## 3.1.2
 
 - Set `traces_sample_rate` to `null` by default (#616)
