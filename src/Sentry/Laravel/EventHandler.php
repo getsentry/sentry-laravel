@@ -376,8 +376,6 @@ class EventHandler
 
     protected function queueJobExceptionOccurredHandler(QueueEvents\JobExceptionOccurred $event): void
     {
-        $this->cleanupScopeForTaskWithinLongRunningProcessWhen($this->pushedQueueScopeCount > 0);
-
         $this->afterTaskWithinLongRunningProcess();
     }
 
