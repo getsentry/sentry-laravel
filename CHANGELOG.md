@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add Laravel 10 support (#630)
+
 ## 3.1.3
 
 - Increase debug trace limit count to 20 in `Integration::makeAnEducatedGuessIfTheExceptionMaybeWasHandled()` (#622)
