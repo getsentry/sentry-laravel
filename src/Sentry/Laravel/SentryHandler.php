@@ -4,11 +4,13 @@ namespace Sentry\Laravel;
 
 use Monolog\DateTimeImmutable;
 use Monolog\Logger;
+use Monolog\LogRecord;
 use Monolog\Formatter\LineFormatter;
 use Monolog\Formatter\FormatterInterface;
 use Monolog\Handler\AbstractProcessingHandler;
 use Sentry\Breadcrumb;
 use Sentry\Event;
+use Sentry\Monolog\CompatibilityProcessingHandlerTrait;
 use Sentry\Severity;
 use Sentry\State\HubInterface;
 use Sentry\State\Scope;
@@ -16,6 +18,8 @@ use Throwable;
 
 class SentryHandler extends AbstractProcessingHandler
 {
+    use CompatibilityProcessingHandlerTrait;
+
     /**
      * @var string the current application environment (staging|preprod|prod)
      */
@@ -146,29 +150,14 @@ class SentryHandler extends AbstractProcessingHandler
      */
     protected function getLogLevel(int $logLevel): Severity
     {
-        switch ($logLevel) {
-            case Logger::DEBUG:
-                return Severity::debug();
-            case Logger::NOTICE:
-            case Logger::INFO:
-                return Severity::info();
-            case Logger::WARNING:
-                return Severity::warning();
-            case Logger::ALERT:
-            case Logger::EMERGENCY:
-            case Logger::CRITICAL:
-                return Severity::fatal();
-            case Logger::ERROR:
-            default:
-                return Severity::error();
-        }
+        return $this->getSeverityFromLevel($logLevel);
     }
 
     /**
      * {@inheritdoc}
      * @suppress PhanTypeMismatchArgument
      */
-    protected function write(array $record): void
+    protected function doWrite($record): void
     {
         $exception = $record['context']['exception'] ?? null;
         $isException = $exception instanceof Throwable;

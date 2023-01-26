@@ -20,7 +20,7 @@ jobs:
       matrix:
         php: [ "8.2", "8.1", "8.0", "7.4", "7.3", "7.2" ]
         packages:
-          # All versions below should be test on PHP ^7.1 (Sentry SDK requirement)
+          # All versions below should be test on PHP ^7.1 (Sentry SDK requirement) and PHP < 8.0 (PHPUnit requirement)
           - { laravel: ^6.0,  testbench: 4.7.*, phpunit: 8.4.* }
           - { laravel: ^7.0,  testbench: 5.1.*, phpunit: 8.4.* }
 
@@ -29,21 +29,33 @@ jobs:
 
           # All versions below only support PHP ^8.0 (Laravel requirement)
           - { laravel: ^9.0,  testbench: ^7.0, phpunit: 9.5.* }
+
+          # All versions below only support PHP ^8.1 (Laravel requirement)
+          - { laravel: ^10.0,  testbench: ^8.0, phpunit: 9.5.* }
         exclude:
           - php: "7.2"
+            packages: { laravel: ^8.0,  testbench: ^6.0, phpunit: 9.3.* }
+          - php: "7.2"
             packages: { laravel: ^9.0,  testbench: ^7.0, phpunit: 9.5.* }
+          - php: "7.2"
+            packages: { laravel: ^10.0,  testbench: ^8.0, phpunit: 9.5.* }
+
           - php: "7.3"
             packages: { laravel: ^9.0,  testbench: ^7.0, phpunit: 9.5.* }
+          - php: "7.3"
+            packages: { laravel: ^10.0,  testbench: ^8.0, phpunit: 9.5.* }
+
           - php: "7.4"
             packages: { laravel: ^9.0,  testbench: ^7.0, phpunit: 9.5.* }
-
-          - php: "7.2"
-            packages: { laravel: ^8.0,  testbench: ^6.0, phpunit: 9.3.* }
+          - php: "7.4"
+            packages: { laravel: ^10.0,  testbench: ^8.0, phpunit: 9.5.* }
 
           - php: "8.0"
             packages: { laravel: ^6.0,  testbench: 4.7.*, phpunit: 8.4.* }
           - php: "8.0"
             packages: { laravel: ^7.0,  testbench: 5.1.*, phpunit: 8.4.* }
+          - php: "8.0"
+            packages: { laravel: ^10.0,  testbench: ^8.0, phpunit: 9.5.* }
 
           - php: "8.1"
             packages: { laravel: ^6.0,  testbench: 4.7.*, phpunit: 8.4.* }
