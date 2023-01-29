@@ -19,11 +19,11 @@ This is the official Laravel SDK for [Sentry](https://sentry.io/)
 
 ## Getting Started
 
-The installation step below work on the latest versions of the Laravel framework (8.x and 9.x).
+The installation step below works on the latest version of the Laravel framework (10.x).
 
 For other Laravel or Lumen versions see:
 
-- [Laravel 8.x & 9.x](https://docs.sentry.io/platforms/php/guides/laravel/)
+- [Laravel 8.x & 9.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel8-9)
 - [Laravel 6.x & 7.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel6-7/)
 - [Laravel 5.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel5/)
 - [Laravel 4.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel4/)
@@ -42,7 +42,7 @@ Enable capturing unhandled exception to report to Sentry by making the following
 ```php {filename:App/Exceptions/Handler.php}
 use Sentry\Laravel\Integration;
 
-public function register()
+public function register(): void
 {
     $this->reportable(function (Throwable $e) {
         Integration::captureUnhandledException($e);
@@ -69,10 +69,12 @@ SENTRY_LARAVEL_DSN=___PUBLIC_DSN___
 ### Usage
 
 ```php
+use function Sentry\captureException;
+
 try {
     $this->functionFailsForSure();
 } catch (\Throwable $exception) {
-    \Sentry\captureException($exception);
+    captureException($exception);
 }
 ```
 
@@ -82,10 +84,11 @@ try {
 
 The Laravel versions listed below are all currently supported:
 
-- Laravel `>= 6.x.x` on PHP `>= 7.2` is supported starting from `1.2.0`
-- Laravel `>= 7.x.x` on PHP `>= 7.2` is supported starting from `1.7.0`
-- Laravel `>= 8.x.x` on PHP `>= 7.3` is supported starting from `1.9.0`
+- Laravel `>= 10.x.x` on PHP `>= 8.1` is supported starting from `3.2.0`
 - Laravel `>= 9.x.x` on PHP `>= 8.0` is supported starting from `2.11.0`
+- Laravel `>= 8.x.x` on PHP `>= 7.3` is supported starting from `1.9.0`
+- Laravel `>= 7.x.x` on PHP `>= 7.2` is supported starting from `1.7.0`
+- Laravel `>= 6.x.x` on PHP `>= 7.2` is supported starting from `1.2.0`
 
 Please note that starting with version `>= 2.0.0` we require PHP Version `>= 7.2` because we are using our new [PHP SDK](https://github.com/getsentry/sentry-php) underneath.
 
