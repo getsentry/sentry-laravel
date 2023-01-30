@@ -56,49 +56,49 @@ class EventHandler
      *
      * @var bool
      */
-    private $traceSqlQueries;
+    protected $traceSqlQueries;
 
     /**
      * Indicates if we should we add SQL query origin data to query spans.
      *
      * @var bool
      */
-    private $traceSqlQueryOrigins;
+    protected $traceSqlQueryOrigins;
 
     /**
      * Indicates if we should trace queue job spans.
      *
      * @var bool
      */
-    private $traceQueueJobs;
+    protected $traceQueueJobs;
 
     /**
      * Indicates if we should trace queue jobs as separate transactions.
      *
      * @var bool
      */
-    private $traceQueueJobsAsTransactions;
+    protected $traceQueueJobsAsTransactions;
 
     /**
      * Hold the stack of parent spans that need to be put back on the scope.
      *
      * @var array<int, \Sentry\Tracing\Span|null>
      */
-    private $parentSpanStack = [];
+    protected $parentSpanStack = [];
 
     /**
      * Hold the stack of current spans that need to be finished still.
      *
      * @var array<int, \Sentry\Tracing\Span|null>
      */
-    private $currentSpanStack = [];
+    protected $currentSpanStack = [];
 
     /**
      * The backtrace helper.
      *
      * @var \Sentry\Laravel\Tracing\BacktraceHelper
      */
-    private $backtraceHelper;
+    protected $backtraceHelper;
 
     /**
      * EventHandler constructor.
@@ -233,7 +233,7 @@ class EventHandler
      *
      * @return string|null
      */
-    private function resolveQueryOriginFromBacktrace(): ?string
+    protected function resolveQueryOriginFromBacktrace(): ?string
     {
         $firstAppFrame = $this->backtraceHelper->findFirstInAppFrameForBacktrace(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS));
 
@@ -385,7 +385,7 @@ class EventHandler
         $this->afterQueuedJob(SpanStatus::ok());
     }
 
-    private function afterQueuedJob(?SpanStatus $status = null): void
+    protected function afterQueuedJob(?SpanStatus $status = null): void
     {
         $span = $this->popSpan();
 
@@ -395,7 +395,7 @@ class EventHandler
         }
     }
 
-    private function pushSpan(Span $span): void
+    protected function pushSpan(Span $span): void
     {
         $hub = SentrySdk::getCurrentHub();
 
@@ -406,7 +406,7 @@ class EventHandler
         $this->currentSpanStack[] = $span;
     }
 
-    private function popSpan(): ?Span
+    protected function popSpan(): ?Span
     {
         if (count($this->currentSpanStack) === 0) {
             return null;

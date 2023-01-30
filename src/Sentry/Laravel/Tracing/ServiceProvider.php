@@ -35,11 +35,7 @@ class ServiceProvider extends BaseServiceProvider
             $this->app->make(Middleware::class)->setBootedTimestamp();
         });
 
-        $tracingConfig = $this->getUserConfig()['tracing'] ?? [];
-
-        $this->bindEvents($tracingConfig);
-
-        $this->bindViewEngine($tracingConfig);
+        $this->bindViewEngine();
 
         $this->decorateRoutingDispatchers();
 
@@ -65,14 +61,17 @@ class ServiceProvider extends BaseServiceProvider
 
             return new BacktraceHelper($options, new RepresentationSerializer($options));
         });
+
+        $this->app->singleton(EventHandler::class, function () {
+            $tracingConfig = $this->getUserConfig()['tracing'] ?? [];
+
+            return new EventHandler($tracingConfig, $this->app->make(BacktraceHelper::class));
+        });
     }
 
-    private function bindEvents(array $tracingConfig): void
+    private function bindEvents(): void
     {
-        $handler = new EventHandler(
-            $tracingConfig,
-            $this->app->make(BacktraceHelper::class)
-        );
+        $handler = $this->app->make(EventHandler::class);
 
         try {
             /** @var \Illuminate\Contracts\Events\Dispatcher $dispatcher */
@@ -88,8 +87,10 @@ class ServiceProvider extends BaseServiceProvider
         }
     }
 
-    private function bindViewEngine($tracingConfig): void
+    private function bindViewEngine(): void
     {
+        $tracingConfig = $this->getUserConfig()['tracing'] ?? [];
+
         if (($tracingConfig['views'] ?? true) !== true) {
             return;
         }

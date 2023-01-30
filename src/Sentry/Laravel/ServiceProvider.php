@@ -81,6 +81,10 @@ class ServiceProvider extends BaseServiceProvider
 
         $this->configureAndRegisterClient();
 
+        $this->app->singleton(EventHandler::class, function () {
+            return new EventHandler($this->app, $this->getUserConfig());
+        });
+
         if (($logManager = $this->app->make('log')) instanceof LogManager) {
             $logManager->extend('sentry', function ($app, array $config) {
                 return (new LogChannel($app))($config);
@@ -93,9 +97,7 @@ class ServiceProvider extends BaseServiceProvider
      */
     protected function bindEvents(): void
     {
-        $userConfig = $this->getUserConfig();
-
-        $handler = new EventHandler($this->app, $userConfig);
+        $handler = $this->app->make(EventHandler::class);
 
         try {
             /** @var \Illuminate\Contracts\Events\Dispatcher $dispatcher */
@@ -108,8 +110,10 @@ class ServiceProvider extends BaseServiceProvider
             }
 
             if ($this->app->bound('queue')) {
-                $handler->subscribeQueueEvents($dispatcher, $this->app->make('queue'));
+                $handler->subscribeQueueEvents($dispatcher);
             }
+
+            $userConfig = $this->getUserConfig();
 
             if (isset($userConfig['send_default_pii']) && $userConfig['send_default_pii'] !== false) {
                 $handler->subscribeAuthEvents($dispatcher);
@@ -136,7 +140,7 @@ class ServiceProvider extends BaseServiceProvider
     protected function configureAndRegisterClient(): void
     {
         $this->app->bind(ClientBuilderInterface::class, function () {
-            $basePath   = base_path();
+            $basePath = base_path();
             $userConfig = $this->getUserConfig();
 
             foreach (static::LARAVEL_SPECIFIC_OPTIONS as $laravelSpecificOptionName) {
@@ -145,7 +149,7 @@ class ServiceProvider extends BaseServiceProvider
 
             $options = \array_merge(
                 [
-                    'prefixes'       => [$basePath],
+                    'prefixes' => [$basePath],
                     'in_app_exclude' => ["{$basePath}/vendor"],
                 ],
                 $userConfig
