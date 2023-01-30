@@ -19,11 +19,11 @@ This is the official Laravel SDK for [Sentry](https://sentry.io/)
 
 ## Getting Started
 
-The installation step below works on the latest version of the Laravel framework (10.x).
+The installation step below work on the latest versions of the Laravel framework (8.x, 9.x and 10.x).
 
 For other Laravel or Lumen versions see:
 
-- [Laravel 8.x & 9.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel8-9)
+- [Laravel 8.x & 9.x & 10.x](https://docs.sentry.io/platforms/php/guides/laravel/)
 - [Laravel 6.x & 7.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel6-7/)
 - [Laravel 5.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel5/)
 - [Laravel 4.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel4/)
