@@ -3,6 +3,8 @@
 namespace Sentry\Laravel;
 
 use Exception;
+use GuzzleHttp\Psr7\Exception\MalformedUriException;
+use GuzzleHttp\Psr7\Uri;
 use Illuminate\Auth\Events as AuthEvents;
 use Illuminate\Console\Events as ConsoleEvents;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -11,12 +13,14 @@ use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Events as DatabaseEvents;
+use Illuminate\Http\Client\Events as HttpClientEvents;
 use Illuminate\Http\Request;
 use Illuminate\Log\Events as LogEvents;
 use Illuminate\Queue\Events as QueueEvents;
 use Illuminate\Routing\Events as RoutingEvents;
 use Laravel\Octane\Events as Octane;
 use Laravel\Sanctum\Events as Sanctum;
+use Psr\Http\Message\UriInterface;
 use RuntimeException;
 use Sentry\Breadcrumb;
 use Sentry\SentrySdk;
@@ -37,6 +41,8 @@ class EventHandler
         DatabaseEvents\QueryExecuted::class => 'queryExecuted',
         ConsoleEvents\CommandStarting::class => 'commandStarting',
         ConsoleEvents\CommandFinished::class => 'commandFinished',
+        HttpClientEvents\ResponseReceived::class => 'httpClientResponseReceived',
+        HttpClientEvents\ConnectionFailed::class => 'httpClientConnectionFailed',
     ];
 
     /**
@@ -88,53 +94,60 @@ class EventHandler
     private $container;
 
     /**
-     * Indicates if we should we add SQL queries to the breadcrumbs.
+     * Indicates if we should add SQL queries to the breadcrumbs.
      *
      * @var bool
      */
     private $recordSqlQueries;
 
     /**
-     * Indicates if we should we add query bindings to the breadcrumbs.
+     * Indicates if we should add query bindings to the breadcrumbs.
      *
      * @var bool
      */
     private $recordSqlBindings;
 
     /**
-     * Indicates if we should we add Laravel logs to the breadcrumbs.
+     * Indicates if we should add Laravel logs to the breadcrumbs.
      *
      * @var bool
      */
     private $recordLaravelLogs;
 
     /**
-     * Indicates if we should we add queue info to the breadcrumbs.
+     * Indicates if we should add queue info to the breadcrumbs.
      *
      * @var bool
      */
     private $recordQueueInfo;
 
     /**
-     * Indicates if we should we add command info to the breadcrumbs.
+     * Indicates if we should add command info to the breadcrumbs.
      *
      * @var bool
      */
     private $recordCommandInfo;
 
     /**
-     * Indicates if we should we add tick info to the breadcrumbs.
+     * Indicates if we should add tick info to the breadcrumbs.
      *
      * @var bool
      */
     private $recordOctaneTickInfo;
 
     /**
-     * Indicates if we should we add task info to the breadcrumbs.
+     * Indicates if we should add task info to the breadcrumbs.
      *
      * @var bool
      */
     private $recordOctaneTaskInfo;
+
+    /**
+     * Indicates if we should add HTTP client requests info to the breadcrumbs.
+     *
+     * @var bool
+     */
+    private $recordHttpClientRequests;
 
     /**
      * Indicates if we pushed a scope for the queue.
@@ -167,6 +180,7 @@ class EventHandler
         $this->recordCommandInfo = ($config['breadcrumbs.command_info'] ?? $config['breadcrumbs']['command_info'] ?? true) === true;
         $this->recordOctaneTickInfo = ($config['breadcrumbs.octane_tick_info'] ?? $config['breadcrumbs']['octane_tick_info'] ?? true) === true;
         $this->recordOctaneTaskInfo = ($config['breadcrumbs.octane_task_info'] ?? $config['breadcrumbs']['octane_task_info'] ?? true) === true;
+        $this->recordHttpClientRequests = ($config['breadcrumbs.http_client_requests'] ?? $config['breadcrumbs']['http_client_requests'] ?? true) === true;
     }
 
     /**
@@ -534,6 +548,58 @@ class EventHandler
         $this->pushedOctaneScope = false;
     }
 
+    protected function httpClientResponseReceivedHandler(HttpClientEvents\ResponseReceived $event): void
+    {
+        if (!$this->recordHttpClientRequests) {
+            return;
+        }
+
+        $level = Breadcrumb::LEVEL_INFO;
+        if (!$event->response->successful()) {
+            $level = Breadcrumb::LEVEL_ERROR;
+        }
+
+        $fullUri = $this->getFullUri($event->request->url());
+        $partialUri = $this->getPartialUri($fullUri);
+
+        Integration::addBreadcrumb(new Breadcrumb(
+            $level,
+            Breadcrumb::TYPE_HTTP,
+            'http',
+            null,
+            [
+                'url' => (string) $partialUri,
+                'method' => $event->request->method(),
+                'status_code' => $event->response->status(),
+                'http.query' => $fullUri->getQuery(),
+                'http.fragment' => $fullUri->getFragment(),
+            ]
+        ));
+    }
+
+    protected function httpClientConnectionFailedHandler(HttpClientEvents\ConnectionFailed $event): void
+    {
+        if (!$this->recordHttpClientRequests) {
+            return;
+        }
+
+        $fullUri = $this->getFullUri($event->request->url());
+        $partialUri = $this->getPartialUri($fullUri);
+
+        Integration::addBreadcrumb(new Breadcrumb(
+            Breadcrumb::LEVEL_ERROR,
+            Breadcrumb::TYPE_HTTP,
+            'http',
+            null,
+            [
+                'url' => (string) $partialUri,
+                'method' => $event->request->method(),
+                'http.query' => $fullUri->getQuery(),
+                'http.fragment' => $fullUri->getFragment(),
+            ]
+        ));
+    }
+
     /**
      * Translates common log levels to Sentry breadcrumb levels.
      *
@@ -600,5 +666,32 @@ class EventHandler
         $this->afterTaskWithinLongRunningProcess();
 
         SentrySdk::getCurrentHub()->popScope();
+    }
+
+    /**
+     * Construct a full URI
+     * 
+     * @param string $url 
+     * @return UriInterface 
+     */
+    private function getFullUri(string $url): UriInterface
+    {
+        return new Uri($url);
+    }
+
+    /**
+     * Construct a partial URI, excluding the authority and the query and fragment parts.
+     * 
+     * @param UriInterface $uri 
+     * @return UriInterface 
+     */
+    private function getPartialUri(UriInterface $uri): UriInterface
+    {
+        return Uri::fromParts([
+            'scheme' => $uri->getScheme(),
+            'host' => $uri->getHost(),
+            'port' => $uri->getPort(),
+            'path' => $uri->getPath(),
+        ]);
     }
 }
