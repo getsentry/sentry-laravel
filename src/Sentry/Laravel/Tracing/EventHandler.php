@@ -80,6 +80,13 @@ class EventHandler
     private $traceQueueJobsAsTransactions;
 
     /**
+     * Indicates if we should trace HTTP client requests.
+     *
+     * @var bool
+     */
+    private $traceHttpClientRequests;
+
+    /**
      * Hold the stack of parent spans that need to be put back on the scope.
      *
      * @var array<int, \Sentry\Tracing\Span|null>
@@ -107,6 +114,8 @@ class EventHandler
     {
         $this->traceSqlQueries = ($config['sql_queries'] ?? true) === true;
         $this->traceSqlQueryOrigins = ($config['sql_origin'] ?? true) === true;
+
+        $this->traceHttpClientRequests = ($config['http_client_requests'] ?? true) === true;
 
         $this->traceQueueJobs = ($config['queue_jobs'] ?? false) === true;
         $this->traceQueueJobsAsTransactions = ($config['queue_job_transactions'] ?? false) === true;
@@ -283,6 +292,10 @@ class EventHandler
 
     protected function httpClientRequestSendingHandler(HttpClientEvents\RequestSending $event): void
     {
+        if (!$this->traceHttpClientRequests) {
+            return;
+        }
+
         $parentSpan = SentrySdk::getCurrentHub()->getSpan();
 
         // If there is no tracing span active there is no need to handle the event
@@ -300,6 +313,10 @@ class EventHandler
 
     protected function httpClientResponseReceivedHandler(HttpClientEvents\ResponseReceived $event): void
     {
+        if (!$this->traceHttpClientRequests) {
+            return;
+        }
+    
         $span = $this->popSpan();
 
         if ($span !== null) {
@@ -310,6 +327,10 @@ class EventHandler
 
     protected function httpClientConnectionFailedHandler(HttpClientEvents\ConnectionFailed $event): void
     {
+        if (!$this->traceHttpClientRequests) {
+            return;
+        }
+
         $span = $this->popSpan();
 
         if ($span !== null) {
