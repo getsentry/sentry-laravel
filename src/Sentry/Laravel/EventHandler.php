@@ -670,9 +670,9 @@ class EventHandler
 
     /**
      * Construct a full URI
-     * 
-     * @param string $url 
-     * @return UriInterface 
+     *
+     * @param string $url
+     * @return UriInterface
      */
     private function getFullUri(string $url): UriInterface
     {
@@ -681,9 +681,9 @@ class EventHandler
 
     /**
      * Construct a partial URI, excluding the authority and the query and fragment parts.
-     * 
-     * @param UriInterface $uri 
-     * @return UriInterface 
+     *
+     * @param UriInterface $uri
+     * @return UriInterface
      */
     private function getPartialUri(UriInterface $uri): UriInterface
     {
