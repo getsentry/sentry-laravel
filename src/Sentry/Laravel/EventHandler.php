@@ -24,6 +24,9 @@ use Sentry\State\Scope;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\InputInterface;
 
+/**
+ * @internal
+ */
 class EventHandler
 {
     /**

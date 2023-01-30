@@ -19,6 +19,9 @@ use Sentry\Tracing\SpanStatus;
 use Sentry\Tracing\TransactionContext;
 use Sentry\Tracing\TransactionSource;
 
+/**
+ * @internal
+ */
 class EventHandler
 {
     public const QUEUE_PAYLOAD_BAGGAGE_DATA = 'sentry_baggage_data';
