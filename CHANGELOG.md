@@ -2,7 +2,23 @@
 
 ## Unreleased
 
-- Add Laravel 10 support (#630)
+## 3.2.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.2.0.
+This release adds support for Laravel 10.
+
+### Features
+
+- Add support for Laravel 10 [(#630)](https://github.com/getsentry/sentry-laravel/pull/630)
+    - Thanks to [@jnoordsij](https://github.com/jnoordsij) for their contribution.
+- Add `tracing.http_client_requests` option [(#641)](https://github.com/getsentry/sentry-laravel/pull/641)
+    - You can now disable HTTP client tracing in your `confgi/sentry.php` file
+
+      ```php
+      'tracing' => [
+          'http_client_requests' => true|false, // This feature is enabled by default
+      ],
+      ```
 
 ## 3.1.3
 
