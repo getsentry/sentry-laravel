@@ -31,31 +31,31 @@ jobs:
           - { laravel: ^9.0,  testbench: ^7.0, phpunit: 9.5.* }
 
           # All versions below only support PHP ^8.1 (Laravel requirement)
-          - { laravel: ^10.0,  testbench: ^8.0, phpunit: 9.5.* }
+          - { laravel: ^10.0,  testbench: ^8.0, phpunit: 9.6.* }
         exclude:
           - php: "7.2"
             packages: { laravel: ^8.0,  testbench: ^6.0, phpunit: 9.3.* }
           - php: "7.2"
             packages: { laravel: ^9.0,  testbench: ^7.0, phpunit: 9.5.* }
           - php: "7.2"
-            packages: { laravel: ^10.0,  testbench: ^8.0, phpunit: 9.5.* }
+            packages: { laravel: ^10.0,  testbench: ^8.0, phpunit: 9.6.* }
 
           - php: "7.3"
             packages: { laravel: ^9.0,  testbench: ^7.0, phpunit: 9.5.* }
           - php: "7.3"
-            packages: { laravel: ^10.0,  testbench: ^8.0, phpunit: 9.5.* }
+            packages: { laravel: ^10.0,  testbench: ^8.0, phpunit: 9.6.* }
 
           - php: "7.4"
             packages: { laravel: ^9.0,  testbench: ^7.0, phpunit: 9.5.* }
           - php: "7.4"
-            packages: { laravel: ^10.0,  testbench: ^8.0, phpunit: 9.5.* }
+            packages: { laravel: ^10.0,  testbench: ^8.0, phpunit: 9.6.* }
 
           - php: "8.0"
             packages: { laravel: ^6.0,  testbench: 4.7.*, phpunit: 8.4.* }
           - php: "8.0"
             packages: { laravel: ^7.0,  testbench: 5.1.*, phpunit: 8.4.* }
           - php: "8.0"
-            packages: { laravel: ^10.0,  testbench: ^8.0, phpunit: 9.5.* }
+            packages: { laravel: ^10.0,  testbench: ^8.0, phpunit: 9.6.* }
 
           - php: "8.1"
             packages: { laravel: ^6.0,  testbench: 4.7.*, phpunit: 8.4.* }
