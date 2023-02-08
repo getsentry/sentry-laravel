@@ -12,7 +12,7 @@ This release adds support for Laravel 10.
 - Add support for Laravel 10 [(#630)](https://github.com/getsentry/sentry-laravel/pull/630)
     - Thanks to [@jnoordsij](https://github.com/jnoordsij) for their contribution.
 - Add `tracing.http_client_requests` option [(#641)](https://github.com/getsentry/sentry-laravel/pull/641)
-    - You can now disable HTTP client tracing in your `confgi/sentry.php` file
+    - You can now disable HTTP client tracing in your `config/sentry.php` file
 
       ```php
       'tracing' => [
