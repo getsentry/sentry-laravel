@@ -562,7 +562,6 @@ class EventHandler
         }
 
         $fullUri = $this->getFullUri($event->request->url());
-        $partialUri = $this->getPartialUri($fullUri);
 
         Integration::addBreadcrumb(new Breadcrumb(
             $level,
@@ -570,7 +569,7 @@ class EventHandler
             'http',
             null,
             [
-                'url' => (string) $partialUri,
+                'url' => (string) $this->getPartialUri($fullUri),
                 'method' => $event->request->method(),
                 'status_code' => $event->response->status(),
                 'http.query' => $fullUri->getQuery(),
