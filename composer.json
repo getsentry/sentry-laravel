@@ -23,10 +23,8 @@
     "require": {
         "php": "^7.2 | ^8.0",
         "illuminate/support": "^6.0 | ^7.0 | ^8.0 | ^9.0 | ^10.0",
-        "sentry/sentry": "^3.16",
-        "sentry/sdk": "^3.3",
-        "symfony/psr-http-message-bridge": "^1.0 | ^2.0",
-        "nyholm/psr7": "^1.0"
+        "sentry/sentry": "^3.17",
+        "symfony/psr-http-message-bridge": "^1.0 | ^2.0"
     },
     "conflict": {
         "laravel/lumen-framework": "*"
