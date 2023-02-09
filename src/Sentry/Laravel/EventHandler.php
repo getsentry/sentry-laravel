@@ -555,9 +555,7 @@ class EventHandler
         }
 
         $level = Breadcrumb::LEVEL_INFO;
-        if ($event->response->clientError()) {
-            $level = Breadcrumb::LEVEL_WARNING;
-        } elseif ($event->response->serverError()) {
+        if ($event->response->failed()) {
             $level = Breadcrumb::LEVEL_ERROR;
         }
 
