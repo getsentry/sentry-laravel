@@ -342,7 +342,7 @@ class SentryHandler extends AbstractProcessingHandler
     }
 
     /**
-     * Test if the value passed can be casted to a string.
+     * Check if the value passed can be cast to a string.
      *
      * @param mixed $value
      *
