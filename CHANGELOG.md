@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix log channel context handling crash when unexpected values are passed (#644)
+
 ## 3.2.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.2.0.
