@@ -24,14 +24,14 @@ abstract class TestCase extends LaravelTestCase
         // or use the `$this->resetApplicationWithConfig([ /* config */ ]);` helper method
     ];
 
-    /** @var array<int, array{0: Event, 1: EventHint}> */
+    /** @var array<int, array{0: Event, 1: EventHint|null}> */
     protected $lastSentryEvents = [];
 
     protected function getEnvironmentSetUp($app): void
     {
         $this->lastSentryEvents = [];
 
-        $app['config']->set('sentry.before_send', function (Event $event, EventHint $hint) {
+        $app['config']->set('sentry.before_send', function (Event $event, ?EventHint $hint) {
             $this->lastSentryEvents[] = [$event, $hint];
 
             return null;
@@ -107,5 +107,14 @@ abstract class TestCase extends LaravelTestCase
         }
 
         return end($breadcrumbs);
+    }
+
+    protected function getLastEvent(): ?Event
+    {
+        if (empty($this->lastSentryEvents)) {
+            return null;
+        }
+
+        return end($this->lastSentryEvents)[0];
     }
 }
