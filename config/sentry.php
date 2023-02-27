@@ -47,6 +47,9 @@ return [
         // Capture views as spans
         'views' => true,
 
+        // Capture HTTP client requests as spans
+        'http_client_requests' => true,
+
         // Indicates if the tracing integrations supplied by Sentry should be loaded
         'default_integrations' => true,
 
