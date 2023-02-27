@@ -3,8 +3,6 @@
 namespace Sentry\Laravel;
 
 use Exception;
-use GuzzleHttp\Psr7\Exception\MalformedUriException;
-use GuzzleHttp\Psr7\Uri;
 use Illuminate\Auth\Events as AuthEvents;
 use Illuminate\Console\Events as ConsoleEvents;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -20,9 +18,9 @@ use Illuminate\Queue\Events as QueueEvents;
 use Illuminate\Routing\Events as RoutingEvents;
 use Laravel\Octane\Events as Octane;
 use Laravel\Sanctum\Events as Sanctum;
-use Psr\Http\Message\UriInterface;
 use RuntimeException;
 use Sentry\Breadcrumb;
+use Sentry\Laravel\Util\WorksWithUris;
 use Sentry\SentrySdk;
 use Sentry\State\Scope;
 use Symfony\Component\Console\Input\ArgvInput;
@@ -30,6 +28,8 @@ use Symfony\Component\Console\Input\InputInterface;
 
 class EventHandler
 {
+    use WorksWithUris;
+
     /**
      * Map event handlers to events.
      *
@@ -305,6 +305,56 @@ class EventHandler
         ));
     }
 
+    protected function httpClientResponseReceivedHandler(HttpClientEvents\ResponseReceived $event): void
+    {
+        if (!$this->recordHttpClientRequests) {
+            return;
+        }
+
+        $level = Breadcrumb::LEVEL_INFO;
+        if ($event->response->failed()) {
+            $level = Breadcrumb::LEVEL_ERROR;
+        }
+
+        $fullUri = $this->getFullUri($event->request->url());
+
+        Integration::addBreadcrumb(new Breadcrumb(
+            $level,
+            Breadcrumb::TYPE_HTTP,
+            'http',
+            null,
+            [
+                'url' => $this->getPartialUri($fullUri),
+                'method' => $event->request->method(),
+                'status_code' => $event->response->status(),
+                'http.query' => $fullUri->getQuery(),
+                'http.fragment' => $fullUri->getFragment(),
+            ]
+        ));
+    }
+
+    protected function httpClientConnectionFailedHandler(HttpClientEvents\ConnectionFailed $event): void
+    {
+        if (!$this->recordHttpClientRequests) {
+            return;
+        }
+
+        $fullUri = $this->getFullUri($event->request->url());
+
+        Integration::addBreadcrumb(new Breadcrumb(
+            Breadcrumb::LEVEL_ERROR,
+            Breadcrumb::TYPE_HTTP,
+            'http',
+            null,
+            [
+                'url' => $this->getPartialUri($fullUri),
+                'method' => $event->request->method(),
+                'http.query' => $fullUri->getQuery(),
+                'http.fragment' => $fullUri->getFragment(),
+            ]
+        ));
+    }
+
     protected function authenticatedHandler(AuthEvents\Authenticated $event): void
     {
         $this->configureUserScopeFromModel($event->user);
@@ -548,57 +598,6 @@ class EventHandler
         $this->pushedOctaneScope = false;
     }
 
-    protected function httpClientResponseReceivedHandler(HttpClientEvents\ResponseReceived $event): void
-    {
-        if (!$this->recordHttpClientRequests) {
-            return;
-        }
-
-        $level = Breadcrumb::LEVEL_INFO;
-        if ($event->response->failed()) {
-            $level = Breadcrumb::LEVEL_ERROR;
-        }
-
-        $fullUri = $this->getFullUri($event->request->url());
-
-        Integration::addBreadcrumb(new Breadcrumb(
-            $level,
-            Breadcrumb::TYPE_HTTP,
-            'http',
-            null,
-            [
-                'url' => (string) $this->getPartialUri($fullUri),
-                'method' => $event->request->method(),
-                'status_code' => $event->response->status(),
-                'http.query' => $fullUri->getQuery(),
-                'http.fragment' => $fullUri->getFragment(),
-            ]
-        ));
-    }
-
-    protected function httpClientConnectionFailedHandler(HttpClientEvents\ConnectionFailed $event): void
-    {
-        if (!$this->recordHttpClientRequests) {
-            return;
-        }
-
-        $fullUri = $this->getFullUri($event->request->url());
-        $partialUri = $this->getPartialUri($fullUri);
-
-        Integration::addBreadcrumb(new Breadcrumb(
-            Breadcrumb::LEVEL_ERROR,
-            Breadcrumb::TYPE_HTTP,
-            'http',
-            null,
-            [
-                'url' => (string) $partialUri,
-                'method' => $event->request->method(),
-                'http.query' => $fullUri->getQuery(),
-                'http.fragment' => $fullUri->getFragment(),
-            ]
-        ));
-    }
-
     /**
      * Translates common log levels to Sentry breadcrumb levels.
      *
@@ -665,32 +664,5 @@ class EventHandler
         $this->afterTaskWithinLongRunningProcess();
 
         SentrySdk::getCurrentHub()->popScope();
-    }
-
-    /**
-     * Construct a full URI
-     *
-     * @param string $url
-     * @return UriInterface
-     */
-    private function getFullUri(string $url): UriInterface
-    {
-        return new Uri($url);
-    }
-
-    /**
-     * Construct a partial URI, excluding the authority and the query and fragment parts.
-     *
-     * @param UriInterface $uri
-     * @return UriInterface
-     */
-    private function getPartialUri(UriInterface $uri): UriInterface
-    {
-        return Uri::fromParts([
-            'scheme' => $uri->getScheme(),
-            'host' => $uri->getHost(),
-            'port' => $uri->getPort(),
-            'path' => $uri->getPath(),
-        ]);
     }
 }
