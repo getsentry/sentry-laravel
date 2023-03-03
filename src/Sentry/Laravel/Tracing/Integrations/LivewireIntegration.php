@@ -14,6 +14,8 @@ use Sentry\Tracing\TransactionSource;
 
 class LivewireIntegration implements IntegrationInterface
 {
+    private const COMPONENT_SPAN_OP = 'ui.livewire.component';
+
     /** @var array<\Sentry\Tracing\Span> */
     private $spanStack = [];
 
@@ -52,7 +54,7 @@ class LivewireIntegration implements IntegrationInterface
         $this->spanStack[] = $currentSpan;
 
         $context = new SpanContext;
-        $context->setOp('livewire.component');
+        $context->setOp(self::COMPONENT_SPAN_OP);
         $context->setDescription($component->getName());
 
         $componentSpan = $currentSpan->startChild($context);
