@@ -233,7 +233,7 @@ class EventHandler
             $queryOrigin = $this->resolveQueryOriginFromBacktrace();
 
             if ($queryOrigin !== null) {
-                $context->setData(['sql.origin' => $queryOrigin]);
+                $context->setData(['db.sql.origin' => $queryOrigin]);
             }
         }
 
