@@ -19,7 +19,7 @@ class LivewirePackageIntegration extends Feature
     private const COMPONENT_SPAN_OP = 'ui.livewire.component';
 
     /** @var array<Span> */
-    private array $spanStack = [];
+    private $spanStack = [];
 
     public function isApplicable(): bool
     {
