@@ -1,45 +1,46 @@
 <?php
 
-namespace Sentry\Laravel\Tracing\Integrations;
+namespace Sentry\Laravel\Features;
 
-use Illuminate\Contracts\Foundation\Application;
 use Livewire\Component;
 use Livewire\LivewireManager;
 use Livewire\Request;
-use Sentry\Integration\IntegrationInterface;
+use Sentry\Breadcrumb;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
+use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\TransactionSource;
 
-class LivewireIntegration implements IntegrationInterface
+class LivewirePackageIntegration extends Feature
 {
+    private const FEATURE_KEY = 'livewire';
+
     private const COMPONENT_SPAN_OP = 'ui.livewire.component';
 
-    /** @var array<\Sentry\Tracing\Span> */
-    private $spanStack = [];
+    /** @var array<Span> */
+    private array $spanStack = [];
 
-    /** @var \Illuminate\Contracts\Foundation\Application */
-    private $app;
-
-    public function __construct(Application $app)
+    public function isApplicable(): bool
     {
-        $this->app = $app;
+        if (!class_exists(LivewireManager::class)) {
+            return false;
+        }
+
+        return $this->isTracingFeatureEnabled(self::FEATURE_KEY) || $this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY);
     }
 
-    public function setupOnce(): void
+    public function setup(LivewireManager $livewireManager): void
     {
-        if ($this->isApplicable()) {
-            try {
-                $livewireManager = $this->app->make(LivewireManager::class);
-            } catch (\Throwable $e) {
-                // If the LivewireManager cannot be resolved, we can't do anything.
-                return;
-            }
+        $livewireManager->listen('component.booted', [$this, 'handleComponentBooted']);
 
+        if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
             $livewireManager->listen('component.boot', [$this, 'handleComponentBoot']);
-            $livewireManager->listen('component.booted', [$this, 'handleComponentBooted']);
             $livewireManager->listen('component.dehydrate', [$this, 'handleComponentDehydrate']);
+        }
+
+        if ($this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY)) {
+            $livewireManager->listen('component.mount', [$this, 'handleComponentMount']);
         }
     }
 
@@ -62,6 +63,38 @@ class LivewireIntegration implements IntegrationInterface
         SentrySdk::getCurrentHub()->setSpan($componentSpan);
     }
 
+    public function handleComponentMount(Component $component, array $data): void
+    {
+        Integration::addBreadcrumb(new Breadcrumb(
+            Breadcrumb::LEVEL_INFO,
+            Breadcrumb::TYPE_DEFAULT,
+            'livewire',
+            "Component mount: {$component->getName()}",
+            $data
+        ));
+    }
+
+    public function handleComponentBooted(Component $component, Request $request): void
+    {
+        if (!$this->isLivewireRequest()) {
+            return;
+        }
+
+        if ($this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY)) {
+            Integration::addBreadcrumb(new Breadcrumb(
+                Breadcrumb::LEVEL_INFO,
+                Breadcrumb::TYPE_DEFAULT,
+                'livewire',
+                "Component booted: {$component->getName()}",
+                ['updates' => $request->updates],
+            ));
+        }
+
+        if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
+            $this->updateTransactionName($component::getName());
+        }
+    }
+
     public function handleComponentDehydrate(Component $component): void
     {
         $currentSpan = SentrySdk::getCurrentHub()->getSpan();
@@ -75,13 +108,6 @@ class LivewireIntegration implements IntegrationInterface
         $previousSpan = array_pop($this->spanStack);
 
         SentrySdk::getCurrentHub()->setSpan($previousSpan);
-    }
-
-    public function handleComponentBooted(Component $component, Request $request): void
-    {
-        if ($this->isLivewireRequest()) {
-            $this->updateTransactionName($component::getName());
-        }
     }
 
     private function updateTransactionName(string $componentName): void
@@ -104,7 +130,7 @@ class LivewireIntegration implements IntegrationInterface
     {
         try {
             /** @var \Illuminate\Http\Request $request */
-            $request = $this->app->make('request');
+            $request = $this->container()->make('request');
 
             if ($request === null) {
                 return false;
@@ -115,10 +141,5 @@ class LivewireIntegration implements IntegrationInterface
             // If the request cannot be resolved, it's probably not a Livewire request.
             return false;
         }
-    }
-
-    private function isApplicable(): bool
-    {
-        return class_exists(LivewireManager::class);
     }
 }

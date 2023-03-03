@@ -15,6 +15,9 @@ return [
         // Capture Laravel logs in breadcrumbs
         'logs' => true,
 
+        // Capture Livewire components in breadcrumbs
+        'livewire' => true,
+
         // Capture SQL queries in breadcrumbs
         'sql_queries' => true,
 
@@ -46,6 +49,9 @@ return [
 
         // Capture views as spans
         'views' => true,
+
+        // Capture Livewire components as spans
+        'livewire' => true,
 
         // Capture HTTP client requests as spans
         'http_client_requests' => true,

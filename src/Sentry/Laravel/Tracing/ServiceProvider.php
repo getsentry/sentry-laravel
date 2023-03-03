@@ -21,7 +21,6 @@ use Sentry\Serializer\RepresentationSerializer;
 class ServiceProvider extends BaseServiceProvider
 {
     public const DEFAULT_INTEGRATIONS = [
-        Integrations\LivewireIntegration::class,
         Integrations\LighthouseIntegration::class,
     ];
 
