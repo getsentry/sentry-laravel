@@ -241,14 +241,17 @@ class ServiceProvider extends BaseServiceProvider
 
         $userConfig = $this->getUserConfig();
 
-        $integrationsToResolve = $userConfig['integrations'] ?? [];
+        $integrationsToResolve = array_merge(
+            $userConfig['integrations'] ?? [],
+            // These features are enabled by default and can be configured using the `tracing` and `breadcrumbs` config
+            self::DEFAULT_FEATURES
+        );
 
         $enableDefaultTracingIntegrations = $userConfig['tracing']['default_integrations'] ?? true;
 
         if ($enableDefaultTracingIntegrations) {
             $integrationsToResolve = array_merge(
                 $integrationsToResolve,
-                self::DEFAULT_FEATURES,
                 TracingServiceProvider::DEFAULT_INTEGRATIONS
             );
         }
