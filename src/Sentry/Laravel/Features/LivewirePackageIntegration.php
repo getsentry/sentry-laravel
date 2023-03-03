@@ -86,7 +86,7 @@ class LivewirePackageIntegration extends Feature
                 Breadcrumb::TYPE_DEFAULT,
                 'livewire',
                 "Component booted: {$component->getName()}",
-                ['updates' => $request->updates],
+                ['updates' => $request->updates]
             ));
         }
 
