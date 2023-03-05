@@ -16,7 +16,7 @@ use Sentry\State\HubInterface;
  * @method static void bindClient(\Sentry\ClientInterface $client)
  * @method static \Sentry\EventId|null captureMessage(string $message, \Sentry\Severity|null $level = null, \Sentry\EventHint|null $hint = null)
  * @method static \Sentry\EventId|null captureException(\Throwable $exception, \Sentry\EventHint|null $hint = null)
- * @method static \Sentry\EventId|null captureEvent(\Throwable $exception, \Sentry\EventHint|null $hint = null)
+ * @method static \Sentry\EventId|null captureEvent(\Sentry\Event $event, \Sentry\EventHint|null $hint = null)
  * @method static \Sentry\EventId|null captureLastError(\Sentry\EventHint|null $hint = null)
  * @method static bool addBreadcrumb(\Sentry\Breadcrumb $breadcrumb)
  * @method static \Sentry\Integration\IntegrationInterface|null getIntegration(string $className)
