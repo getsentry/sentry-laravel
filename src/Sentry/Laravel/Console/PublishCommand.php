@@ -17,7 +17,10 @@ class PublishCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'sentry:publish {--dsn=} {--without-performance-monitoring} {--without-test}';
+    protected $signature = 'sentry:publish {--dsn=}
+                                           {--without-performance-monitoring}
+                                           {--without-test}
+                                           {--without-javascript-sdk}';
 
     /**
      * The console command description.
@@ -25,6 +28,12 @@ class PublishCommand extends Command
      * @var string
      */
     protected $description = 'Publishes and configures the Sentry config.';
+
+    protected const SDK_CHOICE_BROWSER = 'JavaScript (default)';
+    protected const SDK_CHOICE_VUE     = 'Vue.js';
+    protected const SDK_CHOICE_REACT   = 'React';
+    protected const SDK_CHOICE_ANGULAR = 'Angular';
+    protected const SDK_CHOICE_SVELTE  = 'Svelte';
 
     /**
      * Execute the console command.
@@ -75,13 +84,14 @@ class PublishCommand extends Command
             }
         }
 
-        $this->askForJavaScriptSdk($dsn);
-
         $this->info('Publishing Sentry config...');
         $this->call('vendor:publish', ['--provider' => ServiceProvider::class]);
 
         if (!$this->setEnvValues($env)) {
             return 1;
+        }
+        if ($this->confirm('Do you want to install one of our JavaScript SDKs?', !$this->option('without-javascript-sdk'))) {
+            $this->installJavaScriptSdk($dsn);
         }
 
         return 0;
@@ -156,77 +166,83 @@ class PublishCommand extends Command
         }
     }
 
-    private function askForJavaScriptSdk(string $dsn): void
+    private function installJavaScriptSdk(): void
     {
-        if ($this->confirm('Do you want to install one of our JavaScript SDKs?', true)) {
-            $framework = $this->choice(
-                'Which frontend framework are you using?',
-                ['Vue.js', 'React', 'Angular', 'Svelte'],
-            );
+        $framework = $this->choice(
+            'Which frontend framework are you using?',
+            [
+                self::SDK_CHOICE_BROWSER,
+                self::SDK_CHOICE_VUE,
+                self::SDK_CHOICE_REACT,
+                self::SDK_CHOICE_ANGULAR,
+                self::SDK_CHOICE_SVELTE,
+            ],
+            self::SDK_CHOICE_BROWSER
+        );
 
-            $snippet = '';
+        $snippet = '';
 
-            switch ($framework) {
-                case 'Vue.js':
-                    $this->updateNodePackages(function ($packages) {
-                        return [
-                            '@sentry/vue' => '^7.36.0',
-                        ] + $packages;
-                    });
-                    $snippet = 'import * as Sentry from "@sentry/vue";' . PHP_EOL . PHP_EOL;
-                    $snippet .= 'Sentry.init({' . PHP_EOL;
-                    $snippet .= '  app,' . PHP_EOL;
-                    $snippet .= '  dsn: "' . $dsn . '",' . PHP_EOL;
-                    $snippet .= '});' . PHP_EOL;
-                    break;
-                case 'React':
-                    $this->updateNodePackages(function ($packages) {
-                        return [
-                            '@sentry/react' => '^7.36.0',
-                        ] + $packages;
-                    });
-                    $snippet = 'import * as Sentry from "@sentry/react";' . PHP_EOL . PHP_EOL;
-                    $snippet .= 'Sentry.init({' . PHP_EOL;
-                    $snippet .= '  dsn: "' . $dsn . '",' . PHP_EOL;
-                    $snippet .= '});' . PHP_EOL;
-                    break;
-                case 'Angular':
-                    $this->updateNodePackages(function ($packages) {
-                        return [
-                            '@sentry/angular' => '^7.36.0',
-                        ] + $packages;
-                    });
-                    $snippet = 'import * as Sentry from "@sentry/angular";' . PHP_EOL . PHP_EOL;
-                    $snippet .= 'Sentry.init({' . PHP_EOL;
-                    $snippet .= '  dsn: "' . $dsn . '",' . PHP_EOL;
-                    $snippet .= '});' . PHP_EOL;
-                    break;
-                case 'Svelte':
-                    $this->updateNodePackages(function ($packages) {
-                        return [
-                            '@sentry/svelte' => '^7.36.0',
-                        ] + $packages;
-                    });
-                    $snippet = 'import * as Sentry from "@sentry/svelte";' . PHP_EOL . PHP_EOL;
-                    $snippet .= 'Sentry.init({' . PHP_EOL;
-                    $snippet .= '  dsn: "' . $dsn . '",' . PHP_EOL;
-                    $snippet .= '});' . PHP_EOL;
-                    break;
-            }
-
-            if (file_exists(base_path('pnpm-lock.yaml'))) {
-                $this->runCommands(['pnpm install']);
-            } elseif (file_exists(base_path('yarn.lock'))) {
-                $this->runCommands(['yarn install']);
-            } else {
-                $this->runCommands(['npm install']);
-            }
-
-            $this->newLine();
-            $this->info('Add the following snippet to your frontend code, like your index.js file.');
-            $this->newLine();
-            $this->line($snippet);
+        switch ($framework) {
+            case self::SDK_CHOICE_BROWSER:
+                $this->updateNodePackages(function ($packages) {
+                    return [
+                        '@sentry/browser' => '^7.40.0',
+                    ] + $packages;
+                });
+                $snippet = file_get_contents(__DIR__ . '/../../../../stubs/sentry-javascript/browser.js');
+                break;
+            case self::SDK_CHOICE_VUE:
+                $this->updateNodePackages(function ($packages) {
+                    return [
+                        '@sentry/vue' => '^7.40.0',
+                    ] + $packages;
+                });
+                $snippet = file_get_contents(__DIR__ . '/../../../../stubs/sentry-javascript/vue.js');
+                break;
+            case self::SDK_CHOICE_REACT:
+                $this->updateNodePackages(function ($packages) {
+                    return [
+                        '@sentry/react' => '^7.40.0',
+                    ] + $packages;
+                });
+                $snippet = file_get_contents(__DIR__ . '/../../../../stubs/sentry-javascript/react.js');
+                break;
+            case self::SDK_CHOICE_ANGULAR:
+                $this->updateNodePackages(function ($packages) {
+                    return [
+                        '@sentry/angular' => '^7.40.0',
+                    ] + $packages;
+                });
+                $snippet = file_get_contents(__DIR__ . '/../../../../stubs/sentry-javascript/angular.js');
+                break;
+            case self::SDK_CHOICE_SVELTE:
+                $this->updateNodePackages(function ($packages) {
+                    return [
+                        '@sentry/svelte' => '^7.40.0',
+                    ] + $packages;
+                });
+                $snippet = file_get_contents(__DIR__ . '/../../../../stubs/sentry-javascript/svelte.js');
+                break;
         }
+
+        $env['VITE_SENTRY_DSN_PUBLIC'] ='"${SENTRY_LARAVEL_DSN}"';
+        $this->setEnvValues($env);
+
+        if (file_exists(base_path('pnpm-lock.yaml'))) {
+            $this->runCommands(['pnpm install']);
+        } elseif (file_exists(base_path('yarn.lock'))) {
+            $this->runCommands(['yarn install']);
+        } else {
+            $this->runCommands(['npm install']);
+        }
+
+        $this->newLine();
+        $this->components->info('Sentry JavaScript SDK installed successfully.');
+        $this->line('Put the following snippet into your JavaScript entry file:');
+        $this->newLine();
+        $this->line('<bg=blue>' . $snippet . '</>');
+        $this->newLine();
+        $this->line('For the best Sentry experience, we recommend you to set up dedicated projects for your Laravel and JavaScript applications.');
     }
 
     private function updateNodePackages(callable $callback)
