@@ -12,6 +12,7 @@ use Illuminate\Queue\QueueManager;
 use Illuminate\Routing\Events as RoutingEvents;
 use RuntimeException;
 use Sentry\Laravel\Integration;
+use Sentry\Laravel\Util\WorksWithUris;
 use Sentry\SentrySdk;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
@@ -21,6 +22,8 @@ use Sentry\Tracing\TransactionSource;
 
 class EventHandler
 {
+    use WorksWithUris;
+
     public const QUEUE_PAYLOAD_BAGGAGE_DATA = 'sentry_baggage_data';
     public const QUEUE_PAYLOAD_TRACE_PARENT_DATA = 'sentry_trace_parent_data';
 
@@ -305,8 +308,17 @@ class EventHandler
 
         $context = new SpanContext;
 
+        $fullUri = $this->getFullUri($event->request->url());
+        $partialUri = $this->getPartialUri($fullUri);
+
         $context->setOp('http.client');
-        $context->setDescription($event->request->method() . ' ' . $event->request->url());
+        $context->setDescription($event->request->method() . ' ' . $partialUri);
+        $context->setData([
+            'url' => $partialUri,
+            'method' => $event->request->method(),
+            'http.query' => $fullUri->getQuery(),
+            'http.fragment' => $fullUri->getFragment(),
+        ]);
 
         $this->pushSpan($parentSpan->startChild($context));
     }
@@ -316,7 +328,7 @@ class EventHandler
         if (!$this->traceHttpClientRequests) {
             return;
         }
-    
+
         $span = $this->popSpan();
 
         if ($span !== null) {
