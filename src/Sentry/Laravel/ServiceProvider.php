@@ -41,6 +41,13 @@ class ServiceProvider extends BaseServiceProvider
     ];
 
     /**
+     * List of default feature integrations that are enabled by default.
+     */
+    protected const DEFAULT_FEATURES = [
+        Features\LivewirePackageIntegration::class,
+    ];
+
+    /**
      * Boot the service provider.
      */
     public function boot(): void
@@ -234,12 +241,19 @@ class ServiceProvider extends BaseServiceProvider
 
         $userConfig = $this->getUserConfig();
 
-        $integrationsToResolve = $userConfig['integrations'] ?? [];
+        $integrationsToResolve = array_merge(
+            $userConfig['integrations'] ?? [],
+            // These features are enabled by default and can be configured using the `tracing` and `breadcrumbs` config
+            self::DEFAULT_FEATURES
+        );
 
         $enableDefaultTracingIntegrations = $userConfig['tracing']['default_integrations'] ?? true;
 
         if ($enableDefaultTracingIntegrations) {
-            $integrationsToResolve = array_merge($integrationsToResolve, TracingServiceProvider::DEFAULT_INTEGRATIONS);
+            $integrationsToResolve = array_merge(
+                $integrationsToResolve,
+                TracingServiceProvider::DEFAULT_INTEGRATIONS
+            );
         }
 
         foreach ($integrationsToResolve as $userIntegration) {
