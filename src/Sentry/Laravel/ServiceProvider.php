@@ -41,9 +41,10 @@ class ServiceProvider extends BaseServiceProvider
     ];
 
     /**
-     * List of default feature integrations that are enabled by default.
+     * List of features that are provided by the SDK.
      */
-    protected const DEFAULT_FEATURES = [
+    protected const FEATURES = [
+        Features\CacheIntegration::class,
         Features\LivewirePackageIntegration::class,
     ];
 
@@ -56,6 +57,8 @@ class ServiceProvider extends BaseServiceProvider
 
         if ($this->hasDsnSet()) {
             $this->bindEvents();
+
+            $this->setupFeatures();
 
             if ($this->app->bound(HttpKernelInterface::class)) {
                 /** @var \Illuminate\Foundation\Http\Kernel $httpKernel */
@@ -123,6 +126,20 @@ class ServiceProvider extends BaseServiceProvider
             }
         } catch (BindingResolutionException $e) {
             // If we cannot resolve the event dispatcher we also cannot listen to events
+        }
+    }
+
+    /**
+     * Setup the default SDK features.
+     */
+    protected function setupFeatures(): void
+    {
+        foreach (self::FEATURES as $feature) {
+            try {
+                $this->app->make($feature)->boot();
+            } catch (\Throwable $e) {
+                // Ensure that features do not break the whole application
+            }
         }
     }
 
@@ -241,19 +258,12 @@ class ServiceProvider extends BaseServiceProvider
 
         $userConfig = $this->getUserConfig();
 
-        $integrationsToResolve = array_merge(
-            $userConfig['integrations'] ?? [],
-            // These features are enabled by default and can be configured using the `tracing` and `breadcrumbs` config
-            self::DEFAULT_FEATURES
-        );
+        $integrationsToResolve = array_merge($userConfig['integrations'] ?? []);
 
         $enableDefaultTracingIntegrations = $userConfig['tracing']['default_integrations'] ?? true;
 
         if ($enableDefaultTracingIntegrations) {
-            $integrationsToResolve = array_merge(
-                $integrationsToResolve,
-                TracingServiceProvider::DEFAULT_INTEGRATIONS
-            );
+            $integrationsToResolve = array_merge($integrationsToResolve, TracingServiceProvider::DEFAULT_INTEGRATIONS);
         }
 
         foreach ($integrationsToResolve as $userIntegration) {

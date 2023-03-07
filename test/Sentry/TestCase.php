@@ -8,14 +8,12 @@ use Sentry\Breadcrumb;
 use Sentry\ClientInterface;
 use Sentry\Event;
 use Sentry\EventHint;
-use Sentry\Laravel\Integration;
 use Sentry\State\Scope;
 use ReflectionProperty;
 use Sentry\Laravel\Tracing;
 use Sentry\State\HubInterface;
 use Sentry\Laravel\ServiceProvider;
 use Orchestra\Testbench\TestCase as LaravelTestCase;
-use Throwable;
 
 abstract class TestCase extends LaravelTestCase
 {

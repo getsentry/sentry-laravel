@@ -5,13 +5,14 @@ namespace Sentry\Laravel\Features;
 use Illuminate\Contracts\Container\Container;
 use Sentry\Integration\IntegrationInterface;
 use Sentry\Laravel\BaseServiceProvider;
+use Sentry\SentrySdk;
 
 /**
  * @method void setup() Setup the feature in the environment.
  *
  * @internal
  */
-abstract class Feature implements IntegrationInterface
+abstract class Feature
 {
     /**
      * @var Container The Laravel application container.
@@ -48,9 +49,9 @@ abstract class Feature implements IntegrationInterface
     abstract public function isApplicable(): bool;
 
     /**
-     * Initializes the current integration by registering it once.
+     * Initializes the feature.
      */
-    public function setupOnce(): void
+    public function boot(): void
     {
         if (method_exists($this, 'setup') && $this->isApplicable()) {
             try {
@@ -81,6 +82,20 @@ abstract class Feature implements IntegrationInterface
         $config = $this->container['config'][BaseServiceProvider::$abstract];
 
         return empty($config) ? [] : $config;
+    }
+
+    /**
+     * Should default PII be sent by default.
+     */
+    protected function shouldSendDefaultPii(): bool
+    {
+        $client = SentrySdk::getCurrentHub()->getClient();
+
+        if ($client === null) {
+            return false;
+        }
+
+        return $client->getOptions()->shouldSendDefaultPii();
     }
 
     /**
