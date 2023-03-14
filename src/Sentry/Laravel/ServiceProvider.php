@@ -118,7 +118,7 @@ class ServiceProvider extends BaseServiceProvider
             }
 
             if ($this->app->bound('queue')) {
-                $handler->subscribeQueueEvents($dispatcher, $this->app->make('queue'));
+                $handler->subscribeQueueEvents($dispatcher);
             }
 
             if (isset($userConfig['send_default_pii']) && $userConfig['send_default_pii'] !== false) {
