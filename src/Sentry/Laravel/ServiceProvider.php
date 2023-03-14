@@ -5,16 +5,12 @@ namespace Sentry\Laravel;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
-use Illuminate\Console\Scheduling\Event as LaravelEvent;
 use Illuminate\Foundation\Application as Laravel;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 use Illuminate\Log\LogManager;
 use RuntimeException;
-use Sentry\CheckIn;
-use Sentry\CheckInStatus;
 use Sentry\ClientBuilder;
 use Sentry\ClientBuilderInterface;
-use Sentry\Event as SentryEvent;
 use Sentry\Integration as SdkIntegration;
 use Sentry\Laravel\Console\PublishCommand;
 use Sentry\Laravel\Console\TestCommand;
@@ -49,6 +45,7 @@ class ServiceProvider extends BaseServiceProvider
      */
     protected const FEATURES = [
         Features\CacheIntegration::class,
+        Features\ConsoleIntegration::class,
         Features\LivewirePackageIntegration::class,
     ];
 
@@ -63,7 +60,6 @@ class ServiceProvider extends BaseServiceProvider
             $this->bindEvents();
 
             $this->setupFeatures();
-            $this->setupCronMonitoring();
 
             if ($this->app->bound(HttpKernelInterface::class)) {
                 /** @var \Illuminate\Foundation\Http\Kernel $httpKernel */
@@ -146,48 +142,6 @@ class ServiceProvider extends BaseServiceProvider
                 // Ensure that features do not break the whole application
             }
         }
-    }
-
-    /**
-     * Setup Cron Monitoring.
-     */
-    private function setupCronMonitoring(): void
-    {
-        LaravelEvent::macro('sentryMonitor', function (string $monitorSlug) {
-            $hub = SentrySdk::getCurrentHub();
-            $checkIn = new CheckIn(
-                $monitorSlug,
-                CheckInStatus::inProgress(),
-                null,
-                $hub->getClient()->getOptions()->getEnvironment(),
-                $hub->getClient()->getOptions()->getRelease()
-            );
-        
-            /** @var \Illuminate\Console\Scheduling\Event $this */
-            return $this
-                ->before(function () use ($hub, $checkIn) {
-                    $event = SentryEvent::createCheckIn();
-                    $event->setCheckIn($checkIn);
-
-                    $hub->captureEvent($event);
-                })
-                ->onSuccess(function () use ($hub, $checkIn) {
-                    $checkIn->setStatus(CheckInStatus::ok());
-
-                    $event = SentryEvent::createCheckIn();
-                    $event->setCheckIn($checkIn);
-
-                    $hub->captureEvent($event);
-                })
-                ->onFailure(function () use ($hub, $checkIn) {
-                    $checkIn->setStatus(CheckInStatus::error());
-
-                    $event = SentryEvent::createCheckIn();
-                    $event->setCheckIn($checkIn);
-
-                    $hub->captureEvent($event);
-                });
-        });
     }
 
     /**
