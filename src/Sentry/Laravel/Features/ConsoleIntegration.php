@@ -23,19 +23,27 @@ class ConsoleIntegration extends Feature
 
     public function setup(): void
     {
-        SchedulingEvent::macro('sentryMonitor', function (string $monitorSlug) {
-            /** @var SchedulingEvent $this */
-            $mutex = $this->mutexName();
+        $startCheckIn = function (string $mutex, string $slug) {
+            $this->startCheckIn($mutex, $slug);
+        };
+        $finishCheckIn = function (string $mutex, CheckInStatus $status) {
+            $this->finishCheckIn($mutex, $status);
+        };
 
+        SchedulingEvent::macro('sentryMonitor', function (string $monitorSlug) use ($startCheckIn, $finishCheckIn) {
+            /** @var SchedulingEvent $this */
             return $this
-                ->before(function () use ($mutex, $monitorSlug) {
-                    $this->startCheckIn($mutex, $monitorSlug);
+                ->before(function () use ($startCheckIn, $monitorSlug) {
+                    /** @var SchedulingEvent $this */
+                    $startCheckIn($this->mutexName(), $monitorSlug);
                 })
-                ->onSuccess(function () use ($mutex) {
-                    $this->finishCheckIn($mutex, CheckInStatus::ok());
+                ->onSuccess(function () use ($finishCheckIn) {
+                    /** @var SchedulingEvent $this */
+                    $finishCheckIn($this->mutexName(), CheckInStatus::ok());
                 })
-                ->onFailure(function () use ($mutex) {
-                    $this->finishCheckIn($mutex, CheckInStatus::error());
+                ->onFailure(function () use ($finishCheckIn) {
+                    /** @var SchedulingEvent $this */
+                    $finishCheckIn($this->mutexName(), CheckInStatus::error());
                 });
         });
     }
