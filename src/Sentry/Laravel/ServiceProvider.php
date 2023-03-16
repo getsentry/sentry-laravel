@@ -45,6 +45,7 @@ class ServiceProvider extends BaseServiceProvider
      */
     protected const FEATURES = [
         Features\CacheIntegration::class,
+        Features\ConsoleIntegration::class,
         Features\LivewirePackageIntegration::class,
     ];
 
