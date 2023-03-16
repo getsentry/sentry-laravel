@@ -91,7 +91,7 @@ class PublishCommand extends Command
             return 1;
         }
         if ($this->confirm('Do you want to install one of our JavaScript SDKs?', !$this->option('without-javascript-sdk'))) {
-            $this->installJavaScriptSdk($dsn);
+            $this->installJavaScriptSdk();
         }
 
         return 0;
