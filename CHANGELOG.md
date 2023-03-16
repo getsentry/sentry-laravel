@@ -1,8 +1,82 @@
 # Changelog
 
-## Unreleased
+## 3.3.0
 
-- Fix log channel context handling crash when unexpected values are passed (#644)
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.3.0.
+This release adds initial support for [Cron Monitoring](https://docs.sentry.io/product/crons/) as well as new performance spans and breadcrumbs.
+
+> **Warning**
+> Cron Monitoring is currently in beta. Beta features are still in-progress and may have bugs. We recognize the irony.
+> If you have any questions or feedback, please email us at crons-feedback@sentry.io, reach out via Discord (#cronjobs), or open an issue.
+
+### Features
+
+- Add inital support for Cron Monitoring [(#659)](https://github.com/getsentry/sentry-laravel/pull/659)
+
+  After creating your Cron Monitor on https://sentry.io, you can add the `sentryMonitor()` macro to your scheduled tasks defined in your `app/Console/Kernel.php` file.
+  This will let Sentry know if your scheduled task started, whether the task was successful or failed, and its duration.
+
+  ```php
+  protected function schedule(Schedule $schedule)
+  {
+      $schedule->command('emails:send')
+          ->everyHour()
+          ->sentryMonitor('<your-monitor-slug>'); // add this line
+  }
+  ```
+
+- Add Livewire tracing integration [(#657)](https://github.com/getsentry/sentry-laravel/pull/657)
+
+  You can enable this feature by adding new config options to your `config/sentry.php` file.
+
+  ```php
+  'breadcrumbs' => [
+      // Capture Livewire components in breadcrumbs
+      'livewire' => true,
+  ],
+  'tracing' => [
+      // Capture Livewire components as spans
+      'livewire' => true,
+  ],
+  ```
+
+- Add Redis operation spans & cache event breadcrumbs [(#656)](https://github.com/getsentry/sentry-laravel/pull/656)
+
+  You can enable this feature by adding new config options to your `config/sentry.php` file.
+
+  ```php
+  'breadcrumbs' => [
+      // Capture Laravel cache events in breadcrumbs
+      'cache' => true,
+  ],
+  'tracing' => [
+      // Capture Redis operations as spans (this enables Redis events in Laravel)
+      'redis_commands' => env('SENTRY_TRACE_REDIS_COMMANDS', false),
+
+      // Try to find out where the Redis command originated from and add it to the command spans
+      'redis_origin' => true,
+  ],
+
+- Add HTTP client request breadcrumbs [(#640)](https://github.com/getsentry/sentry-laravel/pull/640)
+
+  You can enable this feature by adding a new config option to your `config/sentry.php` file.
+
+  ```php
+  'breadcrumbs' => [
+      // Capture HTTP client requests information in breadcrumbs
+      'http_client_requests' => true,
+  ],
+
+- Offer the installation of a JavaScript SDK when running `sentry:publish` [(#647)](https://github.com/getsentry/sentry-laravel/pull/647)
+
+### Bug Fixes
+
+- Fix a log channel context crash when unexpected values are passed [(#651)](https://github.com/getsentry/sentry-laravel/pull/651)
+
+### Misc
+
+- The SDK is now licensed under MIT [(#654)](https://github.com/getsentry/sentry-php/pull/654)
+  - Read more about Sentry's licensing [here](https://open.sentry.io/licensing/).
 
 ## 3.2.0
 
