@@ -4,6 +4,7 @@ namespace Sentry\Laravel\Features;
 
 use Illuminate\Console\Scheduling\Event as SchedulingEvent;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Support\Facades\Cache;
 use Sentry\CheckIn;
 use Sentry\CheckInStatus;
 use Sentry\Event as SentryEvent;
@@ -11,11 +12,6 @@ use Sentry\SentrySdk;
 
 class ConsoleIntegration extends Feature
 {
-    /**
-     * @var array<string, CheckIn> The list of checkins that are currently in progress.
-     */
-    private $checkInStore = [];
-
     public function isApplicable(): bool
     {
         return $this->container()->make(Application::class)->runningInConsole();
@@ -60,14 +56,17 @@ class ConsoleIntegration extends Feature
             $options->getRelease()
         );
 
-        $this->checkInStore[$mutex] = $checkIn;
+        $checkInStore = $this->getCheckInStoreList();
+        $checkInStore[$mutex] = $checkIn;
+        Cache::forever('sentryCheckInStore', $checkInStore);
 
         $this->sendCheckIn($checkIn);
     }
 
     private function finishCheckIn(string $mutex, CheckInStatus $status): void
     {
-        $checkIn = $this->checkInStore[$mutex] ?? null;
+        $checkInStore = $this->getCheckInStoreList();
+        $checkIn = $checkInStore[$mutex] ?? null;
 
         // This should never happen (because we should always start before we finish), but better safe than sorry
         if ($checkIn === null) {
@@ -75,7 +74,8 @@ class ConsoleIntegration extends Feature
         }
 
         // We don't need to keep the checkin in memory anymore since we finished
-        unset($this->checkInStore[$mutex]);
+        unset($checkInStore[$mutex]);
+        Cache::forever('sentryCheckInStore', $checkInStore);
 
         $checkIn->setStatus($status);
 
@@ -88,5 +88,12 @@ class ConsoleIntegration extends Feature
         $event->setCheckIn($checkIn);
 
         SentrySdk::getCurrentHub()->captureEvent($event);
+    }
+
+    private function getCheckInStoreList(): array
+    {
+        $checkInStore = Cache::get('sentryCheckInStore', []);
+
+        return (is_array($checkInStore) ? $checkInStore : []);
     }
 }
