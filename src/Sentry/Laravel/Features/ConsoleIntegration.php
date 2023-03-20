@@ -3,8 +3,8 @@
 namespace Sentry\Laravel\Features;
 
 use Illuminate\Console\Scheduling\Event as SchedulingEvent;
+use Illuminate\Contracts\Cache\Factory as Cache;
 use Illuminate\Contracts\Foundation\Application;
-use Illuminate\Support\Facades\Cache;
 use Sentry\CheckIn;
 use Sentry\CheckInStatus;
 use Sentry\Event as SentryEvent;
@@ -12,18 +12,30 @@ use Sentry\SentrySdk;
 
 class ConsoleIntegration extends Feature
 {
+    /**
+     * @var array<string, CheckIn> The list of checkins that are currently in progress.
+     */
+    private $checkInStore = [];
+
+    /**
+     * @var Cache The cache repository.
+     */
+    private $cache;
+
     public function isApplicable(): bool
     {
         return $this->container()->make(Application::class)->runningInConsole();
     }
 
-    public function setup(): void
+    public function setup(Cache $cache): void
     {
-        $startCheckIn = function (string $mutex, string $slug) {
-            $this->startCheckIn($mutex, $slug);
+        $this->cache = $cache;
+
+        $startCheckIn  = function (string $mutex, string $slug, bool $useCache, int $useCacheTtlInMinutes) {
+            $this->startCheckIn($mutex, $slug, $useCache, $useCacheTtlInMinutes);
         };
-        $finishCheckIn = function (string $mutex, CheckInStatus $status) {
-            $this->finishCheckIn($mutex, $status);
+        $finishCheckIn = function (string $mutex, string $slug, CheckInStatus $status, bool $useCache) {
+            $this->finishCheckIn($mutex, $slug, $status, $useCache);
         };
 
         SchedulingEvent::macro('sentryMonitor', function (string $monitorSlug) use ($startCheckIn, $finishCheckIn) {
@@ -31,51 +43,55 @@ class ConsoleIntegration extends Feature
             return $this
                 ->before(function () use ($startCheckIn, $monitorSlug) {
                     /** @var SchedulingEvent $this */
-                    $startCheckIn($this->mutexName(), $monitorSlug);
+                    $startCheckIn($this->mutexName(), $monitorSlug, $this->runInBackground, $this->expiresAt);
                 })
-                ->onSuccess(function () use ($finishCheckIn) {
+                ->onSuccess(function () use ($finishCheckIn, $monitorSlug) {
                     /** @var SchedulingEvent $this */
-                    $finishCheckIn($this->mutexName(), CheckInStatus::ok());
+                    $finishCheckIn($this->mutexName(), $monitorSlug, CheckInStatus::ok(), $this->runInBackground);
                 })
-                ->onFailure(function () use ($finishCheckIn) {
+                ->onFailure(function () use ($finishCheckIn, $monitorSlug) {
                     /** @var SchedulingEvent $this */
-                    $finishCheckIn($this->mutexName(), CheckInStatus::error());
+                    $finishCheckIn($this->mutexName(), $monitorSlug, CheckInStatus::error(), $this->runInBackground);
                 });
         });
     }
 
-    private function startCheckIn(string $mutex, string $slug): void
+    private function startCheckIn(string $mutex, string $slug, bool $useCache, int $useCacheTtlInMinutes): void
     {
-        $options = SentrySdk::getCurrentHub()->getClient()->getOptions();
+        $checkIn = $this->createCheckIn($slug, CheckInStatus::inProgress());
 
-        $checkIn = new CheckIn(
-            $slug,
-            CheckInStatus::inProgress(),
-            null,
-            $options->getEnvironment(),
-            $options->getRelease()
-        );
+        $this->checkInStore[$mutex] = $checkIn;
 
-        $checkInStore = $this->getCheckInStoreList();
-        $checkInStore[$mutex] = $checkIn;
-        Cache::forever('sentryCheckInStore', $checkInStore);
+        if ($useCache) {
+            $this->cache->store()->put("sentry:checkIn:{$mutex}", $checkIn->getId(), $useCacheTtlInMinutes * 60);
+        }
 
         $this->sendCheckIn($checkIn);
     }
 
-    private function finishCheckIn(string $mutex, CheckInStatus $status): void
+    private function finishCheckIn(string $mutex, string $slug, CheckInStatus $status, bool $useCache): void
     {
-        $checkInStore = $this->getCheckInStoreList();
-        $checkIn = $checkInStore[$mutex] ?? null;
+        $checkIn = $this->checkInStore[$mutex] ?? null;
+
+        if ($checkIn === null && $useCache) {
+            $checkInId = $this->cache->store()->get("sentry:checkIn:{$mutex}");
+
+            if ($checkInId !== null) {
+                $checkIn = $this->createCheckIn($slug, $status, $checkInId);
+            }
+        }
 
         // This should never happen (because we should always start before we finish), but better safe than sorry
         if ($checkIn === null) {
             return;
         }
 
-        // We don't need to keep the checkin in memory anymore since we finished
-        unset($checkInStore[$mutex]);
-        Cache::forever('sentryCheckInStore', $checkInStore);
+        // We don't need to keep the checkIn ID stored since we finished executing the command
+        unset($this->checkInStore[$mutex]);
+
+        if ($useCache) {
+            $this->cache->store()->forget("sentry:checkIn:{$mutex}");
+        }
 
         $checkIn->setStatus($status);
 
@@ -90,10 +106,16 @@ class ConsoleIntegration extends Feature
         SentrySdk::getCurrentHub()->captureEvent($event);
     }
 
-    private function getCheckInStoreList(): array
+    private function createCheckIn(string $slug, CheckInStatus $status, string $id = null): CheckIn
     {
-        $checkInStore = Cache::get('sentryCheckInStore', []);
+        $options = SentrySdk::getCurrentHub()->getClient()->getOptions();
 
-        return (is_array($checkInStore) ? $checkInStore : []);
+        return new CheckIn(
+            $slug,
+            $status,
+            $id,
+            $options->getEnvironment(),
+            $options->getRelease()
+        );
     }
 }
