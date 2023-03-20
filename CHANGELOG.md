@@ -1,6 +1,6 @@
 # Changelog
 
-## 3.1.0
+## 3.3.1
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.3.1.
 
