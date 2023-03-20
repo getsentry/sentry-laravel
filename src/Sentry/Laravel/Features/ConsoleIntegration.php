@@ -60,10 +60,12 @@ class ConsoleIntegration extends Feature
     {
         $checkIn = $this->createCheckIn($slug, CheckInStatus::inProgress());
 
-        $this->checkInStore[$mutex] = $checkIn;
+        $cacheKey = $this->buildCacheKey($mutex, $slug);
+
+        $this->checkInStore[$cacheKey] = $checkIn;
 
         if ($useCache) {
-            $this->cache->store()->put("sentry:checkIn:{$mutex}", $checkIn->getId(), $useCacheTtlInMinutes * 60);
+            $this->cache->store()->put($cacheKey, $checkIn->getId(), $useCacheTtlInMinutes * 60);
         }
 
         $this->sendCheckIn($checkIn);
@@ -71,10 +73,12 @@ class ConsoleIntegration extends Feature
 
     private function finishCheckIn(string $mutex, string $slug, CheckInStatus $status, bool $useCache): void
     {
-        $checkIn = $this->checkInStore[$mutex] ?? null;
+        $cacheKey = $this->buildCacheKey($mutex, $slug);
+
+        $checkIn = $this->checkInStore[$cacheKey] ?? null;
 
         if ($checkIn === null && $useCache) {
-            $checkInId = $this->cache->store()->get("sentry:checkIn:{$mutex}");
+            $checkInId = $this->cache->store()->get($cacheKey);
 
             if ($checkInId !== null) {
                 $checkIn = $this->createCheckIn($slug, $status, $checkInId);
@@ -90,7 +94,7 @@ class ConsoleIntegration extends Feature
         unset($this->checkInStore[$mutex]);
 
         if ($useCache) {
-            $this->cache->store()->forget("sentry:checkIn:{$mutex}");
+            $this->cache->store()->forget($cacheKey);
         }
 
         $checkIn->setStatus($status);
@@ -117,5 +121,11 @@ class ConsoleIntegration extends Feature
             $options->getEnvironment(),
             $options->getRelease()
         );
+    }
+
+    private function buildCacheKey(string $mutex, string $slug): string
+    {
+        // We use the mutex name as part of the cache key to avoid collisions between the same commands with the same schedule but with different slugs
+        return 'sentry:checkIn:' . sha1("{$mutex}:{$slug}");
     }
 }
