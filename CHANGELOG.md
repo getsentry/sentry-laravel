@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.1.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.3.1.
+
+### Bug Fixes
+
+-  Fix scheduled commands running in the background not reporting success/failure [(#664)](https://github.com/getsentry/sentry-laravel/pull/664)
+
 ## 3.3.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.3.0.
