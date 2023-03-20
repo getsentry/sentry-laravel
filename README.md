@@ -116,4 +116,4 @@ If you need help setting up or configuring the Laravel SDK (or anything else in 
 
 ## License
 
-Licensed under the Apache 2.0 license, see [`LICENSE`](LICENSE)
+Licensed under the MIT license, see [`LICENSE`](LICENSE)
