@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.3.2
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.3.2.
+
+### Bug Fixes
+
+- Fix "Object of class Closure could not be converted to string" error when tracing `redis_commands` [(#668)](https://github.com/getsentry/sentry-laravel/pull/668)
+
 ## 3.3.1
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.3.1.
