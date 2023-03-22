@@ -6,6 +6,7 @@ use Illuminate\Cache\Events;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Redis\Events as RedisEvents;
 use Illuminate\Redis\RedisManager;
+use Illuminate\Support\Str;
 use Sentry\Breadcrumb;
 use Sentry\Laravel\Features\Concerns\ResolvesEventOrigin;
 use Sentry\Laravel\Integration;
@@ -81,7 +82,16 @@ class CacheIntegration extends Feature
 
         $context = new SpanContext();
         $context->setOp('db.redis');
-        $context->setDescription(strtoupper($event->command) . ' ' . ($event->parameters[0] ?? null));
+
+        $keyForDescription = '';
+
+        // If the first parameter is a string and does not contain a newline we use it as the description since it's most likely a key
+        // This is not a perfect solution but it's the best we can do without understanding the command that was executed
+        if (!empty($event->parameters[0]) && is_string($event->parameters[0]) && !Str::contains($event->parameters[0], "\n")) {
+            $keyForDescription = $event->parameters[0];
+        }
+
+        $context->setDescription(rtrim(strtoupper($event->command) . ' ' . $keyForDescription));
         $context->setStartTimestamp(microtime(true) - $event->time / 1000);
         $context->setEndTimestamp($context->getStartTimestamp() + $event->time / 1000);
 
