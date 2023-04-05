@@ -2,12 +2,17 @@
 
 namespace Sentry\Laravel\Features;
 
+use Illuminate\Console\Application as ConsoleApplication;
 use Illuminate\Console\Scheduling\Event as SchedulingEvent;
 use Illuminate\Contracts\Cache\Factory as Cache;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Support\Str;
+use RuntimeException;
 use Sentry\CheckIn;
 use Sentry\CheckInStatus;
 use Sentry\Event as SentryEvent;
+use Sentry\MonitorConfig;
+use Sentry\MonitorSchedule;
 use Sentry\SentrySdk;
 
 class ConsoleIntegration extends Feature
@@ -31,27 +36,36 @@ class ConsoleIntegration extends Feature
     {
         $this->cache = $cache;
 
-        $startCheckIn  = function (string $mutex, string $slug, bool $useCache, int $useCacheTtlInMinutes) {
-            $this->startCheckIn($mutex, $slug, $useCache, $useCacheTtlInMinutes);
+        $startCheckIn  = function (?string $slug, SchedulingEvent $scheduled, ?int $checkInMargin, ?int $maxRuntime, bool $updateMonitorConfig) {
+            $this->startCheckIn($slug, $scheduled, $checkInMargin, $maxRuntime, $updateMonitorConfig);
         };
-        $finishCheckIn = function (string $mutex, string $slug, CheckInStatus $status, bool $useCache) {
-            $this->finishCheckIn($mutex, $slug, $status, $useCache);
+        $finishCheckIn = function (?string $slug, SchedulingEvent $scheduled, CheckInStatus $status) {
+            $this->finishCheckIn($slug, $scheduled, $status);
         };
 
-        SchedulingEvent::macro('sentryMonitor', function (string $monitorSlug) use ($startCheckIn, $finishCheckIn) {
+        SchedulingEvent::macro('sentryMonitor', function (
+            ?string $monitorSlug = null,
+            ?int $checkInMargin = null,
+            ?int $maxRuntime = null,
+            bool $updateMonitorConfig = true
+        ) use ($startCheckIn, $finishCheckIn) {
             /** @var SchedulingEvent $this */
+            if ($monitorSlug === null && $this->command === null) {
+                throw new RuntimeException('The command string is null, please set a slug manually for this scheduled command using the `sentryMonitor(\'your-monitor-slug\')` macro.');
+            }
+
             return $this
-                ->before(function () use ($startCheckIn, $monitorSlug) {
+                ->before(function () use ($startCheckIn, $monitorSlug, $checkInMargin, $maxRuntime, $updateMonitorConfig) {
                     /** @var SchedulingEvent $this */
-                    $startCheckIn($this->mutexName(), $monitorSlug, $this->runInBackground, $this->expiresAt);
+                    $startCheckIn($monitorSlug, $this, $checkInMargin, $maxRuntime, $updateMonitorConfig);
                 })
                 ->onSuccess(function () use ($finishCheckIn, $monitorSlug) {
                     /** @var SchedulingEvent $this */
-                    $finishCheckIn($this->mutexName(), $monitorSlug, CheckInStatus::ok(), $this->runInBackground);
+                    $finishCheckIn($monitorSlug, $this, CheckInStatus::ok());
                 })
                 ->onFailure(function () use ($finishCheckIn, $monitorSlug) {
                     /** @var SchedulingEvent $this */
-                    $finishCheckIn($this->mutexName(), $monitorSlug, CheckInStatus::error(), $this->runInBackground);
+                    $finishCheckIn($monitorSlug, $this, CheckInStatus::error());
                 });
         });
     }
@@ -64,32 +78,50 @@ class ConsoleIntegration extends Feature
         });
     }
 
-    private function startCheckIn(string $mutex, string $slug, bool $useCache, int $useCacheTtlInMinutes): void
+    private function startCheckIn(?string $slug, SchedulingEvent $scheduled, ?int $checkInMargin, ?int $maxRuntime, bool $updateMonitorConfig): void
     {
-        $checkIn = $this->createCheckIn($slug, CheckInStatus::inProgress());
+        $checkInSlug = $slug ?? $this->makeSlugForScheduled($scheduled);
 
-        $cacheKey = $this->buildCacheKey($mutex, $slug);
+        $checkIn = $this->createCheckIn($checkInSlug, CheckInStatus::inProgress());
+
+        if ($updateMonitorConfig || $slug === null) {
+            $checkIn->setMonitorConfig(new MonitorConfig(
+                new MonitorSchedule(
+                    MonitorSchedule::TYPE_CRONTAB,
+                    $scheduled->getExpression()
+                ),
+                $checkInMargin,
+                $maxRuntime,
+                $scheduled->timezone,
+            ));
+        }
+
+        $cacheKey = $this->buildCacheKey($scheduled->mutexName(), $checkInSlug);
 
         $this->checkInStore[$cacheKey] = $checkIn;
 
-        if ($useCache) {
-            $this->cache->store()->put($cacheKey, $checkIn->getId(), $useCacheTtlInMinutes * 60);
+        if ($scheduled->runInBackground) {
+            $this->cache->store()->put($cacheKey, $checkIn->getId(), $scheduled->expiresAt * 60);
         }
 
         $this->sendCheckIn($checkIn);
     }
 
-    private function finishCheckIn(string $mutex, string $slug, CheckInStatus $status, bool $useCache): void
+    private function finishCheckIn(?string $slug, SchedulingEvent $scheduled, CheckInStatus $status): void
     {
-        $cacheKey = $this->buildCacheKey($mutex, $slug);
+        $mutex = $scheduled->mutexName();
+
+        $checkInSlug = $slug ?? $this->makeSlugForScheduled($scheduled);
+
+        $cacheKey = $this->buildCacheKey($mutex, $checkInSlug);
 
         $checkIn = $this->checkInStore[$cacheKey] ?? null;
 
-        if ($checkIn === null && $useCache) {
+        if ($checkIn === null && $scheduled->runInBackground) {
             $checkInId = $this->cache->store()->get($cacheKey);
 
             if ($checkInId !== null) {
-                $checkIn = $this->createCheckIn($slug, $status, $checkInId);
+                $checkIn = $this->createCheckIn($checkInSlug, $status, $checkInId);
             }
         }
 
@@ -101,7 +133,7 @@ class ConsoleIntegration extends Feature
         // We don't need to keep the checkIn ID stored since we finished executing the command
         unset($this->checkInStore[$mutex]);
 
-        if ($useCache) {
+        if ($scheduled->runInBackground) {
             $this->cache->store()->forget($cacheKey);
         }
 
@@ -135,5 +167,22 @@ class ConsoleIntegration extends Feature
     {
         // We use the mutex name as part of the cache key to avoid collisions between the same commands with the same schedule but with different slugs
         return 'sentry:checkIn:' . sha1("{$mutex}:{$slug}");
+    }
+
+    private function makeSlugForScheduled(SchedulingEvent $scheduled): string
+    {
+        $generatedSlug = Str::slug(
+            Str::replace(
+                // `:` is commonly used in the command name, so we replace it with `-` to avoid it being stripped out by the slug function
+                ':',
+                '-',
+                trim(
+                    // The command string always starts with the PHP binary, so we remove it since it's not relevant to the slug
+                    Str::after($scheduled->command, ConsoleApplication::phpBinary())
+                )
+            )
+        );
+
+        return "scheduled_{$generatedSlug}";
     }
 }
