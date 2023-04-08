@@ -2,10 +2,16 @@
 
 namespace Sentry\Laravel\Features\Concerns;
 
+use Illuminate\Contracts\Container\Container;
 use Sentry\Laravel\Tracing\BacktraceHelper;
 
 trait ResolvesEventOrigin
 {
+    protected function container(): Container
+    {
+        return app();
+    }
+
     protected function resolveEventOrigin(): ?string
     {
         $backtraceHelper = $this->makeBacktraceHelper();
