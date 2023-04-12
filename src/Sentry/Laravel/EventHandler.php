@@ -409,6 +409,8 @@ class EventHandler
 
     protected function queueJobProcessingHandler(QueueEvents\JobProcessing $event): void
     {
+        $this->cleanupScopeForTaskWithinLongRunningProcessWhen($this->pushedQueueScopeCount > 0);
+
         $this->prepareScopeForTaskWithinLongRunningProcess();
 
         ++$this->pushedQueueScopeCount;
