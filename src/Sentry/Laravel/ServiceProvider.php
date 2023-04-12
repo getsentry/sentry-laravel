@@ -41,6 +41,15 @@ class ServiceProvider extends BaseServiceProvider
     ];
 
     /**
+     * List of features that are provided by the SDK.
+     */
+    protected const FEATURES = [
+        Features\CacheIntegration::class,
+        Features\ConsoleIntegration::class,
+        Features\LivewirePackageIntegration::class,
+    ];
+
+    /**
      * Boot the service provider.
      */
     public function boot(): void
@@ -49,6 +58,8 @@ class ServiceProvider extends BaseServiceProvider
 
         if ($this->hasDsnSet()) {
             $this->bindEvents();
+
+            $this->setupFeatures();
 
             if ($this->app->bound(HttpKernelInterface::class)) {
                 /** @var \Illuminate\Foundation\Http\Kernel $httpKernel */
@@ -108,7 +119,7 @@ class ServiceProvider extends BaseServiceProvider
             }
 
             if ($this->app->bound('queue')) {
-                $handler->subscribeQueueEvents($dispatcher, $this->app->make('queue'));
+                $handler->subscribeQueueEvents($dispatcher);
             }
 
             if (isset($userConfig['send_default_pii']) && $userConfig['send_default_pii'] !== false) {
@@ -116,6 +127,20 @@ class ServiceProvider extends BaseServiceProvider
             }
         } catch (BindingResolutionException $e) {
             // If we cannot resolve the event dispatcher we also cannot listen to events
+        }
+    }
+
+    /**
+     * Setup the default SDK features.
+     */
+    protected function setupFeatures(): void
+    {
+        foreach (self::FEATURES as $feature) {
+            try {
+                $this->app->make($feature)->boot();
+            } catch (\Throwable $e) {
+                // Ensure that features do not break the whole application
+            }
         }
     }
 
@@ -234,7 +259,7 @@ class ServiceProvider extends BaseServiceProvider
 
         $userConfig = $this->getUserConfig();
 
-        $integrationsToResolve = $userConfig['integrations'] ?? [];
+        $integrationsToResolve = array_merge($userConfig['integrations'] ?? []);
 
         $enableDefaultTracingIntegrations = $userConfig['tracing']['default_integrations'] ?? true;
 

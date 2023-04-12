@@ -8,14 +8,12 @@ use Sentry\Breadcrumb;
 use Sentry\ClientInterface;
 use Sentry\Event;
 use Sentry\EventHint;
-use Sentry\Laravel\Integration;
 use Sentry\State\Scope;
 use ReflectionProperty;
 use Sentry\Laravel\Tracing;
 use Sentry\State\HubInterface;
 use Sentry\Laravel\ServiceProvider;
 use Orchestra\Testbench\TestCase as LaravelTestCase;
-use Throwable;
 
 abstract class TestCase extends LaravelTestCase
 {
@@ -24,14 +22,14 @@ abstract class TestCase extends LaravelTestCase
         // or use the `$this->resetApplicationWithConfig([ /* config */ ]);` helper method
     ];
 
-    /** @var array<int, array{0: Event, 1: EventHint}> */
+    /** @var array<int, array{0: Event, 1: EventHint|null}> */
     protected $lastSentryEvents = [];
 
     protected function getEnvironmentSetUp($app): void
     {
         $this->lastSentryEvents = [];
 
-        $app['config']->set('sentry.before_send', function (Event $event, EventHint $hint) {
+        $app['config']->set('sentry.before_send', function (Event $event, ?EventHint $hint) {
             $this->lastSentryEvents[] = [$event, $hint];
 
             return null;
@@ -108,5 +106,14 @@ abstract class TestCase extends LaravelTestCase
         }
 
         return end($breadcrumbs);
+    }
+
+    protected function getLastEvent(): ?Event
+    {
+        if (empty($this->lastSentryEvents)) {
+            return null;
+        }
+
+        return end($this->lastSentryEvents)[0];
     }
 }

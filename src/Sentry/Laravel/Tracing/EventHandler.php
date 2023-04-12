@@ -12,6 +12,7 @@ use Illuminate\Queue\QueueManager;
 use Illuminate\Routing\Events as RoutingEvents;
 use RuntimeException;
 use Sentry\Laravel\Integration;
+use Sentry\Laravel\Util\WorksWithUris;
 use Sentry\SentrySdk;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
@@ -21,6 +22,8 @@ use Sentry\Tracing\TransactionSource;
 
 class EventHandler
 {
+    use WorksWithUris;
+
     public const QUEUE_PAYLOAD_BAGGAGE_DATA = 'sentry_baggage_data';
     public const QUEUE_PAYLOAD_TRACE_PARENT_DATA = 'sentry_trace_parent_data';
 
@@ -80,6 +83,13 @@ class EventHandler
     private $traceQueueJobsAsTransactions;
 
     /**
+     * Indicates if we should trace HTTP client requests.
+     *
+     * @var bool
+     */
+    private $traceHttpClientRequests;
+
+    /**
      * Hold the stack of parent spans that need to be put back on the scope.
      *
      * @var array<int, \Sentry\Tracing\Span|null>
@@ -107,6 +117,8 @@ class EventHandler
     {
         $this->traceSqlQueries = ($config['sql_queries'] ?? true) === true;
         $this->traceSqlQueryOrigins = ($config['sql_origin'] ?? true) === true;
+
+        $this->traceHttpClientRequests = ($config['http_client_requests'] ?? true) === true;
 
         $this->traceQueueJobs = ($config['queue_jobs'] ?? false) === true;
         $this->traceQueueJobsAsTransactions = ($config['queue_job_transactions'] ?? false) === true;
@@ -221,7 +233,7 @@ class EventHandler
             $queryOrigin = $this->resolveQueryOriginFromBacktrace();
 
             if ($queryOrigin !== null) {
-                $context->setData(['sql.origin' => $queryOrigin]);
+                $context->setData(['db.sql.origin' => $queryOrigin]);
             }
         }
 
@@ -283,6 +295,10 @@ class EventHandler
 
     protected function httpClientRequestSendingHandler(HttpClientEvents\RequestSending $event): void
     {
+        if (!$this->traceHttpClientRequests) {
+            return;
+        }
+
         $parentSpan = SentrySdk::getCurrentHub()->getSpan();
 
         // If there is no tracing span active there is no need to handle the event
@@ -292,14 +308,27 @@ class EventHandler
 
         $context = new SpanContext;
 
+        $fullUri = $this->getFullUri($event->request->url());
+        $partialUri = $this->getPartialUri($fullUri);
+
         $context->setOp('http.client');
-        $context->setDescription($event->request->method() . ' ' . $event->request->url());
+        $context->setDescription($event->request->method() . ' ' . $partialUri);
+        $context->setData([
+            'url' => $partialUri,
+            'method' => $event->request->method(),
+            'http.query' => $fullUri->getQuery(),
+            'http.fragment' => $fullUri->getFragment(),
+        ]);
 
         $this->pushSpan($parentSpan->startChild($context));
     }
 
     protected function httpClientResponseReceivedHandler(HttpClientEvents\ResponseReceived $event): void
     {
+        if (!$this->traceHttpClientRequests) {
+            return;
+        }
+
         $span = $this->popSpan();
 
         if ($span !== null) {
@@ -310,6 +339,10 @@ class EventHandler
 
     protected function httpClientConnectionFailedHandler(HttpClientEvents\ConnectionFailed $event): void
     {
+        if (!$this->traceHttpClientRequests) {
+            return;
+        }
+
         $span = $this->popSpan();
 
         if ($span !== null) {
