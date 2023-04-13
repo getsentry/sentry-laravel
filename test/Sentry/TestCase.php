@@ -86,6 +86,7 @@ abstract class TestCase extends LaravelTestCase
         return $method->invoke($hub);
     }
 
+    /** @return array<array-key, \Sentry\Breadcrumb> */
     protected function getCurrentBreadcrumbs(): array
     {
         $scope = $this->getCurrentScope();
