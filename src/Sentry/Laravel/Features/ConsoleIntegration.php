@@ -118,8 +118,8 @@ class ConsoleIntegration extends Feature
             $slug,
             $status,
             $id,
-            $options->getEnvironment(),
-            $options->getRelease()
+            $options->getRelease(),
+            $options->getEnvironment()
         );
     }
 
