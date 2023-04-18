@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.3.3
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.3.3.
+
+### Bug Fixes
+
+- Fix `CheckIn` constructor argument order [(#680)](https://github.com/getsentry/sentry-laravel/pull/680)
+- Fix missing breadcrumbs for jobs throwing an exception [(#633)](https://github.com/getsentry/sentry-laravel/pull/633)
+
 ## 3.3.2
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.3.2.
