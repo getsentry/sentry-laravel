@@ -216,43 +216,29 @@ class Integration implements IntegrationInterface
 
             public function __invoke(Model $model, string $relation): void
             {
-                $currentSpan = SentrySdk::getCurrentHub()->getSpan();
-
-                if ($currentSpan !== null) {
-                    $currentSpan->setData([
-                        'lazy_loading_violation' => [
-                            'model'    => get_class($model),
-                            'relation' => $relation,
-                            'origin'   => $this->resolveEventOrigin(),
-                        ],
+                SentrySdk::getCurrentHub()->withScope(function (Scope $scope) use ($model, $relation) {
+                    $scope->setContext('violation', [
+                        'model'    => get_class($model),
+                        'relation' => $relation,
+                        'origin'   => $this->resolveEventOrigin(),
                     ]);
-                }
 
-                // @TODO: We are currently reporting the violation on the current span, but we might want to give users the option to report it as a separate event?
-                // SentrySdk::getCurrentHub()->withScope(function (Scope $scope) use ($model, $relation) {
-                //     $scope->setContext('violation', [
-                //         'model'    => get_class($model),
-                //         'relation' => $relation,
-                //         'origin'   => $this->resolveEventOrigin(),
-                //     ]);
-                //
-                //     SentrySdk::getCurrentHub()->captureEvent(
-                //         tap(Event::createEvent(), static function (Event $event) {
-                //             $event->setLevel(Severity::warning());
-                //         }),
-                //         EventHint::fromArray([
-                //             'exception' => new LazyLoadingViolationException($model, $relation),
-                //             'mechanism' => new ExceptionMechanism(ExceptionMechanism::TYPE_GENERIC, true),
-                //         ])
-                //     );
-                // });
+                    SentrySdk::getCurrentHub()->captureEvent(
+                        tap(Event::createEvent(), static function (Event $event) {
+                            $event->setLevel(Severity::warning());
+                        }),
+                        EventHint::fromArray([
+                            'exception' => new LazyLoadingViolationException($model, $relation),
+                            'mechanism' => new ExceptionMechanism(ExceptionMechanism::TYPE_GENERIC, true),
+                        ])
+                    );
+                });
 
                 // Forward the violation to the next handler if there is one
                 if ($this->callback !== null) {
                     call_user_func($this->callback, $model, $relation);
                 }
             }
-
         };
     }
 
