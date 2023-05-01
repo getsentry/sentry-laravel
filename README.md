@@ -97,7 +97,6 @@ The Laravel and Lumen version listed below were supported in previous versions:
 - Laravel `<= 4.2.x` is supported until `0.8.x`
 - Laravel `<= 5.7.x` on PHP `<= 7.0` is supported until `0.11.x`
 - Laravel `>= 5.x.x` on PHP `>= 7.1` is supported until `2.14.x`
-- Laravel Lumen is supported until `2.14.x`
 
 ## Contributing to the SDK
 

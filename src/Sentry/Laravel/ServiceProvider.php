@@ -8,6 +8,7 @@ use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
 use Illuminate\Foundation\Application as Laravel;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 use Illuminate\Log\LogManager;
+use Laravel\Lumen\Application as Lumen;
 use RuntimeException;
 use Sentry\ClientBuilder;
 use Sentry\ClientBuilderInterface;
@@ -61,8 +62,10 @@ class ServiceProvider extends BaseServiceProvider
 
             $this->setupFeatures();
 
-            if ($this->app->bound(HttpKernelInterface::class)) {
-                /** @var \Illuminate\Foundation\Http\Kernel $httpKernel */
+            if ($this->app instanceof Lumen) {
+                $this->app->middleware(SetRequestMiddleware::class);
+                $this->app->middleware(SetRequestIpMiddleware::class);
+            } elseif ($this->app->bound(HttpKernelInterface::class)) {
                 $httpKernel = $this->app->make(HttpKernelInterface::class);
 
                 if ($httpKernel instanceof HttpKernel) {
@@ -88,6 +91,10 @@ class ServiceProvider extends BaseServiceProvider
      */
     public function register(): void
     {
+        if ($this->app instanceof Lumen) {
+            $this->app->configure(static::$abstract);
+        }
+
         $this->mergeConfigFrom(__DIR__ . '/../../../config/sentry.php', static::$abstract);
 
         $this->configureAndRegisterClient();

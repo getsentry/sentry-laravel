@@ -28,9 +28,6 @@
         "symfony/psr-http-message-bridge": "^1.0 | ^2.0",
         "nyholm/psr7": "^1.0"
     },
-    "conflict": {
-        "laravel/lumen-framework": "*"
-    },
     "autoload": {
         "psr-0": {
             "Sentry\\Laravel\\": "src/"
