@@ -138,6 +138,15 @@ class IntegrationTest extends TestCase
         $this->assertLumenRouteNameAndSource($route, $url, '/{param1}/{param2}/baz', TransactionSource::route());
     }
 
+    public function testExtractingNameForLumenRouteWithParamsWithSameValueInUrl(): void
+    {
+        $route = [1, [], ['param1' => 'foo', 'param2' => 'foo']];
+
+        $url = '/foo/foo/bar';
+
+        $this->assertLumenRouteNameAndSource($route, $url, '/{param1}/{param2}/bar', TransactionSource::route());
+    }
+
     public function testExceptionReportedUsingReportHelperIsNotMarkedAsUnhandled(): void
     {
         $testException = new RuntimeException('This was handled');

@@ -138,7 +138,11 @@ class Integration implements IntegrationInterface
         $routeUri = array_reduce(
             array_keys($routeData[2]),
             static function ($carry, $key) use ($routeData) {
-                return str_replace($routeData[2][$key], "{{$key}}", $carry);
+                $search = '/' . preg_quote($routeData[2][$key], '/') . '/';
+
+                // Replace the first occurrence of the route parameter value with the key name
+                // This is by no means a perfect solution, but it's the best we can do with the data we have
+                return preg_replace($search, "{{$key}}", $carry, 1);
             },
             $path
         );
