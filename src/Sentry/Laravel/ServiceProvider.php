@@ -7,11 +7,14 @@ use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
 use Illuminate\Foundation\Application as Laravel;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
+use Illuminate\Http\Request;
 use Illuminate\Log\LogManager;
 use Laravel\Lumen\Application as Lumen;
 use RuntimeException;
 use Sentry\ClientBuilder;
 use Sentry\ClientBuilderInterface;
+use Sentry\Event;
+use Sentry\EventHint;
 use Sentry\Integration as SdkIntegration;
 use Sentry\Laravel\Console\PublishCommand;
 use Sentry\Laravel\Console\TestCommand;
@@ -22,6 +25,7 @@ use Sentry\Laravel\Tracing\ServiceProvider as TracingServiceProvider;
 use Sentry\SentrySdk;
 use Sentry\State\Hub;
 use Sentry\State\HubInterface;
+use Sentry\Tracing\TransactionMetadata;
 
 class ServiceProvider extends BaseServiceProvider
 {
@@ -186,6 +190,39 @@ class ServiceProvider extends BaseServiceProvider
             // When we get no environment from the (user) configuration we default to the Laravel environment
             if (empty($options['environment'])) {
                 $options['environment'] = $this->app->environment();
+            }
+
+            if ($this->app instanceof Lumen) {
+                $wrapBeforeSend = function (?callable $userBeforeSend) {
+                    return function (Event $event, ?EventHint $eventHint) use ($userBeforeSend) {
+                        $request = $this->app->make(Request::class);
+
+                        if ($request !== null) {
+                            $route = $request->route();
+
+                            if ($route !== null) {
+                                [$routeName, $transactionSource] = Integration::extractNameAndSourceForLumenRoute($request->route(), $request->path());
+
+                                $event->setTransaction($routeName);
+
+                                $transactionMetadata = $event->getSdkMetadata('transaction_metadata');
+
+                                if ($transactionMetadata instanceof TransactionMetadata) {
+                                    $transactionMetadata->setSource($transactionSource);
+                                }
+                            }
+                        }
+
+                        if ($userBeforeSend !== null) {
+                            return $userBeforeSend($event, $eventHint);
+                        }
+
+                        return $event;
+                    };
+                };
+
+                $options['before_send'] = $wrapBeforeSend($options['before_send'] ?? null);
+                $options['before_send_transaction'] = $wrapBeforeSend($options['before_send_transaction'] ?? null);
             }
 
             $clientBuilder = ClientBuilder::create($options);
