@@ -49,11 +49,11 @@
         }
     },
     "scripts": {
-        "test": [
+        "tests": [
             "vendor/bin/phpunit --verbose"
         ],
-        "cs": [
-            "vendor/bin/php-cs-fixer fix --verbose --diff"
+       "phpcs": [
+            "vendor/bin/php-cs-fixer fix --verbose --diff --dry-run"
         ]
     },
     "extra": {

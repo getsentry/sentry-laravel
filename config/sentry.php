@@ -2,7 +2,7 @@
 
 return [
 
-    // Where to send the events
+    // @see https://docs.sentry.io/product/sentry-basics/dsn-explainer/
     'dsn' => env('SENTRY_LARAVEL_DSN', env('SENTRY_DSN')),
 
     // The release version of your application
