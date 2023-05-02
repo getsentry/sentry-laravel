@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://sentry.io/?utm_source=github&utm_medium=logo" target="_blank">
+  <a href="https://sentry.io?utm_source=github&utm_medium=logo" target="_blank">
     <img src="https://sentry-brand.storage.googleapis.com/sentry-wordmark-dark-280x84.png" alt="Sentry" width="280" height="84">
   </a>
 </p>
@@ -15,19 +15,19 @@ _Bad software is everywhere, and we're tired of it. Sentry is on a mission to he
 [![Monthly Downloads](https://poser.pugx.org/sentry/sentry-laravel/d/monthly)](https://packagist.org/packages/sentry/sentry-laravel)
 [![Discord](https://img.shields.io/discord/621778831602221064)](https://discord.gg/cWnMQeA)
 
-This is the official Laravel SDK for [Sentry](https://sentry.io/)
+This is the official Laravel SDK for [Sentry](https://sentry.io).
 
 ## Getting Started
 
-The installation step below work on the latest versions of the Laravel framework (8.x, 9.x and 10.x).
+The installation steps below work on versions 8.x, 9.x and 10.x of the Laravel framework.
 
 For other Laravel or Lumen versions see:
 
-- [Laravel 8.x & 9.x & 10.x](https://docs.sentry.io/platforms/php/guides/laravel/)
-- [Laravel 6.x & 7.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel6-7/)
-- [Laravel 5.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel5/)
-- [Laravel 4.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel4/)
-- [Lumen](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/lumen/)
+- [Laravel 8.x & 9.x & 10.x](https://docs.sentry.io/platforms/php/guides/laravel)
+- [Laravel 6.x & 7.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel6-7)
+- [Laravel 5.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel5)
+- [Laravel 4.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel4)
+- [Lumen](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/lumen)
 
 ### Install
 
@@ -37,9 +37,9 @@ Install the `sentry/sentry-laravel` package:
 composer require sentry/sentry-laravel
 ```
 
-Enable capturing unhandled exception to report to Sentry by making the following change to your `App/Exceptions/Handler.php`:
+Enable capturing unhandled exception to report to Sentry by making the following change to your `app/Exceptions/Handler.php`:
 
-```php {filename:App/Exceptions/Handler.php}
+```php {filename:app/Exceptions/Handler.php}
 use Sentry\Laravel\Integration;
 
 public function register(): void
@@ -50,7 +50,7 @@ public function register(): void
 }
 ```
 
-> Alternatively, you can configure Sentry in your [Laravel Log Channel](https://docs.sentry.io/platforms/php/guides/laravel/usage/#log-channels), allowing you to log `info` and `debug` as well.
+> Alternatively, you can configure Sentry in your [Laravel Log Channel](https://docs.sentry.io/platforms/php/guides/laravel/usage#log-channels), allowing you to log `info` and `debug` as well.
 
 ### Configure
 
@@ -72,13 +72,13 @@ SENTRY_LARAVEL_DSN=___PUBLIC_DSN___
 use function Sentry\captureException;
 
 try {
-    $this->functionFailsForSure();
+    $this->functionThatMayFail();
 } catch (\Throwable $exception) {
     captureException($exception);
 }
 ```
 
-- To learn more about how to use the SDK [refer to our docs](https://docs.sentry.io/platforms/php/guides/laravel/)
+- To learn more about how to use the SDK [refer to our docs](https://docs.sentry.io/platforms/php/guides/laravel)
 
 ## Laravel Version Compatibility
 
@@ -103,17 +103,17 @@ The Laravel and Lumen version listed below were supported in previous versions:
 
 Please refer to [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Getting help/support
+## Getting Help/Support
 
 If you need help setting up or configuring the Laravel SDK (or anything else in the Sentry universe) please head over to the [Sentry Community on Discord](https://discord.com/invite/Ww9hbqr). There is a ton of great people in our Discord community ready to help you!
 
 ## Resources
 
-- [![Documentation](https://img.shields.io/badge/documentation-sentry.io-green.svg)](https://docs.sentry.io/quickstart/)
+- [![Documentation](https://img.shields.io/badge/documentation-sentry.io-green.svg)](https://docs.sentry.io/quickstart)
 - [![Discord](https://img.shields.io/discord/621778831602221064)](https://discord.gg/Ww9hbqr)
 - [![Stack Overflow](https://img.shields.io/badge/stack%20overflow-sentry-green.svg)](http://stackoverflow.com/questions/tagged/sentry)
 - [![Twitter Follow](https://img.shields.io/twitter/follow/getsentry?label=getsentry&style=social)](https://twitter.com/intent/follow?screen_name=getsentry)
 
 ## License
 
-Licensed under the MIT license, see [`LICENSE`](LICENSE)
+Licensed under the MIT license, see [`LICENSE`](LICENSE).

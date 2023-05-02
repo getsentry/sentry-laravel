@@ -48,20 +48,6 @@
             "Sentry\\Laravel\\Tests\\": "test/Sentry/"
         }
     },
-    "scripts": {
-        "tests": [
-            "vendor/bin/phpunit --verbose"
-        ],
-        "tests-travis": [
-            "XDEBUG_MODE=coverage vendor/bin/phpunit --verbose --configuration phpunit.xml --coverage-clover test/clover.xml"
-        ],
-        "tests-report": [
-            "XDEBUG_MODE=coverage vendor/bin/phpunit --verbose --configuration phpunit.xml --coverage-html test/html-report"
-        ],
-        "phpcs": [
-            "vendor/bin/php-cs-fixer fix --verbose --diff --dry-run"
-        ]
-    },
     "extra": {
         "branch-alias": {
             "dev-master": "3.x-dev",
@@ -83,7 +69,8 @@
     "minimum-stability": "dev",
     "config": {
         "allow-plugins": {
-            "kylekatarnls/update-helper": false
+            "kylekatarnls/update-helper": false,
+            "php-http/discovery": false
         }
     }
 }
