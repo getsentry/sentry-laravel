@@ -16,10 +16,10 @@ update-submodules:
 setup-git:
 	git config branch.autosetuprebase always
 
-.PHONY: cs
-cs:
-	composer cs
+.PHONY: phpcs
+phpcs:
+	composer phpcs
 
-.PHONY: test
-test:
-	composer test
+.PHONY: tests
+tests:
+	composer tests

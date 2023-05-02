@@ -51,7 +51,7 @@ composer install
 Tests can be run via [PHPUnit](https://phpunit.de).
 
 ```bash
-composer test
+composer tests
 ```
 
 ### Code style
@@ -59,7 +59,7 @@ composer test
 The code is automatically formatted through [php-cs-fixer](https://cs.symfony.com).
 
 ```bash
-composer cs
+composer phpcs
 ```
 
 ## Releasing a new version
