@@ -48,6 +48,14 @@
             "Sentry\\Laravel\\Tests\\": "test/Sentry/"
         }
     },
+    "scripts": {
+        "test": [
+            "vendor/bin/phpunit --verbose"
+        ],
+        "cs": [
+            "vendor/bin/php-cs-fixer fix --verbose --diff"
+        ]
+    },
     "extra": {
         "branch-alias": {
             "dev-master": "3.x-dev",

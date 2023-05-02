@@ -30,7 +30,7 @@ Thank you for contributing!
 
 Make sure that you have PHP 7.2+ installed. Version 7.4 or higher is required to run style checkers. On macOS, we recommend using brew to install PHP. For Windows, we recommend an official PHP.net release.
 
-To run the commands below, you will need [make](https://www.gnu.org/software/make).
+You may use [make](https://www.gnu.org/software/make) to take advantage of the provided [Makefile](Makefile).
 
 ### Clone the repository
 
@@ -43,7 +43,7 @@ git clone git@github.com:getsentry/sentry-laravel.git
 Dependencies are managed through [Composer](https://getcomposer.org).
 
 ```bash
-make develop
+composer install
 ```
 
 ### Running tests
@@ -51,7 +51,15 @@ make develop
 Tests can be run via [PHPUnit](https://phpunit.de).
 
 ```bash
-make test
+composer test
+```
+
+### Code style
+
+The code is automatically formatted through [php-cs-fixer](https://cs.symfony.com).
+
+```bash
+composer cs
 ```
 
 ## Releasing a new version

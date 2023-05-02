@@ -18,12 +18,8 @@ setup-git:
 
 .PHONY: cs
 cs:
-	vendor/bin/php-cs-fixer fix --verbose --diff
-
-.PHONY: cs-dry-run
-cs-dry-run:
-	vendor/bin/php-cs-fixer fix --verbose --diff --dry-run
+	composer cs
 
 .PHONY: test
 test:
-	vendor/bin/phpunit
+	composer test
