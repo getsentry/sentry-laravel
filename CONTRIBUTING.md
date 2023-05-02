@@ -115,4 +115,4 @@ A major release `N` implies the previous release `N-1` will no longer receive up
 
 See the documentation on commit messages here:
 
-https://develop.sentry.dev/commit-messages#commit-message-format
+https://develop.sentry.dev/commit-messages/#commit-message-format

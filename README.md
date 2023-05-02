@@ -23,11 +23,11 @@ The installation steps below work on versions 8.x, 9.x and 10.x of the Laravel f
 
 For other Laravel or Lumen versions see:
 
-- [Laravel 8.x & 9.x & 10.x](https://docs.sentry.io/platforms/php/guides/laravel)
-- [Laravel 6.x & 7.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel6-7)
-- [Laravel 5.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel5)
-- [Laravel 4.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel4)
-- [Lumen](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/lumen)
+- [Laravel 8.x & 9.x & 10.x](https://docs.sentry.io/platforms/php/guides/laravel/)
+- [Laravel 6.x & 7.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel6-7/)
+- [Laravel 5.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel5/)
+- [Laravel 4.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel4/)
+- [Lumen](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/lumen/)
 
 ### Install
 
@@ -50,7 +50,7 @@ public function register(): void
 }
 ```
 
-> Alternatively, you can configure Sentry in your [Laravel Log Channel](https://docs.sentry.io/platforms/php/guides/laravel/usage#log-channels), allowing you to log `info` and `debug` as well.
+> Alternatively, you can configure Sentry in your [Laravel Log Channel](https://docs.sentry.io/platforms/php/guides/laravel/usage/#log-channels), allowing you to log `info` and `debug` as well.
 
 ### Configure
 
@@ -78,7 +78,7 @@ try {
 }
 ```
 
-- To learn more about how to use the SDK [refer to our docs](https://docs.sentry.io/platforms/php/guides/laravel)
+- To learn more about how to use the SDK [refer to our docs](https://docs.sentry.io/platforms/php/guides/laravel/)
 
 ## Laravel Version Compatibility
 
@@ -109,7 +109,7 @@ If you need help setting up or configuring the Laravel SDK (or anything else in 
 
 ## Resources
 
-- [![Documentation](https://img.shields.io/badge/documentation-sentry.io-green.svg)](https://docs.sentry.io/quickstart)
+- [![Documentation](https://img.shields.io/badge/documentation-sentry.io-green.svg)](https://docs.sentry.io/quickstart/)
 - [![Discord](https://img.shields.io/discord/621778831602221064)](https://discord.gg/Ww9hbqr)
 - [![Stack Overflow](https://img.shields.io/badge/stack%20overflow-sentry-green.svg)](http://stackoverflow.com/questions/tagged/sentry)
 - [![Twitter Follow](https://img.shields.io/twitter/follow/getsentry?label=getsentry&style=social)](https://twitter.com/intent/follow?screen_name=getsentry)
