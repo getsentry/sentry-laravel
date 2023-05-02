@@ -2,11 +2,15 @@
 
 namespace Sentry\Laravel;
 
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\LazyLoadingViolationException;
 use Illuminate\Routing\Route;
 use Sentry\EventHint;
 use Sentry\EventId;
 use Sentry\ExceptionMechanism;
+use Sentry\Laravel\Features\Concerns\ResolvesEventOrigin;
 use Sentry\SentrySdk;
+use Sentry\Severity;
 use Sentry\Tracing\TransactionSource;
 use Throwable;
 use function Sentry\addBreadcrumb;
@@ -188,6 +192,54 @@ class Integration implements IntegrationInterface
         ]);
 
         return SentrySdk::getCurrentHub()->captureException($throwable, $hint);
+    }
+
+    /**
+     * Returns a callback that can be passed to `Model::handleLazyLoadingViolationUsing` to report lazy loading violations to Sentry.
+     *
+     * @param callable|null $callback Optional callback to be called after the violation is reported to Sentry.
+     *
+     * @return callable
+     */
+    public static function lazyLoadingViolationReporter(?callable $callback = null): callable
+    {
+        return new class($callback) {
+            use ResolvesEventOrigin;
+
+            /** @var callable|null $callback */
+            private $callback;
+
+            public function __construct(?callable $callback)
+            {
+                $this->callback = $callback;
+            }
+
+            public function __invoke(Model $model, string $relation): void
+            {
+                SentrySdk::getCurrentHub()->withScope(function (Scope $scope) use ($model, $relation) {
+                    $scope->setContext('violation', [
+                        'model'    => get_class($model),
+                        'relation' => $relation,
+                        'origin'   => $this->resolveEventOrigin(),
+                    ]);
+
+                    SentrySdk::getCurrentHub()->captureEvent(
+                        tap(Event::createEvent(), static function (Event $event) {
+                            $event->setLevel(Severity::warning());
+                        }),
+                        EventHint::fromArray([
+                            'exception' => new LazyLoadingViolationException($model, $relation),
+                            'mechanism' => new ExceptionMechanism(ExceptionMechanism::TYPE_GENERIC, true),
+                        ])
+                    );
+                });
+
+                // Forward the violation to the next handler if there is one
+                if ($this->callback !== null) {
+                    call_user_func($this->callback, $model, $relation);
+                }
+            }
+        };
     }
 
     /**
