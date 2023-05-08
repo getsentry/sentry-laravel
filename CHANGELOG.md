@@ -1,5 +1,33 @@
 # Changelog
 
+## 3.4.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.4.0.
+
+### Features
+
+- Add helper to report lazy loading violations [(#678)](https://github.com/getsentry/sentry-laravel/pull/678)
+
+  We've added a new helper that makes reporting lazy loading violation to Sentry in production very easy:
+    
+  ```php
+  // See: https://laravel.com/docs/10.x/eloquent-relationships#preventing-lazy-loading
+  \Illuminate\Database\Eloquent\Model::preventLazyLoading();
+
+  // In production we just report the lazy loading violation instead of crashing the application since it's a performance issue not a security issue
+  if (app()->isProduction()) {
+    \Illuminate\Database\Eloquent\Model::handleLazyLoadingViolationUsing(
+      \Sentry\Laravel\Integration::lazyLoadingViolationReporter(),
+    );
+  }
+  ```
+  
+  We let you know which model and relation caused the lazy loading violation and we also include the origin of the violation so you can find the culprit quickly.
+
+- Reintroduce Laravel Lumen support [(#685)](https://github.com/getsentry/sentry-laravel/pull/685)
+
+  We dropped support for Laravel Lumen (10.x) in v3.0.0, but we are happy to announce that it is back!
+
 ## 3.3.3
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.3.3.
