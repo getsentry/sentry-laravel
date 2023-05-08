@@ -26,17 +26,21 @@ Thank you for contributing!
 
 ## Development environment
 
+### Requirements
+
+Make sure that you have PHP 7.2+ installed. Version 7.4 or higher is required to run style checkers. On macOS, we recommend using brew to install PHP. For Windows, we recommend an official PHP.net release.
+
+You may use [make](https://www.gnu.org/software/make) to take advantage of the provided [Makefile](Makefile).
+
 ### Clone the repository
 
 ```bash
 git clone git@github.com:getsentry/sentry-laravel.git
 ```
 
-Make sure that you have PHP 7.2+ installed. Version 7.4 or higher is required to run style checkers. On macOS, we recommend using brew to install PHP. For Windows, we recommend an official PHP.net release.
-
 ### Install the dependencies
 
-Dependencies are managed through [Composer](https://getcomposer.org/):
+Dependencies are managed through [Composer](https://getcomposer.org).
 
 ```bash
 composer install
@@ -44,10 +48,18 @@ composer install
 
 ### Running tests
 
-Tests can then be run via [PHPUnit](https://phpunit.de/):
+Tests can be run via [PHPUnit](https://phpunit.de).
 
 ```bash
-vendor/bin/phpunit
+composer tests
+```
+
+### Code style
+
+The code is automatically formatted through [php-cs-fixer](https://cs.symfony.com).
+
+```bash
+composer phpcs
 ```
 
 ## Releasing a new version
@@ -57,7 +69,7 @@ vendor/bin/phpunit
 Prerequisites:
 
 - All changes that should be released must be in the `master` branch.
-- Every commit should follow the [Commit Message Format](https://develop.sentry.dev/commit-messages/#commit-message-format) convention.
+- Every commit should follow the [Commit Message Format](https://develop.sentry.dev/commit-messages#commit-message-format) convention.
 
 Manual Process:
 
@@ -81,7 +93,7 @@ There is a sequence diagram visualizing all this in the [README.md](https://gith
 
 ### Versioning Policy
 
-This project follows [semver](https://semver.org/), with three additions:
+This project follows [semver](https://semver.org), with three additions:
 
 - Semver says that major version `0` can include breaking changes at any time. Still, it is common practice to assume that only `0.x` releases (minor versions) can contain breaking changes while `0.x.y` releases (patch versions) are used for backwards-compatible changes (bugfixes and features). This project also follows that practice.
 

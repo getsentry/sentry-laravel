@@ -1,21 +1,25 @@
-.PHONY: test
+.PHONY: develop
+develop: vendor update-submodules setup-git
 
-develop: update-submodules
-	composer install --dev
-	make setup-git
+vendor: composer.lock
+	composer install
 
+composer.lock: composer.json
+	composer update
+
+.PHONY: update-submodules
 update-submodules:
 	git submodule init
 	git submodule update
 
-cs:
-	vendor/bin/php-cs-fixer fix --config=.php_cs --verbose --diff
-
-cs-dry-run:
-	vendor/bin/php-cs-fixer fix --config=.php_cs --verbose --diff --dry-run
-
-test:
-	vendor/bin/phpunit
-
+.PHONY: setup-git
 setup-git:
 	git config branch.autosetuprebase always
+
+.PHONY: phpcs
+phpcs:
+	composer phpcs
+
+.PHONY: tests
+tests:
+	composer tests
