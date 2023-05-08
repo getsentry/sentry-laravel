@@ -13,6 +13,7 @@ use Illuminate\Routing\Contracts\ControllerDispatcher;
 use Illuminate\View\Engines\EngineResolver;
 use Illuminate\View\Factory as ViewFactory;
 use InvalidArgumentException;
+use Laravel\Lumen\Application as Lumen;
 use Sentry\Laravel\BaseServiceProvider;
 use Sentry\Laravel\Tracing\Routing\TracingCallableDispatcherTracing;
 use Sentry\Laravel\Tracing\Routing\TracingControllerDispatcherTracing;
@@ -31,9 +32,11 @@ class ServiceProvider extends BaseServiceProvider
             return;
         }
 
-        $this->app->booted(function () {
-            $this->app->make(Middleware::class)->setBootedTimestamp();
-        });
+        if (!$this->app instanceof Lumen) {
+            $this->app->booted(function () {
+                $this->app->make(Middleware::class)->setBootedTimestamp();
+            });
+        }
 
         $tracingConfig = $this->getUserConfig()['tracing'] ?? [];
 
@@ -43,8 +46,9 @@ class ServiceProvider extends BaseServiceProvider
 
         $this->decorateRoutingDispatchers();
 
-        if ($this->app->bound(HttpKernelInterface::class)) {
-            /** @var \Illuminate\Foundation\Http\Kernel $httpKernel */
+        if ($this->app instanceof Lumen) {
+            $this->app->middleware(Middleware::class);
+        } elseif ($this->app->bound(HttpKernelInterface::class)) {
             $httpKernel = $this->app->make(HttpKernelInterface::class);
 
             if ($httpKernel instanceof HttpKernel) {

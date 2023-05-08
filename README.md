@@ -21,7 +21,7 @@ This is the official Laravel SDK for [Sentry](https://sentry.io).
 
 The installation steps below work on versions 8.x, 9.x and 10.x of the Laravel framework.
 
-For other Laravel or Lumen versions see:
+For older Laravel versions and Lumen see:
 
 - [Laravel 8.x & 9.x & 10.x](https://docs.sentry.io/platforms/php/guides/laravel/)
 - [Laravel 6.x & 7.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel6-7/)
@@ -50,7 +50,7 @@ public function register(): void
 }
 ```
 
-> Alternatively, you can configure Sentry in your [Laravel Log Channel](https://docs.sentry.io/platforms/php/guides/laravel/usage/#log-channels), allowing you to log `info` and `debug` as well.
+> Alternatively, you can configure Sentry as a [Laravel Log Channel](https://docs.sentry.io/platforms/php/guides/laravel/usage/#log-channels), allowing you to capture `info` and `debug` logs as well.
 
 ### Configure
 
@@ -78,11 +78,11 @@ try {
 }
 ```
 
-- To learn more about how to use the SDK [refer to our docs](https://docs.sentry.io/platforms/php/guides/laravel/)
+To learn more about how to use the SDK [refer to our docs](https://docs.sentry.io/platforms/php/guides/laravel/).
 
 ## Laravel Version Compatibility
 
-The Laravel versions listed below are all currently supported:
+The Laravel and Lumen versions listed below are all currently supported:
 
 - Laravel `>= 10.x.x` on PHP `>= 8.1` is supported starting from `3.2.0`
 - Laravel `>= 9.x.x` on PHP `>= 8.0` is supported starting from `2.11.0`
@@ -92,12 +92,11 @@ The Laravel versions listed below are all currently supported:
 
 Please note that starting with version `>= 2.0.0` we require PHP Version `>= 7.2` because we are using our new [PHP SDK](https://github.com/getsentry/sentry-php) underneath.
 
-The Laravel and Lumen version listed below were supported in previous versions:
+The Laravel versions listed below were supported in previous versions of the Sentry SDK for Laravel:
 
 - Laravel `<= 4.2.x` is supported until `0.8.x`
 - Laravel `<= 5.7.x` on PHP `<= 7.0` is supported until `0.11.x`
 - Laravel `>= 5.x.x` on PHP `>= 7.1` is supported until `2.14.x`
-- Laravel Lumen is supported until `2.14.x`
 
 ## Contributing to the SDK
 

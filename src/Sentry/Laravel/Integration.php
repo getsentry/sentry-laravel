@@ -117,12 +117,42 @@ class Integration implements IntegrationInterface
      *
      * @return array{0: string, 1: \Sentry\Tracing\TransactionSource}
      *
-     * @internal This helper is used in various places to extra meaninful info from a Laravel Route object.
+     * @internal This helper is used in various places to extract meaningful info from a Laravel Route object.
      */
     public static function extractNameAndSourceForRoute(Route $route): array
     {
         return [
             '/' . ltrim($route->uri(), '/'),
+            TransactionSource::route(),
+        ];
+    }
+
+    /**
+     * Extract the readable name for a Lumen route and the transaction source for where that route name came from.
+     *
+     * @param array $routeData The array of route data
+     * @param string $path The path of the request
+     *
+     * @return array{0: string, 1: \Sentry\Tracing\TransactionSource}
+     *
+     * @internal This helper is used in various places to extract meaningful info from Lumen route data.
+     */
+    public static function extractNameAndSourceForLumenRoute(array $routeData, string $path): array
+    {
+        $routeUri = array_reduce(
+            array_keys($routeData[2]),
+            static function ($carry, $key) use ($routeData) {
+                $search = '/' . preg_quote($routeData[2][$key], '/') . '/';
+
+                // Replace the first occurrence of the route parameter value with the key name
+                // This is by no means a perfect solution, but it's the best we can do with the data we have
+                return preg_replace($search, "{{$key}}", $carry, 1);
+            },
+            $path
+        );
+
+        return [
+            '/' . ltrim($routeUri, '/'),
             TransactionSource::route(),
         ];
     }
