@@ -6,9 +6,6 @@ use Exception;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Events as DatabaseEvents;
 use Illuminate\Http\Client\Events as HttpClientEvents;
-use Illuminate\Queue\Events as QueueEvents;
-use Illuminate\Queue\Queue;
-use Illuminate\Queue\QueueManager;
 use Illuminate\Routing\Events as RoutingEvents;
 use RuntimeException;
 use Sentry\Laravel\Integration;
@@ -17,15 +14,10 @@ use Sentry\SentrySdk;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\SpanStatus;
-use Sentry\Tracing\TransactionContext;
-use Sentry\Tracing\TransactionSource;
 
 class EventHandler
 {
     use WorksWithUris;
-
-    public const QUEUE_PAYLOAD_BAGGAGE_DATA = 'sentry_baggage_data';
-    public const QUEUE_PAYLOAD_TRACE_PARENT_DATA = 'sentry_trace_parent_data';
 
     /**
      * Map event handlers to events.
@@ -41,17 +33,6 @@ class EventHandler
         DatabaseEvents\TransactionBeginning::class => 'transactionBeginning',
         DatabaseEvents\TransactionCommitted::class => 'transactionCommitted',
         DatabaseEvents\TransactionRolledBack::class => 'transactionRolledBack',
-    ];
-
-    /**
-     * Map queue event handlers to events.
-     *
-     * @var array
-     */
-    protected static $queueEventHandlerMap = [
-        QueueEvents\JobProcessing::class => 'queueJobProcessing',
-        QueueEvents\JobProcessed::class => 'queueJobProcessed',
-        QueueEvents\JobExceptionOccurred::class => 'queueJobExceptionOccurred',
     ];
 
     /**
@@ -92,21 +73,21 @@ class EventHandler
     /**
      * Hold the stack of parent spans that need to be put back on the scope.
      *
-     * @var array<int, \Sentry\Tracing\Span|null>
+     * @var array<int, Span|null>
      */
     private $parentSpanStack = [];
 
     /**
      * Hold the stack of current spans that need to be finished still.
      *
-     * @var array<int, \Sentry\Tracing\Span|null>
+     * @var array<int, Span|null>
      */
     private $currentSpanStack = [];
 
     /**
      * The backtrace helper.
      *
-     * @var \Sentry\Laravel\Tracing\BacktraceHelper
+     * @var BacktraceHelper
      */
     private $backtraceHelper;
 
@@ -141,36 +122,6 @@ class EventHandler
     public function subscribe(Dispatcher $dispatcher): void
     {
         foreach (static::$eventHandlerMap as $eventName => $handler) {
-            $dispatcher->listen($eventName, [$this, $handler]);
-        }
-    }
-
-    /**
-     * Attach all queue event handlers.
-     *
-     * @uses self::queueJobProcessingHandler()
-     * @uses self::queueJobProcessedHandler()
-     * @uses self::queueJobExceptionOccurredHandler()
-     */
-    public function subscribeQueueEvents(Dispatcher $dispatcher, QueueManager $queue): void
-    {
-        // If both types of queue job tracing is disabled also do not register the events
-        if (!$this->traceQueueJobs && !$this->traceQueueJobsAsTransactions) {
-            return;
-        }
-
-        Queue::createPayloadUsing(static function (?string $connection, ?string $queue, ?array $payload): ?array {
-            $currentSpan = SentrySdk::getCurrentHub()->getSpan();
-
-            if ($currentSpan !== null && $payload !== null) {
-                $payload[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] = $currentSpan->toTraceparent();
-                $payload[self::QUEUE_PAYLOAD_BAGGAGE_DATA] = $currentSpan->toBaggage();
-            }
-
-            return $payload;
-        });
-
-        foreach (static::$queueEventHandlerMap as $eventName => $handler) {
             $dispatcher->listen($eventName, [$this, $handler]);
         }
     }
@@ -348,83 +299,6 @@ class EventHandler
         if ($span !== null) {
             $span->finish();
             $span->setStatus(SpanStatus::internalError());
-        }
-    }
-
-    protected function queueJobProcessingHandler(QueueEvents\JobProcessing $event): void
-    {
-        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
-
-        // If there is no tracing span active and we don't trace jobs as transactions there is no need to handle the event
-        if ($parentSpan === null && !$this->traceQueueJobsAsTransactions) {
-            return;
-        }
-
-        // If there is a parent span we can record that job as a child unless configured to not do so
-        if ($parentSpan !== null && !$this->traceQueueJobs) {
-            return;
-        }
-
-        if ($parentSpan === null) {
-            $baggage = $event->job->payload()[self::QUEUE_PAYLOAD_BAGGAGE_DATA] ?? null;
-            $traceParent = $event->job->payload()[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] ?? null;
-
-            $context = TransactionContext::fromHeaders($traceParent ?? '', $baggage ?? '');
-
-            // If the parent transaction was not sampled we also stop the queue job from being recorded
-            if ($context->getParentSampled() === false) {
-                return;
-            }
-        } else {
-            $context = new SpanContext;
-        }
-
-        $resolvedJobName = $event->job->resolveName();
-
-        $job = [
-            'job' => $event->job->getName(),
-            'queue' => $event->job->getQueue(),
-            'resolved' => $resolvedJobName,
-            'attempts' => $event->job->attempts(),
-            'connection' => $event->connectionName,
-        ];
-
-        if ($context instanceof TransactionContext) {
-            $context->setName($resolvedJobName);
-            $context->setSource(TransactionSource::task());
-        }
-
-        $context->setOp('queue.process');
-        $context->setData($job);
-        $context->setStartTimestamp(microtime(true));
-
-        // When the parent span is null we start a new transaction otherwise we start a child of the current span
-        if ($parentSpan === null) {
-            $span = SentrySdk::getCurrentHub()->startTransaction($context);
-        } else {
-            $span = $parentSpan->startChild($context);
-        }
-
-        $this->pushSpan($span);
-    }
-
-    protected function queueJobExceptionOccurredHandler(QueueEvents\JobExceptionOccurred $event): void
-    {
-        $this->afterQueuedJob(SpanStatus::internalError());
-    }
-
-    protected function queueJobProcessedHandler(QueueEvents\JobProcessed $event): void
-    {
-        $this->afterQueuedJob(SpanStatus::ok());
-    }
-
-    private function afterQueuedJob(?SpanStatus $status = null): void
-    {
-        $span = $this->popSpan();
-
-        if ($span !== null) {
-            $span->finish();
-            $span->setStatus($status);
         }
     }
 

@@ -50,6 +50,7 @@ class ServiceProvider extends BaseServiceProvider
      */
     protected const FEATURES = [
         Features\CacheIntegration::class,
+        Features\QueueIntegration::class,
         Features\ConsoleIntegration::class,
         Features\LivewirePackageIntegration::class,
     ];
@@ -129,10 +130,6 @@ class ServiceProvider extends BaseServiceProvider
                 $handler->subscribeOctaneEvents($dispatcher);
             }
 
-            if ($this->app->bound('queue')) {
-                $handler->subscribeQueueEvents($dispatcher);
-            }
-
             if (isset($userConfig['send_default_pii']) && $userConfig['send_default_pii'] !== false) {
                 $handler->subscribeAuthEvents($dispatcher);
             }
@@ -172,7 +169,7 @@ class ServiceProvider extends BaseServiceProvider
     protected function configureAndRegisterClient(): void
     {
         $this->app->bind(ClientBuilderInterface::class, function () {
-            $basePath   = base_path();
+            $basePath = base_path();
             $userConfig = $this->getUserConfig();
 
             foreach (static::LARAVEL_SPECIFIC_OPTIONS as $laravelSpecificOptionName) {
@@ -181,7 +178,7 @@ class ServiceProvider extends BaseServiceProvider
 
             $options = \array_merge(
                 [
-                    'prefixes'       => [$basePath],
+                    'prefixes' => [$basePath],
                     'in_app_exclude' => ["{$basePath}/vendor"],
                 ],
                 $userConfig

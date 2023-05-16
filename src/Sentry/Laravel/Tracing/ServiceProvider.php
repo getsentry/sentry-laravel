@@ -83,10 +83,6 @@ class ServiceProvider extends BaseServiceProvider
             $dispatcher = $this->app->make(Dispatcher::class);
 
             $handler->subscribe($dispatcher);
-
-            if ($this->app->bound('queue')) {
-                $handler->subscribeQueueEvents($dispatcher, $this->app->make('queue'));
-            }
         } catch (BindingResolutionException $e) {
             // If we cannot resolve the event dispatcher we also cannot listen to events
         }

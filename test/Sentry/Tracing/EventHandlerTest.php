@@ -23,14 +23,7 @@ class EventHandlerTest extends TestCase
     public function testAllMappedEventHandlersExist(): void
     {
         $this->tryAllEventHandlerMethods(
-            $this->getEventHandlerMapFromEventHandler('eventHandlerMap')
-        );
-    }
-
-    public function testAllMappedQueueEventHandlersExist(): void
-    {
-        $this->tryAllEventHandlerMethods(
-            $this->getEventHandlerMapFromEventHandler('queueEventHandlerMap')
+            $this->getEventHandlerMapFromEventHandler()
         );
     }
 
@@ -47,12 +40,12 @@ class EventHandlerTest extends TestCase
         }
     }
 
-    private function getEventHandlerMapFromEventHandler($eventHandlerMapName)
+    private function getEventHandlerMapFromEventHandler()
     {
         $class = new ReflectionClass(EventHandler::class);
 
         $attributes = $class->getStaticProperties();
 
-        return $attributes[$eventHandlerMapName];
+        return $attributes['eventHandlerMap'];
     }
 }

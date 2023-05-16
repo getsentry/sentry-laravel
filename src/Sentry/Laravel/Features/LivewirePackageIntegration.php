@@ -27,7 +27,8 @@ class LivewirePackageIntegration extends Feature
             return false;
         }
 
-        return $this->isTracingFeatureEnabled(self::FEATURE_KEY) || $this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY);
+        return $this->isTracingFeatureEnabled(self::FEATURE_KEY)
+            || $this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY);
     }
 
     public function setup(LivewireManager $livewireManager): void
