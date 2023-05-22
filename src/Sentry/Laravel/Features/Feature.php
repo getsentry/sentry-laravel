@@ -3,12 +3,13 @@
 namespace Sentry\Laravel\Features;
 
 use Illuminate\Contracts\Container\Container;
-use Sentry\Integration\IntegrationInterface;
 use Sentry\Laravel\BaseServiceProvider;
 use Sentry\SentrySdk;
+use Throwable;
 
 /**
  * @method void setup() Setup the feature in the environment.
+ * @method void setupInactive() Setup the feature in the environment in an inactive state (when no DSN was set).
  *
  * @internal
  */
@@ -56,7 +57,21 @@ abstract class Feature
         if (method_exists($this, 'setup') && $this->isApplicable()) {
             try {
                 $this->container->call([$this, 'setup']);
-            } catch (\Throwable $exception) {
+            } catch (Throwable $exception) {
+                // If the feature setup fails, we don't want to prevent the rest of the SDK from working.
+            }
+        }
+    }
+
+    /**
+     * Initializes the feature in an inactive state (when no DSN was set).
+     */
+    public function bootInactive(): void
+    {
+        if (method_exists($this, 'setupInactive') && $this->isApplicable()) {
+            try {
+                $this->container->call([$this, 'setupInactive']);
+            } catch (Throwable $exception) {
                 // If the feature setup fails, we don't want to prevent the rest of the SDK from working.
             }
         }
