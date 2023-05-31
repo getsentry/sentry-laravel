@@ -60,6 +60,7 @@ class ConsoleIntegration extends Feature
     {
         SchedulingEvent::macro('sentryMonitor', function (string $monitorSlug) {
             // When there is no Sentry DSN set there is nothing for us to do, but we still want to allow the user to setup the macro
+            return $this;
         });
     }
 
