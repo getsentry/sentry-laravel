@@ -246,6 +246,12 @@ class Integration implements IntegrationInterface
 
             public function __invoke(Model $model, string $relation): void
             {
+                // Laravel uses these checks itself to not throw an exception if the model doesn't exist or was just created
+                // See: https://github.com/laravel/framework/blob/438d02d3a891ab4d73ffea2c223b5d37947b5e93/src/Illuminate/Database/Eloquent/Concerns/HasAttributes.php#L563
+                if (!$model->exists || $model->wasRecentlyCreated) {
+                    return;
+                }
+
                 SentrySdk::getCurrentHub()->withScope(function (Scope $scope) use ($model, $relation) {
                     $scope->setContext('violation', [
                         'model'    => get_class($model),
