@@ -3,6 +3,7 @@
 namespace Sentry\Laravel\Tracing;
 
 use Closure;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
 use Sentry\SentrySdk;
 use Sentry\State\HubInterface;
@@ -34,6 +35,23 @@ class Middleware
      * @var float|null
      */
     private $bootedTimestamp;
+
+    /**
+     * The Laravel application instance.
+     *
+     * @var Application|null
+     */
+    private $app;
+
+    /**
+     * Construct the Sentry tracing middleware.
+     *
+     * @param Application|null $app
+     */
+    public function __construct(?Application $app)
+    {
+        $this->app = $app;
+    }
 
     /**
      * Handle an incoming request.
@@ -74,17 +92,26 @@ class Middleware
 
         if ($this->appSpan !== null) {
             $this->appSpan->finish();
+            $this->appSpan = null;
         }
-
-        // Make sure we set the transaction and not have a child span in the Sentry SDK
-        // If the transaction is not on the scope during finish, the trace.context is wrong
-        SentrySdk::getCurrentHub()->setSpan($this->transaction);
 
         if ($response instanceof SymfonyResponse) {
             $this->hydrateResponseData($response);
         }
 
-        $this->transaction->finish();
+        if ($this->app === null) {
+            $this->finishTransaction();
+        } else {
+            // We need to finish the transaction after the response has been sent to the client
+            // so we register a terminating callback to do so, this allows us to also capture
+            // spans that are created during the termination of the application like queue
+            // dispatched using dispatch(...)->afterResponse(). This middleware is called
+            // before the terminating callbacks so we are 99.9% sure to be the last one
+            // to run except if another terminating callback is registered after ours.
+            $this->app->terminating(function () {
+                $this->finishTransaction();
+            });
+        }
     }
 
     /**
@@ -192,5 +219,15 @@ class Middleware
     private function hydrateResponseData(SymfonyResponse $response): void
     {
         $this->transaction->setHttpStatus($response->getStatusCode());
+    }
+
+    private function finishTransaction(): void
+    {
+        // Make sure we set the transaction and not have a child span in the Sentry SDK
+        // If the transaction is not on the scope during finish, the trace.context is wrong
+        SentrySdk::getCurrentHub()->setSpan($this->transaction);
+
+        $this->transaction->finish();
+        $this->transaction = null;
     }
 }
