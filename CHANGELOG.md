@@ -1,5 +1,35 @@
 # Changelog
 
+## 3.5.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.5.0.
+
+### Features
+
+- Improve terminating callbacks visibility [(#707)](https://github.com/getsentry/sentry-laravel/pull/707)
+  
+  This adds support for performance traces that happen after the terminable middleware emits the response.
+
+- Add `http.route.response` span [(#708)](https://github.com/getsentry/sentry-laravel/pull/708)
+  
+  > **Note**: This feature requires Laravel `>= 10.13.0` to hail any new spans.
+    
+  This will add a `http.route.response` span which identifies possible actions taken to prepare the response, especially when using `Illuminate\Contracts\Support\Responsable` classes.
+
+### Bug Fixes
+
+- Refactor queue integration [(#692)](https://github.com/getsentry/sentry-laravel/pull/692)
+  
+  This improves and fixes some edge cases around scope management when running Laravel Queues.
+
+- Improve `lazyLoadingViolationReporter` helper [(#709)](https://github.com/getsentry/sentry-laravel/pull/709)
+  
+  Check for `$model->exists` and `$model->wasRecentlyCreated` before capturing the event.
+
+### Misc
+
+- Bump the underlying PHP SDK to version `^3.19` to enforce an upgrade to fix an issue in libcurl `>= v8.1.0` [(#711)](https://github.com/getsentry/sentry-laravel/pull/711)
+
 ## 3.4.1
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.4.1.
