@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.4.1
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.4.1.
+
+### Bug Fixes
+
+- Fix missing `sentryMonitor` macro if no DSN is set [(#698)](https://github.com/getsentry/sentry-laravel/pull/698)
+
 ## 3.4.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.4.0.

@@ -14,6 +14,7 @@ use Sentry\SentrySdk;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\SpanStatus;
+use Symfony\Component\HttpFoundation\Response;
 
 class EventHandler
 {
@@ -27,6 +28,8 @@ class EventHandler
     protected static $eventHandlerMap = [
         RoutingEvents\RouteMatched::class => 'routeMatched',
         DatabaseEvents\QueryExecuted::class => 'queryExecuted',
+        RoutingEvents\ResponsePrepared::class => 'responsePrepared',
+        RoutingEvents\PreparingResponse::class => 'responsePreparing',
         HttpClientEvents\RequestSending::class => 'httpClientRequestSending',
         HttpClientEvents\ResponseReceived::class => 'httpClientResponseReceived',
         HttpClientEvents\ConnectionFailed::class => 'httpClientConnectionFailed',
@@ -112,6 +115,8 @@ class EventHandler
      *
      * @uses self::routeMatchedHandler()
      * @uses self::queryExecutedHandler()
+     * @uses self::responsePreparedHandler()
+     * @uses self::responsePreparingHandler()
      * @uses self::transactionBeginningHandler()
      * @uses self::transactionCommittedHandler()
      * @uses self::transactionRolledBackHandler()
@@ -207,6 +212,37 @@ class EventHandler
         $filePath = $this->backtraceHelper->getOriginalViewPathForFrameOfCompiledViewPath($firstAppFrame) ?? $firstAppFrame->getFile();
 
         return "{$filePath}:{$firstAppFrame->getLine()}";
+    }
+
+    protected function responsePreparedHandler(RoutingEvents\ResponsePrepared $event): void
+    {
+        $span = $this->popSpan();
+
+        if ($span !== null) {
+            $span->finish();
+        }
+    }
+
+    protected function responsePreparingHandler(RoutingEvents\PreparingResponse $event): void
+    {
+        // If the response is already a Response object there is no need to handle the event anymore
+        // since there isn't going to be any real work going on, the response is already as prepared
+        // as it can be. So we ignore the event to prevent loggin a very short empty duplicated span
+        if ($event->response instanceof Response) {
+            return;
+        }
+
+        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+
+        // If there is no tracing span active there is no need to handle the event
+        if ($parentSpan === null) {
+            return;
+        }
+
+        $context = new SpanContext;
+        $context->setOp('http.route.response');
+
+        $this->pushSpan($parentSpan->startChild($context));
     }
 
     protected function transactionBeginningHandler(DatabaseEvents\TransactionBeginning $event): void

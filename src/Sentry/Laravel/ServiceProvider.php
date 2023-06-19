@@ -18,6 +18,7 @@ use Sentry\EventHint;
 use Sentry\Integration as SdkIntegration;
 use Sentry\Laravel\Console\PublishCommand;
 use Sentry\Laravel\Console\TestCommand;
+use Sentry\Laravel\Features\Feature;
 use Sentry\Laravel\Http\LaravelRequestFetcher;
 use Sentry\Laravel\Http\SetRequestIpMiddleware;
 use Sentry\Laravel\Http\SetRequestMiddleware;
@@ -26,6 +27,7 @@ use Sentry\SentrySdk;
 use Sentry\State\Hub;
 use Sentry\State\HubInterface;
 use Sentry\Tracing\TransactionMetadata;
+use Throwable;
 
 class ServiceProvider extends BaseServiceProvider
 {
@@ -62,10 +64,10 @@ class ServiceProvider extends BaseServiceProvider
     {
         $this->app->make(HubInterface::class);
 
+        $this->setupFeatures();
+
         if ($this->hasDsnSet()) {
             $this->bindEvents();
-
-            $this->setupFeatures();
 
             if ($this->app instanceof Lumen) {
                 $this->app->middleware(SetRequestMiddleware::class);
@@ -143,10 +145,17 @@ class ServiceProvider extends BaseServiceProvider
      */
     protected function setupFeatures(): void
     {
+        $bootActive = $this->hasDsnSet();
+
         foreach (self::FEATURES as $feature) {
             try {
-                $this->app->make($feature)->boot();
-            } catch (\Throwable $e) {
+                /** @var Feature $featureInstance */
+                $featureInstance = $this->app->make($feature);
+
+                $bootActive
+                    ? $featureInstance->boot()
+                    : $featureInstance->bootInactive();
+            } catch (Throwable $e) {
                 // Ensure that features do not break the whole application
             }
         }

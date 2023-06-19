@@ -56,6 +56,14 @@ class ConsoleIntegration extends Feature
         });
     }
 
+    public function setupInactive(): void
+    {
+        SchedulingEvent::macro('sentryMonitor', function (string $monitorSlug) {
+            // When there is no Sentry DSN set there is nothing for us to do, but we still want to allow the user to setup the macro
+            return $this;
+        });
+    }
+
     private function startCheckIn(string $mutex, string $slug, bool $useCache, int $useCacheTtlInMinutes): void
     {
         $checkIn = $this->createCheckIn($slug, CheckInStatus::inProgress());
