@@ -12,7 +12,7 @@ The Sentry SDK team is happy to announce the immediate availability of Sentry La
 
 - Add `http.route.response` span [(#708)](https://github.com/getsentry/sentry-laravel/pull/708)
   
-  > **Note**: You need Laravel `>= 10.13.0` for this feature to hail any new spans.
+  > **Note**: This feature requires Laravel `>= 10.13.0` to hail any new spans.
     
   This will add a `http.route.response` span which identifies possible actions taken to prepare the response, especially when using `Illuminate\Contracts\Support\Responsable` classes.
 
