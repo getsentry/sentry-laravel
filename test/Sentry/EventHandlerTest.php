@@ -33,13 +33,6 @@ class EventHandlerTest extends TestCase
         );
     }
 
-    public function testAllMappedQueueEventHandlersExist(): void
-    {
-        $this->tryAllEventHandlerMethods(
-            $this->getEventHandlerMapFromEventHandler('queueEventHandlerMap')
-        );
-    }
-
     public function testAllMappedOctaneEventHandlersExist(): void
     {
         $this->tryAllEventHandlerMethods(
