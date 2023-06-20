@@ -237,6 +237,13 @@ class Middleware
 
     private function finishTransaction(): void
     {
+        // We could end up multiple times here since we register a terminating callback so
+        // double check if we have a transaction before trying to finish it since it could
+        // have already been finished in between being registered and being executed again
+        if ($this->transaction === null) {
+            return;
+        }
+
         // Make sure we set the transaction and not have a child span in the Sentry SDK
         // If the transaction is not on the scope during finish, the trace.context is wrong
         SentrySdk::getCurrentHub()->setSpan($this->transaction);
