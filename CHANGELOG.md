@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.5.1
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.5.1.
+
+### Bug Fixes
+
+- Prevent registering terminating callback multiple times and guard against finishing already finished transactions [(#717)](https://github.com/getsentry/sentry-laravel/pull/717)
+
+  This fixes the `Call to a member function finish() on null` that could occur when using long running processes like on the CLI or with Laravel Octane.
+
 ## 3.5.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.5.0.
