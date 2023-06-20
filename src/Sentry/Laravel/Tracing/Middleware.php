@@ -44,6 +44,13 @@ class Middleware
     private $app;
 
     /**
+     * Whether the terminating callback has been registered.
+     *
+     * @var bool
+     */
+    private $registeredTerminatingCallback = false;
+
+    /**
      * Construct the Sentry tracing middleware.
      *
      * @param Application|null $app
@@ -102,6 +109,11 @@ class Middleware
         if ($this->app === null) {
             $this->finishTransaction();
         } else {
+            // Ensure we do not register the terminating callback multiple times since there is no point in doing so
+            if ($this->registeredTerminatingCallback) {
+                return;
+            }
+
             // We need to finish the transaction after the response has been sent to the client
             // so we register a terminating callback to do so, this allows us to also capture
             // spans that are created during the termination of the application like queue
@@ -111,6 +123,8 @@ class Middleware
             $this->app->terminating(function () {
                 $this->finishTransaction();
             });
+
+            $this->registeredTerminatingCallback = true;
         }
     }
 
@@ -223,6 +237,13 @@ class Middleware
 
     private function finishTransaction(): void
     {
+        // We could end up multiple times here since we register a terminating callback so
+        // double check if we have a transaction before trying to finish it since it could
+        // have already been finished in between being registered and being executed again
+        if ($this->transaction === null) {
+            return;
+        }
+
         // Make sure we set the transaction and not have a child span in the Sentry SDK
         // If the transaction is not on the scope during finish, the trace.context is wrong
         SentrySdk::getCurrentHub()->setSpan($this->transaction);
