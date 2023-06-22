@@ -10,9 +10,10 @@ use Sentry\SentrySdk;
 use Sentry\State\HubInterface;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
-use Sentry\Tracing\TransactionContext;
 use Sentry\Tracing\TransactionSource;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+
+use function Sentry\continueTrace;
 
 class Middleware
 {
@@ -143,7 +144,7 @@ class Middleware
     {
         $requestStartTime = $request->server('REQUEST_TIME_FLOAT', microtime(true));
 
-        $context = TransactionContext::fromHeaders(
+        $context = continueTrace(
             $request->header('sentry-trace', ''),
             $request->header('baggage', '')
         );

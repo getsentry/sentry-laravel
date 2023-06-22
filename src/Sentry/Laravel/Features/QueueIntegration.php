@@ -18,6 +18,10 @@ use Sentry\Tracing\SpanStatus;
 use Sentry\Tracing\TransactionContext;
 use Sentry\Tracing\TransactionSource;
 
+use function Sentry\continueTrace;
+use function Sentry\getBaggage;
+use function Sentry\getTraceparent;
+
 class QueueIntegration extends Feature
 {
     private const QUEUE_PAYLOAD_BAGGAGE_DATA = 'sentry_baggage_data';
@@ -64,11 +68,9 @@ class QueueIntegration extends Feature
 
         if ($this->isTracingFeatureEnabled('queue_jobs') || $this->isTracingFeatureEnabled('queue_job_transactions')) {
             Queue::createPayloadUsing(static function (?string $connection, ?string $queue, ?array $payload): ?array {
-                $currentSpan = SentrySdk::getCurrentHub()->getSpan();
-
-                if ($currentSpan !== null && $payload !== null) {
-                    $payload[self::QUEUE_PAYLOAD_BAGGAGE_DATA] = $currentSpan->toBaggage();
-                    $payload[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] = $currentSpan->toTraceparent();
+                if ($payload !== null) {
+                    $payload[self::QUEUE_PAYLOAD_BAGGAGE_DATA] = getBaggage();
+                    $payload[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] = getTraceparent();
                 }
 
                 return $payload;
@@ -127,7 +129,7 @@ class QueueIntegration extends Feature
             $baggage = $event->job->payload()[self::QUEUE_PAYLOAD_BAGGAGE_DATA] ?? null;
             $traceParent = $event->job->payload()[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] ?? null;
 
-            $context = TransactionContext::fromHeaders($traceParent ?? '', $baggage ?? '');
+            $context = continueTrace($traceParent ?? '', $baggage ?? '');
 
             // If the parent transaction was not sampled we also stop the queue job from being recorded
             if ($context->getParentSampled() === false) {
