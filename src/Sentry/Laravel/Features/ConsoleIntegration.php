@@ -36,7 +36,7 @@ class ConsoleIntegration extends Feature
     {
         $this->cache = $cache;
 
-        $startCheckIn  = function (?string $slug, SchedulingEvent $scheduled, ?int $checkInMargin, ?int $maxRuntime, bool $updateMonitorConfig) {
+        $startCheckIn = function (?string $slug, SchedulingEvent $scheduled, ?int $checkInMargin, ?int $maxRuntime, bool $updateMonitorConfig) {
             $this->startCheckIn($slug, $scheduled, $checkInMargin, $maxRuntime, $updateMonitorConfig);
         };
         $finishCheckIn = function (?string $slug, SchedulingEvent $scheduled, CheckInStatus $status) {
@@ -72,8 +72,13 @@ class ConsoleIntegration extends Feature
 
     public function setupInactive(): void
     {
-        SchedulingEvent::macro('sentryMonitor', function (string $monitorSlug) {
-            // When there is no Sentry DSN set there is nothing for us to do, but we still want to allow the user to setup the macro
+        // This is an exact copy of the macro above, but without doing anything so that even when no DSN is configured the user can still use the macro
+        SchedulingEvent::macro('sentryMonitor', function (
+            ?string $monitorSlug = null,
+            ?int $checkInMargin = null,
+            ?int $maxRuntime = null,
+            bool $updateMonitorConfig = true
+        ) {
             return $this;
         });
     }
@@ -86,13 +91,10 @@ class ConsoleIntegration extends Feature
 
         if ($updateMonitorConfig || $slug === null) {
             $checkIn->setMonitorConfig(new MonitorConfig(
-                new MonitorSchedule(
-                    MonitorSchedule::TYPE_CRONTAB,
-                    $scheduled->getExpression()
-                ),
+                MonitorSchedule::crontab($scheduled->getExpression()),
                 $checkInMargin,
                 $maxRuntime,
-                $scheduled->timezone,
+                $scheduled->timezone
             ));
         }
 
