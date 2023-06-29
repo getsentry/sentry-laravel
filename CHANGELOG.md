@@ -20,7 +20,7 @@ The Sentry SDK team is happy to announce the immediate availability of Sentry La
   }
   ```
 
-  You can read more about this in our [docs](https://sentry-docs-git-laravel-upserts.sentry.dev/platforms/php/guides/laravel/crons/).
+  You can read more about this in our [docs](https://docs.sentry.io/platforms/php/guides/laravel/crons/).
 
 ## 3.5.1
 
