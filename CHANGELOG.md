@@ -1,5 +1,27 @@
 # Changelog
 
+## 3.6.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.6.0.
+
+### Features
+
+- Add support for upserting Cron Monitors [(#677)](https://github.com/getsentry/sentry-laravel/pull/677)
+  
+  We simplified setting up monitoring for your scheduled tasks. Now, the only requirement is to add the
+  `sentryMonitor` macro. A corresponding monitor will be created automatically on Sentry.
+
+  ```php
+  protected function schedule(Schedule $schedule)
+  {
+      $schedule->command('emails:send')
+          ->everyHour()
+          ->sentryMonitor(); // add this line
+  }
+  ```
+
+  You can read more about this in our [docs](https://sentry-docs-git-laravel-upserts.sentry.dev/platforms/php/guides/laravel/crons/).
+
 ## 3.5.1
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.5.1.
