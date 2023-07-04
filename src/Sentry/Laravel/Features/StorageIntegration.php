@@ -20,6 +20,7 @@ class StorageIntegration extends Feature
             $filesystemManager->extend('sentry', function (Application $application, array $config) use ($filesystemManager): Filesystem {
                 $config['driver'] = $config['original_driver'];
                 unset($config['original_driver']);
+
                 $originalFilesystem = $filesystemManager->build($config);
 
                 return new TracingFilesystem($originalFilesystem);

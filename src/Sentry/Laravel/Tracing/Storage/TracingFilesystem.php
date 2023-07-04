@@ -175,4 +175,9 @@ class TracingFilesystem implements CloudFilesystemContract
     {
         return $this->withTracing(__FUNCTION__, func_get_args(), compact('directory'));
     }
+
+    public function __call($name, $arguments)
+    {
+        return $this->filesystem->{$name}(...$arguments);
+    }
 }
