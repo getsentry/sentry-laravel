@@ -33,6 +33,7 @@ class TracingFilesystem implements Filesystem
     {
         $context = new SpanContext();
         $context->setOp("file.{$method}"); // See https://develop.sentry.dev/sdk/performance/span-operations/#web-server
+        $context->setDescription(json_encode($data, JSON_PRETTY_PRINT));
         $context->setData($data);
 
         return trace(function () use ($method, $args) {
