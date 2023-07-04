@@ -16,6 +16,11 @@ class StorageIntegration extends Feature
 
     public function setup(): void
     {
+        foreach (config('filesystems.disks') as $disk => $config) {
+            config(["filesystems.disks.{$disk}.original_driver" => $config['driver']]);
+            config(["filesystems.disks.{$disk}.driver" => 'sentry']);
+        }
+
         $this->container()->afterResolving(FilesystemManager::class, static function (FilesystemManager $filesystemManager): void {
             $filesystemManager->extend('sentry', function (Application $application, array $config) use ($filesystemManager): Filesystem {
                 $config['driver'] = $config['original_driver'];
@@ -26,10 +31,5 @@ class StorageIntegration extends Feature
                 return new TracingFilesystem($originalFilesystem);
             });
         });
-    }
-
-    public function setupInactive(): void
-    {
-        $this->setup();
     }
 }

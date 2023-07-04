@@ -10,15 +10,6 @@ class StorageIntegrationTest extends TestCase
 {
     public function testCreatesSpanFor(): void
     {
-        $originalDisksLocalConfig = config('filesystems.disks.local');
-        $this->resetApplicationWithConfig([
-            'filesystems.disks.local' => [
-                'driver' => 'sentry',
-                'original_driver' => $originalDisksLocalConfig['driver'],
-                'root' => $originalDisksLocalConfig['root'],
-            ],
-        ]);
-
         $hub = $this->getHubFromContainer();
 
         $transaction = $hub->startTransaction(new TransactionContext());
