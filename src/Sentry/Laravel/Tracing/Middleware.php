@@ -3,8 +3,9 @@
 namespace Sentry\Laravel\Tracing;
 
 use Closure;
-use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Foundation\Application as LaravelApplication;
 use Illuminate\Http\Request;
+use Laravel\Lumen\Application as LumenApplication;
 use Sentry\SentrySdk;
 use Sentry\State\HubInterface;
 use Sentry\Tracing\Span;
@@ -37,9 +38,9 @@ class Middleware
     private $bootedTimestamp;
 
     /**
-     * The Laravel application instance.
+     * The Laravel or Lumen application instance.
      *
-     * @var Application|null
+     * @var LaravelApplication|LumenApplication
      */
     private $app;
 
@@ -53,9 +54,9 @@ class Middleware
     /**
      * Construct the Sentry tracing middleware.
      *
-     * @param Application|null $app
+     * @param LaravelApplication|LumenApplication $app
      */
-    public function __construct(?Application $app)
+    public function __construct($app)
     {
         $this->app = $app;
     }
@@ -106,26 +107,22 @@ class Middleware
             $this->hydrateResponseData($response);
         }
 
-        if ($this->app === null) {
-            $this->finishTransaction();
-        } else {
-            // Ensure we do not register the terminating callback multiple times since there is no point in doing so
-            if ($this->registeredTerminatingCallback) {
-                return;
-            }
-
-            // We need to finish the transaction after the response has been sent to the client
-            // so we register a terminating callback to do so, this allows us to also capture
-            // spans that are created during the termination of the application like queue
-            // dispatched using dispatch(...)->afterResponse(). This middleware is called
-            // before the terminating callbacks so we are 99.9% sure to be the last one
-            // to run except if another terminating callback is registered after ours.
-            $this->app->terminating(function () {
-                $this->finishTransaction();
-            });
-
-            $this->registeredTerminatingCallback = true;
+        // Ensure we do not register the terminating callback multiple times since there is no point in doing so
+        if ($this->registeredTerminatingCallback) {
+            return;
         }
+
+        // We need to finish the transaction after the response has been sent to the client
+        // so we register a terminating callback to do so, this allows us to also capture
+        // spans that are created during the termination of the application like queue
+        // dispatched using dispatch(...)->afterResponse(). This middleware is called
+        // before the terminating callbacks so we are 99.9% sure to be the last one
+        // to run except if another terminating callback is registered after ours.
+        $this->app->terminating(function () {
+            $this->finishTransaction();
+        });
+
+        $this->registeredTerminatingCallback = true;
     }
 
     /**

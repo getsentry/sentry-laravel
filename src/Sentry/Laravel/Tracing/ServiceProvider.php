@@ -4,6 +4,7 @@ namespace Sentry\Laravel\Tracing;
 
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
 use Illuminate\Contracts\View\Engine;
 use Illuminate\Contracts\View\View;
@@ -59,7 +60,9 @@ class ServiceProvider extends BaseServiceProvider
 
     public function register(): void
     {
-        $this->app->singleton(Middleware::class);
+        $this->app->singleton(Middleware::class, function () {
+            return new Middleware($this->app);
+        });
 
         $this->app->singleton(BacktraceHelper::class, function () {
             /** @var \Sentry\State\Hub $sentry */
