@@ -54,6 +54,9 @@ return [
         // Capture views as spans
         'views' => true,
 
+        // Capture storage access as spans
+        'storage' => true,
+
         // Capture Livewire components as spans
         'livewire' => true,
 
