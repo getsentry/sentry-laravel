@@ -2,7 +2,6 @@
 
 namespace Sentry\Laravel\Features;
 
-use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Filesystem\FilesystemManager;
@@ -15,18 +14,21 @@ class StorageIntegration extends Feature
         return $this->isTracingFeatureEnabled('storage');
     }
 
-    public function setup(Dispatcher $events): void
+    public function setup(): void
     {
-        if ($this->isTracingFeatureEnabled('storage', false)) {
-            $this->container()->afterResolving(FilesystemManager::class, static function (FilesystemManager $filesystemManager): void {
-                $filesystemManager->extend('sentry', function (Application $application, array $config) use ($filesystemManager): Filesystem {
-                    $config['driver'] = $config['original_driver'];
-                    unset($config['original_driver']);
-                    $originalFilesystem = $filesystemManager->build($config);
+        $this->container()->afterResolving(FilesystemManager::class, static function (FilesystemManager $filesystemManager): void {
+            $filesystemManager->extend('sentry', function (Application $application, array $config) use ($filesystemManager): Filesystem {
+                $config['driver'] = $config['original_driver'];
+                unset($config['original_driver']);
+                $originalFilesystem = $filesystemManager->build($config);
 
-                    return new TracingFilesystem($originalFilesystem);
-                });
+                return new TracingFilesystem($originalFilesystem);
             });
-        }
+        });
+    }
+
+    public function setupInactive(): void
+    {
+        $this->setup();
     }
 }
