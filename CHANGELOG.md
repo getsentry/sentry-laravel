@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.6.1
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.6.1.
+
+### Bug Fixes
+
+- Fix performance tracing for Lumen applications [(#724)](https://github.com/getsentry/sentry-laravel/pull/724)
+
 ## 3.6.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.6.0.
