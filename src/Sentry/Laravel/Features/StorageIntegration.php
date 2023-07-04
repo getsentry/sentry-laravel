@@ -2,9 +2,11 @@
 
 namespace Sentry\Laravel\Features;
 
+use Illuminate\Contracts\Filesystem\Cloud as CloudFilesystem;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Filesystem\FilesystemManager;
+use Sentry\Laravel\Tracing\Storage\TracingCloudFilesystem;
 use Sentry\Laravel\Tracing\Storage\TracingFilesystem;
 
 class StorageIntegration extends Feature
@@ -28,7 +30,9 @@ class StorageIntegration extends Feature
 
                 $originalFilesystem = $filesystemManager->build($config);
 
-                return new TracingFilesystem($originalFilesystem);
+                return $originalFilesystem instanceof CloudFilesystem
+                    ? new TracingCloudFilesystem($originalFilesystem)
+                    : new TracingFilesystem($originalFilesystem);
             });
         });
     }

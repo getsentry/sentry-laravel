@@ -3,7 +3,6 @@
 namespace Sentry\Laravel\Tracing\Storage;
 
 use Exception;
-use Illuminate\Contracts\Filesystem\Cloud as CloudFilesystemContract;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Sentry\Tracing\SpanContext;
@@ -16,7 +15,7 @@ use function Sentry\trace;
  * parameters that contain file contents are omitted due to potential problems with
  * payload size or sensitive data.
  */
-class TracingFilesystem implements CloudFilesystemContract
+class TracingFilesystem implements Filesystem
 {
     /** @var Filesystem */
     protected $filesystem;
@@ -68,11 +67,6 @@ class TracingFilesystem implements CloudFilesystemContract
     {
         $this->assertFilesystemIsFilesystemAdapter();
 
-        return $this->withTracing(__FUNCTION__, func_get_args(), compact('path'));
-    }
-
-    public function url($path)
-    {
         return $this->withTracing(__FUNCTION__, func_get_args(), compact('path'));
     }
 
