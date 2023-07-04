@@ -200,7 +200,7 @@ class EventHandler
         }
 
         try {
-            ($this->handlerMethod)(...$arguments);
+            $this->{$handlerMethod}(...$arguments);
         } catch (Exception $exception) {
             // Ignore
         }

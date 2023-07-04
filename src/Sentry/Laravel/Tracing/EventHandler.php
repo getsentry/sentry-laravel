@@ -146,7 +146,7 @@ class EventHandler
         }
 
         try {
-            ($this->handlerMethod)(...$arguments);
+            $this->{$handlerMethod}(...$arguments);
         } catch (Exception $e) {
             // Ignore to prevent bubbling up errors in the SDK
         }
