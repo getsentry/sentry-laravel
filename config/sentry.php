@@ -55,6 +55,8 @@ return [
         'views' => true,
 
         // Capture storage access as spans
+        // Filesystems have to opt-in by changing their configuration like this:
+        // ['driver' => 'local', ...] -> ['driver' => 'sentry', 'original_driver' => 'local', ...]
         'storage' => true,
 
         // Capture Livewire components as spans
