@@ -12,6 +12,7 @@ use Sentry\Breadcrumb;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
 use Sentry\State\Scope;
+use Sentry\Tracing\PropagationContext;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\SpanStatus;
@@ -198,8 +199,10 @@ class QueueIntegration extends Feature
         ++$this->pushedScopeCount;
 
         // When a job starts, we want to make sure the scope is cleared of breadcrumbs
+        // as well as setting a new propagation context.
         SentrySdk::getCurrentHub()->configureScope(static function (Scope $scope) {
             $scope->clearBreadcrumbs();
+            $scope->setPropagationContext(PropagationContext::fromDefaults());
         });
     }
 
