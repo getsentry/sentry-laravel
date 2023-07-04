@@ -2,14 +2,23 @@
 
 namespace Sentry\Laravel\Tracing\Storage;
 
+use Exception;
 use Illuminate\Contracts\Filesystem\Cloud as CloudFilesystemContract;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Sentry\Tracing\SpanContext;
 use function Sentry\trace;
 
+/**
+ * Decorates the underlying filesystem by wrapping all calls to it with tracing.
+ *
+ * Parameters such as paths, directories or options are attached to the span as data,
+ * parameters that contain file contents are omitted due to potential problems with
+ * payload size or sensitive data.
+ */
 class TracingFilesystem implements CloudFilesystemContract
 {
+    /** @var Filesystem */
     protected $filesystem;
 
     public function __construct(Filesystem $filesystem)
@@ -18,136 +27,152 @@ class TracingFilesystem implements CloudFilesystemContract
     }
 
     /**
-     * @template TResult
+     * @param list<mixed> $args
      * @param array<string, mixed> $data
-     * @param callable(): TResult $originalCall
-     * @return TResult
      */
-    protected function withTracing(string $method, array $data, callable $originalCall)
+    protected function withTracing(string $method, array $args, array $data)
     {
         $context = new SpanContext();
-        $context->setOp("storage.{$method}");
+        $context->setOp("file.{$method}"); // See https://develop.sentry.dev/sdk/performance/span-operations/#web-server
         $context->setData($data);
 
-        return trace($originalCall, $context);
+        return trace(function () use ($method, $args) {
+            return $this->filesystem->{$method}(...$args);
+        }, $context);
+    }
+
+    protected function assertFilesystemIsFilesystemAdapter(): void
+    {
+        if (! $this->filesystem instanceof FilesystemAdapter) {
+            $requiredClass = FilesystemAdapter::class;
+            $actualClass = get_class($this->filesystem);
+            throw new Exception("The wrapped filesystem must be an instance of {$requiredClass}, got: {$actualClass}.");
+        }
     }
 
     public function assertExists($path, $content = null)
     {
-        return $this->withTracing('assertExists', ['path' => $path], function () use ($path, $content) {
-            // TODO assertExists only present on FilesystemAdapter
-            return $this->filesystem->assertExists($path, $content);
-        });
+        $this->assertFilesystemIsFilesystemAdapter();
+
+        return $this->withTracing(__FUNCTION__, func_get_args(), compact('path'));
+    }
+
+    public function assertMissing($path)
+    {
+        $this->assertFilesystemIsFilesystemAdapter();
+
+        return $this->withTracing(__FUNCTION__, func_get_args(), compact('path'));
+    }
+
+    public function assertDirectoryEmpty($path)
+    {
+        $this->assertFilesystemIsFilesystemAdapter();
+
+        return $this->withTracing(__FUNCTION__, func_get_args(), compact('path'));
     }
 
     public function url($path)
     {
-        return $this->withTracing('url', ['path' => $path], function () use ($path) {
-            return $this->filesystem->url($path);
-        });
+        return $this->withTracing(__FUNCTION__, func_get_args(), compact('path'));
     }
 
     public function exists($path)
     {
-        // TODO: Implement exists() method.
+        return $this->withTracing(__FUNCTION__, func_get_args(), compact('path'));
     }
 
     public function get($path)
     {
-        // TODO: Implement get() method.
+        return $this->withTracing(__FUNCTION__, func_get_args(), compact('path'));
     }
 
     public function readStream($path)
     {
-        // TODO: Implement readStream() method.
+        return $this->withTracing(__FUNCTION__, func_get_args(), compact('path'));
     }
 
     public function put($path, $contents, $options = [])
     {
-        return $this->withTracing('put', ['path' => $path], function () use ($path, $contents, $options) {
-            return $this->filesystem->put($path, $contents, $options);
-        });
+        return $this->withTracing(__FUNCTION__, func_get_args(), compact('path', 'options'));
     }
 
     public function writeStream($path, $resource, array $options = [])
     {
-        // TODO: Implement writeStream() method.
+        return $this->withTracing(__FUNCTION__, func_get_args(), compact('path', 'options'));
     }
 
     public function getVisibility($path)
     {
-        // TODO: Implement getVisibility() method.
+        return $this->withTracing(__FUNCTION__, func_get_args(), compact('path'));
     }
 
     public function setVisibility($path, $visibility)
     {
-        // TODO: Implement setVisibility() method.
+        return $this->withTracing(__FUNCTION__, func_get_args(), compact('path', 'visibility'));
     }
 
     public function prepend($path, $data)
     {
-        // TODO: Implement prepend() method.
+        return $this->withTracing(__FUNCTION__, func_get_args(), compact('path'));
     }
 
     public function append($path, $data)
     {
-        // TODO: Implement append() method.
+        return $this->withTracing(__FUNCTION__, func_get_args(), compact('path'));
     }
 
     public function delete($paths)
     {
-        // TODO: Implement delete() method.
+        return $this->withTracing(__FUNCTION__, func_get_args(), compact('paths'));
     }
 
     public function copy($from, $to)
     {
-        return $this->withTracing('copy', ['from' => $from, 'to' => $to], function () use ($from, $to) {
-            return $this->filesystem->copy($from, $to);
-        });
+        return $this->withTracing(__FUNCTION__, func_get_args(), compact('from', 'to'));
     }
 
     public function move($from, $to)
     {
-        // TODO: Implement move() method.
+        return $this->withTracing(__FUNCTION__, func_get_args(), compact('from', 'to'));
     }
 
     public function size($path)
     {
-        // TODO: Implement size() method.
+        return $this->withTracing(__FUNCTION__, func_get_args(), compact('path'));
     }
 
     public function lastModified($path)
     {
-        // TODO: Implement lastModified() method.
+        return $this->withTracing(__FUNCTION__, func_get_args(), compact('path'));
     }
 
     public function files($directory = null, $recursive = false)
     {
-        // TODO: Implement files() method.
+        return $this->withTracing(__FUNCTION__, func_get_args(), compact('directory', 'recursive'));
     }
 
     public function allFiles($directory = null)
     {
-        // TODO: Implement allFiles() method.
+        return $this->withTracing(__FUNCTION__, func_get_args(), compact('directory'));
     }
 
     public function directories($directory = null, $recursive = false)
     {
-        // TODO: Implement directories() method.
+        return $this->withTracing(__FUNCTION__, func_get_args(), compact('directory', 'recursive'));
     }
 
     public function allDirectories($directory = null)
     {
-        // TODO: Implement allDirectories() method.
+        return $this->withTracing(__FUNCTION__, func_get_args(), compact('directory'));
     }
 
     public function makeDirectory($path)
     {
-        // TODO: Implement makeDirectory() method.
+        return $this->withTracing(__FUNCTION__, func_get_args(), compact('path'));
     }
 
     public function deleteDirectory($directory)
     {
-        // TODO: Implement deleteDirectory() method.
+        return $this->withTracing(__FUNCTION__, func_get_args(), compact('directory'));
     }
 }

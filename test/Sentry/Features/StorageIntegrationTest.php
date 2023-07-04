@@ -32,8 +32,8 @@ class StorageIntegrationTest extends TestCase
         $this->assertArrayHasKey(1, $spans);
 
         $span = $spans[1];
-        $this->assertSame('storage.put', $span->getOp());
-        $this->assertSame(['path' => 'foo'], $span->getData());
+        $this->assertSame('file.put', $span->getOp());
+        $this->assertSame(['path' => 'foo', 'options' => []], $span->getData());
 
         Storage::assertExists('foo', 'bar');
     }
