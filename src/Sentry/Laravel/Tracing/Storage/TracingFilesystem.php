@@ -2,9 +2,7 @@
 
 namespace Sentry\Laravel\Tracing\Storage;
 
-use Exception;
 use Illuminate\Contracts\Filesystem\Filesystem;
-use Illuminate\Filesystem\FilesystemAdapter;
 use Sentry\Tracing\SpanContext;
 use function Sentry\trace;
 
@@ -41,33 +39,21 @@ class TracingFilesystem implements Filesystem
         }, $context);
     }
 
-    protected function assertFilesystemIsFilesystemAdapter(): void
-    {
-        if (! $this->filesystem instanceof FilesystemAdapter) {
-            $requiredClass = FilesystemAdapter::class;
-            $actualClass = get_class($this->filesystem);
-            throw new Exception("The wrapped filesystem must be an instance of {$requiredClass}, got: {$actualClass}.");
-        }
-    }
-
+    /** @see \Illuminate\Filesystem\FilesystemAdapter::assertExists() */
     public function assertExists($path, $content = null)
     {
-        $this->assertFilesystemIsFilesystemAdapter();
-
         return $this->withTracing(__FUNCTION__, func_get_args(), compact('path'));
     }
 
+    /** @see \Illuminate\Filesystem\FilesystemAdapter::assertMissing() */
     public function assertMissing($path)
     {
-        $this->assertFilesystemIsFilesystemAdapter();
-
         return $this->withTracing(__FUNCTION__, func_get_args(), compact('path'));
     }
 
+    /** @see \Illuminate\Filesystem\FilesystemAdapter::assertDirectoryEmpty() */
     public function assertDirectoryEmpty($path)
     {
-        $this->assertFilesystemIsFilesystemAdapter();
-
         return $this->withTracing(__FUNCTION__, func_get_args(), compact('path'));
     }
 
