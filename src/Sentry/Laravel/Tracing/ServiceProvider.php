@@ -39,7 +39,7 @@ class ServiceProvider extends BaseServiceProvider
             });
         }
 
-        $tracingConfig = $this->getUserConfig()['tracing'] ?? [];
+        $tracingConfig = $this->getTracingConfig();
 
         $this->bindEvents($tracingConfig);
 
@@ -61,7 +61,9 @@ class ServiceProvider extends BaseServiceProvider
     public function register(): void
     {
         $this->app->singleton(Middleware::class, function () {
-            return new Middleware($this->app);
+            $continueAfterResponse = ($this->getTracingConfig()['continue_after_response'] ?? true) === true;
+
+            return new Middleware($this->app, $continueAfterResponse);
         });
 
         $this->app->singleton(BacktraceHelper::class, function () {
@@ -130,6 +132,11 @@ class ServiceProvider extends BaseServiceProvider
         });
 
         return new ViewEngineDecorator($realEngine, $viewFactory);
+    }
+
+    private function getTracingConfig(): array
+    {
+        return $this->getUserConfig()['tracing'] ?? [];
     }
 
     private function decorateRoutingDispatchers(): void

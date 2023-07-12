@@ -46,6 +46,13 @@ class Middleware
     private $app;
 
     /**
+     * Whether we should continue tracing after the response has been sent to the client.
+     *
+     * @var bool
+     */
+    private $continueAfterResponse;
+
+    /**
      * Whether the terminating callback has been registered.
      *
      * @var bool
@@ -57,9 +64,10 @@ class Middleware
      *
      * @param LaravelApplication|LumenApplication $app
      */
-    public function __construct($app)
+    public function __construct($app, bool $continueAfterResponse = true)
     {
         $this->app = $app;
+        $this->continueAfterResponse = $continueAfterResponse;
     }
 
     /**
@@ -108,22 +116,26 @@ class Middleware
             $this->hydrateResponseData($response);
         }
 
-        // Ensure we do not register the terminating callback multiple times since there is no point in doing so
-        if ($this->registeredTerminatingCallback) {
-            return;
-        }
+        if ($this->continueAfterResponse) {
+            // Ensure we do not register the terminating callback multiple times since there is no point in doing so
+            if ($this->registeredTerminatingCallback) {
+                return;
+            }
 
-        // We need to finish the transaction after the response has been sent to the client
-        // so we register a terminating callback to do so, this allows us to also capture
-        // spans that are created during the termination of the application like queue
-        // dispatched using dispatch(...)->afterResponse(). This middleware is called
-        // before the terminating callbacks so we are 99.9% sure to be the last one
-        // to run except if another terminating callback is registered after ours.
-        $this->app->terminating(function () {
+            // We need to finish the transaction after the response has been sent to the client
+            // so we register a terminating callback to do so, this allows us to also capture
+            // spans that are created during the termination of the application like queue
+            // dispatched using dispatch(...)->afterResponse(). This middleware is called
+            // before the terminating callbacks so we are 99.9% sure to be the last one
+            // to run except if another terminating callback is registered after ours.
+            $this->app->terminating(function () {
+                $this->finishTransaction();
+            });
+
+            $this->registeredTerminatingCallback = true;
+        } else {
             $this->finishTransaction();
-        });
-
-        $this->registeredTerminatingCallback = true;
+        }
     }
 
     /**
