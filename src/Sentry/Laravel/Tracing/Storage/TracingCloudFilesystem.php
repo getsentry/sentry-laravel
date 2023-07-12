@@ -9,9 +9,9 @@ class TracingCloudFilesystem extends TracingFilesystem implements CloudFilesyste
     /** @var CloudFilesystem */
     protected $filesystem;
 
-    public function __construct(CloudFilesystem $filesystem)
+    public function __construct(CloudFilesystem $filesystem, string $disk, string $driver)
     {
-        parent::__construct($filesystem);
+        parent::__construct($filesystem, $disk, $driver);
     }
 
     public function url($path)

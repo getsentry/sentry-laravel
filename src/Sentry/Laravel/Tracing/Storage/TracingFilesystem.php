@@ -18,9 +18,17 @@ class TracingFilesystem implements Filesystem
     /** @var Filesystem */
     protected $filesystem;
 
-    public function __construct(Filesystem $filesystem)
+    /** @var string */
+    protected $disk;
+
+    /** @var string */
+    protected $driver;
+
+    public function __construct(Filesystem $filesystem, string $disk, string $driver)
     {
         $this->filesystem = $filesystem;
+        $this->disk = $disk;
+        $this->driver = $driver;
     }
 
     /**
@@ -32,7 +40,10 @@ class TracingFilesystem implements Filesystem
         $context = new SpanContext();
         $context->setOp("file.{$method}"); // See https://develop.sentry.dev/sdk/performance/span-operations/#web-server
         $context->setDescription(json_encode($data, JSON_PRETTY_PRINT));
-        $context->setData($data);
+        $context->setData(array_merge($data, [
+            'disk' => $this->disk,
+            'driver' => $this->driver,
+        ]));
 
         return trace(function () use ($method, $args) {
             return $this->filesystem->{$method}(...$args);
