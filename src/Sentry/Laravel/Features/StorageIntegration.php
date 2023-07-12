@@ -39,6 +39,10 @@ class StorageIntegration extends Feature
             $filesystemManager->extend(
                 self::STORAGE_DRIVER_NAME,
                 static function (Application $application, array $config) use ($filesystemManager): Filesystem {
+                    if (empty($config['sentry_disk_name'])) {
+                        throw new RuntimeException(sprintf('Missing `sentry_disk_name` config key for `%s` filesystem driver.', self::STORAGE_DRIVER_NAME));
+                    }
+
                     if (empty($config['sentry_original_driver'])) {
                         throw new RuntimeException(sprintf('Missing `sentry_original_driver` config key for `%s` filesystem driver.', self::STORAGE_DRIVER_NAME));
                     }
@@ -47,14 +51,23 @@ class StorageIntegration extends Feature
                         throw new RuntimeException(sprintf('`sentry_original_driver` for Sentry storage integration cannot be the `%s` driver.', self::STORAGE_DRIVER_NAME));
                     }
 
+                    $disk = $config['sentry_disk_name'];
+
                     $config['driver'] = $config['sentry_original_driver'];
                     unset($config['sentry_original_driver']);
 
-                    $originalFilesystem = $filesystemManager->build($config);
+                    $diskResolver = (function (string $disk, array $config) {
+                        // This is a "hack" to make sure that the original driver is resolved by the FilesystemManager
+                        config(["filesystems.disks.{$disk}" => $config]);
+
+                        return $this->resolve($disk);
+                    })->bindTo($filesystemManager, FilesystemManager::class);
+
+                    $originalFilesystem = $diskResolver($disk, $config);
 
                     return $originalFilesystem instanceof CloudFilesystem
-                        ? new TracingCloudFilesystem($originalFilesystem, $config['sentry_disk_name'] ?? 'unknown', $config['driver'])
-                        : new TracingFilesystem($originalFilesystem, $config['sentry_disk_name'] ?? 'unknown', $config['driver']);
+                        ? new TracingCloudFilesystem($originalFilesystem, $disk, $config['driver'])
+                        : new TracingFilesystem($originalFilesystem, $disk, $config['driver']);
                 }
             );
         });
