@@ -18,24 +18,24 @@ class TestCaseExceptionHandler implements ExceptionHandler
         $this->handler = $handler;
     }
 
-    public function report(\Throwable $e)
+    public function report($e)
     {
         Integration::captureUnhandledException($e);
 
         $this->handler->report($e);
     }
 
-    public function shouldReport(\Throwable $e)
+    public function shouldReport($e)
     {
         return $this->handler->shouldReport($e);
     }
 
-    public function render($request, \Throwable $e)
+    public function render($request, $e)
     {
         return $this->handler->render($request, $e);
     }
 
-    public function renderForConsole($output, \Throwable $e)
+    public function renderForConsole($output, $e)
     {
         $this->handler->renderForConsole($output, $e);
     }
