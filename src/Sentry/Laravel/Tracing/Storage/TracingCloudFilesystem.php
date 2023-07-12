@@ -16,6 +16,6 @@ class TracingCloudFilesystem extends TracingFilesystem implements CloudFilesyste
 
     public function url($path)
     {
-        return $this->withTracing(__FUNCTION__, func_get_args(), compact('path'));
+        return $this->withTracing(__FUNCTION__, func_get_args(), $path, compact('path'));
     }
 }
