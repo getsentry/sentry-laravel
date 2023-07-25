@@ -3,6 +3,7 @@
 namespace Sentry\Laravel\Tracing\Storage;
 
 use Illuminate\Contracts\Filesystem\Filesystem;
+use Sentry\Laravel\Util\Filesize;
 use Sentry\Tracing\SpanContext;
 use function Sentry\trace;
 
@@ -85,7 +86,9 @@ class TracingFilesystem implements Filesystem
 
     public function put($path, $contents, $options = [])
     {
-        return $this->withTracing(__FUNCTION__, func_get_args(), $path, compact('path', 'options'));
+        $description = is_string($contents) ? sprintf('%s (%s)', $path, Filesize::toHuman(strlen($contents))) : $path;
+
+        return $this->withTracing(__FUNCTION__, func_get_args(), $description, compact('path', 'options'));
     }
 
     public function writeStream($path, $resource, array $options = [])
@@ -105,12 +108,16 @@ class TracingFilesystem implements Filesystem
 
     public function prepend($path, $data)
     {
-        return $this->withTracing(__FUNCTION__, func_get_args(), $path, compact('path'));
+        $description = sprintf('%s (%s)', $path, Filesize::toHuman(strlen($data)));
+
+        return $this->withTracing(__FUNCTION__, func_get_args(), $description, compact('path'));
     }
 
     public function append($path, $data)
     {
-        return $this->withTracing(__FUNCTION__, func_get_args(), $path, compact('path'));
+        $description = sprintf('%s (%s)', $path, Filesize::toHuman(strlen($data)));
+
+        return $this->withTracing(__FUNCTION__, func_get_args(), $description, compact('path'));
     }
 
     public function delete($paths)
