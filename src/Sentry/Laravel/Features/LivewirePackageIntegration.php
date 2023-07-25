@@ -92,7 +92,7 @@ class LivewirePackageIntegration extends Feature
         }
 
         if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
-            $this->updateTransactionName($component::getName());
+            $this->updateTransactionName($component->getName());
         }
     }
 
