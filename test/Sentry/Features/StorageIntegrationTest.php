@@ -70,7 +70,7 @@ class StorageIntegrationTest extends TestCase
 
         $this->getCurrentScope()->setSpan($transaction);
 
-        Storage::get('foo');
+        Storage::exists('foo');
 
         $this->assertCount(1, $transaction->getSpanRecorder()->getSpans());
     }
@@ -123,7 +123,7 @@ class StorageIntegrationTest extends TestCase
             'sentry.breadcrumbs.storage' => false,
         ]);
 
-        Storage::get('foo');
+        Storage::exists('foo');
 
         $this->assertCount(0, $this->getCurrentBreadcrumbs());
     }
