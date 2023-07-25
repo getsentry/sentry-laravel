@@ -45,7 +45,7 @@ class TracingFilesystem implements Filesystem
     protected function withTracing(string $method, array $args, string $description, array $data)
     {
         $op = "file.{$method}"; // See https://develop.sentry.dev/sdk/performance/span-operations/#web-server
-        $data = array_merge($this->defaultData, $data);
+        $data = array_merge($data, $this->defaultData);
 
         if ($this->recordBreadcrumbs) {
             Integration::addBreadcrumb(new Breadcrumb(

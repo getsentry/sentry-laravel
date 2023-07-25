@@ -28,7 +28,7 @@ class StorageIntegrationTest extends TestCase
         $this->assertArrayHasKey(1, $spans);
         $span = $spans[1];
         $this->assertSame('file.put', $span->getOp());
-        $this->assertSame('foo', $span->getDescription());
+        $this->assertSame('foo (3 B)', $span->getDescription());
         $this->assertSame(['path' => 'foo', 'options' => [], 'disk' => 'local', 'driver' => 'local'], $span->getData());
 
         $this->assertArrayHasKey(2, $spans);
