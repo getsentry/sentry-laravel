@@ -291,6 +291,8 @@ class EventHandler
                 'status_code' => $event->response->status(),
                 'http.query' => $fullUri->getQuery(),
                 'http.fragment' => $fullUri->getFragment(),
+                'request_body_size' => strlen($event->request->body()),
+                'response_body_size' => strlen($event->response->body()),
             ]
         ));
     }
@@ -313,6 +315,7 @@ class EventHandler
                 'method' => $event->request->method(),
                 'http.query' => $fullUri->getQuery(),
                 'http.fragment' => $fullUri->getFragment(),
+                'request_body_size' => strlen($event->request->body()),
             ]
         ));
     }

@@ -5,13 +5,17 @@ namespace Sentry\Laravel\Tracing\Integrations;
 use GraphQL\Language\AST\DocumentNode;
 use GraphQL\Language\AST\OperationDefinitionNode;
 use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+use Illuminate\Support\Str;
 use Nuwave\Lighthouse\Events\EndExecution;
 use Nuwave\Lighthouse\Events\EndRequest;
 use Nuwave\Lighthouse\Events\StartExecution;
 use Nuwave\Lighthouse\Events\StartRequest;
+use Sentry\Event;
 use Sentry\Integration\IntegrationInterface;
 use Sentry\Laravel\Integration;
+use Sentry\Options;
 use Sentry\SentrySdk;
+use Sentry\State\Scope;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\TransactionSource;
 
@@ -47,12 +51,50 @@ class LighthouseIntegration implements IntegrationInterface
 
     public function setupOnce(): void
     {
-        if ($this->isApplicable()) {
-            $this->eventDispatcher->listen(StartRequest::class, [$this, 'handleStartRequest']);
-            $this->eventDispatcher->listen(StartExecution::class, [$this, 'handleStartExecution']);
-            $this->eventDispatcher->listen(EndExecution::class, [$this, 'handleEndExecution']);
-            $this->eventDispatcher->listen(EndRequest::class, [$this, 'handleEndRequest']);
+        if (!$this->isApplicable()) {
+            return;
         }
+
+        $this->eventDispatcher->listen(StartRequest::class, [$this, 'handleStartRequest']);
+        $this->eventDispatcher->listen(StartExecution::class, [$this, 'handleStartExecution']);
+        $this->eventDispatcher->listen(EndExecution::class, [$this, 'handleEndExecution']);
+        $this->eventDispatcher->listen(EndRequest::class, [$this, 'handleEndRequest']);
+
+        Scope::addGlobalEventProcessor(function (Event $event): Event {
+            $currentHub = SentrySdk::getCurrentHub();
+            $integration = $currentHub->getIntegration(self::class);
+            $client = $currentHub->getClient();
+
+            // The client bound to the current hub, if any, could not have this
+            // integration enabled. If this is the case, bail out
+            if (null === $integration || null === $client) {
+                return $event;
+            }
+
+            $this->processEvent($event, $client->getOptions());
+
+            return $event;
+        });
+    }
+
+    private function processEvent(Event $event, Options $options): void
+    {
+        // Detect if we are processing a GraphQL request, if not skip processing the event
+        if (!Str::startsWith($event->getTransaction(), 'lighthouse?')) {
+            return;
+        }
+
+        $requestData = $event->getRequest();
+
+        // Make sure we have the request data and it contains the query
+        if (!isset($requestData['data']['query'])) {
+            return;
+        }
+
+        // https://develop.sentry.dev/sdk/features/#graphql-client-integrations
+        $requestData['api_target'] = 'graphql';
+
+        $event->setRequest($requestData);
     }
 
     public function handleStartRequest(StartRequest $startRequest): void
