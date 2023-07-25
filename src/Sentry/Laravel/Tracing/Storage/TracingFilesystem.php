@@ -128,12 +128,12 @@ class TracingFilesystem implements Filesystem
 
     public function copy($from, $to)
     {
-        return $this->withTracing(__FUNCTION__, func_get_args(), $from, compact('from', 'to'));
+        return $this->withTracing(__FUNCTION__, func_get_args(), sprintf('from: "%s" to "%s"', $from, $to), compact('from', 'to'));
     }
 
     public function move($from, $to)
     {
-        return $this->withTracing(__FUNCTION__, func_get_args(), $from, compact('from', 'to'));
+        return $this->withTracing(__FUNCTION__, func_get_args(), sprintf('from: "%s" to "%s"', $from, $to), compact('from', 'to'));
     }
 
     public function size($path)
