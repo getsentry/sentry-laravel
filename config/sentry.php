@@ -26,7 +26,7 @@ return [
         'sql_queries' => true,
 
         // Capture bindings on SQL queries logged in breadcrumbs
-        'sql_bindings' => true,
+        'sql_bindings' => false,
 
         // Capture queue job information in breadcrumbs
         'queue_info' => true,
