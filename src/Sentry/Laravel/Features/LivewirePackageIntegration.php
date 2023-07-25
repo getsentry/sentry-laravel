@@ -137,7 +137,7 @@ class LivewirePackageIntegration extends Feature
                 return false;
             }
 
-            return $request->header('x-livewire') === 'true';
+            return $request->hasHeader('x-livewire');
         } catch (\Throwable $e) {
             // If the request cannot be resolved, it's probably not a Livewire request.
             return false;
