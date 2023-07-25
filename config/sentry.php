@@ -71,6 +71,10 @@ return [
 
         // Indicates that requests without a matching route should be traced
         'missing_routes' => false,
+
+        // Indicates if the performance trace should continue after the response has been sent to the user until the application terminates
+        // This is required to capture any spans that are created after the response has been sent like queue jobs dispatched using `dispatch(...)->afterResponse()` for example
+        'continue_after_response' => true,
     ],
 
     // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#send-default-pii
