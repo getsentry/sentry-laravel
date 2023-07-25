@@ -19,6 +19,9 @@ return [
         // Capture Laravel cache events in breadcrumbs
         'cache' => true,
 
+        // Capture storage access as breadcrumbs
+        'storage' => true,
+
         // Capture Livewire components in breadcrumbs
         'livewire' => true,
 

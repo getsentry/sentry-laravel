@@ -12,11 +12,14 @@ use Sentry\Laravel\Tracing\Storage\TracingFilesystem;
 
 class StorageIntegration extends Feature
 {
+    private const FEATURE_KEY = 'storage';
+
     private const STORAGE_DRIVER_NAME = 'sentry';
 
     public function isApplicable(): bool
     {
-        return $this->isTracingFeatureEnabled('storage');
+        return $this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY)
+               || $this->isTracingFeatureEnabled(self::FEATURE_KEY);
     }
 
     public function setup(): void
@@ -35,10 +38,13 @@ class StorageIntegration extends Feature
             ]);
         }
 
-        $this->container()->afterResolving(FilesystemManager::class, static function (FilesystemManager $filesystemManager): void {
+        $recordSpans = $this->isTracingFeatureEnabled(self::FEATURE_KEY);
+        $recordBreadcrumbs = $this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY);
+
+        $this->container()->afterResolving(FilesystemManager::class, static function (FilesystemManager $filesystemManager) use ($recordSpans, $recordBreadcrumbs): void {
             $filesystemManager->extend(
                 self::STORAGE_DRIVER_NAME,
-                static function (Application $application, array $config) use ($filesystemManager): Filesystem {
+                static function (Application $application, array $config) use ($filesystemManager, $recordSpans, $recordBreadcrumbs): Filesystem {
                     if (empty($config['sentry_disk_name'])) {
                         throw new RuntimeException(sprintf('Missing `sentry_disk_name` config key for `%s` filesystem driver.', self::STORAGE_DRIVER_NAME));
                     }
@@ -68,8 +74,8 @@ class StorageIntegration extends Feature
                     $defaultData = ['disk' => $disk, 'driver' => $config['driver']];
 
                     return $originalFilesystem instanceof CloudFilesystem
-                        ? new TracingCloudFilesystem($originalFilesystem, $defaultData)
-                        : new TracingFilesystem($originalFilesystem, $defaultData);
+                        ? new TracingCloudFilesystem($originalFilesystem, $defaultData, $recordSpans, $recordBreadcrumbs)
+                        : new TracingFilesystem($originalFilesystem, $defaultData, $recordSpans, $recordBreadcrumbs);
                 }
             );
         });

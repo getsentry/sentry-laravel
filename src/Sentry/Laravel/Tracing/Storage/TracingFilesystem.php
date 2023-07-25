@@ -3,6 +3,8 @@
 namespace Sentry\Laravel\Tracing\Storage;
 
 use Illuminate\Contracts\Filesystem\Filesystem;
+use Sentry\Breadcrumb;
+use Sentry\Laravel\Integration;
 use Sentry\Laravel\Util\Filesize;
 use Sentry\Tracing\SpanContext;
 use function Sentry\trace;
@@ -22,10 +24,18 @@ class TracingFilesystem implements Filesystem
     /** @var array */
     protected $defaultData;
 
-    public function __construct(Filesystem $filesystem, array $defaultData)
+    /** @var bool */
+    protected $recordSpans;
+
+    /** @var bool */
+    protected $recordBreadcrumbs;
+
+    public function __construct(Filesystem $filesystem, array $defaultData, bool $recordSpans, bool $recordBreadcrumbs)
     {
         $this->filesystem = $filesystem;
         $this->defaultData = $defaultData;
+        $this->recordSpans = $recordSpans;
+        $this->recordBreadcrumbs = $recordBreadcrumbs;
     }
 
     /**
@@ -34,14 +44,31 @@ class TracingFilesystem implements Filesystem
      */
     protected function withTracing(string $method, array $args, string $description, array $data)
     {
-        $context = new SpanContext;
-        $context->setOp("file.{$method}"); // See https://develop.sentry.dev/sdk/performance/span-operations/#web-server
-        $context->setData(array_merge($this->defaultData, $data));
-        $context->setDescription($description);
+        $op = "file.{$method}"; // See https://develop.sentry.dev/sdk/performance/span-operations/#web-server
+        $data = array_merge($this->defaultData, $data);
 
-        return trace(function () use ($method, $args) {
-            return $this->filesystem->{$method}(...$args);
-        }, $context);
+        if ($this->recordBreadcrumbs) {
+            Integration::addBreadcrumb(new Breadcrumb(
+                Breadcrumb::LEVEL_INFO,
+                Breadcrumb::TYPE_DEFAULT,
+                $op,
+                $description,
+                $data
+            ));
+        }
+
+        if ($this->recordSpans) {
+            $spanContext = new SpanContext;
+            $spanContext->setOp($op);
+            $spanContext->setData($data);
+            $spanContext->setDescription($description);
+
+            return trace(function () use ($method, $args) {
+                return $this->filesystem->{$method}(...$args);
+            }, $spanContext);
+        }
+
+        return $this->filesystem->{$method}(...$args);
     }
 
     /** @see \Illuminate\Filesystem\FilesystemAdapter::assertExists() */
