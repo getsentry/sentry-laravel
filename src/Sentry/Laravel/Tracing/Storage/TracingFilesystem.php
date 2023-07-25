@@ -128,14 +128,14 @@ class TracingFilesystem implements Filesystem
 
     public function prepend($path, $data)
     {
-        $description = sprintf('%s (%s)', $path, Filesize::toHuman(strlen($data)));
+        $description = is_string($data) ? sprintf('%s (%s)', $path, Filesize::toHuman(strlen($data))) : $path;
 
         return $this->withTracing(__FUNCTION__, func_get_args(), $description, compact('path'));
     }
 
     public function append($path, $data)
     {
-        $description = sprintf('%s (%s)', $path, Filesize::toHuman(strlen($data)));
+        $description = is_string($data) ? sprintf('%s (%s)', $path, Filesize::toHuman(strlen($data))) : $path;
 
         return $this->withTracing(__FUNCTION__, func_get_args(), $description, compact('path'));
     }
