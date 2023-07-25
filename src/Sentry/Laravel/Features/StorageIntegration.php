@@ -65,9 +65,11 @@ class StorageIntegration extends Feature
 
                     $originalFilesystem = $diskResolver($disk, $config);
 
+                    $defaultData = ['disk' => $disk, 'driver' => $config['driver']];
+
                     return $originalFilesystem instanceof CloudFilesystem
-                        ? new TracingCloudFilesystem($originalFilesystem, $disk, $config['driver'])
-                        : new TracingFilesystem($originalFilesystem, $disk, $config['driver']);
+                        ? new TracingCloudFilesystem($originalFilesystem, $defaultData)
+                        : new TracingFilesystem($originalFilesystem, $defaultData);
                 }
             );
         });
