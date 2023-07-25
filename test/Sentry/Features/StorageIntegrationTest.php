@@ -57,6 +57,24 @@ class StorageIntegrationTest extends TestCase
         $this->assertSame(['paths' => ['foo', 'bar'], 'disk' => 'local', 'driver' => 'local'], $span->getData());
     }
 
+    public function testDoesntCreateSpansWhenDisabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.storage' => false,
+        ]);
+
+        $hub = $this->getHubFromContainer();
+
+        $transaction = $hub->startTransaction(new TransactionContext);
+        $transaction->initSpanRecorder();
+
+        $this->getCurrentScope()->setSpan($transaction);
+
+        Storage::get('foo');
+
+        $this->assertCount(1, $transaction->getSpanRecorder()->getSpans());
+    }
+
     public function testCreatesBreadcrumbsFor(): void
     {
         Storage::put('foo', 'bar');
@@ -97,5 +115,16 @@ class StorageIntegrationTest extends TestCase
         $this->assertSame('file.delete', $span->getCategory());
         $this->assertSame('2 paths', $span->getMessage());
         $this->assertSame(['paths' => ['foo', 'bar'], 'disk' => 'local', 'driver' => 'local'], $span->getMetadata());
+    }
+
+    public function testDoesntCreateBreadcrumbsWhenDisabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.breadcrumbs.storage' => false,
+        ]);
+
+        Storage::get('foo');
+
+        $this->assertCount(0, $this->getCurrentBreadcrumbs());
     }
 }
