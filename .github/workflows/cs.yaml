@@ -1,4 +1,4 @@
-name: Code style
+name: CS
 
 on:
   pull_request:

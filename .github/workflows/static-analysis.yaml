@@ -1,4 +1,4 @@
-name: Code style and static analysis
+name: Static Analysis
 
 on:
   pull_request:
