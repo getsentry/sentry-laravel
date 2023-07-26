@@ -12,21 +12,20 @@ class Filesize
      *
      * Credit: https://stackoverflow.com/a/23888858/1580028
      *
-     * @param int $bytes
-     * @param int $dec
+     * @param int $bytes    The amount of bytes to convert to human readable format.
+     * @param int $decimals The number of decimals to use in the resulting string.
      *
      * @return string
      */
-    public static function toHuman(int $bytes, int $dec = 2): string
+    public static function toHuman(int $bytes, int $decimals = 2): string
     {
         $size   = ['B', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-        $factor = floor((strlen($bytes) - 1) / 3);
+        $factor = (int)floor((strlen($bytes) - 1) / 3);
 
-        if ($factor == 0) {
-            $dec = 0;
+        if ($factor === 0) {
+            $decimals = 0;
         }
 
-        return sprintf("%.{$dec}f %s", $bytes / (1024 ** $factor), $size[$factor]);
-
+        return sprintf("%.{$decimals}f %s", $bytes / (1024 ** $factor), $size[$factor]);
     }
 }

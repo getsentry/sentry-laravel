@@ -18,8 +18,8 @@ class StorageIntegration extends Feature
 
     public function isApplicable(): bool
     {
-        return $this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY)
-               || $this->isTracingFeatureEnabled(self::FEATURE_KEY);
+        return $this->isTracingFeatureEnabled(self::FEATURE_KEY)
+            || $this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY);
     }
 
     public function setup(): void
@@ -38,13 +38,10 @@ class StorageIntegration extends Feature
             ]);
         }
 
-        $recordSpans = $this->isTracingFeatureEnabled(self::FEATURE_KEY);
-        $recordBreadcrumbs = $this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY);
-
-        $this->container()->afterResolving(FilesystemManager::class, static function (FilesystemManager $filesystemManager) use ($recordSpans, $recordBreadcrumbs): void {
+        $this->container()->afterResolving(FilesystemManager::class, function (FilesystemManager $filesystemManager): void {
             $filesystemManager->extend(
                 self::STORAGE_DRIVER_NAME,
-                static function (Application $application, array $config) use ($filesystemManager, $recordSpans, $recordBreadcrumbs): Filesystem {
+                function (Application $application, array $config) use ($filesystemManager): Filesystem {
                     if (empty($config['sentry_disk_name'])) {
                         throw new RuntimeException(sprintf('Missing `sentry_disk_name` config key for `%s` filesystem driver.', self::STORAGE_DRIVER_NAME));
                     }
@@ -72,6 +69,9 @@ class StorageIntegration extends Feature
                     $originalFilesystem = $diskResolver($disk, $config);
 
                     $defaultData = ['disk' => $disk, 'driver' => $config['driver']];
+
+                    $recordSpans = $this->isTracingFeatureEnabled(self::FEATURE_KEY);
+                    $recordBreadcrumbs = $this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY);
 
                     return $originalFilesystem instanceof CloudFilesystem
                         ? new TracingCloudFilesystem($originalFilesystem, $defaultData, $recordSpans, $recordBreadcrumbs)
