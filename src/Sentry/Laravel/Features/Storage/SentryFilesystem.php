@@ -1,6 +1,6 @@
 <?php
 
-namespace Sentry\Laravel\Tracing\Storage;
+namespace Sentry\Laravel\Features\Storage;
 
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Sentry\Breadcrumb;
@@ -16,7 +16,7 @@ use function Sentry\trace;
  * parameters that contain file contents are omitted due to potential problems with
  * payload size or sensitive data.
  */
-class TracingFilesystem implements Filesystem
+class SentryFilesystem implements Filesystem
 {
     /** @var Filesystem */
     protected $filesystem;
@@ -39,10 +39,14 @@ class TracingFilesystem implements Filesystem
     }
 
     /**
+     * Execute the method on the underlying filesystem and wrap it with tracing and log a breadcrumb.
+     *
      * @param list<mixed> $args
      * @param array<string, mixed> $data
+     *
+     * @return mixed
      */
-    protected function withTracing(string $method, array $args, string $description, array $data)
+    protected function withSentry(string $method, array $args, string $description, array $data)
     {
         $op = "file.{$method}"; // See https://develop.sentry.dev/sdk/performance/span-operations/#web-server
         $data = array_merge($data, $this->defaultData);
@@ -74,70 +78,70 @@ class TracingFilesystem implements Filesystem
     /** @see \Illuminate\Filesystem\FilesystemAdapter::assertExists() */
     public function assertExists($path, $content = null)
     {
-        return $this->withTracing(__FUNCTION__, func_get_args(), $path, compact('path'));
+        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path'));
     }
 
     /** @see \Illuminate\Filesystem\FilesystemAdapter::assertMissing() */
     public function assertMissing($path)
     {
-        return $this->withTracing(__FUNCTION__, func_get_args(), $path, compact('path'));
+        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path'));
     }
 
     /** @see \Illuminate\Filesystem\FilesystemAdapter::assertDirectoryEmpty() */
     public function assertDirectoryEmpty($path)
     {
-        return $this->withTracing(__FUNCTION__, func_get_args(), $path, compact('path'));
+        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path'));
     }
 
     public function exists($path)
     {
-        return $this->withTracing(__FUNCTION__, func_get_args(), $path, compact('path'));
+        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path'));
     }
 
     public function get($path)
     {
-        return $this->withTracing(__FUNCTION__, func_get_args(), $path, compact('path'));
+        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path'));
     }
 
     public function readStream($path)
     {
-        return $this->withTracing(__FUNCTION__, func_get_args(), $path, compact('path'));
+        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path'));
     }
 
     public function put($path, $contents, $options = [])
     {
         $description = is_string($contents) ? sprintf('%s (%s)', $path, Filesize::toHuman(strlen($contents))) : $path;
 
-        return $this->withTracing(__FUNCTION__, func_get_args(), $description, compact('path', 'options'));
+        return $this->withSentry(__FUNCTION__, func_get_args(), $description, compact('path', 'options'));
     }
 
     public function writeStream($path, $resource, array $options = [])
     {
-        return $this->withTracing(__FUNCTION__, func_get_args(), $path, compact('path', 'options'));
+        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path', 'options'));
     }
 
     public function getVisibility($path)
     {
-        return $this->withTracing(__FUNCTION__, func_get_args(), $path, compact('path'));
+        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path'));
     }
 
     public function setVisibility($path, $visibility)
     {
-        return $this->withTracing(__FUNCTION__, func_get_args(), $path, compact('path', 'visibility'));
+        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path', 'visibility'));
     }
 
     public function prepend($path, $data)
     {
         $description = is_string($data) ? sprintf('%s (%s)', $path, Filesize::toHuman(strlen($data))) : $path;
 
-        return $this->withTracing(__FUNCTION__, func_get_args(), $description, compact('path'));
+        return $this->withSentry(__FUNCTION__, func_get_args(), $description, compact('path'));
     }
 
     public function append($path, $data)
     {
         $description = is_string($data) ? sprintf('%s (%s)', $path, Filesize::toHuman(strlen($data))) : $path;
 
-        return $this->withTracing(__FUNCTION__, func_get_args(), $description, compact('path'));
+        return $this->withSentry(__FUNCTION__, func_get_args(), $description, compact('path'));
     }
 
     public function delete($paths)
@@ -150,57 +154,57 @@ class TracingFilesystem implements Filesystem
             $description = $paths;
         }
 
-        return $this->withTracing(__FUNCTION__, func_get_args(), $description, $data);
+        return $this->withSentry(__FUNCTION__, func_get_args(), $description, $data);
     }
 
     public function copy($from, $to)
     {
-        return $this->withTracing(__FUNCTION__, func_get_args(), sprintf('from "%s" to "%s"', $from, $to), compact('from', 'to'));
+        return $this->withSentry(__FUNCTION__, func_get_args(), sprintf('from "%s" to "%s"', $from, $to), compact('from', 'to'));
     }
 
     public function move($from, $to)
     {
-        return $this->withTracing(__FUNCTION__, func_get_args(), sprintf('from "%s" to "%s"', $from, $to), compact('from', 'to'));
+        return $this->withSentry(__FUNCTION__, func_get_args(), sprintf('from "%s" to "%s"', $from, $to), compact('from', 'to'));
     }
 
     public function size($path)
     {
-        return $this->withTracing(__FUNCTION__, func_get_args(), $path, compact('path'));
+        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path'));
     }
 
     public function lastModified($path)
     {
-        return $this->withTracing(__FUNCTION__, func_get_args(), $path, compact('path'));
+        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path'));
     }
 
     public function files($directory = null, $recursive = false)
     {
-        return $this->withTracing(__FUNCTION__, func_get_args(), $directory, compact('directory', 'recursive'));
+        return $this->withSentry(__FUNCTION__, func_get_args(), $directory, compact('directory', 'recursive'));
     }
 
     public function allFiles($directory = null)
     {
-        return $this->withTracing(__FUNCTION__, func_get_args(), $directory, compact('directory'));
+        return $this->withSentry(__FUNCTION__, func_get_args(), $directory, compact('directory'));
     }
 
     public function directories($directory = null, $recursive = false)
     {
-        return $this->withTracing(__FUNCTION__, func_get_args(), $directory, compact('directory', 'recursive'));
+        return $this->withSentry(__FUNCTION__, func_get_args(), $directory, compact('directory', 'recursive'));
     }
 
     public function allDirectories($directory = null)
     {
-        return $this->withTracing(__FUNCTION__, func_get_args(), $directory, compact('directory'));
+        return $this->withSentry(__FUNCTION__, func_get_args(), $directory, compact('directory'));
     }
 
     public function makeDirectory($path)
     {
-        return $this->withTracing(__FUNCTION__, func_get_args(), $path, compact('path'));
+        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path'));
     }
 
     public function deleteDirectory($directory)
     {
-        return $this->withTracing(__FUNCTION__, func_get_args(), $directory, compact('directory'));
+        return $this->withSentry(__FUNCTION__, func_get_args(), $directory, compact('directory'));
     }
 
     public function __call($name, $arguments)

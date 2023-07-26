@@ -1,16 +1,15 @@
 <?php
 
-namespace Sentry\Laravel\Features;
+namespace Sentry\Laravel\Features\Storage;
 
 use Illuminate\Contracts\Filesystem\Cloud as CloudFilesystem;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Filesystem\FilesystemManager;
 use RuntimeException;
-use Sentry\Laravel\Tracing\Storage\TracingCloudFilesystem;
-use Sentry\Laravel\Tracing\Storage\TracingFilesystem;
+use Sentry\Laravel\Features\Feature;
 
-class StorageIntegration extends Feature
+class Integration extends Feature
 {
     private const FEATURE_KEY = 'storage';
 
@@ -74,8 +73,8 @@ class StorageIntegration extends Feature
                     $recordBreadcrumbs = $this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY);
 
                     return $originalFilesystem instanceof CloudFilesystem
-                        ? new TracingCloudFilesystem($originalFilesystem, $defaultData, $recordSpans, $recordBreadcrumbs)
-                        : new TracingFilesystem($originalFilesystem, $defaultData, $recordSpans, $recordBreadcrumbs);
+                        ? new SentryCloudFilesystem($originalFilesystem, $defaultData, $recordSpans, $recordBreadcrumbs)
+                        : new SentryFilesystem($originalFilesystem, $defaultData, $recordSpans, $recordBreadcrumbs);
                 }
             );
         });

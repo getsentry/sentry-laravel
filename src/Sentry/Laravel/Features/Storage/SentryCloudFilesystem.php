@@ -1,10 +1,10 @@
 <?php
 
-namespace Sentry\Laravel\Tracing\Storage;
+namespace Sentry\Laravel\Features\Storage;
 
 use Illuminate\Contracts\Filesystem\Cloud as CloudFilesystem;
 
-class TracingCloudFilesystem extends TracingFilesystem implements CloudFilesystem
+class SentryCloudFilesystem extends SentryFilesystem implements CloudFilesystem
 {
     /** @var CloudFilesystem */
     protected $filesystem;
@@ -16,6 +16,6 @@ class TracingCloudFilesystem extends TracingFilesystem implements CloudFilesyste
 
     public function url($path)
     {
-        return $this->withTracing(__FUNCTION__, func_get_args(), $path, compact('path'));
+        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path'));
     }
 }
