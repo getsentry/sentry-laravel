@@ -19,6 +19,9 @@ return [
         // Capture Laravel cache events in breadcrumbs
         'cache' => true,
 
+        // Capture storage access as breadcrumbs
+        'storage' => true,
+
         // Capture Livewire components in breadcrumbs
         'livewire' => true,
 
@@ -26,7 +29,7 @@ return [
         'sql_queries' => true,
 
         // Capture bindings on SQL queries logged in breadcrumbs
-        'sql_bindings' => true,
+        'sql_bindings' => false,
 
         // Capture queue job information in breadcrumbs
         'queue_info' => true,
@@ -53,6 +56,9 @@ return [
 
         // Capture views as spans
         'views' => true,
+
+        // Capture storage access as spans
+        'storage' => true,
 
         // Capture Livewire components as spans
         'livewire' => true,

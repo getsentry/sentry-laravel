@@ -53,6 +53,6 @@ final class ViewEngineDecorator implements Engine
 
     public function __call($name, $arguments)
     {
-        return call_user_func_array([$this->engine, $name], $arguments);
+        return $this->engine->{$name}(...$arguments);
     }
 }

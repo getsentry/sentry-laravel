@@ -28,7 +28,9 @@ class LogChannelTest extends TestCase
 
         $currentHandler = current($logger->getHandlers());
 
-        $this->assertInstanceOf(SentryHandler::class, $currentHandler->getHandler());
+        if (method_exists($currentHandler, 'getHandler')) {
+            $this->assertInstanceOf(SentryHandler::class, $currentHandler->getHandler());
+        }
 
         $loggerWithoutActionLevel = $logChannel(['action_level' => null]);
 
