@@ -17,6 +17,21 @@ return [
     // When left empty or `null` the Laravel environment will be used (usually discovered from `APP_ENV` in your `.env`)
     'environment' => env('SENTRY_ENVIRONMENT'),
 
+    // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#sample-rate
+    'sample_rate' => env('SENTRY_SAMPLE_RATE') === null ? 1.0 : (float)env('SENTRY_SAMPLE_RATE'),
+
+    // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#traces-sample-rate
+    'traces_sample_rate' => env('SENTRY_TRACES_SAMPLE_RATE') === null ? null : (float)env('SENTRY_TRACES_SAMPLE_RATE'),
+
+    // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#traces-sample-rate
+    'traces_sample_rate' => env('SENTRY_TRACES_SAMPLE_RATE') === null ? null : (float)env('SENTRY_TRACES_SAMPLE_RATE'),
+    
+    // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#profiles-sample-rate
+    'profiles_sample_rate' => env('SENTRY_PROFILES_SAMPLE_RATE') === null ? null : (float)env('SENTRY_PROFILES_SAMPLE_RATE'),
+
+    // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#send-default-pii
+    'send_default_pii' => env('SENTRY_SEND_DEFAULT_PII', false),
+
     // Breadcrumb specific configuration
     'breadcrumbs' => [
         // Capture Laravel logs as breadcrumbs
@@ -83,14 +98,5 @@ return [
         // Enable the tracing integrations supplied by Sentry (recommended)
         'default_integrations' => env('SENTRY_TRACE_DEFAULT_INTEGRATIONS_ENABLED', true),
     ],
-
-    // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#send-default-pii
-    'send_default_pii' => env('SENTRY_SEND_DEFAULT_PII', false),
-
-    // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#traces-sample-rate
-    'traces_sample_rate' => env('SENTRY_TRACES_SAMPLE_RATE') === null ? null : (float)env('SENTRY_TRACES_SAMPLE_RATE'),
-
-    // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#profiles-sample-rate
-    'profiles_sample_rate' => env('SENTRY_PROFILES_SAMPLE_RATE') === null ? null : (float)env('SENTRY_PROFILES_SAMPLE_RATE'),
 
 ];
