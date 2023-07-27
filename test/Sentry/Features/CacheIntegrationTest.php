@@ -1,6 +1,6 @@
 <?php
 
-namespace Sentry\Features;
+namespace Sentry\Laravel\Tests\Features;
 
 use Illuminate\Support\Facades\Cache;
 use Sentry\Laravel\Tests\TestCase;
@@ -36,7 +36,7 @@ class CacheIntegrationTest extends TestCase
         $this->assertEquals("Missed: {$key}", $this->getLastBreadcrumb()->getMessage());
     }
 
-    public function testCacheBreadcrumIsNotRecordedWhenDisabled(): void
+    public function testCacheBreadcrumbIsNotRecordedWhenDisabled(): void
     {
         $this->resetApplicationWithConfig([
             'sentry.breadcrumbs.cache' => false,
