@@ -8,6 +8,7 @@ use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Http\Request;
 use Psr\Http\Message\ServerRequestInterface;
 use Sentry\State\HubInterface;
+use Throwable;
 
 /**
  * This middleware caches a PSR-7 version of the request as early as possible.
@@ -36,6 +37,8 @@ class SetRequestMiddleware
             return $container->make(ServerRequestInterface::class);
         } catch (BindingResolutionException $e) {
             // This happens if Laravel doesn't have the correct classes available to construct the PSR-7 object
+        } catch (Throwable $e) {
+            // Do not crash if there is an exception thrown while resolving the request object
         }
 
         return null;
