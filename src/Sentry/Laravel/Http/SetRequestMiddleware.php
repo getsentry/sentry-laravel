@@ -35,8 +35,6 @@ class SetRequestMiddleware
     {
         try {
             return $container->make(ServerRequestInterface::class);
-        } catch (BindingResolutionException $e) {
-            // This happens if Laravel doesn't have the correct classes available to construct the PSR-7 object
         } catch (Throwable $e) {
             // Do not crash if there is an exception thrown while resolving the request object
         }
