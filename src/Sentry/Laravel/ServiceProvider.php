@@ -86,7 +86,7 @@ class ServiceProvider extends BaseServiceProvider
         if ($this->app->runningInConsole()) {
             if ($this->app instanceof Laravel) {
                 $this->publishes([
-                    __DIR__ . '/../../../config/sentry.php' => config_path(static::$abstract . '.php'),
+                    __DIR__.'/../../../config/sentry.php' => config_path(static::$abstract.'.php'),
                 ], 'config');
             }
 
@@ -103,7 +103,7 @@ class ServiceProvider extends BaseServiceProvider
             $this->app->configure(static::$abstract);
         }
 
-        $this->mergeConfigFrom(__DIR__ . '/../../../config/sentry.php', static::$abstract);
+        $this->mergeConfigFrom(__DIR__.'/../../../config/sentry.php', static::$abstract);
 
         $this->configureAndRegisterClient();
 
@@ -297,8 +297,6 @@ class ServiceProvider extends BaseServiceProvider
 
     /**
      * Resolve the integrations from the user configuration with the container.
-     *
-     * @return array
      */
     private function resolveIntegrationsFromUserConfig(): array
     {
@@ -324,7 +322,7 @@ class ServiceProvider extends BaseServiceProvider
             } elseif (\is_string($userIntegration)) {
                 $resolvedIntegration = $this->app->make($userIntegration);
 
-                if (!$resolvedIntegration instanceof SdkIntegration\IntegrationInterface) {
+                if (! $resolvedIntegration instanceof SdkIntegration\IntegrationInterface) {
                     throw new RuntimeException(
                         sprintf(
                             'Sentry integrations must be an instance of `%s` got `%s`.',

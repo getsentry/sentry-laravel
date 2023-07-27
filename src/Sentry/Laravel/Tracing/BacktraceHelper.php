@@ -2,10 +2,10 @@
 
 namespace Sentry\Laravel\Tracing;
 
-use Sentry\Frame;
-use Sentry\Options;
-use Sentry\FrameBuilder;
 use Illuminate\Support\Str;
+use Sentry\Frame;
+use Sentry\FrameBuilder;
+use Sentry\Options;
 use Sentry\Serializer\RepresentationSerializerInterface;
 
 class BacktraceHelper
@@ -23,8 +23,8 @@ class BacktraceHelper
     /**
      * Constructor.
      *
-     * @param Options                           $options                  The SDK client options
-     * @param RepresentationSerializerInterface $representationSerializer The representation serializer
+     * @param  Options  $options                  The SDK client options
+     * @param  RepresentationSerializerInterface  $representationSerializer The representation serializer
      */
     public function __construct(Options $options, RepresentationSerializerInterface $representationSerializer)
     {
@@ -35,7 +35,7 @@ class BacktraceHelper
     /**
      * Find the first in app frame for a given backtrace.
      *
-     * @param array<int, array<string, mixed>> $backtrace The backtrace
+     * @param  array<int, array<string, mixed>>  $backtrace The backtrace
      *
      * @phpstan-param list<array{
      *     line?: integer,
@@ -63,20 +63,16 @@ class BacktraceHelper
 
     /**
      * Takes a frame and if it's a compiled view path returns the original view path.
-     *
-     * @param \Sentry\Frame $frame
-     *
-     * @return string|null
      */
     public function getOriginalViewPathForFrameOfCompiledViewPath(Frame $frame): ?string
     {
         // Check if we are dealing with a frame for a cached view path
-        if (!Str::startsWith($frame->getFile(), '/storage/framework/views/')) {
+        if (! Str::startsWith($frame->getFile(), '/storage/framework/views/')) {
             return null;
         }
 
         // If for some reason the file does not exists, skip resolving
-        if (!file_exists($frame->getAbsoluteFilePath())) {
+        if (! file_exists($frame->getAbsoluteFilePath())) {
             return null;
         }
 
@@ -95,7 +91,7 @@ class BacktraceHelper
     /**
      * Removes from the given file path the specified prefixes.
      *
-     * @param string $filePath The path to the file
+     * @param  string  $filePath The path to the file
      */
     private function stripPrefixFromFilePath(string $filePath): string
     {

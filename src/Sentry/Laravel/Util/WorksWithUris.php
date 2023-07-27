@@ -9,10 +9,6 @@ trait WorksWithUris
 {
     /**
      * Construct a full URI.
-     *
-     * @param string $url
-     *
-     * @return UriInterface
      */
     protected function getFullUri(string $url): UriInterface
     {
@@ -21,10 +17,6 @@ trait WorksWithUris
 
     /**
      * Construct a partial URI, excluding the authority, query and fragment parts.
-     *
-     * @param UriInterface $uri
-     *
-     * @return string
      */
     protected function getPartialUri(UriInterface $uri): string
     {

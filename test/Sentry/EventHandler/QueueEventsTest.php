@@ -4,10 +4,10 @@ namespace Sentry\Laravel\Tests\EventHandler;
 
 use Exception;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Sentry\Breadcrumb;
-use Sentry\Laravel\Tests\TestCase;
 use function Sentry\addBreadcrumb;
+use Sentry\Breadcrumb;
 use function Sentry\captureException;
+use Sentry\Laravel\Tests\TestCase;
 
 class QueueEventsTest extends TestCase
 {

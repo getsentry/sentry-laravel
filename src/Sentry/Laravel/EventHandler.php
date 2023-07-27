@@ -138,9 +138,6 @@ class EventHandler
 
     /**
      * EventHandler constructor.
-     *
-     * @param \Illuminate\Contracts\Container\Container $container
-     * @param array                                     $config
      */
     public function __construct(Container $container, array $config)
     {
@@ -187,15 +184,12 @@ class EventHandler
 
     /**
      * Pass through the event and capture any errors.
-     *
-     * @param string $method
-     * @param array  $arguments
      */
     public function __call(string $method, array $arguments)
     {
         $handlerMethod = "{$method}Handler";
 
-        if (!method_exists($this, $handlerMethod)) {
+        if (! method_exists($this, $handlerMethod)) {
             throw new RuntimeException("Missing event handler: {$handlerMethod}");
         }
 
@@ -222,7 +216,7 @@ class EventHandler
 
     protected function queryExecutedHandler(DatabaseEvents\QueryExecuted $query): void
     {
-        if (!$this->recordSqlQueries) {
+        if (! $this->recordSqlQueries) {
             return;
         }
 
@@ -247,7 +241,7 @@ class EventHandler
 
     protected function messageLoggedHandler(LogEvents\MessageLogged $logEntry): void
     {
-        if (!$this->recordLaravelLogs) {
+        if (! $this->recordLaravelLogs) {
             return;
         }
 
@@ -261,7 +255,7 @@ class EventHandler
         Integration::addBreadcrumb(new Breadcrumb(
             $this->logLevelToBreadcrumbLevel($logEntry->level),
             Breadcrumb::TYPE_DEFAULT,
-            'log.' . $logEntry->level,
+            'log.'.$logEntry->level,
             $logEntry->message,
             $logEntry->context
         ));
@@ -269,7 +263,7 @@ class EventHandler
 
     protected function httpClientResponseReceivedHandler(HttpClientEvents\ResponseReceived $event): void
     {
-        if (!$this->recordHttpClientRequests) {
+        if (! $this->recordHttpClientRequests) {
             return;
         }
 
@@ -299,7 +293,7 @@ class EventHandler
 
     protected function httpClientConnectionFailedHandler(HttpClientEvents\ConnectionFailed $event): void
     {
-        if (!$this->recordHttpClientRequests) {
+        if (! $this->recordHttpClientRequests) {
             return;
         }
 
@@ -333,9 +327,7 @@ class EventHandler
     /**
      * Configures the user scope with the user data and values from the HTTP request.
      *
-     * @param mixed $authUser
-     *
-     * @return void
+     * @param  mixed  $authUser
      */
     private function configureUserScopeFromModel($authUser): void
     {
@@ -379,7 +371,7 @@ class EventHandler
                 $scope->setTag('command', $event->command);
             });
 
-            if (!$this->recordCommandInfo) {
+            if (! $this->recordCommandInfo) {
                 return;
             }
 
@@ -387,7 +379,7 @@ class EventHandler
                 Breadcrumb::LEVEL_INFO,
                 Breadcrumb::TYPE_DEFAULT,
                 'artisan.command',
-                'Starting Artisan command: ' . $event->command,
+                'Starting Artisan command: '.$event->command,
                 [
                     'input' => $this->extractConsoleCommandInput($event->input),
                 ]
@@ -402,7 +394,7 @@ class EventHandler
                 Breadcrumb::LEVEL_INFO,
                 Breadcrumb::TYPE_DEFAULT,
                 'artisan.command',
-                'Finished Artisan command: ' . $event->command,
+                'Finished Artisan command: '.$event->command,
                 [
                     'exit' => $event->exitCode,
                     'input' => $this->extractConsoleCommandInput($event->input),
@@ -420,15 +412,11 @@ class EventHandler
 
     /**
      * Extract the command input arguments if possible.
-     *
-     * @param \Symfony\Component\Console\Input\InputInterface|null $input
-     *
-     * @return string|null
      */
     private function extractConsoleCommandInput(?InputInterface $input): ?string
     {
         if ($input instanceof ArgvInput) {
-            return (string)$input;
+            return (string) $input;
         }
 
         return null;
@@ -448,7 +436,7 @@ class EventHandler
     {
         $this->prepareScopeForOctane();
 
-        if (!$this->recordOctaneTaskInfo) {
+        if (! $this->recordOctaneTaskInfo) {
             return;
         }
 
@@ -469,7 +457,7 @@ class EventHandler
     {
         $this->prepareScopeForOctane();
 
-        if (!$this->recordOctaneTickInfo) {
+        if (! $this->recordOctaneTickInfo) {
             return;
         }
 
@@ -515,8 +503,7 @@ class EventHandler
     /**
      * Translates common log levels to Sentry breadcrumb levels.
      *
-     * @param string $level Log level. Maybe any standard.
-     *
+     * @param  string  $level Log level. Maybe any standard.
      * @return string Breadcrumb level.
      */
     private function logLevelToBreadcrumbLevel(string $level): string
@@ -564,13 +551,13 @@ class EventHandler
     /**
      * Cleanup a previously prepared scope.
      *
-     * @param bool $when Only cleanup the scope when this is true.
+     * @param  bool  $when Only cleanup the scope when this is true.
      *
      * @see prepareScopeForTaskWithinLongRunningProcess
      */
     private function cleanupScopeForTaskWithinLongRunningProcessWhen(bool $when): void
     {
-        if (!$when) {
+        if (! $when) {
             return;
         }
 

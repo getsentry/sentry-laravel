@@ -3,9 +3,9 @@
 namespace Sentry\Laravel\Tests\Tracing;
 
 use ReflectionClass;
+use RuntimeException;
 use Sentry\Laravel\Tests\TestCase;
 use Sentry\Laravel\Tracing\BacktraceHelper;
-use RuntimeException;
 use Sentry\Laravel\Tracing\EventHandler;
 
 class EventHandlerTest extends TestCase

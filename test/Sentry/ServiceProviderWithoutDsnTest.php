@@ -2,8 +2,8 @@
 
 namespace Sentry\Laravel\Tests;
 
-use Sentry\Laravel\ServiceProvider;
 use Illuminate\Routing\Events\RouteMatched;
+use Sentry\Laravel\ServiceProvider;
 
 class ServiceProviderWithoutDsnTest extends \Orchestra\Testbench\TestCase
 {

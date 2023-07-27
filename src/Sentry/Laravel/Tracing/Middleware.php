@@ -6,14 +6,13 @@ use Closure;
 use Illuminate\Contracts\Foundation\Application as LaravelApplication;
 use Illuminate\Http\Request;
 use Laravel\Lumen\Application as LumenApplication;
+use function Sentry\continueTrace;
 use Sentry\SentrySdk;
 use Sentry\State\HubInterface;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\TransactionSource;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
-
-use function Sentry\continueTrace;
 
 class Middleware
 {
@@ -62,7 +61,7 @@ class Middleware
     /**
      * Construct the Sentry tracing middleware.
      *
-     * @param LaravelApplication|LumenApplication $app
+     * @param  LaravelApplication|LumenApplication  $app
      */
     public function __construct($app, bool $continueAfterResponse = true)
     {
@@ -73,8 +72,6 @@ class Middleware
     /**
      * Handle an incoming request.
      *
-     * @param \Illuminate\Http\Request $request
-     * @param \Closure                 $next
      *
      * @return mixed
      */
@@ -90,15 +87,12 @@ class Middleware
     /**
      * Handle the application termination.
      *
-     * @param \Illuminate\Http\Request $request
-     * @param mixed                    $response
-     *
-     * @return void
+     * @param  mixed  $response
      */
     public function terminate(Request $request, $response): void
     {
         // If there is no transaction or the HubInterface is not bound in the container there is nothing for us to do
-        if ($this->transaction === null || !app()->bound(HubInterface::class)) {
+        if ($this->transaction === null || ! app()->bound(HubInterface::class)) {
             return;
         }
 
@@ -141,13 +135,11 @@ class Middleware
     /**
      * Set the timestamp of application bootstrap completion.
      *
-     * @param float|null $timestamp The unix timestamp of the booted event, default to `microtime(true)` if not `null`.
-     *
-     * @return void
+     * @param  float|null  $timestamp The unix timestamp of the booted event, default to `microtime(true)` if not `null`.
      *
      * @internal This method should only be invoked right after the application has finished "booting".
      */
-    public function setBootedTimestamp(?float $timestamp = null): void
+    public function setBootedTimestamp(float $timestamp = null): void
     {
         $this->bootedTimestamp = $timestamp ?? microtime(true);
     }
@@ -161,7 +153,7 @@ class Middleware
             $request->header('baggage', '')
         );
 
-        $requestPath = '/' . ltrim($request->path(), '/');
+        $requestPath = '/'.ltrim($request->path(), '/');
 
         $context->setOp('http.server');
         $context->setName($requestPath);
@@ -176,7 +168,7 @@ class Middleware
         $transaction = $sentry->startTransaction($context);
 
         // If this transaction is not sampled, don't set it either and stop doing work from this point on
-        if (!$transaction->getSampled()) {
+        if (! $transaction->getSampled()) {
             return;
         }
 
@@ -228,7 +220,7 @@ class Middleware
     {
         // This constant should be defined right after the composer `autoload.php` require statement in `public/index.php`
         // define('SENTRY_AUTOLOAD', microtime(true));
-        if (!defined('SENTRY_AUTOLOAD') || !SENTRY_AUTOLOAD) {
+        if (! defined('SENTRY_AUTOLOAD') || ! SENTRY_AUTOLOAD) {
             return;
         }
 

@@ -6,8 +6,8 @@ use Illuminate\Contracts\Filesystem\Filesystem;
 use Sentry\Breadcrumb;
 use Sentry\Laravel\Integration;
 use Sentry\Laravel\Util\Filesize;
-use Sentry\Tracing\SpanContext;
 use function Sentry\trace;
+use Sentry\Tracing\SpanContext;
 
 /**
  * Decorates the underlying filesystem by wrapping all calls to it with tracing.
@@ -41,9 +41,8 @@ class SentryFilesystem implements Filesystem
     /**
      * Execute the method on the underlying filesystem and wrap it with tracing and log a breadcrumb.
      *
-     * @param list<mixed> $args
-     * @param array<string, mixed> $data
-     *
+     * @param  list<mixed>  $args
+     * @param  array<string, mixed>  $data
      * @return mixed
      */
     protected function withSentry(string $method, array $args, string $description, array $data)

@@ -133,15 +133,12 @@ class EventHandler
 
     /**
      * Pass through the event and capture any errors.
-     *
-     * @param string $method
-     * @param array  $arguments
      */
     public function __call(string $method, array $arguments)
     {
         $handlerMethod = "{$method}Handler";
 
-        if (!method_exists($this, $handlerMethod)) {
+        if (! method_exists($this, $handlerMethod)) {
             throw new RuntimeException("Missing tracing event handler: {$handlerMethod}");
         }
 
@@ -168,7 +165,7 @@ class EventHandler
 
     protected function queryExecutedHandler(DatabaseEvents\QueryExecuted $query): void
     {
-        if (!$this->traceSqlQueries) {
+        if (! $this->traceSqlQueries) {
             return;
         }
 
@@ -198,8 +195,6 @@ class EventHandler
 
     /**
      * Try to find the origin of the SQL query that was just executed.
-     *
-     * @return string|null
      */
     private function resolveQueryOriginFromBacktrace(): ?string
     {
@@ -282,7 +277,7 @@ class EventHandler
 
     protected function httpClientRequestSendingHandler(HttpClientEvents\RequestSending $event): void
     {
-        if (!$this->traceHttpClientRequests) {
+        if (! $this->traceHttpClientRequests) {
             return;
         }
 
@@ -299,7 +294,7 @@ class EventHandler
         $partialUri = $this->getPartialUri($fullUri);
 
         $context->setOp('http.client');
-        $context->setDescription($event->request->method() . ' ' . $partialUri);
+        $context->setDescription($event->request->method().' '.$partialUri);
         $context->setData([
             'url' => $partialUri,
             'method' => $event->request->method(),
@@ -312,7 +307,7 @@ class EventHandler
 
     protected function httpClientResponseReceivedHandler(HttpClientEvents\ResponseReceived $event): void
     {
-        if (!$this->traceHttpClientRequests) {
+        if (! $this->traceHttpClientRequests) {
             return;
         }
 
@@ -326,7 +321,7 @@ class EventHandler
 
     protected function httpClientConnectionFailedHandler(HttpClientEvents\ConnectionFailed $event): void
     {
-        if (!$this->traceHttpClientRequests) {
+        if (! $this->traceHttpClientRequests) {
             return;
         }
 

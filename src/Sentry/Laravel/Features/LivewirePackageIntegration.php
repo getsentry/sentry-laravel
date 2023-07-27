@@ -23,7 +23,7 @@ class LivewirePackageIntegration extends Feature
 
     public function isApplicable(): bool
     {
-        if (!class_exists(LivewireManager::class)) {
+        if (! class_exists(LivewireManager::class)) {
             return false;
         }
 
@@ -77,7 +77,7 @@ class LivewirePackageIntegration extends Feature
 
     public function handleComponentBooted(Component $component, Request $request): void
     {
-        if (!$this->isLivewireRequest()) {
+        if (! $this->isLivewireRequest()) {
             return;
         }
 

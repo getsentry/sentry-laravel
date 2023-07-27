@@ -35,7 +35,7 @@ abstract class Feature
     private $isBreadcrumbFeatureEnabled;
 
     /**
-     * @param Container $container The Laravel application container.
+     * @param  Container  $container The Laravel application container.
      */
     public function __construct(Container $container)
     {
@@ -44,8 +44,6 @@ abstract class Feature
 
     /**
      * Indicates if the feature is applicable to the current environment.
-     *
-     * @return bool
      */
     abstract public function isApplicable(): bool;
 
@@ -79,8 +77,6 @@ abstract class Feature
 
     /**
      * Retrieve the Laravel application container.
-     *
-     * @return Container
      */
     protected function container(): Container
     {
@@ -89,8 +85,6 @@ abstract class Feature
 
     /**
      * Retrieve the user configuration.
-     *
-     * @return array
      */
     protected function getUserConfig(): array
     {

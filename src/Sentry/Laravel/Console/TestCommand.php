@@ -40,8 +40,6 @@ class TestCommand extends Command
 
     /**
      * Execute the console command.
-     *
-     * @return int
      */
     public function handle(): int
     {
@@ -66,14 +64,14 @@ class TestCommand extends Command
                 : $laravelClient->getOptions()->getDsn();
 
             if ($dsnObject !== null) {
-                $dsn = (string)$dsnObject;
+                $dsn = (string) $dsnObject;
 
                 $this->info('DSN discovered from Laravel config or `.env` file!');
             }
         }
 
         // No DSN found from the command line or config
-        if (!$dsn) {
+        if (! $dsn) {
             $this->error('Could not discover DSN!');
 
             $this->printDebugTips();
@@ -99,7 +97,8 @@ class TestCommand extends Command
         $clientBuilder->setSdkVersion(Version::SDK_VERSION);
 
         // We set a logger so we can surface errors thrown internally by the SDK
-        $clientBuilder->setLogger(new class($this) extends AbstractLogger {
+        $clientBuilder->setLogger(new class($this) extends AbstractLogger
+        {
             private $command;
 
             public function __construct(TestCommand $command)
@@ -123,7 +122,7 @@ class TestCommand extends Command
 
         $eventId = $hub->captureException($exception);
 
-        if (!$eventId) {
+        if (! $eventId) {
             $this->error('There was an error sending the event.');
 
             $this->printDebugTips();
@@ -154,7 +153,7 @@ class TestCommand extends Command
             $span->finish();
             $transactionId = $transaction->finish();
 
-            if (!$transactionId) {
+            if (! $transactionId) {
                 $this->error('There was an error sending the transaction.');
 
                 $this->printDebugTips();
@@ -172,11 +171,6 @@ class TestCommand extends Command
 
     /**
      * Generate a test exception to send to Sentry.
-     *
-     * @param $command
-     * @param $arg
-     *
-     * @return \Exception
      */
     protected function generateTestException($command, $arg): Exception
     {

@@ -8,7 +8,6 @@ use Illuminate\Routing\Route;
 use Mockery;
 use RuntimeException;
 use Sentry\Event;
-use Sentry\ExceptionMechanism;
 use Sentry\Laravel\Integration;
 use Sentry\State\Scope;
 use Sentry\Tracing\TransactionSource;

@@ -4,7 +4,6 @@ namespace Sentry\Laravel\Tracing;
 
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Contracts\Events\Dispatcher;
-use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
 use Illuminate\Contracts\View\Engine;
 use Illuminate\Contracts\View\View;
@@ -29,11 +28,11 @@ class ServiceProvider extends BaseServiceProvider
     public function boot(): void
     {
         // If there is no DSN set we register nothing since it's impossible for us to send traces without a DSN set
-        if (!$this->hasDsnSet()) {
+        if (! $this->hasDsnSet()) {
             return;
         }
 
-        if (!$this->app instanceof Lumen) {
+        if (! $this->app instanceof Lumen) {
             $this->app->booted(function () {
                 $this->app->make(Middleware::class)->setBootedTimestamp();
             });

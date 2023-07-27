@@ -2,10 +2,10 @@
 
 namespace Sentry\Laravel\Tests;
 
+use Orchestra\Testbench\TestCase;
 use ReflectionClass;
 use RuntimeException;
 use Sentry\Laravel\EventHandler;
-use Orchestra\Testbench\TestCase;
 
 class EventHandlerTest extends TestCase
 {

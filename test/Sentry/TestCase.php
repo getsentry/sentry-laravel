@@ -3,17 +3,17 @@
 namespace Sentry\Laravel\Tests;
 
 use Illuminate\Contracts\Debug\ExceptionHandler;
+use Orchestra\Testbench\TestCase as LaravelTestCase;
 use ReflectionMethod;
+use ReflectionProperty;
 use Sentry\Breadcrumb;
 use Sentry\ClientInterface;
 use Sentry\Event;
 use Sentry\EventHint;
-use Sentry\State\Scope;
-use ReflectionProperty;
+use Sentry\Laravel\ServiceProvider;
 use Sentry\Laravel\Tracing;
 use Sentry\State\HubInterface;
-use Sentry\Laravel\ServiceProvider;
-use Orchestra\Testbench\TestCase as LaravelTestCase;
+use Sentry\State\Scope;
 
 abstract class TestCase extends LaravelTestCase
 {

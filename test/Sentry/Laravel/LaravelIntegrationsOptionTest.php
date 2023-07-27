@@ -4,10 +4,10 @@ namespace Sentry\Laravel\Tests\Laravel;
 
 use Illuminate\Contracts\Container\BindingResolutionException;
 use RuntimeException;
-use Sentry\Integration\IntegrationInterface;
 use Sentry\Integration\ErrorListenerIntegration;
 use Sentry\Integration\ExceptionListenerIntegration;
 use Sentry\Integration\FatalErrorListenerIntegration;
+use Sentry\Integration\IntegrationInterface;
 use Sentry\Laravel\Tests\TestCase;
 
 class LaravelIntegrationsOptionTest extends TestCase

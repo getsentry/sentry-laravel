@@ -45,13 +45,13 @@ class LighthouseIntegration implements IntegrationInterface
 
     public function __construct(EventDispatcher $eventDispatcher, bool $ignoreOperationName = false)
     {
-        $this->eventDispatcher     = $eventDispatcher;
+        $this->eventDispatcher = $eventDispatcher;
         $this->ignoreOperationName = $ignoreOperationName;
     }
 
     public function setupOnce(): void
     {
-        if (!$this->isApplicable()) {
+        if (! $this->isApplicable()) {
             return;
         }
 
@@ -80,14 +80,14 @@ class LighthouseIntegration implements IntegrationInterface
     private function processEvent(Event $event, Options $options): void
     {
         // Detect if we are processing a GraphQL request, if not skip processing the event
-        if (!Str::startsWith($event->getTransaction(), 'lighthouse?')) {
+        if (! Str::startsWith($event->getTransaction(), 'lighthouse?')) {
             return;
         }
 
         $requestData = $event->getRequest();
 
         // Make sure we have the request data and it contains the query
-        if (!isset($requestData['data']['query'])) {
+        if (! isset($requestData['data']['query'])) {
             return;
         }
 
@@ -108,8 +108,8 @@ class LighthouseIntegration implements IntegrationInterface
         $context = new SpanContext;
         $context->setOp('graphql.request');
 
-        $this->operations    = [];
-        $this->requestSpan   = $this->previousSpan->startChild($context);
+        $this->operations = [];
+        $this->requestSpan = $this->previousSpan->startChild($context);
         $this->operationSpan = null;
 
         SentrySdk::getCurrentHub()->setSpan($this->requestSpan);
@@ -121,14 +121,14 @@ class LighthouseIntegration implements IntegrationInterface
             return;
         }
 
-        if (!$startExecution->query instanceof DocumentNode) {
+        if (! $startExecution->query instanceof DocumentNode) {
             return;
         }
 
         /** @var \GraphQL\Language\AST\OperationDefinitionNode|null $operationDefinition */
         $operationDefinition = $startExecution->query->definitions[0] ?? null;
 
-        if (!$operationDefinition instanceof OperationDefinitionNode) {
+        if (! $operationDefinition instanceof OperationDefinitionNode) {
             return;
         }
 
@@ -182,7 +182,7 @@ class LighthouseIntegration implements IntegrationInterface
         $groupedOperations = [];
 
         foreach ($this->operations as [$operationName, $operation]) {
-            if (!isset($groupedOperations[$operation->operation])) {
+            if (! isset($groupedOperations[$operation->operation])) {
                 $groupedOperations[$operation->operation] = [];
             }
 
@@ -203,12 +203,12 @@ class LighthouseIntegration implements IntegrationInterface
         array_walk($groupedOperations, static function (&$operations, string $operationType) {
             sort($operations, SORT_STRING);
 
-            $operations = "{$operationType}{" . implode(',', $operations) . '}';
+            $operations = "{$operationType}{".implode(',', $operations).'}';
         });
 
         ksort($groupedOperations, SORT_STRING);
 
-        $transactionName = 'lighthouse?' . implode('&', $groupedOperations);
+        $transactionName = 'lighthouse?'.implode('&', $groupedOperations);
 
         $transaction->setName($transactionName);
         $transaction->getMetadata()->setSource(TransactionSource::custom());
@@ -221,7 +221,7 @@ class LighthouseIntegration implements IntegrationInterface
      */
     private function extractOperationNames(OperationDefinitionNode $operation): array
     {
-        if (!$this->ignoreOperationName && $operation->name !== null) {
+        if (! $this->ignoreOperationName && $operation->name !== null) {
             return [$operation->name->value];
         }
 
@@ -241,7 +241,7 @@ class LighthouseIntegration implements IntegrationInterface
 
     private function isApplicable(): bool
     {
-        if (!class_exists(StartRequest::class) || !class_exists(StartExecution::class)) {
+        if (! class_exists(StartRequest::class) || ! class_exists(StartExecution::class)) {
             return false;
         }
 

@@ -23,7 +23,7 @@ class LaravelRequestFetcher implements RequestFetcherInterface
         // If there is no request bound to the container
         // we are not dealing with a HTTP request and there
         // is no request to fetch for us so we can exit early.
-        if (!$container->bound('request')) {
+        if (! $container->bound('request')) {
             return null;
         }
 

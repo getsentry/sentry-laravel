@@ -9,6 +9,9 @@ use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\Events\WorkerStopping;
 use Illuminate\Queue\Queue;
 use Sentry\Breadcrumb;
+use function Sentry\continueTrace;
+use function Sentry\getBaggage;
+use function Sentry\getTraceparent;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
 use Sentry\State\Scope;
@@ -19,13 +22,10 @@ use Sentry\Tracing\SpanStatus;
 use Sentry\Tracing\TransactionContext;
 use Sentry\Tracing\TransactionSource;
 
-use function Sentry\continueTrace;
-use function Sentry\getBaggage;
-use function Sentry\getTraceparent;
-
 class QueueIntegration extends Feature
 {
     private const QUEUE_PAYLOAD_BAGGAGE_DATA = 'sentry_baggage_data';
+
     private const QUEUE_PAYLOAD_TRACE_PARENT_DATA = 'sentry_trace_parent_data';
 
     /**
@@ -51,7 +51,7 @@ class QueueIntegration extends Feature
 
     public function isApplicable(): bool
     {
-        if (!$this->container()->bound('queue')) {
+        if (! $this->container()->bound('queue')) {
             return false;
         }
 
@@ -117,12 +117,12 @@ class QueueIntegration extends Feature
         $parentSpan = SentrySdk::getCurrentHub()->getSpan();
 
         // If there is no tracing span active and we don't trace jobs as transactions there is no need to handle the event
-        if ($parentSpan === null && !$this->isTracingFeatureEnabled('queue_job_transactions')) {
+        if ($parentSpan === null && ! $this->isTracingFeatureEnabled('queue_job_transactions')) {
             return;
         }
 
         // If there is a parent span we can record that job as a child unless configured to not do so
-        if ($parentSpan !== null && !$this->isTracingFeatureEnabled('queue_jobs')) {
+        if ($parentSpan !== null && ! $this->isTracingFeatureEnabled('queue_jobs')) {
             return;
         }
 
@@ -196,7 +196,7 @@ class QueueIntegration extends Feature
     {
         SentrySdk::getCurrentHub()->pushScope();
 
-        ++$this->pushedScopeCount;
+        $this->pushedScopeCount++;
 
         // When a job starts, we want to make sure the scope is cleared of breadcrumbs
         // as well as setting a new propagation context.
@@ -229,7 +229,7 @@ class QueueIntegration extends Feature
 
         SentrySdk::getCurrentHub()->popScope();
 
-        --$this->pushedScopeCount;
+        $this->pushedScopeCount--;
     }
 
     private function finishJobWithStatus(SpanStatus $status): void

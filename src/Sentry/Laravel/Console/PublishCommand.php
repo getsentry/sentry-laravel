@@ -30,15 +30,17 @@ class PublishCommand extends Command
     protected $description = 'Publishes and configures the Sentry config.';
 
     protected const SDK_CHOICE_BROWSER = 'JavaScript (default)';
-    protected const SDK_CHOICE_VUE     = 'Vue.js';
-    protected const SDK_CHOICE_REACT   = 'React';
+
+    protected const SDK_CHOICE_VUE = 'Vue.js';
+
+    protected const SDK_CHOICE_REACT = 'React';
+
     protected const SDK_CHOICE_ANGULAR = 'Angular';
-    protected const SDK_CHOICE_SVELTE  = 'Svelte';
+
+    protected const SDK_CHOICE_SVELTE = 'Svelte';
 
     /**
      * Execute the console command.
-     *
-     * @return int
      */
     public function handle(): int
     {
@@ -47,7 +49,7 @@ class PublishCommand extends Command
 
         $dsn = $this->option('dsn');
 
-        if (!empty($dsn) || !$this->isEnvKeySet('SENTRY_LARAVEL_DSN')) {
+        if (! empty($dsn) || ! $this->isEnvKeySet('SENTRY_LARAVEL_DSN')) {
             if (empty($dsn)) {
                 $dsnFromInput = $this->askForDsnInput();
 
@@ -61,12 +63,12 @@ class PublishCommand extends Command
             }
 
             $env['SENTRY_LARAVEL_DSN'] = $dsn;
-            $arg['--dsn']              = $dsn;
+            $arg['--dsn'] = $dsn;
         }
 
         $testCommandPrompt = 'Do you want to send a test event to Sentry?';
 
-        if ($this->confirm('Enable Performance Monitoring?', !$this->option('without-performance-monitoring'))) {
+        if ($this->confirm('Enable Performance Monitoring?', ! $this->option('without-performance-monitoring'))) {
             $testCommandPrompt = 'Do you want to send a test event & transaction to Sentry?';
 
             $env['SENTRY_TRACES_SAMPLE_RATE'] = '1.0';
@@ -76,7 +78,7 @@ class PublishCommand extends Command
             $env['SENTRY_TRACES_SAMPLE_RATE'] = '0';
         }
 
-        if ($this->confirm($testCommandPrompt, !$this->option('without-test'))) {
+        if ($this->confirm($testCommandPrompt, ! $this->option('without-test'))) {
             $testResult = $this->call('sentry:test', $arg);
 
             if ($testResult === 1) {
@@ -87,10 +89,10 @@ class PublishCommand extends Command
         $this->info('Publishing Sentry config...');
         $this->call('vendor:publish', ['--provider' => ServiceProvider::class]);
 
-        if (!$this->setEnvValues($env)) {
+        if (! $this->setEnvValues($env)) {
             return 1;
         }
-        if ($this->confirm('Do you want to install one of our JavaScript SDKs?', !$this->option('without-javascript-sdk'))) {
+        if ($this->confirm('Do you want to install one of our JavaScript SDKs?', ! $this->option('without-javascript-sdk'))) {
             $this->installJavaScriptSdk();
         }
 
@@ -103,7 +105,7 @@ class PublishCommand extends Command
 
         $envFileContents = file_get_contents($envFilePath);
 
-        if (!$envFileContents) {
+        if (! $envFileContents) {
             $this->error('Could not read `.env` file!');
 
             return false;
@@ -123,7 +125,7 @@ class PublishCommand extends Command
             }
         }
 
-        if (!file_put_contents($envFilePath, $envFileContents)) {
+        if (! file_put_contents($envFilePath, $envFileContents)) {
             $this->error('Updating the `.env` file failed!');
 
             return false;
@@ -132,11 +134,11 @@ class PublishCommand extends Command
         return true;
     }
 
-    private function isEnvKeySet(string $envKey, ?string $envFileContents = null): bool
+    private function isEnvKeySet(string $envKey, string $envFileContents = null): bool
     {
         $envFileContents = $envFileContents ?? file_get_contents(app()->environmentFilePath());
 
-        return (bool)preg_match("/^{$envKey}=.*?[\s$]/m", $envFileContents);
+        return (bool) preg_match("/^{$envKey}=.*?[\s$]/m", $envFileContents);
     }
 
     private function askForDsnInput(): string
@@ -189,7 +191,7 @@ class PublishCommand extends Command
                         '@sentry/browser' => '^7.40.0',
                     ] + $packages;
                 });
-                $snippet = file_get_contents(__DIR__ . '/../../../../stubs/sentry-javascript/browser.js');
+                $snippet = file_get_contents(__DIR__.'/../../../../stubs/sentry-javascript/browser.js');
                 break;
             case self::SDK_CHOICE_VUE:
                 $this->updateNodePackages(function ($packages) {
@@ -197,7 +199,7 @@ class PublishCommand extends Command
                         '@sentry/vue' => '^7.40.0',
                     ] + $packages;
                 });
-                $snippet = file_get_contents(__DIR__ . '/../../../../stubs/sentry-javascript/vue.js');
+                $snippet = file_get_contents(__DIR__.'/../../../../stubs/sentry-javascript/vue.js');
                 break;
             case self::SDK_CHOICE_REACT:
                 $this->updateNodePackages(function ($packages) {
@@ -205,7 +207,7 @@ class PublishCommand extends Command
                         '@sentry/react' => '^7.40.0',
                     ] + $packages;
                 });
-                $snippet = file_get_contents(__DIR__ . '/../../../../stubs/sentry-javascript/react.js');
+                $snippet = file_get_contents(__DIR__.'/../../../../stubs/sentry-javascript/react.js');
                 break;
             case self::SDK_CHOICE_ANGULAR:
                 $this->updateNodePackages(function ($packages) {
@@ -213,7 +215,7 @@ class PublishCommand extends Command
                         '@sentry/angular' => '^7.40.0',
                     ] + $packages;
                 });
-                $snippet = file_get_contents(__DIR__ . '/../../../../stubs/sentry-javascript/angular.js');
+                $snippet = file_get_contents(__DIR__.'/../../../../stubs/sentry-javascript/angular.js');
                 break;
             case self::SDK_CHOICE_SVELTE:
                 $this->updateNodePackages(function ($packages) {
@@ -221,11 +223,11 @@ class PublishCommand extends Command
                         '@sentry/svelte' => '^7.40.0',
                     ] + $packages;
                 });
-                $snippet = file_get_contents(__DIR__ . '/../../../../stubs/sentry-javascript/svelte.js');
+                $snippet = file_get_contents(__DIR__.'/../../../../stubs/sentry-javascript/svelte.js');
                 break;
         }
 
-        $env['VITE_SENTRY_DSN_PUBLIC'] ='"${SENTRY_LARAVEL_DSN}"';
+        $env['VITE_SENTRY_DSN_PUBLIC'] = '"${SENTRY_LARAVEL_DSN}"';
         $this->setEnvValues($env);
 
         if (file_exists(base_path('pnpm-lock.yaml'))) {
@@ -240,7 +242,7 @@ class PublishCommand extends Command
         $this->components->info('Sentry JavaScript SDK installed successfully.');
         $this->line('Put the following snippet into your JavaScript entry file:');
         $this->newLine();
-        $this->line('<bg=blue>' . $snippet . '</>');
+        $this->line('<bg=blue>'.$snippet.'</>');
         $this->newLine();
         $this->line('For the best Sentry experience, we recommend you to set up dedicated projects for your Laravel and JavaScript applications.');
     }

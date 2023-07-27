@@ -44,9 +44,9 @@ class ConsoleIntegration extends Feature
         };
 
         SchedulingEvent::macro('sentryMonitor', function (
-            ?string $monitorSlug = null,
-            ?int $checkInMargin = null,
-            ?int $maxRuntime = null,
+            string $monitorSlug = null,
+            int $checkInMargin = null,
+            int $maxRuntime = null,
             bool $updateMonitorConfig = true
         ) use ($startCheckIn, $finishCheckIn) {
             /** @var SchedulingEvent $this */
@@ -74,9 +74,9 @@ class ConsoleIntegration extends Feature
     {
         // This is an exact copy of the macro above, but without doing anything so that even when no DSN is configured the user can still use the macro
         SchedulingEvent::macro('sentryMonitor', function (
-            ?string $monitorSlug = null,
-            ?int $checkInMargin = null,
-            ?int $maxRuntime = null,
+            string $monitorSlug = null,
+            int $checkInMargin = null,
+            int $maxRuntime = null,
             bool $updateMonitorConfig = true
         ) {
             return $this;
@@ -168,7 +168,7 @@ class ConsoleIntegration extends Feature
     private function buildCacheKey(string $mutex, string $slug): string
     {
         // We use the mutex name as part of the cache key to avoid collisions between the same commands with the same schedule but with different slugs
-        return 'sentry:checkIn:' . sha1("{$mutex}:{$slug}");
+        return 'sentry:checkIn:'.sha1("{$mutex}:{$slug}");
     }
 
     private function makeSlugForScheduled(SchedulingEvent $scheduled): string
