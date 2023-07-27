@@ -54,6 +54,7 @@ class ServiceProvider extends BaseServiceProvider
         Features\CacheIntegration::class,
         Features\QueueIntegration::class,
         Features\ConsoleIntegration::class,
+        Features\Storage\Integration::class,
         Features\LivewirePackageIntegration::class,
     ];
 

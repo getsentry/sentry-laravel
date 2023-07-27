@@ -19,6 +19,9 @@ return [
         // Capture Laravel cache events in breadcrumbs
         'cache' => true,
 
+        // Capture storage access as breadcrumbs
+        'storage' => true,
+
         // Capture Livewire components in breadcrumbs
         'livewire' => true,
 
@@ -53,6 +56,9 @@ return [
 
         // Capture views as spans
         'views' => true,
+
+        // Capture storage access as spans
+        'storage' => true,
 
         // Capture Livewire components as spans
         'livewire' => true,
