@@ -37,12 +37,11 @@ return [
         // Capture Laravel cache events (hits, writes etc.) as breadcrumbs
         'cache' => env('SENTRY_BREADCRUMBS_CACHE_ENABLED', true),
 
-
         // Capture Livewire components like routes as breadcrumbs
         'livewire' => env('SENTRY_BREADCRUMBS_LIVEWIRE_ENABLED', true),
 
         // Capture storage access as breadcrumbs
-        'storage' => env('SENTRY_BREADCRUMBS_STORAGE_ENABLED', true),
+        'storage' => env('SENTRY_BREADCRUMBS_STORAGE_ENABLED', false),
 
         // Capture SQL queries as breadcrumbs
         'sql_queries' => env('SENTRY_BREADCRUMBS_SQL_QUERIES_ENABLED', true),
@@ -78,7 +77,7 @@ return [
         'views' => env('SENTRY_TRACE_VIEWS_ENABLED', true),
 
         // Capture storage access as spans
-        'storage' => env('SENTRY_TRACE_STORAGE_ENABLED', true),
+        'storage' => env('SENTRY_TRACE_STORAGE_ENABLED', false),
 
         // Capture Livewire components as spans
         'livewire' => env('SENTRY_TRACE_LIVEWIRE_ENABLED', true),
