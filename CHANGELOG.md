@@ -12,6 +12,21 @@ The Sentry SDK team is happy to announce the immediate availability of Sentry La
   To continue a trace outward, you may attach the Sentry tracing headers to any HTTP client request.
   You can fetch the required header values by calling `\Sentry\getBaggage()` and `\Sentry\getTraceparent()`.
 
+- Add performance traces and breadcrumbs for filesystem access [(#726)](https://github.com/getsentry/sentry-laravel/pull/726)
+
+  This behaviour can be changed in your `config/sentry.php` file.
+
+  ```php
+  'breadcrumbs' => [
+      // Capture storage access as breadcrumbs
+      'storage' => true,
+  ],
+  `tracing` => [
+      // Capture storage access as spans
+      'storage' => true,
+  ],
+  ```
+
 - GraphQL and HTTP client improvements [(#720)](https://github.com/getsentry/sentry-laravel/pull/720)
 
   This adds an improved visual representation of the request body on the Sentry web interface, as well as
@@ -40,21 +55,6 @@ The Sentry SDK team is happy to announce the immediate availability of Sentry La
       // Indicates if the performance trace should continue after the response has been sent to the user until the application terminates
       // This is required to capture any spans that are created after the response has been sent like queue jobs dispatched using `dispatch(...)->afterResponse()` for example
       'continue_after_response' => true,
-  ],
-  ```
-
-- Add performance traces and breadcrumbs for filesystem access [(#726)](https://github.com/getsentry/sentry-laravel/pull/726)
-
-  This behaviour can be changed in your `config/sentry.php` file.
-
-  ```php
-  'breadcrumbs' => [
-      // Capture storage access as breadcrumbs
-      'storage' => true,
-  ],
-  `tracing` => [
-      // Capture storage access as spans
-      'storage' => true,
   ],
   ```
 
