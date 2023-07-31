@@ -1,5 +1,73 @@
 # Changelog
 
+## 3.7.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.7.0.
+
+### Features
+
+- Tracing without Performance [(#719)](https://github.com/getsentry/sentry-laravel/pull/719)
+
+  The SDK will now continue a trace from incoming HTTP requests, even if performance is not enabled.
+  To continue a trace outward, you may attach the Sentry tracing headers to any HTTP client request.
+  You can fetch the required header values by calling `\Sentry\getBaggage()` and `\Sentry\getTraceparent()`.
+
+- GraphQL and HTTP client improvements [(#720)](https://github.com/getsentry/sentry-laravel/pull/720)
+
+  This adds an improved visual representation of the request body on the Sentry web interface, as well as
+  `response_body_size` and `request_body_size` to HTTP client breadcrumbs.
+  
+
+- Less sensitive data send by default [(#732)](https://github.com/getsentry/sentry-laravel/pull/732)
+
+  The SDK will no longer send the value of the configured Laravel session cookie as well as the value of any cookies
+  starting with `remember_*`.
+  Additionally, SQL bindings are no longer set on breadcrumbs by default. This behaviour can be changed in your `config/sentry.php` file.
+
+  ```php
+  'breadcrumbs' => [
+      // Capture bindings on SQL queries logged in breadcrumbs
+      'sql_bindings' => false,
+  ],
+  ```
+
+- Make it configurable if performance traces continue after the response has been sent [(#727)](https://github.com/getsentry/sentry-laravel/pull/727)
+
+  This behaviour can be changed in your `config/sentry.php` file.
+
+  ```php
+  'tracing' => [
+      // Indicates if the performance trace should continue after the response has been sent to the user until the application terminates
+      // This is required to capture any spans that are created after the response has been sent like queue jobs dispatched using `dispatch(...)->afterResponse()` for example
+      'continue_after_response' => true,
+  ],
+  ```
+
+- Add performance traces and breadcrumbs for filesystem access [(#726)](https://github.com/getsentry/sentry-laravel/pull/726)
+
+  This behaviour can be changed in your `config/sentry.php` file.
+
+  ```php
+  'breadcrumbs' => [
+      // Capture storage access as breadcrumbs
+      'storage' => true,
+  ],
+  `tracing` => [
+      // Capture storage access as spans
+      'storage' => true,
+  ],
+  ```
+
+- Expose all config settings as environment variables. [(#735)](https://github.com/getsentry/sentry-laravel/pull/735)
+
+  All config values in `config/sentry.php` can be set with environment variables now.
+  For existing applications, you might need to update your config file with the new defaults manually.
+  The latest version can be found [here](https://github.com/getsentry/sentry-laravel/blob/master/config/sentry.php).
+
+### Bug Fixes
+
+- Handle exceptions being raised while resolving the PSR7 request [(#743)](https://github.com/getsentry/sentry-laravel/pull/743)
+
 ## 3.6.1
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.6.1.
