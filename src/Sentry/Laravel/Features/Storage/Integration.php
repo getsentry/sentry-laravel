@@ -71,6 +71,18 @@ class Integration extends Feature
 
     public function setup(): void
     {
+        $this->registerDriver();
+    }
+
+    public function setupInactive(): void
+    {
+        // Required when inactive because the disks configuration is static,
+        // without this it fails with: "Driver [sentry] is not supported.".
+        $this->registerDriver();
+    }
+
+    protected function registerDriver(): void
+    {
         $this->container()->afterResolving(FilesystemManager::class, function (FilesystemManager $filesystemManager): void {
             $filesystemManager->extend(
                 self::STORAGE_DRIVER_NAME,
