@@ -29,6 +29,7 @@ class StorageIntegrationTest extends TestCase
         Storage::assertExists('foo', 'bar');
         Storage::delete('foo');
         Storage::delete(['foo', 'bar']);
+        Storage::files();
 
         $spans = $transaction->getSpanRecorder()->getSpans();
 
@@ -62,6 +63,12 @@ class StorageIntegrationTest extends TestCase
         $this->assertSame('file.delete', $span->getOp());
         $this->assertSame('2 paths', $span->getDescription());
         $this->assertSame(['paths' => ['foo', 'bar'], 'disk' => 'local', 'driver' => 'local'], $span->getData());
+
+        $this->assertArrayHasKey(6, $spans);
+        $span = $spans[6];
+        $this->assertSame('file.files', $span->getOp());
+        $this->assertNull($span->getDescription());
+        $this->assertSame(['directory' => null, 'recursive' => false, 'disk' => 'local', 'driver' => 'local'], $span->getData());
     }
 
     public function testDoesntCreateSpansWhenDisabled(): void
@@ -99,6 +106,7 @@ class StorageIntegrationTest extends TestCase
         Storage::assertExists('foo', 'bar');
         Storage::delete('foo');
         Storage::delete(['foo', 'bar']);
+        Storage::files();
 
         $breadcrumbs = $this->getCurrentBreadcrumbs();
 
@@ -132,6 +140,12 @@ class StorageIntegrationTest extends TestCase
         $this->assertSame('file.delete', $span->getCategory());
         $this->assertSame('2 paths', $span->getMessage());
         $this->assertSame(['paths' => ['foo', 'bar'], 'disk' => 'local', 'driver' => 'local'], $span->getMetadata());
+
+        $this->assertArrayHasKey(5, $breadcrumbs);
+        $span = $breadcrumbs[5];
+        $this->assertSame('file.files', $span->getCategory());
+        $this->assertNull($span->getMessage());
+        $this->assertSame(['directory' => null, 'recursive' => false, 'disk' => 'local', 'driver' => 'local'], $span->getMetadata());
     }
 
     public function testDoesntCreateBreadcrumbsWhenDisabled(): void
