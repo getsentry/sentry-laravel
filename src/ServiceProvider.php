@@ -86,7 +86,7 @@ class ServiceProvider extends BaseServiceProvider
         if ($this->app->runningInConsole()) {
             if ($this->app instanceof Laravel) {
                 $this->publishes([
-                    __DIR__ . '/../../../config/sentry.php' => config_path(static::$abstract . '.php'),
+                    __DIR__ . '/../config/sentry.php' => config_path(static::$abstract . '.php'),
                 ], 'config');
             }
 
@@ -103,7 +103,7 @@ class ServiceProvider extends BaseServiceProvider
             $this->app->configure(static::$abstract);
         }
 
-        $this->mergeConfigFrom(__DIR__ . '/../../../config/sentry.php', static::$abstract);
+        $this->mergeConfigFrom(__DIR__ . '/../config/sentry.php', static::$abstract);
 
         $this->configureAndRegisterClient();
 

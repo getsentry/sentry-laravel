@@ -189,7 +189,7 @@ class PublishCommand extends Command
                         '@sentry/browser' => '^7.40.0',
                     ] + $packages;
                 });
-                $snippet = file_get_contents(__DIR__ . '/../../../../stubs/sentry-javascript/browser.js');
+                $snippet = file_get_contents(__DIR__ . '/../../stubs/sentry-javascript/browser.js');
                 break;
             case self::SDK_CHOICE_VUE:
                 $this->updateNodePackages(function ($packages) {
@@ -197,7 +197,7 @@ class PublishCommand extends Command
                         '@sentry/vue' => '^7.40.0',
                     ] + $packages;
                 });
-                $snippet = file_get_contents(__DIR__ . '/../../../../stubs/sentry-javascript/vue.js');
+                $snippet = file_get_contents(__DIR__ . '/../../stubs/sentry-javascript/vue.js');
                 break;
             case self::SDK_CHOICE_REACT:
                 $this->updateNodePackages(function ($packages) {
@@ -205,7 +205,7 @@ class PublishCommand extends Command
                         '@sentry/react' => '^7.40.0',
                     ] + $packages;
                 });
-                $snippet = file_get_contents(__DIR__ . '/../../../../stubs/sentry-javascript/react.js');
+                $snippet = file_get_contents(__DIR__ . '/../../stubs/sentry-javascript/react.js');
                 break;
             case self::SDK_CHOICE_ANGULAR:
                 $this->updateNodePackages(function ($packages) {
@@ -213,7 +213,7 @@ class PublishCommand extends Command
                         '@sentry/angular' => '^7.40.0',
                     ] + $packages;
                 });
-                $snippet = file_get_contents(__DIR__ . '/../../../../stubs/sentry-javascript/angular.js');
+                $snippet = file_get_contents(__DIR__ . '/../../stubs/sentry-javascript/angular.js');
                 break;
             case self::SDK_CHOICE_SVELTE:
                 $this->updateNodePackages(function ($packages) {
@@ -221,7 +221,7 @@ class PublishCommand extends Command
                         '@sentry/svelte' => '^7.40.0',
                     ] + $packages;
                 });
-                $snippet = file_get_contents(__DIR__ . '/../../../../stubs/sentry-javascript/svelte.js');
+                $snippet = file_get_contents(__DIR__ . '/../../stubs/sentry-javascript/svelte.js');
                 break;
         }
 
