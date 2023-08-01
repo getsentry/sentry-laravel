@@ -22,7 +22,7 @@ return [
 
     // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#traces-sample-rate
     'traces_sample_rate' => env('SENTRY_TRACES_SAMPLE_RATE') === null ? null : (float)env('SENTRY_TRACES_SAMPLE_RATE'),
-    
+
     // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#profiles-sample-rate
     'profiles_sample_rate' => env('SENTRY_PROFILES_SAMPLE_RATE') === null ? null : (float)env('SENTRY_PROFILES_SAMPLE_RATE'),
 
@@ -39,9 +39,6 @@ return [
 
         // Capture Livewire components like routes as breadcrumbs
         'livewire' => env('SENTRY_BREADCRUMBS_LIVEWIRE_ENABLED', true),
-
-        // Capture storage access as breadcrumbs
-        'storage' => env('SENTRY_BREADCRUMBS_STORAGE_ENABLED', false),
 
         // Capture SQL queries as breadcrumbs
         'sql_queries' => env('SENTRY_BREADCRUMBS_SQL_QUERIES_ENABLED', true),
@@ -75,9 +72,6 @@ return [
 
         // Capture views rendered as spans
         'views' => env('SENTRY_TRACE_VIEWS_ENABLED', true),
-
-        // Capture storage access as spans
-        'storage' => env('SENTRY_TRACE_STORAGE_ENABLED', false),
 
         // Capture Livewire components as spans
         'livewire' => env('SENTRY_TRACE_LIVEWIRE_ENABLED', true),

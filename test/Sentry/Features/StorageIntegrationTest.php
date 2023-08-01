@@ -11,7 +11,10 @@ class StorageIntegrationTest extends TestCase
     public function testCreatesSpansFor(): void
     {
         $this->resetApplicationWithConfig([
-            'sentry.tracing.storage' => true,
+            'filesystems.disks.local.driver' => 'sentry',
+            'filesystems.disks.local.sentry_disk_name' => 'local',
+            'filesystems.disks.local.sentry_enable_spans' => true,
+            'filesystems.disks.local.sentry_original_driver' => 'local',
         ]);
 
         $hub = $this->getHubFromContainer();
@@ -64,7 +67,10 @@ class StorageIntegrationTest extends TestCase
     public function testDoesntCreateSpansWhenDisabled(): void
     {
         $this->resetApplicationWithConfig([
-            'sentry.tracing.storage' => false,
+            'filesystems.disks.local.driver' => 'sentry',
+            'filesystems.disks.local.sentry_disk_name' => 'local',
+            'filesystems.disks.local.sentry_enable_spans' => false,
+            'filesystems.disks.local.sentry_original_driver' => 'local',
         ]);
 
         $hub = $this->getHubFromContainer();
@@ -82,7 +88,10 @@ class StorageIntegrationTest extends TestCase
     public function testCreatesBreadcrumbsFor(): void
     {
         $this->resetApplicationWithConfig([
-            'sentry.breadcrumbs.storage' => true,
+            'filesystems.disks.local.driver' => 'sentry',
+            'filesystems.disks.local.sentry_disk_name' => 'local',
+            'filesystems.disks.local.sentry_original_driver' => 'local',
+            'filesystems.disks.local.sentry_enable_breadcrumbs' => true,
         ]);
 
         Storage::put('foo', 'bar');
@@ -128,7 +137,10 @@ class StorageIntegrationTest extends TestCase
     public function testDoesntCreateBreadcrumbsWhenDisabled(): void
     {
         $this->resetApplicationWithConfig([
-            'sentry.breadcrumbs.storage' => false,
+            'filesystems.disks.local.driver' => 'sentry',
+            'filesystems.disks.local.sentry_disk_name' => 'local',
+            'filesystems.disks.local.sentry_original_driver' => 'local',
+            'filesystems.disks.local.sentry_enable_breadcrumbs' => false,
         ]);
 
         Storage::exists('foo');
