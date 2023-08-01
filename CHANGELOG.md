@@ -2,10 +2,11 @@
 
 ### Features
 
-- The filesystem adapters for the `sentry` driver now extends the known Laravel classes they decorate,
-  `Illuminate\Filesystem\FilesystemAdapter` and `Sentry\Laravel\Features\Storage\SentryS3V3Adapter`.
+- The filesystem adapters for the `sentry` driver now extend the well-known Laravel classes they decorate,
+  `Illuminate\Filesystem\FilesystemAdapter` and `Illuminate\Filesystem\AwsS3V3Adapter`.
 
-  Enabling the feature can be simplified by wrapping your disks with a call to `Sentry\Laravel\Features\Storage\Integration::withSentryDriver()`
+  Enabling the feature can be simplified by wrapping the configuration for your disks
+  with a call to `Sentry\Laravel\Features\Storage\Integration::withSentryDriver()`
   in your `config/filesystems.php` file.
 
   ```php
@@ -26,7 +27,7 @@
   ```php
   'disks' => Sentry\Laravel\Features\Storage\Integration::withSentryDriver([
       ...
-  ], true, false),
+  ], /* enableSpans: */ true, /* enableBreadcrumbs: */ false),
   ```
 
 ## 3.7.1
