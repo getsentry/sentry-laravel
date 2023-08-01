@@ -11,7 +11,10 @@ class StorageIntegrationTest extends TestCase
 {
     public function testCreatesSpansFor(): void
     {
-        Integration::configureDisksWithSentryDriver();
+        $this->resetApplicationWithConfig([
+            'filesystems.disks' => Integration::withSentryDriver(config('filesystems.disks')),
+        ]);
+
         $hub = $this->getHubFromContainer();
 
         $transaction = $hub->startTransaction(new TransactionContext);
@@ -61,8 +64,9 @@ class StorageIntegrationTest extends TestCase
 
     public function testDoesntCreateSpansWhenDisabled(): void
     {
-        Integration::configureDisksWithSentryDriver(false);
-        $this->resetApplicationWithConfig([]);
+        $this->resetApplicationWithConfig([
+            'filesystems.disks' => Integration::withSentryDriver(config('filesystems.disks'), false),
+        ]);
 
         $hub = $this->getHubFromContainer();
 
@@ -78,7 +82,9 @@ class StorageIntegrationTest extends TestCase
 
     public function testCreatesBreadcrumbsFor(): void
     {
-        Integration::configureDisksWithSentryDriver();
+        $this->resetApplicationWithConfig([
+            'filesystems.disks' => Integration::withSentryDriver(config('filesystems.disks')),
+        ]);
 
         Storage::put('foo', 'bar');
         $fooContent = Storage::get('foo');
@@ -122,8 +128,9 @@ class StorageIntegrationTest extends TestCase
 
     public function testDoesntCreateBreadcrumbsWhenDisabled(): void
     {
-        Integration::configureDisksWithSentryDriver(true, false);
-        $this->resetApplicationWithConfig([]);
+        $this->resetApplicationWithConfig([
+            'filesystems.disks' => Integration::withSentryDriver(config('filesystems.disks'), true, false),
+        ]);
 
         Storage::exists('foo');
 

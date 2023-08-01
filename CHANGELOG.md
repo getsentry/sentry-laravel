@@ -1,5 +1,34 @@
 # Changelog
 
+### Features
+
+- The filesystem adapters for the `sentry` driver now extends the known Laravel classes they decorate,
+  `Illuminate\Filesystem\FilesystemAdapter` and `Sentry\Laravel\Features\Storage\SentryS3V3Adapter`.
+
+  Enabling the feature can be simplified by wrapping your disks with a call to `Sentry\Laravel\Features\Storage\Integration::withSentryDriver()`
+  in your `config/filesystems.php` file.
+
+  ```php
+  'disks' => Sentry\Laravel\Features\Storage\Integration::withSentryDriver([
+      'local' => [
+          'driver' => 'local',
+          'root' => storage_path('app'),
+          'throw' => false,
+      ],
+
+      ...
+  ]),
+  ```
+
+  By default, both spans and breadcrumbs are enabled.
+  You may disable them by passing the second argument `$enableSpans` or the third argument `$enableBreadcrumbs`.
+
+  ```php
+  'disks' => Sentry\Laravel\Features\Storage\Integration::withSentryDriver([
+      ...
+  ], true, false),
+  ```
+
 ## 3.7.1
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.7.1.

@@ -21,23 +21,38 @@ class Integration extends Feature
         return true;
     }
 
-    public static function configureDisksWithSentryDriver(bool $enableSpans = true, bool $enableBreadcrumbs = true): void
+    /**
+     * Decorates the disk configurations with Sentry driver configuration.
+     *
+     * This replaces the drivers with a custom driver that will capture performance traces and breadcrumbs.
+     * The custom driver will be an instance of @see \Sentry\Laravel\Features\Storage\SentryS3V3Adapter
+     * if the original driver was an @see \Illuminate\Filesystem\AwsS3V3Adapter,
+     * and an instance of @see \Sentry\Laravel\Features\Storage\SentryFilesystemAdapter
+     * which extends @see \Illuminate\Filesystem\FilesystemAdapter in all other cases.
+     * You might run into problems if you expect another specific driver class.
+     *
+     * @param array<string, array<string, mixed>> $originalDisks
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public static function withSentryDriver(array $originalDisks, bool $enableSpans = true, bool $enableBreadcrumbs = true): array
     {
-        foreach (config('filesystems.disks') as $disk => $config) {
+        $disksWithSentryDriver = [];
+        foreach ($originalDisks as $disk => $config) {
             $currentDriver = $config['driver'];
 
-            if ($currentDriver === self::STORAGE_DRIVER_NAME) {
-                continue;
+            if ($currentDriver !== self::STORAGE_DRIVER_NAME) {
+                $config['driver'] = self::STORAGE_DRIVER_NAME;
+                $config['sentry_disk_name'] = $disk;
+                $config['sentry_original_driver'] = $currentDriver;
+                $config['sentry_enable_spans'] = $enableSpans;
+                $config['sentry_enable_breadcrumbs'] = $enableBreadcrumbs;
             }
 
-            config([
-                "filesystems.disks.{$disk}.driver" => self::STORAGE_DRIVER_NAME,
-                "filesystems.disks.{$disk}.sentry_disk_name" => $disk,
-                "filesystems.disks.{$disk}.sentry_original_driver" => $config['driver'],
-                "filesystems.disks.{$disk}.setnry_enable_spans" => $enableSpans,
-                "filesystems.disks.{$disk}.setnry_enable_breadcrumbs" => $enableBreadcrumbs,
-            ]);
+            $disksWithSentryDriver[$disk] = $config;
         }
+
+        return $disksWithSentryDriver;
     }
 
     public function setup(): void
