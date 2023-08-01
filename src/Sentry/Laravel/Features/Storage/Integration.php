@@ -2,9 +2,9 @@
 
 namespace Sentry\Laravel\Features\Storage;
 
-use Illuminate\Contracts\Filesystem\Cloud as CloudFilesystem;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Filesystem\AwsS3V3Adapter;
 use Illuminate\Filesystem\FilesystemManager;
 use RuntimeException;
 use Sentry\Laravel\Features\Feature;
@@ -58,9 +58,9 @@ class Integration extends Feature
                     $recordSpans = $config['sentry_enable_spans'] ?? $this->isTracingFeatureEnabled(self::FEATURE_KEY);
                     $recordBreadcrumbs = $config['sentry_enable_breadcrumbs'] ?? $this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY);
 
-                    return $originalFilesystem instanceof CloudFilesystem
-                        ? new SentryCloudFilesystem($originalFilesystem, $defaultData, $recordSpans, $recordBreadcrumbs)
-                        : new SentryFilesystem($originalFilesystem, $defaultData, $recordSpans, $recordBreadcrumbs);
+                    return $originalFilesystem instanceof AwsS3V3Adapter
+                        ? new SentryS3V3Adapter($originalFilesystem, $defaultData, $recordSpans, $recordBreadcrumbs)
+                        : new SentryFilesystemAdapter($originalFilesystem, $defaultData, $recordSpans, $recordBreadcrumbs);
                 }
             );
         });

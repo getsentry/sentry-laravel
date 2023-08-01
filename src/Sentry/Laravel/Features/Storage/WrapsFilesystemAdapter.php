@@ -9,14 +9,7 @@ use Sentry\Laravel\Util\Filesize;
 use Sentry\Tracing\SpanContext;
 use function Sentry\trace;
 
-/**
- * Decorates the underlying filesystem by wrapping all calls to it with tracing.
- *
- * Parameters such as paths, directories or options are attached to the span as data,
- * parameters that contain file contents are omitted due to potential problems with
- * payload size or sensitive data.
- */
-class SentryFilesystem implements Filesystem
+trait WrapsFilesystemAdapter
 {
     /** @var Filesystem */
     protected $filesystem;
@@ -29,14 +22,6 @@ class SentryFilesystem implements Filesystem
 
     /** @var bool */
     protected $recordBreadcrumbs;
-
-    public function __construct(Filesystem $filesystem, array $defaultData, bool $recordSpans, bool $recordBreadcrumbs)
-    {
-        $this->filesystem = $filesystem;
-        $this->defaultData = $defaultData;
-        $this->recordSpans = $recordSpans;
-        $this->recordBreadcrumbs = $recordBreadcrumbs;
-    }
 
     /**
      * Execute the method on the underlying filesystem and wrap it with tracing and log a breadcrumb.
@@ -130,14 +115,14 @@ class SentryFilesystem implements Filesystem
         return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path', 'visibility'));
     }
 
-    public function prepend($path, $data)
+    public function prepend($path, $data, $separator = PHP_EOL)
     {
         $description = is_string($data) ? sprintf('%s (%s)', $path, Filesize::toHuman(strlen($data))) : $path;
 
         return $this->withSentry(__FUNCTION__, func_get_args(), $description, compact('path'));
     }
 
-    public function append($path, $data)
+    public function append($path, $data, $separator = PHP_EOL)
     {
         $description = is_string($data) ? sprintf('%s (%s)', $path, Filesize::toHuman(strlen($data))) : $path;
 
@@ -205,6 +190,11 @@ class SentryFilesystem implements Filesystem
     public function deleteDirectory($directory)
     {
         return $this->withSentry(__FUNCTION__, func_get_args(), $directory, compact('directory'));
+    }
+
+    public function url($path)
+    {
+        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path'));
     }
 
     public function __call($name, $arguments)
