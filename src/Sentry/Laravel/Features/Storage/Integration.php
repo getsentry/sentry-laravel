@@ -22,7 +22,7 @@ class Integration extends Feature
     }
 
     /**
-     * Decorates the disk configurations with Sentry driver configuration.
+     * Decorates the configuration for all disks with Sentry driver configuration.
      *
      * This replaces the drivers with a custom driver that will capture performance traces and breadcrumbs.
      * The custom driver will be an instance of @see \Sentry\Laravel\Features\Storage\SentryS3V3Adapter
@@ -31,28 +31,42 @@ class Integration extends Feature
      * which extends @see \Illuminate\Filesystem\FilesystemAdapter in all other cases.
      * You might run into problems if you expect another specific driver class.
      *
-     * @param array<string, array<string, mixed>> $originalDisks
+     * @param array<string, array<string, mixed>> $diskConfigs
      *
      * @return array<string, array<string, mixed>>
      */
-    public static function withSentryDriver(array $originalDisks, bool $enableSpans = true, bool $enableBreadcrumbs = true): array
+    public static function configureDisks(array $diskConfigs, bool $enableSpans = true, bool $enableBreadcrumbs = true): array
     {
-        $disksWithSentryDriver = [];
-        foreach ($originalDisks as $disk => $config) {
-            $currentDriver = $config['driver'];
-
-            if ($currentDriver !== self::STORAGE_DRIVER_NAME) {
-                $config['driver'] = self::STORAGE_DRIVER_NAME;
-                $config['sentry_disk_name'] = $disk;
-                $config['sentry_original_driver'] = $currentDriver;
-                $config['sentry_enable_spans'] = $enableSpans;
-                $config['sentry_enable_breadcrumbs'] = $enableBreadcrumbs;
-            }
-
-            $disksWithSentryDriver[$disk] = $config;
+        $diskConfigsWithSentryDriver = [];
+        foreach ($diskConfigs as $diskName => $diskConfig) {
+            $diskConfigsWithSentryDriver[$diskName] = static::configureDisk($diskName, $diskConfig, $enableSpans, $enableBreadcrumbs);
         }
 
-        return $disksWithSentryDriver;
+        return $diskConfigsWithSentryDriver;
+    }
+
+    /**
+     * Decorates the configuration for a single disk with Sentry driver configuration.
+     *
+     * @see self::configureDisks()
+     *
+     * @param array<string, mixed> $diskConfig
+     *
+     * @return array<string, mixed>
+     */
+    public static function configureDisk(string $diskName, array $diskConfig, bool $enableSpans = true, bool $enableBreadcrumbs = true): array
+    {
+        $currentDriver = $diskConfig['driver'];
+
+        if ($currentDriver !== self::STORAGE_DRIVER_NAME) {
+            $diskConfig['driver'] = self::STORAGE_DRIVER_NAME;
+            $diskConfig['sentry_disk_name'] = $diskName;
+            $diskConfig['sentry_original_driver'] = $currentDriver;
+            $diskConfig['sentry_enable_spans'] = $enableSpans;
+            $diskConfig['sentry_enable_breadcrumbs'] = $enableBreadcrumbs;
+        }
+
+        return $diskConfig;
     }
 
     public function setup(): void

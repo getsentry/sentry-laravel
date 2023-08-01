@@ -5,12 +5,13 @@
 - The filesystem adapters for the `sentry` driver now extend the well-known Laravel classes they decorate,
   `Illuminate\Filesystem\FilesystemAdapter` and `Illuminate\Filesystem\AwsS3V3Adapter`.
 
-  Enabling the feature can be simplified by wrapping the configuration for your disks
-  with a call to `Sentry\Laravel\Features\Storage\Integration::withSentryDriver()`
+  Enabling the feature can be simplified by wrapping the configuration for all disks
+  with a call to `Sentry\Laravel\Features\Storage\Integration::configureDisks()`
   in your `config/filesystems.php` file.
 
   ```php
-  'disks' => Sentry\Laravel\Features\Storage\Integration::withSentryDriver([
+  'disks' => Sentry\Laravel\Features\Storage\Integration::configureDisks([
+
       'local' => [
           'driver' => 'local',
           'root' => storage_path('app'),
@@ -25,9 +26,27 @@
   You may disable them by passing the second argument `$enableSpans` or the third argument `$enableBreadcrumbs`.
 
   ```php
-  'disks' => Sentry\Laravel\Features\Storage\Integration::withSentryDriver([
+  'disks' => Sentry\Laravel\Features\Storage\Integration::configureDisks([
       ...
   ], /* enableSpans: */ true, /* enableBreadcrumbs: */ false),
+  ```
+
+  Alternatively, you can enable this feature only for selected disks.
+
+  ```php
+  'disks' => [
+
+      'local' => [
+          'driver' => 'local',
+          'root' => storage_path('app'),
+          'throw' => false,
+      ],
+
+
+      's3' => Sentry\Laravel\Features\Storage\Integration::configureDisk('s3', [
+          ...
+      ]),
+  ],
   ```
 
 ## 3.7.1
