@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.7.1
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.7.1.
+
+### Bug Fixes
+
+- Performance traces and breadcrumbs for filesystem access are now disabled by default [(#746)](https://github.com/getsentry/sentry-laravel/pull/746)
+
+  To enable the feature, you'll need to make some changes in your `config/filesystems.php` file.
+
+  ```php
+
+  ```
+
 ## 3.7.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.7.0.
