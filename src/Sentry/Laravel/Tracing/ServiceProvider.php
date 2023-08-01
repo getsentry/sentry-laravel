@@ -16,8 +16,10 @@ use Illuminate\View\Factory as ViewFactory;
 use InvalidArgumentException;
 use Laravel\Lumen\Application as Lumen;
 use Sentry\Laravel\BaseServiceProvider;
+use Sentry\Laravel\Profiling\FrameProcessor;
 use Sentry\Laravel\Tracing\Routing\TracingCallableDispatcherTracing;
 use Sentry\Laravel\Tracing\Routing\TracingControllerDispatcherTracing;
+use Sentry\Profiling\Profile;
 use Sentry\Serializer\RepresentationSerializer;
 
 class ServiceProvider extends BaseServiceProvider
@@ -56,6 +58,8 @@ class ServiceProvider extends BaseServiceProvider
                 $httpKernel->prependMiddleware(Middleware::class);
             }
         }
+
+        Profile::setFrameProcessor(new FrameProcessor);
     }
 
     public function register(): void

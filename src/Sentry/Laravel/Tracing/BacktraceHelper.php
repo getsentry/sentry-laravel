@@ -75,12 +75,24 @@ class BacktraceHelper
             return null;
         }
 
+        return $this->getOriginalViewPathForCompiledViewPath($frame->getAbsoluteFilePath());
+    }
+
+    /**
+     * Takes a path and if it's a compiled view returns the original view path.
+     *
+     * @param string $suspectedViewPath
+     *
+     * @return string|null
+     */
+    public function getOriginalViewPathForCompiledViewPath(string $suspectedViewPath): ?string
+    {
         // If for some reason the file does not exists, skip resolving
-        if (!file_exists($frame->getAbsoluteFilePath())) {
+        if (!file_exists($suspectedViewPath)) {
             return null;
         }
 
-        $viewFileContents = file_get_contents($frame->getAbsoluteFilePath());
+        $viewFileContents = file_get_contents($suspectedViewPath);
 
         preg_match('/PATH (?<originalPath>.*?) ENDPATH/', $viewFileContents, $matches);
 
