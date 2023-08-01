@@ -10,6 +10,10 @@ class StorageIntegrationTest extends TestCase
 {
     public function testCreatesSpansFor(): void
     {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.storage' => true,
+        ]);
+
         $hub = $this->getHubFromContainer();
 
         $transaction = $hub->startTransaction(new TransactionContext);
@@ -77,6 +81,10 @@ class StorageIntegrationTest extends TestCase
 
     public function testCreatesBreadcrumbsFor(): void
     {
+        $this->resetApplicationWithConfig([
+            'sentry.breadcrumbs.storage' => true,
+        ]);
+
         Storage::put('foo', 'bar');
         $fooContent = Storage::get('foo');
         Storage::assertExists('foo', 'bar');
