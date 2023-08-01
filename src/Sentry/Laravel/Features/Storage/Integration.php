@@ -21,6 +21,25 @@ class Integration extends Feature
         return true;
     }
 
+    public static function configureDisksWithSentryDriver(bool $enableSpans = true, bool $enableBreadcrumbs = true): void
+    {
+        foreach (config('filesystems.disks') as $disk => $config) {
+            $currentDriver = $config['driver'];
+
+            if ($currentDriver === self::STORAGE_DRIVER_NAME) {
+                continue;
+            }
+
+            config([
+                "filesystems.disks.{$disk}.driver" => self::STORAGE_DRIVER_NAME,
+                "filesystems.disks.{$disk}.sentry_disk_name" => $disk,
+                "filesystems.disks.{$disk}.sentry_original_driver" => $config['driver'],
+                "filesystems.disks.{$disk}.setnry_enable_spans" => $enableSpans,
+                "filesystems.disks.{$disk}.setnry_enable_breadcrumbs" => $enableBreadcrumbs,
+            ]);
+        }
+    }
+
     public function setup(): void
     {
         $this->container()->afterResolving(FilesystemManager::class, function (FilesystemManager $filesystemManager): void {

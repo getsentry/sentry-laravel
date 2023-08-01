@@ -3,6 +3,7 @@
 namespace Sentry\Laravel\Tests\Features;
 
 use Illuminate\Support\Facades\Storage;
+use Sentry\Laravel\Features\Storage\Integration;
 use Sentry\Laravel\Tests\TestCase;
 use Sentry\Tracing\TransactionContext;
 
@@ -10,13 +11,7 @@ class StorageIntegrationTest extends TestCase
 {
     public function testCreatesSpansFor(): void
     {
-        $this->resetApplicationWithConfig([
-            'filesystems.disks.local.driver' => 'sentry',
-            'filesystems.disks.local.sentry_disk_name' => 'local',
-            'filesystems.disks.local.sentry_enable_spans' => true,
-            'filesystems.disks.local.sentry_original_driver' => 'local',
-        ]);
-
+        Integration::configureDisksWithSentryDriver();
         $hub = $this->getHubFromContainer();
 
         $transaction = $hub->startTransaction(new TransactionContext);
@@ -66,12 +61,8 @@ class StorageIntegrationTest extends TestCase
 
     public function testDoesntCreateSpansWhenDisabled(): void
     {
-        $this->resetApplicationWithConfig([
-            'filesystems.disks.local.driver' => 'sentry',
-            'filesystems.disks.local.sentry_disk_name' => 'local',
-            'filesystems.disks.local.sentry_enable_spans' => false,
-            'filesystems.disks.local.sentry_original_driver' => 'local',
-        ]);
+        Integration::configureDisksWithSentryDriver(false);
+        $this->resetApplicationWithConfig([]);
 
         $hub = $this->getHubFromContainer();
 
@@ -87,12 +78,7 @@ class StorageIntegrationTest extends TestCase
 
     public function testCreatesBreadcrumbsFor(): void
     {
-        $this->resetApplicationWithConfig([
-            'filesystems.disks.local.driver' => 'sentry',
-            'filesystems.disks.local.sentry_disk_name' => 'local',
-            'filesystems.disks.local.sentry_original_driver' => 'local',
-            'filesystems.disks.local.sentry_enable_breadcrumbs' => true,
-        ]);
+        Integration::configureDisksWithSentryDriver();
 
         Storage::put('foo', 'bar');
         $fooContent = Storage::get('foo');
@@ -136,12 +122,8 @@ class StorageIntegrationTest extends TestCase
 
     public function testDoesntCreateBreadcrumbsWhenDisabled(): void
     {
-        $this->resetApplicationWithConfig([
-            'filesystems.disks.local.driver' => 'sentry',
-            'filesystems.disks.local.sentry_disk_name' => 'local',
-            'filesystems.disks.local.sentry_original_driver' => 'local',
-            'filesystems.disks.local.sentry_enable_breadcrumbs' => false,
-        ]);
+        Integration::configureDisksWithSentryDriver(true, false);
+        $this->resetApplicationWithConfig([]);
 
         Storage::exists('foo');
 
