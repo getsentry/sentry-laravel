@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.7.2
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.7.2.
+
+### Bug Fixes
+
+- Fix `app.bootstrap` span not starting at the start of the performance transaction [(#734)](https://github.com/getsentry/sentry-laravel/pull/734)
+
+- Fix `sentry` storage driver not being registered when DSN is not set causing `Driver [sentry] is not supported.` [(#752)](https://github.com/getsentry/sentry-laravel/pull/752)
+
 ## 3.7.1
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.7.1.
