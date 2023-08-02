@@ -154,7 +154,13 @@ class Middleware
 
     private function startTransaction(Request $request, HubInterface $sentry): void
     {
-        $requestStartTime = $request->server('REQUEST_TIME_FLOAT', microtime(true));
+        // Try $_SERVER['REQUEST_TIME_FLOAT'] then LARAVEL_START and fallback to microtime(true) if neither are defined
+        $requestStartTime = $request->server(
+            'REQUEST_TIME_FLOAT',
+            defined('LARAVEL_START')
+                ? LARAVEL_START
+                : microtime(true)
+        );
 
         $context = continueTrace(
             $request->header('sentry-trace', ''),
@@ -175,17 +181,16 @@ class Middleware
 
         $transaction = $sentry->startTransaction($context);
 
-        // If this transaction is not sampled, don't set it either and stop doing work from this point on
+        // If this transaction is not sampled, we can stop here to prevent doing work for nothing
         if (!$transaction->getSampled()) {
             return;
         }
 
         $this->transaction = $transaction;
 
-        // Setting the Transaction on the Hub
         SentrySdk::getCurrentHub()->setSpan($this->transaction);
 
-        $bootstrapSpan = $this->addAppBootstrapSpan($request);
+        $bootstrapSpan = $this->addAppBootstrapSpan();
 
         $appContextStart = new SpanContext;
         $appContextStart->setOp('middleware.handle');
@@ -196,21 +201,15 @@ class Middleware
         SentrySdk::getCurrentHub()->setSpan($this->appSpan);
     }
 
-    private function addAppBootstrapSpan(Request $request): ?Span
+    private function addAppBootstrapSpan(): ?Span
     {
         if ($this->bootedTimestamp === null) {
             return null;
         }
 
-        $laravelStartTime = defined('LARAVEL_START') ? LARAVEL_START : $request->server('REQUEST_TIME_FLOAT');
-
-        if ($laravelStartTime === null) {
-            return null;
-        }
-
         $spanContextStart = new SpanContext;
         $spanContextStart->setOp('app.bootstrap');
-        $spanContextStart->setStartTimestamp($laravelStartTime);
+        $spanContextStart->setStartTimestamp($this->transaction->getStartTimestamp());
         $spanContextStart->setEndTimestamp($this->bootedTimestamp);
 
         $span = $this->transaction->startChild($spanContextStart);
@@ -232,9 +231,9 @@ class Middleware
             return;
         }
 
-        $autoload = new SpanContext();
+        $autoload = new SpanContext;
         $autoload->setOp('app.php.autoload');
-        $autoload->setStartTimestamp($bootstrap->getStartTimestamp());
+        $autoload->setStartTimestamp($this->transaction->getStartTimestamp());
         $autoload->setEndTimestamp(SENTRY_AUTOLOAD);
 
         $bootstrap->startChild($autoload);
