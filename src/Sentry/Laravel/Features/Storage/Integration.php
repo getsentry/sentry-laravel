@@ -23,6 +23,16 @@ class Integration extends Feature
 
     public function setup(): void
     {
+        $this->registerDiskDriver();
+    }
+
+    public function setupInactive(): void
+    {
+        $this->registerDiskDriver();
+    }
+
+    private function registerDiskDriver(): void
+    {
         $this->container()->afterResolving(FilesystemManager::class, function (FilesystemManager $filesystemManager): void {
             $filesystemManager->extend(
                 self::STORAGE_DRIVER_NAME,
