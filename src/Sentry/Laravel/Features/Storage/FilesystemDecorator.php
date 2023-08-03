@@ -67,24 +67,6 @@ trait FilesystemDecorator
         return $this->filesystem->{$method}(...$args);
     }
 
-    /** @see \Illuminate\Filesystem\FilesystemAdapter::assertExists() */
-    public function assertExists($path, $content = null)
-    {
-        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path'));
-    }
-
-    /** @see \Illuminate\Filesystem\FilesystemAdapter::assertMissing() */
-    public function assertMissing($path)
-    {
-        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path'));
-    }
-
-    /** @see \Illuminate\Filesystem\FilesystemAdapter::assertDirectoryEmpty() */
-    public function assertDirectoryEmpty($path)
-    {
-        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path'));
-    }
-
     public function exists($path)
     {
         return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path'));
@@ -197,11 +179,6 @@ trait FilesystemDecorator
     public function deleteDirectory($directory)
     {
         return $this->withSentry(__FUNCTION__, func_get_args(), $directory, compact('directory'));
-    }
-
-    public function url($path)
-    {
-        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path'));
     }
 
     public function __call($name, $arguments)

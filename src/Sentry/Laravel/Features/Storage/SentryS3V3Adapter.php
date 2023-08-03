@@ -6,7 +6,7 @@ use Illuminate\Filesystem\AwsS3V3Adapter;
 
 class SentryS3V3Adapter extends AwsS3V3Adapter
 {
-    use FilesystemDecorator;
+    use FilesystemAdapterDecorator;
 
     public function __construct(AwsS3V3Adapter $filesystem, array $defaultData, bool $recordSpans, bool $recordBreadcrumbs)
     {

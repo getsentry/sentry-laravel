@@ -6,7 +6,7 @@ use Illuminate\Filesystem\FilesystemAdapter;
 
 class SentryFilesystemAdapter extends FilesystemAdapter
 {
-    use FilesystemDecorator;
+    use FilesystemAdapterDecorator;
 
     public function __construct(FilesystemAdapter $filesystem, array $defaultData, bool $recordSpans, bool $recordBreadcrumbs)
     {
