@@ -1,20 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<phpunit backupStaticAttributes="false"
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         backupGlobals="true"
          colors="true"
-         convertErrorsToExceptions="true"
-         convertNoticesToExceptions="true"
-         convertWarningsToExceptions="true"
-         processIsolation="false"
-         stopOnFailure="false"
-         bootstrap="test/bootstrap.php">
-  <testsuites>
-    <testsuite name="Sentry Test Suite">
-      <directory>./test/Sentry/</directory>
-    </testsuite>
-  </testsuites>
-  <coverage>
-    <include>
-      <directory suffix=".php">./src/Sentry/</directory>
-    </include>
-  </coverage>
+         bootstrap="test/bootstrap.php"
+         cacheResult="false"
+         beStrictAboutOutputDuringTests="true"
+>
+    <testsuites>
+        <testsuite name="Sentry Laravel Test Suite">
+            <directory>./test/Sentry/</directory>
+        </testsuite>
+    </testsuites>
+
+    <coverage>
+        <include>
+            <directory suffix=".php">./src/Sentry/</directory>
+        </include>
+    </coverage>
+
+    <filter>
+        <whitelist>
+            <directory suffix=".php">src</directory>
+        </whitelist>
+    </filter>
 </phpunit>
