@@ -49,7 +49,7 @@
     "scripts": {
         "test": "vendor/bin/phpunit",
         "tests": "@test",
-        "test:ci": "vendor/bin/phpunit",
+        "test:ci": "vendor/bin/phpunit --coverage-clover=coverage.xml",
         "phpcs": "vendor/bin/php-cs-fixer fix",
         "phpcs:ci": "vendor/bin/php-cs-fixer fix --dry-run --diff",
         "phpstan": "vendor/bin/phpstan analyse",
