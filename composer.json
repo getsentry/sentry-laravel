@@ -47,12 +47,13 @@
         }
     },
     "scripts": {
-        "phpcs": [
-            "vendor/bin/php-cs-fixer fix --verbose --diff --dry-run"
-        ],
-        "tests": [
-            "vendor/bin/phpunit --verbose"
-        ]
+        "test": "vendor/bin/phpunit --stop-on-failure",
+        "tests": "@test",
+        "test:ci": "vendor/bin/phpunit",
+        "phpcs": "vendor/bin/php-cs-fixer fix",
+        "phpcs:ci": "vendor/bin/php-cs-fixer fix --dry-run --diff",
+        "phpstan": "vendor/bin/phpstan analyse",
+        "phpstan:ci": "vendor/bin/phpstan analyse --error-format github"
     },
     "extra": {
         "branch-alias": {
