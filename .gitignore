@@ -6,6 +6,7 @@
 composer.lock
 
 # phpunit/phpunit
+coverage.xml
 .phpunit.result.cache
 
 # friendsofphp/php-cs-fixer

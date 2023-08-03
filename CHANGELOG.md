@@ -42,6 +42,14 @@
   By default, both spans and breadcrumbs are enabled.
   You may disable them by passing the second argument `$enableSpans` or the third argument `$enableBreadcrumbs`.
 
+## 3.7.3
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.7.3.
+
+### Bug Fixes
+
+- Fix HTTP client integration consuming the PSR request/response body stream [(#756)](https://github.com/getsentry/sentry-laravel/pull/756)
+
 ## 3.7.2
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.7.2.
