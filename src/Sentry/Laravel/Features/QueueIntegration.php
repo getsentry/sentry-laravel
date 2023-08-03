@@ -60,7 +60,7 @@ class QueueIntegration extends Feature
             || $this->isTracingFeatureEnabled('queue_job_transactions');
     }
 
-    public function setup(Dispatcher $events): void
+    public function onBoot(Dispatcher $events): void
     {
         $events->listen(JobProcessed::class, [$this, 'handleJobProcessedQueueEvent']);
         $events->listen(JobProcessing::class, [$this, 'handleJobProcessingQueueEvent']);

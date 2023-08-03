@@ -31,7 +31,7 @@ class LivewirePackageIntegration extends Feature
             || $this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY);
     }
 
-    public function setup(LivewireManager $livewireManager): void
+    public function onBoot(LivewireManager $livewireManager): void
     {
         $livewireManager->listen('component.booted', [$this, 'handleComponentBooted']);
 
