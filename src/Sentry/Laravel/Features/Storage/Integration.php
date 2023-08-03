@@ -60,6 +60,7 @@ class Integration extends Feature
                         // This is a "hack" to make sure that the original driver is resolved by the FilesystemManager
                         config(["filesystems.disks.{$disk}" => $config]);
 
+                        /** @var FilesystemManager $this */
                         return $this->resolve($disk);
                     })->bindTo($filesystemManager, FilesystemManager::class);
 
