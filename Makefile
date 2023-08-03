@@ -20,6 +20,10 @@ setup-git:
 phpcs:
 	composer phpcs
 
+.PHONY: phpstan
+phpstan:
+	composer phpstan
+
 .PHONY: tests
 tests:
 	composer tests
