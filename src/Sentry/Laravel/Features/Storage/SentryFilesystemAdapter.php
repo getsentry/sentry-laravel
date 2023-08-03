@@ -2,7 +2,6 @@
 
 namespace Sentry\Laravel\Features\Storage;
 
-use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Filesystem\FilesystemAdapter;
 
 /**
@@ -14,13 +13,11 @@ use Illuminate\Filesystem\FilesystemAdapter;
  */
 class SentryFilesystemAdapter extends FilesystemAdapter
 {
-    use WrapsFilesystemAdapter;
+    use FilesystemDecorator;
 
-    public function __construct(Filesystem $filesystem, array $defaultData, bool $recordSpans, bool $recordBreadcrumbs)
+    public function __construct(FilesystemAdapter $filesystem, array $defaultData, bool $recordSpans, bool $recordBreadcrumbs)
     {
-        if ($filesystem instanceof FilesystemAdapter) {
-            parent::__construct($filesystem->getDriver(), $filesystem->getAdapter(), $filesystem->getConfig());
-        }
+        parent::__construct($filesystem->getDriver(), $filesystem->getAdapter(), $filesystem->getConfig());
 
         $this->filesystem = $filesystem;
         $this->defaultData = $defaultData;

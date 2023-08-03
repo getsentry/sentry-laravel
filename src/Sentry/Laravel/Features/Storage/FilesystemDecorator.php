@@ -9,7 +9,14 @@ use Sentry\Laravel\Util\Filesize;
 use Sentry\Tracing\SpanContext;
 use function Sentry\trace;
 
-trait WrapsFilesystemAdapter
+/**
+ * Decorates the underlying filesystem by wrapping all calls to it with tracing.
+ *
+ * Parameters such as paths, directories or options are attached to the span as data,
+ * parameters that contain file contents are omitted due to potential problems with
+ * payload size or sensitive data.
+ */
+trait FilesystemDecorator
 {
     /** @var Filesystem */
     protected $filesystem;

@@ -2,9 +2,11 @@
 
 namespace Sentry\Laravel\Features\Storage;
 
+use Illuminate\Contracts\Filesystem\Cloud as CloudFilesystem;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Filesystem\AwsS3V3Adapter;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Filesystem\FilesystemManager;
 use RuntimeException;
 use Sentry\Laravel\Features\Feature;
@@ -19,54 +21,6 @@ class Integration extends Feature
     {
         // Since we only register the driver this feature is always applicable
         return true;
-    }
-
-    /**
-     * Decorates the configuration for all disks with Sentry driver configuration.
-     *
-     * This replaces the drivers with a custom driver that will capture performance traces and breadcrumbs.
-     * The custom driver will be an instance of @see \Sentry\Laravel\Features\Storage\SentryS3V3Adapter
-     * if the original driver was an @see \Illuminate\Filesystem\AwsS3V3Adapter,
-     * and an instance of @see \Sentry\Laravel\Features\Storage\SentryFilesystemAdapter
-     * which extends @see \Illuminate\Filesystem\FilesystemAdapter in all other cases.
-     * You might run into problems if you expect another specific driver class.
-     *
-     * @param array<string, array<string, mixed>> $diskConfigs
-     *
-     * @return array<string, array<string, mixed>>
-     */
-    public static function configureDisks(array $diskConfigs, bool $enableSpans = true, bool $enableBreadcrumbs = true): array
-    {
-        $diskConfigsWithSentryDriver = [];
-        foreach ($diskConfigs as $diskName => $diskConfig) {
-            $diskConfigsWithSentryDriver[$diskName] = static::configureDisk($diskName, $diskConfig, $enableSpans, $enableBreadcrumbs);
-        }
-
-        return $diskConfigsWithSentryDriver;
-    }
-
-    /**
-     * Decorates the configuration for a single disk with Sentry driver configuration.
-     *
-     * @see self::configureDisks()
-     *
-     * @param array<string, mixed> $diskConfig
-     *
-     * @return array<string, mixed>
-     */
-    public static function configureDisk(string $diskName, array $diskConfig, bool $enableSpans = true, bool $enableBreadcrumbs = true): array
-    {
-        $currentDriver = $diskConfig['driver'];
-
-        if ($currentDriver !== self::STORAGE_DRIVER_NAME) {
-            $diskConfig['driver'] = self::STORAGE_DRIVER_NAME;
-            $diskConfig['sentry_disk_name'] = $diskName;
-            $diskConfig['sentry_original_driver'] = $currentDriver;
-            $diskConfig['sentry_enable_spans'] = $enableSpans;
-            $diskConfig['sentry_enable_breadcrumbs'] = $enableBreadcrumbs;
-        }
-
-        return $diskConfig;
     }
 
     public function setup(): void
@@ -109,6 +63,7 @@ class Integration extends Feature
                         return $this->resolve($disk);
                     })->bindTo($filesystemManager, FilesystemManager::class);
 
+                    /** @var Filesystem $originalFilesystem */
                     $originalFilesystem = $diskResolver($disk, $config);
 
                     $defaultData = ['disk' => $disk, 'driver' => $config['driver']];
@@ -116,11 +71,73 @@ class Integration extends Feature
                     $recordSpans = $config['sentry_enable_spans'] ?? $this->isTracingFeatureEnabled(self::FEATURE_KEY);
                     $recordBreadcrumbs = $config['sentry_enable_breadcrumbs'] ?? $this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY);
 
-                    return $originalFilesystem instanceof AwsS3V3Adapter
-                        ? new SentryS3V3Adapter($originalFilesystem, $defaultData, $recordSpans, $recordBreadcrumbs)
-                        : new SentryFilesystemAdapter($originalFilesystem, $defaultData, $recordSpans, $recordBreadcrumbs);
+                    if ($originalFilesystem instanceof AwsS3V3Adapter) {
+                        return new SentryS3V3Adapter($originalFilesystem, $defaultData, $recordSpans, $recordBreadcrumbs);
+                    }
+
+                    if ($originalFilesystem instanceof FilesystemAdapter) {
+                        return new SentryFilesystemAdapter($originalFilesystem, $defaultData, $recordSpans, $recordBreadcrumbs);
+                    }
+
+                    if ($originalFilesystem instanceof CloudFilesystem) {
+                        return new SentryCloudFilesystem($originalFilesystem, $defaultData, $recordSpans, $recordBreadcrumbs);
+                    }
+
+                    return new SentryFilesystem($originalFilesystem, $defaultData, $recordSpans, $recordBreadcrumbs);
                 }
             );
         });
+    }
+
+    /**
+     * Decorates the configuration for a single disk with Sentry driver configuration.
+
+     * This replaces the driver with a custom driver that will capture performance traces and breadcrumbs.
+     *
+     * The custom driver will be an instance of @see \Sentry\Laravel\Features\Storage\SentryS3V3Adapter
+     * if the original driver is an @see \Illuminate\Filesystem\AwsS3V3Adapter,
+     * and an instance of @see \Sentry\Laravel\Features\Storage\SentryFilesystemAdapter
+     * if the original driver is an @see \Illuminate\Filesystem\FilesystemAdapter.
+     * If the original driver is neither of those, it will be @see \Sentry\Laravel\Features\Storage\SentryFilesystem
+     * or @see \Sentry\Laravel\Features\Storage\SentryCloudFilesystem based on the contract of the original driver.
+     *
+     * You might run into problems if you expect another specific driver class.
+     *
+     * @param array<string, mixed> $diskConfig
+     *
+     * @return array<string, mixed>
+     */
+    public static function configureDisk(string $diskName, array $diskConfig, bool $enableSpans = true, bool $enableBreadcrumbs = true): array
+    {
+        $currentDriver = $diskConfig['driver'];
+
+        if ($currentDriver !== self::STORAGE_DRIVER_NAME) {
+            $diskConfig['driver'] = self::STORAGE_DRIVER_NAME;
+            $diskConfig['sentry_disk_name'] = $diskName;
+            $diskConfig['sentry_original_driver'] = $currentDriver;
+            $diskConfig['sentry_enable_spans'] = $enableSpans;
+            $diskConfig['sentry_enable_breadcrumbs'] = $enableBreadcrumbs;
+        }
+
+        return $diskConfig;
+    }
+
+    /**
+     * Decorates the configuration for all disks with Sentry driver configuration.
+     *
+     * @see self::configureDisk()
+     *
+     * @param array<string, array<string, mixed>> $diskConfigs
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public static function configureDisks(array $diskConfigs, bool $enableSpans = true, bool $enableBreadcrumbs = true): array
+    {
+        $diskConfigsWithSentryDriver = [];
+        foreach ($diskConfigs as $diskName => $diskConfig) {
+            $diskConfigsWithSentryDriver[$diskName] = static::configureDisk($diskName, $diskConfig, $enableSpans, $enableBreadcrumbs);
+        }
+
+        return $diskConfigsWithSentryDriver;
     }
 }

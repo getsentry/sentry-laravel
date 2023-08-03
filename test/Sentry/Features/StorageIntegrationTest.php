@@ -155,9 +155,7 @@ class StorageIntegrationTest extends TestCase
     {
         $this->resetApplicationWithConfig([
             'sentry.dsn' => null,
-            'filesystems.disks.local.driver' => 'sentry',
-            'filesystems.disks.local.sentry_disk_name' => 'local',
-            'filesystems.disks.local.sentry_original_driver' => 'local',
+            'filesystems.disks' => Integration::configureDisks(config('filesystems.disks')),
         ]);
 
         Storage::exists('foo');
