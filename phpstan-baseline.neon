@@ -111,7 +111,7 @@ parameters:
 			path: src/Sentry/Laravel/Features/LivewirePackageIntegration.php
 
 		-
-			message: "#^Parameter \\$livewireManager of method Sentry\\\\Laravel\\\\Features\\\\LivewirePackageIntegration\\:\\:setup\\(\\) has invalid type Livewire\\\\LivewireManager\\.$#"
+			message: "#^Parameter \\$livewireManager of method Sentry\\\\Laravel\\\\Features\\\\LivewirePackageIntegration\\:\\:onBoot\\(\\) has invalid type Livewire\\\\LivewireManager\\.$#"
 			count: 1
 			path: src/Sentry/Laravel/Features/LivewirePackageIntegration.php
 
