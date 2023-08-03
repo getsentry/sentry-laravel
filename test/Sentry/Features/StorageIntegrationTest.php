@@ -10,6 +10,13 @@ class StorageIntegrationTest extends TestCase
 {
     public function testCreatesSpansFor(): void
     {
+        $this->resetApplicationWithConfig([
+            'filesystems.disks.local.driver' => 'sentry',
+            'filesystems.disks.local.sentry_disk_name' => 'local',
+            'filesystems.disks.local.sentry_enable_spans' => true,
+            'filesystems.disks.local.sentry_original_driver' => 'local',
+        ]);
+
         $hub = $this->getHubFromContainer();
 
         $transaction = $hub->startTransaction(new TransactionContext);
@@ -22,6 +29,7 @@ class StorageIntegrationTest extends TestCase
         Storage::assertExists('foo', 'bar');
         Storage::delete('foo');
         Storage::delete(['foo', 'bar']);
+        Storage::files();
 
         $spans = $transaction->getSpanRecorder()->getSpans();
 
@@ -55,12 +63,21 @@ class StorageIntegrationTest extends TestCase
         $this->assertSame('file.delete', $span->getOp());
         $this->assertSame('2 paths', $span->getDescription());
         $this->assertSame(['paths' => ['foo', 'bar'], 'disk' => 'local', 'driver' => 'local'], $span->getData());
+
+        $this->assertArrayHasKey(6, $spans);
+        $span = $spans[6];
+        $this->assertSame('file.files', $span->getOp());
+        $this->assertNull($span->getDescription());
+        $this->assertSame(['directory' => null, 'recursive' => false, 'disk' => 'local', 'driver' => 'local'], $span->getData());
     }
 
     public function testDoesntCreateSpansWhenDisabled(): void
     {
         $this->resetApplicationWithConfig([
-            'sentry.tracing.storage' => false,
+            'filesystems.disks.local.driver' => 'sentry',
+            'filesystems.disks.local.sentry_disk_name' => 'local',
+            'filesystems.disks.local.sentry_enable_spans' => false,
+            'filesystems.disks.local.sentry_original_driver' => 'local',
         ]);
 
         $hub = $this->getHubFromContainer();
@@ -77,11 +94,19 @@ class StorageIntegrationTest extends TestCase
 
     public function testCreatesBreadcrumbsFor(): void
     {
+        $this->resetApplicationWithConfig([
+            'filesystems.disks.local.driver' => 'sentry',
+            'filesystems.disks.local.sentry_disk_name' => 'local',
+            'filesystems.disks.local.sentry_original_driver' => 'local',
+            'filesystems.disks.local.sentry_enable_breadcrumbs' => true,
+        ]);
+
         Storage::put('foo', 'bar');
         $fooContent = Storage::get('foo');
         Storage::assertExists('foo', 'bar');
         Storage::delete('foo');
         Storage::delete(['foo', 'bar']);
+        Storage::files();
 
         $breadcrumbs = $this->getCurrentBreadcrumbs();
 
@@ -115,16 +140,39 @@ class StorageIntegrationTest extends TestCase
         $this->assertSame('file.delete', $span->getCategory());
         $this->assertSame('2 paths', $span->getMessage());
         $this->assertSame(['paths' => ['foo', 'bar'], 'disk' => 'local', 'driver' => 'local'], $span->getMetadata());
+
+        $this->assertArrayHasKey(5, $breadcrumbs);
+        $span = $breadcrumbs[5];
+        $this->assertSame('file.files', $span->getCategory());
+        $this->assertNull($span->getMessage());
+        $this->assertSame(['directory' => null, 'recursive' => false, 'disk' => 'local', 'driver' => 'local'], $span->getMetadata());
     }
 
     public function testDoesntCreateBreadcrumbsWhenDisabled(): void
     {
         $this->resetApplicationWithConfig([
-            'sentry.breadcrumbs.storage' => false,
+            'filesystems.disks.local.driver' => 'sentry',
+            'filesystems.disks.local.sentry_disk_name' => 'local',
+            'filesystems.disks.local.sentry_original_driver' => 'local',
+            'filesystems.disks.local.sentry_enable_breadcrumbs' => false,
         ]);
 
         Storage::exists('foo');
 
         $this->assertCount(0, $this->getCurrentBreadcrumbs());
+    }
+
+    public function testDriverWorksWhenDisabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.dsn' => null,
+            'filesystems.disks.local.driver' => 'sentry',
+            'filesystems.disks.local.sentry_disk_name' => 'local',
+            'filesystems.disks.local.sentry_original_driver' => 'local',
+        ]);
+
+        Storage::exists('foo');
+
+        $this->expectNotToPerformAssertions();
     }
 }

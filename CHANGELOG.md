@@ -1,5 +1,55 @@
 # Changelog
 
+## 3.7.2
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.7.2.
+
+### Bug Fixes
+
+- Fix `app.bootstrap` span not starting at the start of the performance transaction [(#734)](https://github.com/getsentry/sentry-laravel/pull/734)
+
+- Fix `sentry` storage driver not being registered when DSN is not set causing `Driver [sentry] is not supported.` [(#752)](https://github.com/getsentry/sentry-laravel/pull/752)
+
+## 3.7.1
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.7.1.
+
+### Bug Fixes
+
+- Performance traces and breadcrumbs for filesystem access are now turned off by default [(#746)](https://github.com/getsentry/sentry-laravel/pull/746)
+
+  To enable the feature, you'll need to make some changes in your `config/filesystems.php` file for each disk where you want to enable the tracing filesystem driver.
+  
+  ```php
+  // For example, if you want to trace the `local` disk, you update the disk config from this:
+  'local' => [
+      'driver' => 'local',
+      'root' => storage_path('app'),
+      'throw' => false,
+  ],
+
+  // to this:
+  'local' => [
+      'driver' => 'sentry',
+      'root' => storage_path('app'),
+      'throw' => false,
+
+      'sentry_disk_name' => 'local',
+      'sentry_original_driver' => 'local',
+      'sentry_enable_spans' => true,
+      'sentry_enable_breadcrumbs' => true,
+  ],
+  ```
+
+  For each disk, you replace the `driver` key with `sentry` and add the `sentry_original_driver` key with the original driver name. 
+  For us to construct the original driver, you also need to add the `sentry_disk_name` key with the name of the disk.
+  In addition, you can specify the optional `sentry_enable_spans` and `sentry_enable_breadcrumbs` config keys to turn off that feature for the disk.
+  These options are enabled by default.
+
+  Please note that we replace the driver for the disk with a custom driver that will capture performance traces and breadcrumbs.
+  This means that relying on the disk to be of a specific type might cause problems.
+  If you rely on the disk being an instance of `Illuminate\Contracts\Filesystem\Filesystem` or `Illuminate\Contracts\Filesystem\Cloud`, there should be no problem.
+
 ## 3.7.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.7.0.

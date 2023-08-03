@@ -46,7 +46,7 @@ class SentryFilesystem implements Filesystem
      *
      * @return mixed
      */
-    protected function withSentry(string $method, array $args, string $description, array $data)
+    protected function withSentry(string $method, array $args, ?string $description, array $data)
     {
         $op = "file.{$method}"; // See https://develop.sentry.dev/sdk/performance/span-operations/#web-server
         $data = array_merge($data, $this->defaultData);

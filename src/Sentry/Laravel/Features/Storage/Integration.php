@@ -17,26 +17,22 @@ class Integration extends Feature
 
     public function isApplicable(): bool
     {
-        return $this->isTracingFeatureEnabled(self::FEATURE_KEY)
-            || $this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY);
+        // Since we only register the driver this feature is always applicable
+        return true;
     }
 
     public function setup(): void
     {
-        foreach (config('filesystems.disks') as $disk => $config) {
-            $currentDriver = $config['driver'];
+        $this->registerDiskDriver();
+    }
 
-            if ($currentDriver === self::STORAGE_DRIVER_NAME) {
-                continue;
-            }
+    public function setupInactive(): void
+    {
+        $this->registerDiskDriver();
+    }
 
-            config([
-                "filesystems.disks.{$disk}.driver" => self::STORAGE_DRIVER_NAME,
-                "filesystems.disks.{$disk}.sentry_disk_name" => $disk,
-                "filesystems.disks.{$disk}.sentry_original_driver" => $config['driver'],
-            ]);
-        }
-
+    private function registerDiskDriver(): void
+    {
         $this->container()->afterResolving(FilesystemManager::class, function (FilesystemManager $filesystemManager): void {
             $filesystemManager->extend(
                 self::STORAGE_DRIVER_NAME,
@@ -69,8 +65,8 @@ class Integration extends Feature
 
                     $defaultData = ['disk' => $disk, 'driver' => $config['driver']];
 
-                    $recordSpans = $this->isTracingFeatureEnabled(self::FEATURE_KEY);
-                    $recordBreadcrumbs = $this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY);
+                    $recordSpans = $config['sentry_enable_spans'] ?? $this->isTracingFeatureEnabled(self::FEATURE_KEY);
+                    $recordBreadcrumbs = $config['sentry_enable_breadcrumbs'] ?? $this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY);
 
                     return $originalFilesystem instanceof CloudFilesystem
                         ? new SentryCloudFilesystem($originalFilesystem, $defaultData, $recordSpans, $recordBreadcrumbs)
