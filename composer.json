@@ -47,7 +47,7 @@
         }
     },
     "scripts": {
-        "test": "vendor/bin/phpunit --stop-on-failure",
+        "test": "vendor/bin/phpunit",
         "tests": "@test",
         "test:ci": "vendor/bin/phpunit",
         "phpcs": "vendor/bin/php-cs-fixer fix",
