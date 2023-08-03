@@ -121,6 +121,11 @@ parameters:
 			path: src/Sentry/Laravel/Features/LivewirePackageIntegration.php
 
 		-
+			message: "#^Call to protected method resolve\\(\\) of class Illuminate\\\\Filesystem\\\\FilesystemManager\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/Integration.php
+
+		-
 			message: "#^Class Laravel\\\\Lumen\\\\Application not found\\.$#"
 			count: 3
 			path: src/Sentry/Laravel/ServiceProvider.php
