@@ -162,4 +162,41 @@ class StorageIntegrationTest extends TestCase
 
         $this->expectNotToPerformAssertions();
     }
+
+    public function testThrowsIfDiskConfigurationDoesntSpecifyDiskName(): void
+    {
+        $this->resetApplicationWithConfig([
+            'filesystems.disks.local.driver' => 'sentry',
+            'filesystems.disks.local.sentry_original_driver' => 'local',
+        ]);
+
+        $this->expectExceptionMessage('Missing `sentry_disk_name` config key for `sentry` filesystem driver.');
+
+        Storage::disk('local');
+    }
+
+    public function testThrowsIfDiskConfigurationDoesntSpecifyOriginalDriver(): void
+    {
+        $this->resetApplicationWithConfig([
+            'filesystems.disks.local.driver' => 'sentry',
+            'filesystems.disks.local.sentry_disk_name' => 'local',
+        ]);
+
+        $this->expectExceptionMessage('Missing `sentry_original_driver` config key for `sentry` filesystem driver.');
+
+        Storage::disk('local');
+    }
+
+    public function testThrowsIfDiskConfigurationCreatesCircularReference(): void
+    {
+        $this->resetApplicationWithConfig([
+            'filesystems.disks.local.driver' => 'sentry',
+            'filesystems.disks.local.sentry_disk_name' => 'local',
+            'filesystems.disks.local.sentry_original_driver' => 'sentry',
+        ]);
+
+        $this->expectExceptionMessage('`sentry_original_driver` for Sentry storage integration cannot be the `sentry` driver.');
+
+        Storage::disk('local');
+    }
 }
