@@ -2,6 +2,7 @@
 
 namespace Sentry\Laravel\Tests;
 
+use Illuminate\Support\Facades\Artisan;
 use Orchestra\Testbench\TestCase;
 use Sentry\Laravel\Facade;
 use Sentry\Laravel\ServiceProvider;
@@ -67,5 +68,14 @@ class ServiceProviderTest extends TestCase
             E_ALL ^ E_DEPRECATED ^ E_USER_DEPRECATED,
             app('sentry')->getClient()->getOptions()->getErrorTypes()
         );
+    }
+
+    /**
+     * @depends testIsBound
+     */
+    public function testArtisanCommandsAreRegistered(): void
+    {
+        $this->assertArrayHasKey('sentry:test', Artisan::all());
+        $this->assertArrayHasKey('sentry:publish', Artisan::all());
     }
 }
