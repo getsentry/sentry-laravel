@@ -11,6 +11,15 @@ use Sentry\Laravel\Tests\TestCase;
 
 class HttpClientIntegrationTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        if (!class_exists(ResponseReceived::class)) {
+            $this->markTestSkipped('The Laravel HTTP client events are only available in Laravel 8.0+');
+        }
+
+        parent::setUp();
+    }
+
     public function testHttpClientBreadcrumbIsRecordedForResponseReceivedEvent(): void
     {
         $this->dispatchLaravelEvent(new ResponseReceived(
