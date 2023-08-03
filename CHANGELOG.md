@@ -1,5 +1,7 @@
 # Changelog
 
+## Unreleased
+
 ### Features
 
 - The filesystem adapters for the `sentry` driver now extend the well-known Laravel classes they decorate,
@@ -7,47 +9,48 @@
 
   Enabling the feature can be simplified by wrapping the configuration for all disks
   with a call to `Sentry\Laravel\Features\Storage\Integration::configureDisks()`
-  in your `config/filesystems.php` file.
+  in your `config/filesystems.php` file:
 
   ```php
   'disks' => Sentry\Laravel\Features\Storage\Integration::configureDisks([
-
       'local' => [
           'driver' => 'local',
           'root' => storage_path('app'),
           'throw' => false,
       ],
 
-      ...
-  ]),
+      // ...
+  ], /* enableSpans: */ true, /* enableBreadcrumbs: */ true),
+  ```
+
+  Alternatively, you can enable this feature only for select disks:
+
+  ```php
+  'disks' => [
+      'local' => [
+          'driver' => 'local',
+          'root' => storage_path('app'),
+          'throw' => false,
+      ],
+
+      's3' => Sentry\Laravel\Features\Storage\Integration::configureDisk('s3', [
+          // ...
+      ], /* enableSpans: */ true, /* enableBreadcrumbs: */ true),
+  ],
   ```
 
   By default, both spans and breadcrumbs are enabled.
   You may disable them by passing the second argument `$enableSpans` or the third argument `$enableBreadcrumbs`.
 
-  ```php
-  'disks' => Sentry\Laravel\Features\Storage\Integration::configureDisks([
-      ...
-  ], /* enableSpans: */ true, /* enableBreadcrumbs: */ false),
-  ```
+## 3.7.2
 
-  Alternatively, you can enable this feature only for selected disks.
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.7.2.
 
-  ```php
-  'disks' => [
+### Bug Fixes
 
-      'local' => [
-          'driver' => 'local',
-          'root' => storage_path('app'),
-          'throw' => false,
-      ],
+- Fix `app.bootstrap` span not starting at the start of the performance transaction [(#734)](https://github.com/getsentry/sentry-laravel/pull/734)
 
-
-      's3' => Sentry\Laravel\Features\Storage\Integration::configureDisk('s3', [
-          ...
-      ]),
-  ],
-  ```
+- Fix `sentry` storage driver not being registered when DSN is not set causing `Driver [sentry] is not supported.` [(#752)](https://github.com/getsentry/sentry-laravel/pull/752)
 
 ## 3.7.1
 

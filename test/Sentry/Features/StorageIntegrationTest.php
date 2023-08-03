@@ -150,4 +150,18 @@ class StorageIntegrationTest extends TestCase
 
         $this->assertCount(0, $this->getCurrentBreadcrumbs());
     }
+
+    public function testDriverWorksWhenDisabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.dsn' => null,
+            'filesystems.disks.local.driver' => 'sentry',
+            'filesystems.disks.local.sentry_disk_name' => 'local',
+            'filesystems.disks.local.sentry_original_driver' => 'local',
+        ]);
+
+        Storage::exists('foo');
+
+        $this->expectNotToPerformAssertions();
+    }
 }

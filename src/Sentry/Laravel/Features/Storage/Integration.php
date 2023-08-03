@@ -76,8 +76,6 @@ class Integration extends Feature
 
     public function setupInactive(): void
     {
-        // Required when inactive because the disks configuration is static,
-        // without this it fails with: "Driver [sentry] is not supported.".
         $this->registerDriver();
     }
 
