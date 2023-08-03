@@ -96,4 +96,4 @@ jobs:
           composer install --no-interaction --prefer-dist --no-progress
 
       - name: Run phpunit
-        run: vendor/bin/phpunit
+        run: composer test:ci
