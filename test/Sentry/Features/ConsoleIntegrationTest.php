@@ -4,7 +4,6 @@ namespace Sentry\Features;
 
 use Illuminate\Console\Scheduling\Schedule;
 use RuntimeException;
-use Sentry\CheckInStatus;
 use Sentry\Laravel\Tests\TestCase;
 use Illuminate\Console\Scheduling\Event;
 
