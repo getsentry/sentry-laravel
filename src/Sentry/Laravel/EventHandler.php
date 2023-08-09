@@ -315,7 +315,6 @@ class EventHandler
                 'http.request.method' => $event->request->method(),
                 'http.query' => $fullUri->getQuery(),
                 'http.fragment' => $fullUri->getFragment(),
-                'request_body_size' => $event->request->toPsrRequest()->getBody()->getSize(),
                 'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
             ]
         ));
