@@ -182,6 +182,12 @@ class EventHandler
         $context = new SpanContext();
         $context->setOp('db.sql.query');
         $context->setDescription($query->sql);
+        $context->setData([
+            'db.name' => $query->connection->getDatabaseName(),
+            'db.system' => $query->connection->getDriverName(),
+            // 'server.address' => ,
+            // 'server.port'=> ,
+        ]);
         $context->setStartTimestamp(microtime(true) - $query->time / 1000);
         $context->setEndTimestamp($context->getStartTimestamp() + $query->time / 1000);
 
@@ -189,7 +195,9 @@ class EventHandler
             $queryOrigin = $this->resolveQueryOriginFromBacktrace();
 
             if ($queryOrigin !== null) {
-                $context->setData(['db.sql.origin' => $queryOrigin]);
+                $context->setData(array_merge($context->getData(), [
+                    'db.sql.origin' => $queryOrigin
+                ]));
             }
         }
 
@@ -302,7 +310,7 @@ class EventHandler
         $context->setDescription($event->request->method() . ' ' . $partialUri);
         $context->setData([
             'url' => $partialUri,
-            'method' => $event->request->method(),
+            'http.request.method' => $event->request->method(),
             'http.query' => $fullUri->getQuery(),
             'http.fragment' => $fullUri->getFragment(),
         ]);
