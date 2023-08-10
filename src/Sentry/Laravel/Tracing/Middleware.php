@@ -176,7 +176,7 @@ class Middleware
 
         $context->setData([
             'url' => $requestPath,
-            'method' => strtoupper($request->method()),
+            'http.request.method' => strtoupper($request->method()),
         ]);
 
         $transaction = $sentry->startTransaction($context);
