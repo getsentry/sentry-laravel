@@ -185,8 +185,8 @@ class EventHandler
         $context->setData([
             'db.name' => $query->connection->getDatabaseName(),
             'db.system' => $query->connection->getDriverName(),
-            // 'server.address' => ,
-            // 'server.port'=> ,
+            'server.address' => $query->connection->getConfig('host'),
+            'server.port' => $query->connection->getConfig('port'),
         ]);
         $context->setStartTimestamp(microtime(true) - $query->time / 1000);
         $context->setEndTimestamp($context->getStartTimestamp() + $query->time / 1000);
