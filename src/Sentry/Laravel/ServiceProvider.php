@@ -6,11 +6,14 @@ use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
 use Illuminate\Foundation\Application as Laravel;
+use Illuminate\Foundation\Console\AboutCommand;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 use Illuminate\Http\Request;
 use Illuminate\Log\LogManager;
+use Illuminate\Support\Facades\Config;
 use Laravel\Lumen\Application as Lumen;
 use RuntimeException;
+use Sentry\Client;
 use Sentry\ClientBuilder;
 use Sentry\ClientBuilderInterface;
 use Sentry\Event;
@@ -91,6 +94,8 @@ class ServiceProvider extends BaseServiceProvider
             }
 
             $this->registerArtisanCommands();
+
+            $this->registerAbout();
         }
     }
 
@@ -171,6 +176,40 @@ class ServiceProvider extends BaseServiceProvider
             TestCommand::class,
             PublishCommand::class,
         ]);
+    }
+
+    /**
+     * Register the about command output
+     */
+    protected function registerAbout(): void
+    {
+        AboutCommand::add('Sentry', function () {
+            $client = SentrySdk::getCurrentHub()->getClient();
+
+            if ($client === null) {
+                return [];
+            }
+
+            $options = $client->getOptions();
+
+            $profilesSampleRate = $options->getProfilesSampleRate() ?? '<fg=yellow;options=bold>NOT SET</>';
+
+            $tracesSampleRate = $options->getTracesSampleRate() ?? '<fg=yellow;options=bold>NOT SET</>';
+
+            if (is_callable($options->getTracesSampler())) {
+                $tracesSampleRate = '<fg=yellow;options=bold>CUSTOM SAMPLER</>';
+            }
+
+            return [
+                'Environment' => $options->getEnvironment() ?: '<fg=yellow;options=bold>NOT SET</>',
+                'Release' => $options->getRelease() ?: '<fg=yellow;options=bold>NOT SET</>',
+                'Sample Rate Profiling' => $profilesSampleRate,
+                'Sample Rate Performance monitoring' => $tracesSampleRate,
+                'Send Default PII' => $options->shouldSendDefaultPii() ? '<fg=yellow;options=bold>ENABLED</>' : '<fg=green;options=bold>DISABLED</>',
+                'PHP SDK version' => Client::SDK_VERSION,
+                'Laravel SDK version' => Version::SDK_VERSION,
+            ];
+        });
     }
 
     /**
