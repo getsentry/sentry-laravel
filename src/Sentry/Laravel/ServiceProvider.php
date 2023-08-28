@@ -206,10 +206,10 @@ class ServiceProvider extends BaseServiceProvider
                 'Environment' => $options->getEnvironment() ?: '<fg=yellow;options=bold>NOT SET</>',
                 'Release' => $options->getRelease() ?: '<fg=yellow;options=bold>NOT SET</>',
                 'Sample Rate Profiling' => $profilesSampleRate,
-                'Sample Rate Performance monitoring' => $tracesSampleRate,
+                'Sample Rate Performance Monitoring' => $tracesSampleRate,
                 'Send Default PII' => $options->shouldSendDefaultPii() ? '<fg=yellow;options=bold>ENABLED</>' : '<fg=green;options=bold>DISABLED</>',
-                'PHP SDK version' => Client::SDK_VERSION,
-                'Laravel SDK version' => Version::SDK_VERSION,
+                'PHP SDK Version' => Client::SDK_VERSION,
+                'Laravel SDK Version' => Version::SDK_VERSION,
             ];
         });
     }
