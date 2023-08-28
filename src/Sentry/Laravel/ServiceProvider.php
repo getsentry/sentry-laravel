@@ -19,6 +19,7 @@ use Sentry\ClientBuilderInterface;
 use Sentry\Event;
 use Sentry\EventHint;
 use Sentry\Integration as SdkIntegration;
+use Sentry\Laravel\Console\AboutCommandIntegration;
 use Sentry\Laravel\Console\PublishCommand;
 use Sentry\Laravel\Console\TestCommand;
 use Sentry\Laravel\Features\Feature;
@@ -95,9 +96,7 @@ class ServiceProvider extends BaseServiceProvider
 
             $this->registerArtisanCommands();
 
-            if (class_exists(AboutCommand::class)) {
-                $this->registerAbout();
-            }
+            $this->registerAboutCommandIntegration();
         }
     }
 
@@ -181,37 +180,16 @@ class ServiceProvider extends BaseServiceProvider
     }
 
     /**
-     * Register the about command output
+     * Register the `php artisan about` command integration.
      */
-    protected function registerAbout(): void
+    protected function registerAboutCommandIntegration(): void
     {
-        AboutCommand::add('Sentry', function () {
-            $client = SentrySdk::getCurrentHub()->getClient();
+        // The about command is only available in Laravel 9 and up so we need to check if it's available to us
+        if (!class_exists(AboutCommand::class)) {
+            return;
+        }
 
-            if ($client === null) {
-                return [];
-            }
-
-            $options = $client->getOptions();
-
-            $profilesSampleRate = $options->getProfilesSampleRate() ?? '<fg=yellow;options=bold>NOT SET</>';
-
-            $tracesSampleRate = $options->getTracesSampleRate() ?? '<fg=yellow;options=bold>NOT SET</>';
-
-            if (is_callable($options->getTracesSampler())) {
-                $tracesSampleRate = '<fg=yellow;options=bold>CUSTOM SAMPLER</>';
-            }
-
-            return [
-                'Environment' => $options->getEnvironment() ?: '<fg=yellow;options=bold>NOT SET</>',
-                'Release' => $options->getRelease() ?: '<fg=yellow;options=bold>NOT SET</>',
-                'Sample Rate Profiling' => $profilesSampleRate,
-                'Sample Rate Performance Monitoring' => $tracesSampleRate,
-                'Send Default PII' => $options->shouldSendDefaultPii() ? '<fg=yellow;options=bold>ENABLED</>' : '<fg=green;options=bold>DISABLED</>',
-                'PHP SDK Version' => Client::SDK_VERSION,
-                'Laravel SDK Version' => Version::SDK_VERSION,
-            ];
-        });
+        AboutCommand::add('Sentry', AboutCommandIntegration::class);
     }
 
     /**
