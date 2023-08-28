@@ -95,7 +95,9 @@ class ServiceProvider extends BaseServiceProvider
 
             $this->registerArtisanCommands();
 
-            $this->registerAbout();
+            if (class_exists(AboutCommand::class)) {
+                $this->registerAbout();
+            }
         }
     }
 
