@@ -8,7 +8,7 @@ use Illuminate\Routing\Events\RouteMatched;
 
 class ServiceProviderWithoutDsnTest extends \Orchestra\Testbench\TestCase
 {
-    protected function getEnvironmentSetUp($app): void
+    protected function defineEnvironment($app): void
     {
         $app['config']->set('sentry.dsn', null);
     }

@@ -52,12 +52,9 @@ class ConsoleIntegrationTest extends TestCase
         $this->getScheduler()->call(function () {})->sentryMonitor();
     }
 
+    /** @define-env envWithoutDsnSet */
     public function testScheduleMacroWithoutDsnSet(): void
     {
-        $this->resetApplicationWithConfig([
-            'sentry.dsn' => null,
-        ]);
-
         /** @var Event $scheduledEvent */
         $scheduledEvent = $this->getScheduler()->call(function () {})->sentryMonitor('test-monitor');
 
@@ -79,6 +76,7 @@ class ConsoleIntegrationTest extends TestCase
         $this->assertTrue(Event::hasMacro('sentryMonitor'));
     }
 
+    /** @define-env envWithoutDsnSet */
     public function testScheduleMacroIsRegisteredWithoutDsnSet(): void
     {
         if (!method_exists(Event::class, 'flushMacros')) {
@@ -87,9 +85,7 @@ class ConsoleIntegrationTest extends TestCase
 
         Event::flushMacros();
 
-        $this->resetApplicationWithConfig([
-            'sentry.dsn' => null,
-        ]);
+        $this->refreshApplication();
 
         $this->assertTrue(Event::hasMacro('sentryMonitor'));
     }

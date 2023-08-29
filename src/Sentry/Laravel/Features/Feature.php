@@ -9,9 +9,7 @@ use Throwable;
 
 /**
  * @method void onBoot() Setup the feature in the environment.
- * @method void onRegister() Register the feature in the environment.
  * @method void onBootInactive() Setup the feature in the environment in an inactive state (when no DSN was set).
- * @method void onRegisterInactive() Register the feature in the environment in an inactive state (when no DSN was set).
  *
  * @internal
  */
@@ -52,31 +50,11 @@ abstract class Feature
     abstract public function isApplicable(): bool;
 
     /**
-     * Register the feature.
+     * Register the feature in the environment.
      */
     public function register(): void
     {
-        if (method_exists($this, 'onRegister') && $this->isApplicable()) {
-            try {
-                $this->container->call([$this, 'onRegister']);
-            } catch (Throwable $exception) {
-                // If the feature setup fails, we don't want to prevent the rest of the SDK from working.
-            }
-        }
-    }
-
-    /**
-     * Register the feature in an inactive state (when no DSN was set).
-     */
-    public function registerInactive(): void
-    {
-        if (method_exists($this, 'onRegisterInactive') && $this->isApplicable()) {
-            try {
-                $this->container->call([$this, 'onRegisterInactive']);
-            } catch (Throwable $exception) {
-                // If the feature setup fails, we don't want to prevent the rest of the SDK from working.
-            }
-        }
+        // ...
     }
 
     /**

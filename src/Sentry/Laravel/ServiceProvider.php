@@ -6,9 +6,9 @@ use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
 use Illuminate\Foundation\Application as Laravel;
+use Illuminate\Foundation\Console\AboutCommand;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 use Illuminate\Http\Request;
-use Illuminate\Log\LogManager;
 use Laravel\Lumen\Application as Lumen;
 use RuntimeException;
 use Sentry\ClientBuilder;
@@ -16,14 +16,17 @@ use Sentry\ClientBuilderInterface;
 use Sentry\Event;
 use Sentry\EventHint;
 use Sentry\Integration as SdkIntegration;
+use Sentry\Laravel\Console\AboutCommandIntegration;
 use Sentry\Laravel\Console\PublishCommand;
 use Sentry\Laravel\Console\TestCommand;
 use Sentry\Laravel\Features\Feature;
 use Sentry\Laravel\Http\LaravelRequestFetcher;
 use Sentry\Laravel\Http\SetRequestIpMiddleware;
 use Sentry\Laravel\Http\SetRequestMiddleware;
+use Sentry\Laravel\Tracing\BacktraceHelper;
 use Sentry\Laravel\Tracing\ServiceProvider as TracingServiceProvider;
 use Sentry\SentrySdk;
+use Sentry\Serializer\RepresentationSerializer;
 use Sentry\State\Hub;
 use Sentry\State\HubInterface;
 use Sentry\Tracing\TransactionMetadata;
@@ -51,6 +54,7 @@ class ServiceProvider extends BaseServiceProvider
      * List of features that are provided by the SDK.
      */
     protected const FEATURES = [
+        Features\LogIntegration::class,
         Features\CacheIntegration::class,
         Features\QueueIntegration::class,
         Features\ConsoleIntegration::class,
@@ -91,6 +95,8 @@ class ServiceProvider extends BaseServiceProvider
             }
 
             $this->registerArtisanCommands();
+
+            $this->registerAboutCommandIntegration();
         }
     }
 
@@ -106,12 +112,6 @@ class ServiceProvider extends BaseServiceProvider
         $this->mergeConfigFrom(__DIR__ . '/../../../config/sentry.php', static::$abstract);
 
         $this->configureAndRegisterClient();
-
-        if (($logManager = $this->app->make('log')) instanceof LogManager) {
-            $logManager->extend('sentry', function ($app, array $config) {
-                return (new LogChannel($app))($config);
-            });
-        }
 
         $this->registerFeatures();
     }
@@ -153,16 +153,12 @@ class ServiceProvider extends BaseServiceProvider
             $this->app->singleton($feature);
         }
 
-        $bootActive = $this->hasDsnSet();
-
         foreach (self::FEATURES as $feature) {
             try {
                 /** @var Feature $featureInstance */
                 $featureInstance = $this->app->make($feature);
 
-                $bootActive
-                    ? $featureInstance->register()
-                    : $featureInstance->registerInactive();
+                $featureInstance->register();
             } catch (Throwable $e) {
                 // Ensure that features do not break the whole application
             }
@@ -199,6 +195,19 @@ class ServiceProvider extends BaseServiceProvider
             TestCommand::class,
             PublishCommand::class,
         ]);
+    }
+
+    /**
+     * Register the `php artisan about` command integration.
+     */
+    protected function registerAboutCommandIntegration(): void
+    {
+        // The about command is only available in Laravel 9 and up so we need to check if it's available to us
+        if (!class_exists(AboutCommand::class)) {
+            return;
+        }
+
+        AboutCommand::add('Sentry', AboutCommandIntegration::class);
     }
 
     /**
@@ -321,6 +330,14 @@ class ServiceProvider extends BaseServiceProvider
         });
 
         $this->app->alias(HubInterface::class, static::$abstract);
+
+        $this->app->singleton(BacktraceHelper::class, function () {
+            $sentry = $this->app->make(HubInterface::class);
+
+            $options = $sentry->getClient()->getOptions();
+
+            return new BacktraceHelper($options, new RepresentationSerializer($options));
+        });
     }
 
     /**

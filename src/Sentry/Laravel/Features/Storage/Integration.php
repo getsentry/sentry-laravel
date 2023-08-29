@@ -23,17 +23,7 @@ class Integration extends Feature
         return true;
     }
 
-    public function onRegister(): void
-    {
-        $this->registerDriver();
-    }
-
-    public function onRegisterInactive(): void
-    {
-        $this->registerDriver();
-    }
-
-    protected function registerDriver(): void
+    public function register(): void
     {
         $this->container()->afterResolving(FilesystemManager::class, function (FilesystemManager $filesystemManager): void {
             $filesystemManager->extend(

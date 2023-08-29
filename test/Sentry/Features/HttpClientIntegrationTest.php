@@ -31,11 +31,11 @@ class HttpClientIntegrationTest extends TestCase
 
         $metadata = $this->getLastBreadcrumb()->getMetadata();
 
-        $this->assertEquals('GET', $metadata['method']);
+        $this->assertEquals('GET', $metadata['http.request.method']);
         $this->assertEquals('https://example.com', $metadata['url']);
-        $this->assertEquals(200, $metadata['status_code']);
-        $this->assertEquals(7, $metadata['request_body_size']);
-        $this->assertEquals(8, $metadata['response_body_size']);
+        $this->assertEquals(200, $metadata['http.response.status_code']);
+        $this->assertEquals(7, $metadata['http.request.body.size']);
+        $this->assertEquals(8, $metadata['http.response.body.size']);
     }
 
     public function testHttpClientBreadcrumbDoesntConsumeBodyStream(): void

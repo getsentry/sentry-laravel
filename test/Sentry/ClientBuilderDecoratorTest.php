@@ -6,9 +6,9 @@ use Sentry\ClientBuilderInterface;
 
 class ClientBuilderDecoratorTest extends TestCase
 {
-    protected function getEnvironmentSetUp($app): void
+    protected function defineEnvironment($app): void
     {
-        parent::getEnvironmentSetUp($app);
+        parent::defineEnvironment($app);
 
         $app->extend(ClientBuilderInterface::class, function (ClientBuilderInterface $clientBuilder) {
             $clientBuilder->getOptions()->setEnvironment('from_service_container');

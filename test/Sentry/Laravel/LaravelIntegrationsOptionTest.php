@@ -12,9 +12,9 @@ use Sentry\Laravel\Tests\TestCase;
 
 class LaravelIntegrationsOptionTest extends TestCase
 {
-    protected function getEnvironmentSetUp($app): void
+    protected function defineEnvironment($app): void
     {
-        parent::getEnvironmentSetUp($app);
+        parent::defineEnvironment($app);
 
         $app->singleton('custom-sentry-integration', static function () {
             return new IntegrationsOptionTestIntegrationStub;
