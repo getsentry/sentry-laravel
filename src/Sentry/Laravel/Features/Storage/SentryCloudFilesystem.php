@@ -2,20 +2,17 @@
 
 namespace Sentry\Laravel\Features\Storage;
 
-use Illuminate\Contracts\Filesystem\Cloud as CloudFilesystem;
+use Illuminate\Contracts\Filesystem\Cloud;
 
-class SentryCloudFilesystem extends SentryFilesystem implements CloudFilesystem
+class SentryCloudFilesystem implements Cloud
 {
-    /** @var CloudFilesystem */
-    protected $filesystem;
+    use CloudFilesystemDecorator;
 
-    public function __construct(CloudFilesystem $filesystem, array $defaultData, bool $recordSpans, bool $recordBreadcrumbs)
+    public function __construct(Cloud $filesystem, array $defaultData, bool $recordSpans, bool $recordBreadcrumbs)
     {
-        parent::__construct($filesystem, $defaultData, $recordSpans, $recordBreadcrumbs);
-    }
-
-    public function url($path)
-    {
-        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path'));
+        $this->filesystem = $filesystem;
+        $this->defaultData = $defaultData;
+        $this->recordSpans = $recordSpans;
+        $this->recordBreadcrumbs = $recordBreadcrumbs;
     }
 }
