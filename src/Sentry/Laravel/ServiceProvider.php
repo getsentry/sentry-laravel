@@ -153,16 +153,12 @@ class ServiceProvider extends BaseServiceProvider
             $this->app->singleton($feature);
         }
 
-        $bootActive = $this->hasDsnSet();
-
         foreach (self::FEATURES as $feature) {
             try {
                 /** @var Feature $featureInstance */
                 $featureInstance = $this->app->make($feature);
 
-                $bootActive
-                    ? $featureInstance->register()
-                    : $featureInstance->registerInactive();
+                $featureInstance->register();
             } catch (Throwable $e) {
                 // Ensure that features do not break the whole application
             }
