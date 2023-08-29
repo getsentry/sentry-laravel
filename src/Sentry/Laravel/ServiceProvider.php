@@ -8,7 +8,6 @@ use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
 use Illuminate\Foundation\Application as Laravel;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 use Illuminate\Http\Request;
-use Illuminate\Log\LogManager;
 use Laravel\Lumen\Application as Lumen;
 use RuntimeException;
 use Sentry\ClientBuilder;
@@ -51,6 +50,7 @@ class ServiceProvider extends BaseServiceProvider
      * List of features that are provided by the SDK.
      */
     protected const FEATURES = [
+        Features\LogIntegration::class,
         Features\CacheIntegration::class,
         Features\QueueIntegration::class,
         Features\ConsoleIntegration::class,
@@ -106,12 +106,6 @@ class ServiceProvider extends BaseServiceProvider
         $this->mergeConfigFrom(__DIR__ . '/../../../config/sentry.php', static::$abstract);
 
         $this->configureAndRegisterClient();
-
-        if (($logManager = $this->app->make('log')) instanceof LogManager) {
-            $logManager->extend('sentry', function ($app, array $config) {
-                return (new LogChannel($app))($config);
-            });
-        }
 
         $this->registerFeatures();
     }
