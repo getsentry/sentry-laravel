@@ -153,9 +153,9 @@ class IntegrationTest extends TestCase
 
         report($testException);
 
-        $this->assertCount(1, $this->lastSentryEvents);
+        $this->assertEquals(1, $this->getEventsCount());
 
-        [, $hint] = $this->lastSentryEvents[0];
+        $hint = $this->getLastEventHint();
 
         $this->assertEquals($testException, $hint->exception);
         $this->assertNotNull($hint->mechanism);
@@ -168,9 +168,9 @@ class IntegrationTest extends TestCase
 
         Integration::captureUnhandledException($testException);
 
-        $this->assertCount(1, $this->lastSentryEvents);
+        $this->assertEquals(1, $this->getEventsCount());
 
-        [, $hint] = $this->lastSentryEvents[0];
+        $hint = $this->getLastEventHint();
 
         $this->assertEquals($testException, $hint->exception);
         $this->assertNotNull($hint->mechanism);
