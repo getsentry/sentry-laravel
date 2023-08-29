@@ -239,7 +239,7 @@ class EventHandler
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,
             Breadcrumb::TYPE_DEFAULT,
-            'sql.query',
+            'db.sql.query',
             $query->sql,
             $data
         ));
@@ -287,12 +287,12 @@ class EventHandler
             null,
             [
                 'url' => $this->getPartialUri($fullUri),
-                'method' => $event->request->method(),
-                'status_code' => $event->response->status(),
+                'http.request.method' => $event->request->method(),
+                'http.response.status_code' => $event->response->status(),
                 'http.query' => $fullUri->getQuery(),
                 'http.fragment' => $fullUri->getFragment(),
-                'request_body_size' => $event->request->toPsrRequest()->getBody()->getSize(),
-                'response_body_size' => $event->response->toPsrResponse()->getBody()->getSize(),
+                'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
+                'http.response.body.size' => $event->response->toPsrResponse()->getBody()->getSize(),
             ]
         ));
     }
@@ -312,10 +312,10 @@ class EventHandler
             null,
             [
                 'url' => $this->getPartialUri($fullUri),
-                'method' => $event->request->method(),
+                'http.request.method' => $event->request->method(),
                 'http.query' => $fullUri->getQuery(),
                 'http.fragment' => $fullUri->getFragment(),
-                'request_body_size' => $event->request->toPsrRequest()->getBody()->getSize(),
+                'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
             ]
         ));
     }
