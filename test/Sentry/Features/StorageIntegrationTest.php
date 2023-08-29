@@ -3,6 +3,7 @@
 namespace Sentry\Laravel\Tests\Features;
 
 use Illuminate\Support\Facades\Storage;
+use Sentry\Laravel\Features\Storage\Integration;
 use Sentry\Laravel\Tests\TestCase;
 use Sentry\Tracing\TransactionContext;
 
@@ -11,10 +12,7 @@ class StorageIntegrationTest extends TestCase
     public function testCreatesSpansFor(): void
     {
         $this->resetApplicationWithConfig([
-            'filesystems.disks.local.driver' => 'sentry',
-            'filesystems.disks.local.sentry_disk_name' => 'local',
-            'filesystems.disks.local.sentry_enable_spans' => true,
-            'filesystems.disks.local.sentry_original_driver' => 'local',
+            'filesystems.disks' => Integration::configureDisks(config('filesystems.disks')),
         ]);
 
         $hub = $this->getHubFromContainer();
@@ -74,10 +72,7 @@ class StorageIntegrationTest extends TestCase
     public function testDoesntCreateSpansWhenDisabled(): void
     {
         $this->resetApplicationWithConfig([
-            'filesystems.disks.local.driver' => 'sentry',
-            'filesystems.disks.local.sentry_disk_name' => 'local',
-            'filesystems.disks.local.sentry_enable_spans' => false,
-            'filesystems.disks.local.sentry_original_driver' => 'local',
+            'filesystems.disks' => Integration::configureDisks(config('filesystems.disks'), false),
         ]);
 
         $hub = $this->getHubFromContainer();
@@ -95,10 +90,7 @@ class StorageIntegrationTest extends TestCase
     public function testCreatesBreadcrumbsFor(): void
     {
         $this->resetApplicationWithConfig([
-            'filesystems.disks.local.driver' => 'sentry',
-            'filesystems.disks.local.sentry_disk_name' => 'local',
-            'filesystems.disks.local.sentry_original_driver' => 'local',
-            'filesystems.disks.local.sentry_enable_breadcrumbs' => true,
+            'filesystems.disks' => Integration::configureDisks(config('filesystems.disks')),
         ]);
 
         Storage::put('foo', 'bar');
@@ -151,10 +143,7 @@ class StorageIntegrationTest extends TestCase
     public function testDoesntCreateBreadcrumbsWhenDisabled(): void
     {
         $this->resetApplicationWithConfig([
-            'filesystems.disks.local.driver' => 'sentry',
-            'filesystems.disks.local.sentry_disk_name' => 'local',
-            'filesystems.disks.local.sentry_original_driver' => 'local',
-            'filesystems.disks.local.sentry_enable_breadcrumbs' => false,
+            'filesystems.disks' => Integration::configureDisks(config('filesystems.disks'), true, false),
         ]);
 
         Storage::exists('foo');
@@ -166,13 +155,48 @@ class StorageIntegrationTest extends TestCase
     {
         $this->resetApplicationWithConfig([
             'sentry.dsn' => null,
-            'filesystems.disks.local.driver' => 'sentry',
-            'filesystems.disks.local.sentry_disk_name' => 'local',
-            'filesystems.disks.local.sentry_original_driver' => 'local',
+            'filesystems.disks' => Integration::configureDisks(config('filesystems.disks')),
         ]);
 
         Storage::exists('foo');
 
         $this->expectNotToPerformAssertions();
+    }
+
+    public function testThrowsIfDiskConfigurationDoesntSpecifyDiskName(): void
+    {
+        $this->resetApplicationWithConfig([
+            'filesystems.disks.local.driver' => 'sentry',
+            'filesystems.disks.local.sentry_original_driver' => 'local',
+        ]);
+
+        $this->expectExceptionMessage('Missing `sentry_disk_name` config key for `sentry` filesystem driver.');
+
+        Storage::disk('local');
+    }
+
+    public function testThrowsIfDiskConfigurationDoesntSpecifyOriginalDriver(): void
+    {
+        $this->resetApplicationWithConfig([
+            'filesystems.disks.local.driver' => 'sentry',
+            'filesystems.disks.local.sentry_disk_name' => 'local',
+        ]);
+
+        $this->expectExceptionMessage('Missing `sentry_original_driver` config key for `sentry` filesystem driver.');
+
+        Storage::disk('local');
+    }
+
+    public function testThrowsIfDiskConfigurationCreatesCircularReference(): void
+    {
+        $this->resetApplicationWithConfig([
+            'filesystems.disks.local.driver' => 'sentry',
+            'filesystems.disks.local.sentry_disk_name' => 'local',
+            'filesystems.disks.local.sentry_original_driver' => 'sentry',
+        ]);
+
+        $this->expectExceptionMessage('`sentry_original_driver` for Sentry storage integration cannot be the `sentry` driver.');
+
+        Storage::disk('local');
     }
 }

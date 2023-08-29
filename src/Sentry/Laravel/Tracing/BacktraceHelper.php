@@ -8,6 +8,9 @@ use Sentry\FrameBuilder;
 use Illuminate\Support\Str;
 use Sentry\Serializer\RepresentationSerializerInterface;
 
+/**
+ * @internal
+ */
 class BacktraceHelper
 {
     /**

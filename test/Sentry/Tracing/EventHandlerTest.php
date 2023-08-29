@@ -14,7 +14,7 @@ class EventHandlerTest extends TestCase
     {
         $this->expectException(RuntimeException::class);
 
-        $handler = new EventHandler([], $this->app->make(BacktraceHelper::class));
+        $handler = new EventHandler([]);
 
         /** @noinspection PhpUndefinedMethodInspection */
         $handler->thisIsNotAHandlerAndShouldThrowAnException();
@@ -29,7 +29,7 @@ class EventHandlerTest extends TestCase
 
     private function tryAllEventHandlerMethods(array $methods): void
     {
-        $handler = new EventHandler([], $this->app->make(BacktraceHelper::class));
+        $handler = new EventHandler([]);
 
         $methods = array_map(static function ($method) {
             return "{$method}Handler";

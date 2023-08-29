@@ -9,7 +9,7 @@ use Sentry\State\HubInterface;
 
 class ServiceProviderWithCustomAliasTest extends TestCase
 {
-    protected function getEnvironmentSetUp($app): void
+    protected function defineEnvironment($app): void
     {
         $app['config']->set('custom-sentry.dsn', 'http://publickey:secretkey@sentry.dev/123');
         $app['config']->set('custom-sentry.error_types', E_ALL ^ E_DEPRECATED ^ E_USER_DEPRECATED);
