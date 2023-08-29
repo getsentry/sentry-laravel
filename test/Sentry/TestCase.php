@@ -20,6 +20,8 @@ abstract class TestCase extends LaravelTestCase
 {
     private static $hasSetupGlobalEventProcessor = false;
 
+    protected $loadEnvironmentVariables = false;
+
     protected $setupConfig = [
         // Set config here before refreshing the app to set it in the container before Sentry is loaded
         // or use the `$this->resetApplicationWithConfig([ /* config */ ]);` helper method
@@ -28,7 +30,8 @@ abstract class TestCase extends LaravelTestCase
     /** @var array<int, array{0: Event, 1: EventHint|null}> */
     protected static $lastSentryEvents = [];
 
-    protected function getEnvironmentSetUp($app): void
+    /** @param \Illuminate\Foundation\Application $app */
+    protected function defineEnvironment($app): void
     {
         self::$lastSentryEvents = [];
 
@@ -46,7 +49,7 @@ abstract class TestCase extends LaravelTestCase
             return null;
         });
 
-        $app['config']->set('sentry.dsn', 'http://publickey:secretkey@sentry.dev/123');
+        $app['config']->set('sentry.dsn', 'https://publickey:secretkey@sentry.dev/123');
 
         foreach ($this->setupConfig as $key => $value) {
             $app['config']->set($key, $value);
