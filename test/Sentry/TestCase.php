@@ -2,7 +2,9 @@
 
 namespace Sentry\Laravel\Tests;
 
+use Illuminate\Config\Repository;
 use Illuminate\Contracts\Debug\ExceptionHandler;
+use Illuminate\Foundation\Application;
 use ReflectionMethod;
 use Sentry\Breadcrumb;
 use Sentry\ClientInterface;
@@ -30,34 +32,45 @@ abstract class TestCase extends LaravelTestCase
     /** @var array<int, array{0: Event, 1: EventHint|null}> */
     protected static $lastSentryEvents = [];
 
-    /** @param \Illuminate\Foundation\Application $app */
+    /** @param Application $app */
     protected function defineEnvironment($app): void
     {
         self::$lastSentryEvents = [];
 
         $this->setupGlobalEventProcessor();
 
-        $app['config']->set('sentry.before_send', static function (Event $event, ?EventHint $hint) {
-            self::$lastSentryEvents[] = [$event, $hint];
+        tap($app['config'], function (Repository $config) {
+            $config->set('sentry.before_send', static function (Event $event, ?EventHint $hint) {
+                self::$lastSentryEvents[] = [$event, $hint];
 
-            return null;
+                return null;
+            });
+
+            $config->set('sentry.before_send_transaction', static function (Event $event, ?EventHint $hint) {
+                self::$lastSentryEvents[] = [$event, $hint];
+
+                return null;
+            });
+
+            if ($config->get('sentry_test.override_dsn') !== true) {
+                $config->set('sentry.dsn', 'https://publickey:secretkey@sentry.dev/123');
+            }
+
+            foreach ($this->setupConfig as $key => $value) {
+                $config->set($key, $value);
+            }
         });
-
-        $app['config']->set('sentry.before_send_transaction', static function (Event $event, ?EventHint $hint) {
-            self::$lastSentryEvents[] = [$event, $hint];
-
-            return null;
-        });
-
-        $app['config']->set('sentry.dsn', 'https://publickey:secretkey@sentry.dev/123');
-
-        foreach ($this->setupConfig as $key => $value) {
-            $app['config']->set($key, $value);
-        }
 
         $app->extend(ExceptionHandler::class, function (ExceptionHandler $handler) {
             return new TestCaseExceptionHandler($handler);
         });
+    }
+
+    /** @param Application $app */
+    protected function envWithoutDsnSet($app): void
+    {
+        $app['config']->set('sentry.dsn', null);
+        $app['config']->set('sentry_test.override_dsn', true);
     }
 
     protected function getPackageProviders($app): array
