@@ -2,6 +2,7 @@
 
 namespace Sentry\Laravel\Tests;
 
+use Illuminate\Support\Facades\Artisan;
 use Sentry\Laravel\ServiceProvider;
 use Illuminate\Routing\Events\RouteMatched;
 
@@ -38,5 +39,14 @@ class ServiceProviderWithoutDsnTest extends \Orchestra\Testbench\TestCase
     public function testDidNotRegisterEvents(): void
     {
         $this->assertEquals(false, app('events')->hasListeners(RouteMatched::class));
+    }
+
+    /**
+     * @depends testIsBound
+     */
+    public function testArtisanCommandsAreRegistered(): void
+    {
+        $this->assertArrayHasKey('sentry:test', Artisan::all());
+        $this->assertArrayHasKey('sentry:publish', Artisan::all());
     }
 }

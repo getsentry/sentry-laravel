@@ -1,4 +1,4 @@
-name: CS
+name: Static Analysis
 
 on:
   pull_request:
@@ -8,8 +8,8 @@ on:
       - release/**
 
 jobs:
-  php-cs-fixer:
-    name: PHP-CS-Fixer
+  phpstan:
+    name: PHPStan
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -25,4 +25,4 @@ jobs:
         run: composer update --no-progress --no-interaction --prefer-dist
 
       - name: Run script
-        run: composer phpcs:ci
+        run: composer phpstan:ci

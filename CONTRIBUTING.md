@@ -54,6 +54,14 @@ Tests can be run via [PHPUnit](https://phpunit.de).
 composer tests
 ```
 
+### Static analysis
+
+Static analysis can be run via [PHPStan](https://phpstan.org).
+
+```bash
+composer phpstan
+```
+
 ### Code style
 
 The code is automatically formatted through [php-cs-fixer](https://cs.symfony.com).

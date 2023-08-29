@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - master
-      - develop
       - release/**
 
 jobs:
@@ -71,13 +70,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          coverage: none
+          coverage: pcov
           tools: composer:v2
 
       - name: Install Composer dependencies
@@ -97,4 +96,7 @@ jobs:
           composer install --no-interaction --prefer-dist --no-progress
 
       - name: Run phpunit
-        run: vendor/bin/phpunit
+        run: composer test:ci
+
+      - name: Upload code coverage
+        uses: codecov/codecov-action@v3

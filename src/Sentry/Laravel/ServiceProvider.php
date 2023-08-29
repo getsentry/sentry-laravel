@@ -6,16 +6,20 @@ use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
 use Illuminate\Foundation\Application as Laravel;
+use Illuminate\Foundation\Console\AboutCommand;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 use Illuminate\Http\Request;
 use Illuminate\Log\LogManager;
+use Illuminate\Support\Facades\Config;
 use Laravel\Lumen\Application as Lumen;
 use RuntimeException;
+use Sentry\Client;
 use Sentry\ClientBuilder;
 use Sentry\ClientBuilderInterface;
 use Sentry\Event;
 use Sentry\EventHint;
 use Sentry\Integration as SdkIntegration;
+use Sentry\Laravel\Console\AboutCommandIntegration;
 use Sentry\Laravel\Console\PublishCommand;
 use Sentry\Laravel\Console\TestCommand;
 use Sentry\Laravel\Features\Feature;
@@ -55,6 +59,7 @@ class ServiceProvider extends BaseServiceProvider
         Features\QueueIntegration::class,
         Features\ConsoleIntegration::class,
         Features\FolioPackageIntegration::class,
+        Features\Storage\Integration::class,
         Features\LivewirePackageIntegration::class,
     ];
 
@@ -65,7 +70,7 @@ class ServiceProvider extends BaseServiceProvider
     {
         $this->app->make(HubInterface::class);
 
-        $this->setupFeatures();
+        $this->bootFeatures();
 
         if ($this->hasDsnSet()) {
             $this->bindEvents();
@@ -91,6 +96,8 @@ class ServiceProvider extends BaseServiceProvider
             }
 
             $this->registerArtisanCommands();
+
+            $this->registerAboutCommandIntegration();
         }
     }
 
@@ -112,6 +119,8 @@ class ServiceProvider extends BaseServiceProvider
                 return (new LogChannel($app))($config);
             });
         }
+
+        $this->registerFeatures();
     }
 
     /**
@@ -142,9 +151,35 @@ class ServiceProvider extends BaseServiceProvider
     }
 
     /**
-     * Setup the default SDK features.
+     * Bind and register all the features.
      */
-    protected function setupFeatures(): void
+    protected function registerFeatures(): void
+    {
+        // Register all the features as singletons, so there is only one instance of each feature in the application
+        foreach (self::FEATURES as $feature) {
+            $this->app->singleton($feature);
+        }
+
+        $bootActive = $this->hasDsnSet();
+
+        foreach (self::FEATURES as $feature) {
+            try {
+                /** @var Feature $featureInstance */
+                $featureInstance = $this->app->make($feature);
+
+                $bootActive
+                    ? $featureInstance->register()
+                    : $featureInstance->registerInactive();
+            } catch (Throwable $e) {
+                // Ensure that features do not break the whole application
+            }
+        }
+    }
+
+    /**
+     * Boot all the features.
+     */
+    protected function bootFeatures(): void
     {
         $bootActive = $this->hasDsnSet();
 
@@ -171,6 +206,19 @@ class ServiceProvider extends BaseServiceProvider
             TestCommand::class,
             PublishCommand::class,
         ]);
+    }
+
+    /**
+     * Register the `php artisan about` command integration.
+     */
+    protected function registerAboutCommandIntegration(): void
+    {
+        // The about command is only available in Laravel 9 and up so we need to check if it's available to us
+        if (!class_exists(AboutCommand::class)) {
+            return;
+        }
+
+        AboutCommand::add('Sentry', AboutCommandIntegration::class);
     }
 
     /**

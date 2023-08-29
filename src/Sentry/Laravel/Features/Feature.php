@@ -8,8 +8,10 @@ use Sentry\SentrySdk;
 use Throwable;
 
 /**
- * @method void setup() Setup the feature in the environment.
- * @method void setupInactive() Setup the feature in the environment in an inactive state (when no DSN was set).
+ * @method void onBoot() Setup the feature in the environment.
+ * @method void onRegister() Register the feature in the environment.
+ * @method void onBootInactive() Setup the feature in the environment in an inactive state (when no DSN was set).
+ * @method void onRegisterInactive() Register the feature in the environment in an inactive state (when no DSN was set).
  *
  * @internal
  */
@@ -50,13 +52,13 @@ abstract class Feature
     abstract public function isApplicable(): bool;
 
     /**
-     * Initializes the feature.
+     * Register the feature.
      */
-    public function boot(): void
+    public function register(): void
     {
-        if (method_exists($this, 'setup') && $this->isApplicable()) {
+        if (method_exists($this, 'onRegister') && $this->isApplicable()) {
             try {
-                $this->container->call([$this, 'setup']);
+                $this->container->call([$this, 'onRegister']);
             } catch (Throwable $exception) {
                 // If the feature setup fails, we don't want to prevent the rest of the SDK from working.
             }
@@ -64,13 +66,41 @@ abstract class Feature
     }
 
     /**
-     * Initializes the feature in an inactive state (when no DSN was set).
+     * Register the feature in an inactive state (when no DSN was set).
+     */
+    public function registerInactive(): void
+    {
+        if (method_exists($this, 'onRegisterInactive') && $this->isApplicable()) {
+            try {
+                $this->container->call([$this, 'onRegisterInactive']);
+            } catch (Throwable $exception) {
+                // If the feature setup fails, we don't want to prevent the rest of the SDK from working.
+            }
+        }
+    }
+
+    /**
+     * Initialize the feature.
+     */
+    public function boot(): void
+    {
+        if (method_exists($this, 'onBoot') && $this->isApplicable()) {
+            try {
+                $this->container->call([$this, 'onBoot']);
+            } catch (Throwable $exception) {
+                // If the feature setup fails, we don't want to prevent the rest of the SDK from working.
+            }
+        }
+    }
+
+    /**
+     * Initialize the feature in an inactive state (when no DSN was set).
      */
     public function bootInactive(): void
     {
-        if (method_exists($this, 'setupInactive') && $this->isApplicable()) {
+        if (method_exists($this, 'onBootInactive') && $this->isApplicable()) {
             try {
-                $this->container->call([$this, 'setupInactive']);
+                $this->container->call([$this, 'onBootInactive']);
             } catch (Throwable $exception) {
                 // If the feature setup fails, we don't want to prevent the rest of the SDK from working.
             }

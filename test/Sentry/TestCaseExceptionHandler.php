@@ -6,12 +6,11 @@ use Illuminate\Contracts\Debug\ExceptionHandler;
 use Sentry\Laravel\Integration;
 
 /**
- * This is a proxy class so we can inject the Sentry bits while running tests and handle exceptions like "normal".
- *
- * All type hints are remove from this class to prevent issues when running lower PHP versions where Throwable is not yet a thing.
+ * This is a proxy class, so we can inject the Sentry bits while running tests and handle exceptions like "normal".
  */
 class TestCaseExceptionHandler implements ExceptionHandler
 {
+    /** @var ExceptionHandler */
     private $handler;
 
     public function __construct(ExceptionHandler $handler)
@@ -38,11 +37,11 @@ class TestCaseExceptionHandler implements ExceptionHandler
 
     public function renderForConsole($output, $e)
     {
-        $this->handler->render($output, $e);
+        $this->handler->renderForConsole($output, $e);
     }
 
     public function __call($name, $arguments)
     {
-        return call_user_func_array([$this->handler, $name], $arguments);
+        return $this->handler->{$name}(...$arguments);
     }
 }
