@@ -67,10 +67,7 @@ class ServiceProvider extends BaseServiceProvider
 
     private function bindEvents(array $tracingConfig): void
     {
-        $handler = new EventHandler(
-            $tracingConfig,
-            $this->app->make(BacktraceHelper::class)
-        );
+        $handler = new EventHandler($tracingConfig);
 
         try {
             /** @var \Illuminate\Contracts\Events\Dispatcher $dispatcher */
