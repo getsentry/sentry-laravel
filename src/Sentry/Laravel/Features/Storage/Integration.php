@@ -21,12 +21,7 @@ class Integration extends Feature
         return true;
     }
 
-    public function onRegister(): void
-    {
-        $this->registerDiskDriver();
-    }
-
-    public function onRegisterInactive(): void
+    public function register(): void
     {
         $this->registerDiskDriver();
     }

@@ -8,6 +8,7 @@ use Illuminate\Database\Events as DatabaseEvents;
 use Illuminate\Http\Client\Events as HttpClientEvents;
 use Illuminate\Routing\Events as RoutingEvents;
 use RuntimeException;
+use Sentry\Laravel\Features\Concerns\ResolvesEventOrigin;
 use Sentry\Laravel\Integration;
 use Sentry\Laravel\Util\WorksWithUris;
 use Sentry\SentrySdk;
@@ -18,7 +19,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class EventHandler
 {
-    use WorksWithUris;
+    use WorksWithUris, ResolvesEventOrigin;
 
     /**
      * Map event handlers to events.
@@ -88,16 +89,9 @@ class EventHandler
     private $currentSpanStack = [];
 
     /**
-     * The backtrace helper.
-     *
-     * @var BacktraceHelper
-     */
-    private $backtraceHelper;
-
-    /**
      * EventHandler constructor.
      */
-    public function __construct(array $config, BacktraceHelper $backtraceHelper)
+    public function __construct(array $config)
     {
         $this->traceSqlQueries = ($config['sql_queries'] ?? true) === true;
         $this->traceSqlQueryOrigins = ($config['sql_origin'] ?? true) === true;
@@ -106,8 +100,6 @@ class EventHandler
 
         $this->traceQueueJobs = ($config['queue_jobs'] ?? false) === true;
         $this->traceQueueJobsAsTransactions = ($config['queue_job_transactions'] ?? false) === true;
-
-        $this->backtraceHelper = $backtraceHelper;
     }
 
     /**
@@ -211,13 +203,15 @@ class EventHandler
      */
     private function resolveQueryOriginFromBacktrace(): ?string
     {
-        $firstAppFrame = $this->backtraceHelper->findFirstInAppFrameForBacktrace(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS));
+        $backtraceHelper = $this->makeBacktraceHelper();
+
+        $firstAppFrame = $backtraceHelper->findFirstInAppFrameForBacktrace(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS));
 
         if ($firstAppFrame === null) {
             return null;
         }
 
-        $filePath = $this->backtraceHelper->getOriginalViewPathForFrameOfCompiledViewPath($firstAppFrame) ?? $firstAppFrame->getFile();
+        $filePath = $backtraceHelper->getOriginalViewPathForFrameOfCompiledViewPath($firstAppFrame) ?? $firstAppFrame->getFile();
 
         return "{$filePath}:{$firstAppFrame->getLine()}";
     }

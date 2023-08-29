@@ -9,11 +9,8 @@ use Illuminate\Foundation\Application as Laravel;
 use Illuminate\Foundation\Console\AboutCommand;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 use Illuminate\Http\Request;
-use Illuminate\Log\LogManager;
-use Illuminate\Support\Facades\Config;
 use Laravel\Lumen\Application as Lumen;
 use RuntimeException;
-use Sentry\Client;
 use Sentry\ClientBuilder;
 use Sentry\ClientBuilderInterface;
 use Sentry\Event;
@@ -26,8 +23,10 @@ use Sentry\Laravel\Features\Feature;
 use Sentry\Laravel\Http\LaravelRequestFetcher;
 use Sentry\Laravel\Http\SetRequestIpMiddleware;
 use Sentry\Laravel\Http\SetRequestMiddleware;
+use Sentry\Laravel\Tracing\BacktraceHelper;
 use Sentry\Laravel\Tracing\ServiceProvider as TracingServiceProvider;
 use Sentry\SentrySdk;
+use Sentry\Serializer\RepresentationSerializer;
 use Sentry\State\Hub;
 use Sentry\State\HubInterface;
 use Sentry\Tracing\TransactionMetadata;
@@ -55,6 +54,7 @@ class ServiceProvider extends BaseServiceProvider
      * List of features that are provided by the SDK.
      */
     protected const FEATURES = [
+        Features\LogIntegration::class,
         Features\CacheIntegration::class,
         Features\QueueIntegration::class,
         Features\ConsoleIntegration::class,
@@ -113,12 +113,6 @@ class ServiceProvider extends BaseServiceProvider
 
         $this->configureAndRegisterClient();
 
-        if (($logManager = $this->app->make('log')) instanceof LogManager) {
-            $logManager->extend('sentry', function ($app, array $config) {
-                return (new LogChannel($app))($config);
-            });
-        }
-
         $this->registerFeatures();
     }
 
@@ -159,16 +153,12 @@ class ServiceProvider extends BaseServiceProvider
             $this->app->singleton($feature);
         }
 
-        $bootActive = $this->hasDsnSet();
-
         foreach (self::FEATURES as $feature) {
             try {
                 /** @var Feature $featureInstance */
                 $featureInstance = $this->app->make($feature);
 
-                $bootActive
-                    ? $featureInstance->register()
-                    : $featureInstance->registerInactive();
+                $featureInstance->register();
             } catch (Throwable $e) {
                 // Ensure that features do not break the whole application
             }
@@ -340,6 +330,14 @@ class ServiceProvider extends BaseServiceProvider
         });
 
         $this->app->alias(HubInterface::class, static::$abstract);
+
+        $this->app->singleton(BacktraceHelper::class, function () {
+            $sentry = $this->app->make(HubInterface::class);
+
+            $options = $sentry->getClient()->getOptions();
+
+            return new BacktraceHelper($options, new RepresentationSerializer($options));
+        });
     }
 
     /**
