@@ -22,7 +22,7 @@ class FolioPackageIntegration extends Feature
         return class_exists(Folio::class);
     }
 
-    public function setup(Dispatcher $events): void
+    public function onBoot(Dispatcher $events): void
     {
         $events->listen(ViewMatched::class, [$this, 'handleViewMatched']);
     }
