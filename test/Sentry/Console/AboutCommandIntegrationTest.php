@@ -23,48 +23,48 @@ class AboutCommandIntegrationTest extends TestCase
 
     public function testAboutCommandContainsExpectedData(): void
     {
+        $this->resetApplicationWithConfig([
+            'sentry.release' => '1.2.3',
+            'sentry.environment' => 'testing',
+            'sentry.traces_sample_rate' => 0.95,
+        ]);
+
         $expectedData = [
-            'environment' => $environment = 'testing',
-            'release' => $release = '1.2.3',
-            'sample_rate' => 1.0,
+            'environment' => 'testing',
+            'release' => '1.2.3',
+            'sample_rate_errors' => '100%',
             'sample_rate_profiling' => 'NOT SET',
-            'sample_rate_performance_monitoring' => $tracesSampleRate = 0.997,
+            'sample_rate_performance_monitoring' => '95%',
             'send_default_pii' => 'DISABLED',
             'php_sdk_version' => Client::SDK_VERSION,
             'laravel_sdk_version' => Version::SDK_VERSION,
         ];
 
-        $this->resetApplicationWithConfig([
-            'sentry.release' => $release,
-            'sentry.environment' => $environment,
-            'sentry.traces_sample_rate' => $tracesSampleRate,
-        ]);
-
-        $sentryAboutOutput = $this->runArtisanAboutAndReturnSentryData();
+        $actualData = $this->runArtisanAboutAndReturnSentryData();
 
         foreach ($expectedData as $key => $value) {
-            $this->assertArrayHasKey($key, $sentryAboutOutput);
-            $this->assertEquals($value, $sentryAboutOutput[$key]);
+            $this->assertArrayHasKey($key, $actualData);
+            $this->assertEquals($value, $actualData[$key]);
         }
     }
 
     public function testAboutCommandContainsExpectedDataWithoutHubClient(): void
     {
-        $expectedData = [
-            'enabled' => 'NO',
-            'php_sdk_version' => Client::SDK_VERSION,
-            'laravel_sdk_version' => Version::SDK_VERSION,
-        ];
-
         $this->app->bind(HubInterface::class, static function () {
             return new Hub(null);
         });
 
-        $sentryAboutOutput = $this->runArtisanAboutAndReturnSentryData();
+        $expectedData = [
+            'enabled' => 'NOT CONFIGURED',
+            'php_sdk_version' => Client::SDK_VERSION,
+            'laravel_sdk_version' => Version::SDK_VERSION,
+        ];
+
+        $actualData = $this->runArtisanAboutAndReturnSentryData();
 
         foreach ($expectedData as $key => $value) {
-            $this->assertArrayHasKey($key, $sentryAboutOutput);
-            $this->assertEquals($value, $sentryAboutOutput[$key]);
+            $this->assertArrayHasKey($key, $actualData);
+            $this->assertEquals($value, $actualData[$key]);
         }
     }
 

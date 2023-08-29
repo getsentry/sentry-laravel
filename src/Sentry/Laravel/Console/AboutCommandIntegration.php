@@ -14,32 +14,38 @@ class AboutCommandIntegration
 
         if ($client === null) {
             return [
-                'Enabled' => '<fg=red;options=bold>NO</>',
-                'PHP SDK Version' => Client::SDK_VERSION,
+                'Enabled' => '<fg=red;options=bold>NOT CONFIGURED</>',
                 'Laravel SDK Version' => Version::SDK_VERSION,
+                'PHP SDK Version' => Client::SDK_VERSION,
             ];
         }
 
         $options = $client->getOptions();
 
-        $profilesSampleRate = $options->getProfilesSampleRate() ?? '<fg=yellow;options=bold>NOT SET</>';
+        // Note: order is not important since Laravel orders these alphabetically
+        return [
+            'Enabled' => $options->getDsn() ? '<fg=green;options=bold>YES</>' : '<fg=red;options=bold>MISSING DSN</>',
+            'Environment' => $options->getEnvironment() ?: '<fg=yellow;options=bold>NOT SET</>',
+            'Laravel SDK Version' => Version::SDK_VERSION,
+            'PHP SDK Version' => Client::SDK_VERSION,
+            'Release' => $options->getRelease() ?: '<fg=yellow;options=bold>NOT SET</>',
+            'Sample Rate Errors' => $this->formatSampleRate($options->getSampleRate()),
+            'Sample Rate Performance Monitoring' => $this->formatSampleRate($options->getTracesSampleRate(), $options->getTracesSampler() !== null),
+            'Sample Rate Profiling' => $this->formatSampleRate($options->getProfilesSampleRate()),
+            'Send Default PII' => $options->shouldSendDefaultPii() ? '<fg=green;options=bold>ENABLED</>' : '<fg=yellow;options=bold>DISABLED</>',
+        ];
+    }
 
-        $tracesSampleRate = $options->getTracesSampleRate() ?? '<fg=yellow;options=bold>NOT SET</>';
-
-        if ($options->getTracesSampler() !== null) {
-            $tracesSampleRate = '<fg=green;options=bold>CUSTOM SAMPLER</>';
+    private function formatSampleRate(?float $sampleRate, bool $hasSamplerCallback = false): string
+    {
+        if ($hasSamplerCallback) {
+            return '<fg=green;options=bold>CUSTOM SAMPLER</>';
         }
 
-        return [
-            'Enabled' => $options->getDsn() ? '<fg=green;options=bold>YES</>' : '<fg=red;options=bold>NO, MISSING DSN</>',
-            'Environment' => $options->getEnvironment() ?: '<fg=yellow;options=bold>NOT SET</>',
-            'Release' => $options->getRelease() ?: '<fg=yellow;options=bold>NOT SET</>',
-            'Sample Rate' => $options->getSampleRate(),
-            'Sample Rate Profiling' => $profilesSampleRate,
-            'Sample Rate Performance Monitoring' => $tracesSampleRate,
-            'Send Default PII' => $options->shouldSendDefaultPii() ? '<fg=yellow;options=bold>ENABLED</>' : '<fg=green;options=bold>DISABLED</>',
-            'PHP SDK Version' => Client::SDK_VERSION,
-            'Laravel SDK Version' => Version::SDK_VERSION,
-        ];
+        if ($sampleRate === null) {
+            return '<fg=yellow;options=bold>NOT SET</>';
+        }
+
+        return number_format($sampleRate * 100) . '%';
     }
 }
