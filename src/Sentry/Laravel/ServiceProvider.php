@@ -23,8 +23,10 @@ use Sentry\Laravel\Features\Feature;
 use Sentry\Laravel\Http\LaravelRequestFetcher;
 use Sentry\Laravel\Http\SetRequestIpMiddleware;
 use Sentry\Laravel\Http\SetRequestMiddleware;
+use Sentry\Laravel\Tracing\BacktraceHelper;
 use Sentry\Laravel\Tracing\ServiceProvider as TracingServiceProvider;
 use Sentry\SentrySdk;
+use Sentry\Serializer\RepresentationSerializer;
 use Sentry\State\Hub;
 use Sentry\State\HubInterface;
 use Sentry\Tracing\TransactionMetadata;
@@ -328,6 +330,14 @@ class ServiceProvider extends BaseServiceProvider
         });
 
         $this->app->alias(HubInterface::class, static::$abstract);
+
+        $this->app->singleton(BacktraceHelper::class, function () {
+            $sentry = $this->app->make(HubInterface::class);
+
+            $options = $sentry->getClient()->getOptions();
+
+            return new BacktraceHelper($options, new RepresentationSerializer($options));
+        });
     }
 
     /**
