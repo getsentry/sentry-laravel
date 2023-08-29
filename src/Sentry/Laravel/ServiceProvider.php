@@ -65,7 +65,7 @@ class ServiceProvider extends BaseServiceProvider
     {
         $this->app->make(HubInterface::class);
 
-        $this->setupFeatures();
+        $this->bootFeatures();
 
         if ($this->hasDsnSet()) {
             $this->bindEvents();
@@ -112,6 +112,8 @@ class ServiceProvider extends BaseServiceProvider
                 return (new LogChannel($app))($config);
             });
         }
+
+        $this->registerFeatures();
     }
 
     /**
@@ -142,9 +144,35 @@ class ServiceProvider extends BaseServiceProvider
     }
 
     /**
-     * Setup the default SDK features.
+     * Bind and register all the features.
      */
-    protected function setupFeatures(): void
+    protected function registerFeatures(): void
+    {
+        // Register all the features as singletons, so there is only one instance of each feature in the application
+        foreach (self::FEATURES as $feature) {
+            $this->app->singleton($feature);
+        }
+
+        $bootActive = $this->hasDsnSet();
+
+        foreach (self::FEATURES as $feature) {
+            try {
+                /** @var Feature $featureInstance */
+                $featureInstance = $this->app->make($feature);
+
+                $bootActive
+                    ? $featureInstance->register()
+                    : $featureInstance->registerInactive();
+            } catch (Throwable $e) {
+                // Ensure that features do not break the whole application
+            }
+        }
+    }
+
+    /**
+     * Boot all the features.
+     */
+    protected function bootFeatures(): void
     {
         $bootActive = $this->hasDsnSet();
 

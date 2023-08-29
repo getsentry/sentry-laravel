@@ -23,12 +23,12 @@ class Integration extends Feature
         return true;
     }
 
-    public function setup(): void
+    public function onRegister(): void
     {
         $this->registerDriver();
     }
 
-    public function setupInactive(): void
+    public function onRegisterInactive(): void
     {
         $this->registerDriver();
     }

@@ -32,7 +32,7 @@ class ConsoleIntegration extends Feature
         return $this->container()->make(Application::class)->runningInConsole();
     }
 
-    public function setup(Cache $cache): void
+    public function onBoot(Cache $cache): void
     {
         $this->cache = $cache;
 
@@ -70,7 +70,7 @@ class ConsoleIntegration extends Feature
         });
     }
 
-    public function setupInactive(): void
+    public function onBootInactive(): void
     {
         // This is an exact copy of the macro above, but without doing anything so that even when no DSN is configured the user can still use the macro
         SchedulingEvent::macro('sentryMonitor', function (
@@ -174,7 +174,7 @@ class ConsoleIntegration extends Feature
     private function makeSlugForScheduled(SchedulingEvent $scheduled): string
     {
         $generatedSlug = Str::slug(
-            Str::replace(
+            str_replace(
                 // `:` is commonly used in the command name, so we replace it with `-` to avoid it being stripped out by the slug function
                 ':',
                 '-',
