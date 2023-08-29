@@ -174,7 +174,7 @@ class ConsoleIntegration extends Feature
     private function makeSlugForScheduled(SchedulingEvent $scheduled): string
     {
         $generatedSlug = Str::slug(
-            Str::replace(
+            str_replace(
                 // `:` is commonly used in the command name, so we replace it with `-` to avoid it being stripped out by the slug function
                 ':',
                 '-',

@@ -8,6 +8,7 @@ use Sentry\Breadcrumb;
 use Sentry\ClientInterface;
 use Sentry\Event;
 use Sentry\EventHint;
+use Sentry\EventType;
 use Sentry\State\Scope;
 use ReflectionProperty;
 use Sentry\Laravel\Tracing;
@@ -17,20 +18,30 @@ use Orchestra\Testbench\TestCase as LaravelTestCase;
 
 abstract class TestCase extends LaravelTestCase
 {
+    private static $hasSetupGlobalEventProcessor = false;
+
     protected $setupConfig = [
         // Set config here before refreshing the app to set it in the container before Sentry is loaded
         // or use the `$this->resetApplicationWithConfig([ /* config */ ]);` helper method
     ];
 
     /** @var array<int, array{0: Event, 1: EventHint|null}> */
-    protected $lastSentryEvents = [];
+    protected static $lastSentryEvents = [];
 
     protected function getEnvironmentSetUp($app): void
     {
-        $this->lastSentryEvents = [];
+        self::$lastSentryEvents = [];
 
-        $app['config']->set('sentry.before_send', function (Event $event, ?EventHint $hint) {
-            $this->lastSentryEvents[] = [$event, $hint];
+        $this->setupGlobalEventProcessor();
+
+        $app['config']->set('sentry.before_send', static function (Event $event, ?EventHint $hint) {
+            self::$lastSentryEvents[] = [$event, $hint];
+
+            return null;
+        });
+
+        $app['config']->set('sentry.before_send_transaction', static function (Event $event, ?EventHint $hint) {
+            self::$lastSentryEvents[] = [$event, $hint];
 
             return null;
         });
@@ -110,10 +121,44 @@ abstract class TestCase extends LaravelTestCase
 
     protected function getLastEvent(): ?Event
     {
-        if (empty($this->lastSentryEvents)) {
+        if (empty(self::$lastSentryEvents)) {
             return null;
         }
 
-        return end($this->lastSentryEvents)[0];
+        return end(self::$lastSentryEvents)[0];
+    }
+
+    protected function getLastEventHint(): ?EventHint
+    {
+        if (empty(self::$lastSentryEvents)) {
+            return null;
+        }
+
+        return end(self::$lastSentryEvents)[1];
+    }
+
+    protected function getEventsCount(): int
+    {
+        return count(self::$lastSentryEvents);
+    }
+
+    private function setupGlobalEventProcessor(): void
+    {
+        if (self::$hasSetupGlobalEventProcessor) {
+            return;
+        }
+
+        Scope::addGlobalEventProcessor(static function (Event $event, ?EventHint $hint) {
+            // Regular events and transactions are handled by the `before_send` and `before_send_transaction` callbacks
+            if (in_array($event->getType(), [EventType::event(), EventType::transaction()], true)) {
+                return $event;
+            }
+
+            self::$lastSentryEvents[] = [$event, $hint];
+
+            return null;
+        });
+
+        self::$hasSetupGlobalEventProcessor = true;
     }
 }
