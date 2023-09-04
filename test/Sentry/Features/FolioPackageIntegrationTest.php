@@ -4,7 +4,9 @@ namespace Sentry\Features;
 
 use Laravel\Folio\Folio;
 use Sentry\Laravel\Integration;
+use Illuminate\Config\Repository;
 use Sentry\Laravel\Tests\TestCase;
+use Illuminate\Database\Eloquent\Model;
 
 class FolioPackageIntegrationTest extends TestCase
 {
@@ -22,6 +24,27 @@ class FolioPackageIntegrationTest extends TestCase
         Folio::path(__DIR__ . '/../../stubs/folio')->uri('/folio');
     }
 
+    protected function defineEnvironment($app): void
+    {
+        parent::defineEnvironment($app);
+
+        tap($app['config'], static function (Repository $config) {
+            // This is done to prevent noise from the database queries in the breadcrumbs
+            $config->set('sentry.breadcrumbs.sql_queries', false);
+
+            $config->set('database.default', 'inmemory');
+            $config->set('database.connections.inmemory', [
+                'driver' => 'sqlite',
+                'database' => ':memory:',
+            ]);
+        });
+    }
+
+    protected function defineDatabaseMigrations(): void
+    {
+        $this->loadLaravelMigrations();
+    }
+
     public function testFolioBreadcrumbIsRecorded(): void
     {
         $this->get('/folio');
@@ -37,22 +60,43 @@ class FolioPackageIntegrationTest extends TestCase
 
     public function testFolioRouteUpdatesIntegrationTransaction(): void
     {
-        $this->get('/folio');
+        $this->get('/folio')->assertOk();
 
         $this->assertEquals('/folio/index', Integration::getTransaction());
     }
 
     public function testFolioTransactionNameForRouteWithSingleSegmentParamater(): void
     {
-        $this->get('/folio/users/123');
+        $this->get('/folio/post/123')->assertOk();
 
-        $this->assertEquals('/folio/users/{id}', Integration::getTransaction());
+        $this->assertEquals('/folio/post/{id}', Integration::getTransaction());
     }
 
     public function testFolioTransactionNameForRouteWithMultipleSegmentParameter(): void
     {
-        $this->get('/folio/posts/1/2/3');
+        $this->get('/folio/posts/1/2/3')->assertOk();
 
         $this->assertEquals('/folio/posts/{...ids}', Integration::getTransaction());
     }
+
+    public function testFolioTransactionNameForRouteWithRouteModelBoundSegmentParameter(): void
+    {
+        $user = FolioPackageIntegrationUserModel::create([
+            'name' => 'John Doe',
+            'email' => 'john@example.com',
+            'password' => 'secret',
+        ]);
+
+        $this->get("/folio/user/{$user->id}")->assertOk();
+
+        // This looks a little odd, but that is because we want to make the route model binding work in our tests
+        // normally this would look like `/folio/user/{User}` instead, see: https://laravel.com/docs/10.x/folio#route-model-binding.
+        $this->assertEquals('/folio/user/{.Sentry.Features.FolioPackageIntegrationUserModel}', Integration::getTransaction());
+    }
+}
+
+class FolioPackageIntegrationUserModel extends Model
+{
+    protected $table = 'users';
+    protected $guarded = false;
 }
