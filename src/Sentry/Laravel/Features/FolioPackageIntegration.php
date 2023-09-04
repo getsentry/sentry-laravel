@@ -54,6 +54,6 @@ class FolioPackageIntegration extends Feature
     {
         $path = Str::beforeLast('/' . ltrim($mountPath->baseUri . $matchedView->relativePath(), '/'), '.blade.php');
 
-        return str_replace(['[', ']'], ['{', '}'], $path);
+        return Str::replace(['[', ']'], ['{', '}'], $path);
     }
 }
