@@ -60,9 +60,18 @@ class FolioPackageIntegrationTest extends TestCase
 
     public function testFolioRouteUpdatesIntegrationTransaction(): void
     {
-        $this->get('/folio')->assertOk();
+        $this->get('/folio/post/123')->assertOk();
 
-        $this->assertEquals('/folio/index', Integration::getTransaction());
+        $this->assertEquals('/folio/post/{id}', Integration::getTransaction());
+    }
+
+    public function testFolioRouteUpdatesPerformanceTransaction(): void
+    {
+        $transaction = $this->startTransaction();
+
+        $this->get('/folio/post/123')->assertOk();
+
+        $this->assertEquals('/folio/post/{id}', $transaction->getName());
     }
 
     public function testFolioTransactionNameForRouteWithSingleSegmentParamater(): void
