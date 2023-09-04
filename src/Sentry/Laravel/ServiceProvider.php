@@ -58,6 +58,7 @@ class ServiceProvider extends BaseServiceProvider
         Features\CacheIntegration::class,
         Features\QueueIntegration::class,
         Features\ConsoleIntegration::class,
+        Features\FolioPackageIntegration::class,
         Features\Storage\Integration::class,
         Features\LivewirePackageIntegration::class,
     ];
@@ -95,9 +96,9 @@ class ServiceProvider extends BaseServiceProvider
             }
 
             $this->registerArtisanCommands();
-
-            $this->registerAboutCommandIntegration();
         }
+
+        $this->registerAboutCommandIntegration();
     }
 
     /**

@@ -208,6 +208,14 @@ class EventHandler
 
     protected function routeMatchedHandler(RoutingEvents\RouteMatched $match): void
     {
+        $routeAlias = $match->route->action['as'] ?? '';
+
+        // Ignore the route if it is the route for the Laravel Folio package
+        // We handle that route separately in the FolioPackageIntegration
+        if ($routeAlias === 'laravel-folio') {
+            return;
+        }
+
         [$routeName] = Integration::extractNameAndSourceForRoute($match->route);
 
         Integration::addBreadcrumb(new Breadcrumb(
