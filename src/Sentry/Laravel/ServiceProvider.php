@@ -95,9 +95,9 @@ class ServiceProvider extends BaseServiceProvider
             }
 
             $this->registerArtisanCommands();
-
-            $this->registerAboutCommandIntegration();
         }
+
+        $this->registerAboutCommandIntegration();
     }
 
     /**
