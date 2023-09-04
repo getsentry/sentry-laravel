@@ -51,8 +51,8 @@ class FolioPackageIntegrationTest extends TestCase
 
     public function testFolioTransactionNameForRouteWithMultipleSegmentParameter(): void
     {
-        $this->get('/folio/users/1/2/3');
+        $this->get('/folio/posts/1/2/3');
 
-        $this->assertEquals('/folio/users/{...ids}', Integration::getTransaction());
+        $this->assertEquals('/folio/posts/{...ids}', Integration::getTransaction());
     }
 }
