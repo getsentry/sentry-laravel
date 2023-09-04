@@ -5,7 +5,6 @@ namespace Sentry\Laravel\Tests\Features;
 use Illuminate\Support\Facades\Storage;
 use Sentry\Laravel\Features\Storage\Integration;
 use Sentry\Laravel\Tests\TestCase;
-use Sentry\Tracing\TransactionContext;
 
 class StorageIntegrationTest extends TestCase
 {
@@ -15,12 +14,7 @@ class StorageIntegrationTest extends TestCase
             'filesystems.disks' => Integration::configureDisks(config('filesystems.disks')),
         ]);
 
-        $hub = $this->getHubFromContainer();
-
-        $transaction = $hub->startTransaction(new TransactionContext);
-        $transaction->initSpanRecorder();
-
-        $this->getCurrentScope()->setSpan($transaction);
+        $transaction = $this->startTransaction();
 
         Storage::put('foo', 'bar');
         $fooContent = Storage::get('foo');
@@ -75,12 +69,7 @@ class StorageIntegrationTest extends TestCase
             'filesystems.disks' => Integration::configureDisks(config('filesystems.disks'), false),
         ]);
 
-        $hub = $this->getHubFromContainer();
-
-        $transaction = $hub->startTransaction(new TransactionContext);
-        $transaction->initSpanRecorder();
-
-        $this->getCurrentScope()->setSpan($transaction);
+        $transaction = $this->startTransaction();
 
         Storage::exists('foo');
 

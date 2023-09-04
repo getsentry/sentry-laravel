@@ -2,7 +2,9 @@
 
 namespace Sentry\Laravel\Tests;
 
+use Sentry\Tracing\Transaction;
 use Illuminate\Config\Repository;
+use Sentry\Tracing\TransactionContext;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Foundation\Application;
 use ReflectionMethod;
@@ -159,6 +161,18 @@ abstract class TestCase extends LaravelTestCase
     protected function getEventsCount(): int
     {
         return count(self::$lastSentryEvents);
+    }
+
+    protected function startTransaction(): Transaction
+    {
+        $hub = $this->getHubFromContainer();
+
+        $transaction = $hub->startTransaction(new TransactionContext);
+        $transaction->initSpanRecorder();
+
+        $this->getCurrentScope()->setSpan($transaction);
+
+        return $transaction;
     }
 
     private function setupGlobalEventProcessor(): void
