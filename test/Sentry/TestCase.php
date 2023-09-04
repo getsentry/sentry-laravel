@@ -40,6 +40,9 @@ abstract class TestCase extends LaravelTestCase
         $this->setupGlobalEventProcessor();
 
         tap($app['config'], function (Repository $config) {
+            // This key has no meaning, it's just a randomly generated one but it's required for the app to boot properly
+            $config->set('app.key', 'base64:JfXL2QpYC1+szaw+CdT6SHXG8zjdTkKM/ctPWoTWbXU=');
+
             $config->set('sentry.before_send', static function (Event $event, ?EventHint $hint) {
                 self::$lastSentryEvents[] = [$event, $hint];
 
