@@ -6,7 +6,6 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use Sentry\Laravel\Tests\TestCase;
 use Sentry\Tracing\Span;
-use Sentry\Tracing\TransactionContext;
 
 class DatabaseIntegrationTest extends TestCase
 {
@@ -88,12 +87,7 @@ class DatabaseIntegrationTest extends TestCase
 
     private function executeQueryAndRetrieveSpan(string $query): Span
     {
-        $hub = $this->getHubFromContainer();
-
-        $transaction = $hub->startTransaction(new TransactionContext);
-        $transaction->initSpanRecorder();
-
-        $this->getCurrentScope()->setSpan($transaction);
+        $transaction = $this->startTransaction();
 
         $this->dispatchLaravelEvent(new QueryExecuted($query, [], 123, DB::connection()));
 
