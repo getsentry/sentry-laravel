@@ -3,6 +3,7 @@
 namespace Sentry\Features;
 
 use Laravel\Folio\Folio;
+use Sentry\EventType;
 use Sentry\Laravel\Integration;
 use Illuminate\Config\Repository;
 use Sentry\Laravel\Tests\TestCase;
@@ -21,7 +22,11 @@ class FolioPackageIntegrationTest extends TestCase
 
     protected function defineRoutes($router): void
     {
-        Folio::path(__DIR__ . '/../../stubs/folio')->uri('/folio');
+        $folioStubPath = __DIR__ . '/../../stubs/folio';
+
+        Folio::route($folioStubPath);
+
+        Folio::path($folioStubPath)->uri('/folio');
     }
 
     protected function defineEnvironment($app): void
@@ -43,6 +48,68 @@ class FolioPackageIntegrationTest extends TestCase
     protected function defineDatabaseMigrations(): void
     {
         $this->loadLaravelMigrations();
+    }
+
+    /** @define-env envSamplingAllTransactions */
+    public function testFolioCatchAllRouteCreatesTransaction(): void
+    {
+        $this->get('/')->assertOk();
+
+        $this->assertSentryTransactionCount(1);
+
+        $transaction = $this->getLastSentryEvent();
+
+        $this->assertEquals('/index', $transaction->getTransaction());
+        $this->assertEquals(EventType::transaction(), $transaction->getType());
+    }
+
+    /** @define-env envSamplingAllTransactions */
+    public function testFolioCatchAllRouteWithoutHandlerDropsTransaction(): void
+    {
+        $this->get('/non-existing-route')->assertNotFound();
+
+        $this->assertSentryTransactionCount(0);
+    }
+
+    /** @define-env envSamplingAllTransactions */
+    public function testFolioCatchAllRouteThrowingNotFoundDropsTransaction(): void
+    {
+        $this->get('/user/420')->assertNotFound();
+
+        // Unfortunately it's not possible to detect a matching route since the Folio router bails early
+        // So even though the `/user/[id].blade.php` view exists we can't detect it and thus drop the transaction
+        $this->assertSentryTransactionCount(0);
+    }
+
+    /** @define-env envSamplingAllTransactions */
+    public function testFolioPathRouteCreatesTransaction(): void
+    {
+        $this->get('/folio')->assertOk();
+
+        $this->assertSentryTransactionCount(1);
+
+        $transaction = $this->getLastSentryEvent();
+
+        $this->assertEquals('/folio/index', $transaction->getTransaction());
+        $this->assertEquals(EventType::transaction(), $transaction->getType());
+    }
+
+    /** @define-env envSamplingAllTransactions */
+    public function testFolioPathRouteWithoutHandlerDropsTransaction(): void
+    {
+        $this->get('/folio/non-existing-route')->assertNotFound();
+
+        $this->assertSentryTransactionCount(0);
+    }
+
+    /** @define-env envSamplingAllTransactions */
+    public function testFolioPathRouteThrowingNotFoundDropsTransaction(): void
+    {
+        $this->get('/folio/user/420')->assertNotFound();
+
+        // Unfortunately it's not possible to detect a matching route since the Folio router bails early
+        // So even though the `/user/[id].blade.php` view exists we can't detect it and thus drop the transaction
+        $this->assertSentryTransactionCount(0);
     }
 
     public function testFolioBreadcrumbIsRecorded(): void

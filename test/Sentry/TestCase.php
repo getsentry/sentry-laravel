@@ -78,6 +78,12 @@ abstract class TestCase extends LaravelTestCase
         $app['config']->set('sentry_test.override_dsn', true);
     }
 
+    /** @param Application $app */
+    protected function envSamplingAllTransactions($app): void
+    {
+        $app['config']->set('sentry.traces_sample_rate', 1.0);
+    }
+
     protected function getPackageProviders($app): array
     {
         return [
