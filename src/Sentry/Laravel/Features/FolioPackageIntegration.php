@@ -10,6 +10,7 @@ use Laravel\Folio\MountPath;
 use Laravel\Folio\Pipeline\MatchedView;
 use Sentry\Breadcrumb;
 use Sentry\Laravel\Integration;
+use Sentry\Laravel\Tracing\Middleware;
 use Sentry\SentrySdk;
 use Sentry\Tracing\TransactionSource;
 
@@ -29,6 +30,8 @@ class FolioPackageIntegration extends Feature
 
     public function handleViewMatched(ViewMatched $matched): void
     {
+        Middleware::signalRouteWasMatched();
+
         $routeName = $this->extractRouteForMatchedView($matched->matchedView, $matched->mountPath);
 
         Integration::addBreadcrumb(new Breadcrumb(
