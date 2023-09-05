@@ -21,7 +21,7 @@ class ClientBuilderDecoratorTest extends TestCase
     {
         $this->assertEquals(
             'from_service_container',
-            $this->getClientFromContainer()->getOptions()->getEnvironment()
+            $this->getSentryClientFromContainer()->getOptions()->getEnvironment()
         );
     }
 }

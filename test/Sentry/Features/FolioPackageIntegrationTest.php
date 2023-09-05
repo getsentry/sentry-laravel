@@ -49,9 +49,9 @@ class FolioPackageIntegrationTest extends TestCase
     {
         $this->get('/folio');
 
-        $this->assertCount(1, $this->getCurrentBreadcrumbs());
+        $this->assertCount(1, $this->getCurrentSentryBreadcrumbs());
 
-        $lastBreadcrumb = $this->getLastBreadcrumb();
+        $lastBreadcrumb = $this->getLastSentryBreadcrumb();
 
         $this->assertEquals('folio.route', $lastBreadcrumb->getCategory());
         $this->assertEquals('navigation', $lastBreadcrumb->getType());

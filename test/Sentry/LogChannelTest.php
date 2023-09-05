@@ -48,7 +48,7 @@ class LogChannelTest extends TestCase
 
         $logger->error('test message', $context);
 
-        $lastEvent = $this->getLastEvent();
+        $lastEvent = $this->getLastSentryEvent();
 
         $this->assertNotNull($lastEvent);
         $this->assertEquals('test message', $lastEvent->getMessage());

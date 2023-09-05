@@ -11,29 +11,29 @@ class CacheIntegrationTest extends TestCase
     {
         Cache::put($key = 'foo', 'bar');
 
-        $this->assertEquals("Written: {$key}", $this->getLastBreadcrumb()->getMessage());
+        $this->assertEquals("Written: {$key}", $this->getLastSentryBreadcrumb()->getMessage());
 
         Cache::get('foo');
 
-        $this->assertEquals("Read: {$key}", $this->getLastBreadcrumb()->getMessage());
+        $this->assertEquals("Read: {$key}", $this->getLastSentryBreadcrumb()->getMessage());
     }
 
     public function testCacheBreadcrumbForWriteAndForgetIsRecorded(): void
     {
         Cache::put($key = 'foo', 'bar');
 
-        $this->assertEquals("Written: {$key}", $this->getLastBreadcrumb()->getMessage());
+        $this->assertEquals("Written: {$key}", $this->getLastSentryBreadcrumb()->getMessage());
 
         Cache::forget($key);
 
-        $this->assertEquals("Forgotten: {$key}", $this->getLastBreadcrumb()->getMessage());
+        $this->assertEquals("Forgotten: {$key}", $this->getLastSentryBreadcrumb()->getMessage());
     }
 
     public function testCacheBreadcrumbForMissIsRecorded(): void
     {
         Cache::get($key = 'foo');
 
-        $this->assertEquals("Missed: {$key}", $this->getLastBreadcrumb()->getMessage());
+        $this->assertEquals("Missed: {$key}", $this->getLastSentryBreadcrumb()->getMessage());
     }
 
     public function testCacheBreadcrumbIsNotRecordedWhenDisabled(): void
@@ -46,6 +46,6 @@ class CacheIntegrationTest extends TestCase
 
         Cache::get('foo');
 
-        $this->assertEmpty($this->getCurrentBreadcrumbs());
+        $this->assertEmpty($this->getCurrentSentryBreadcrumbs());
     }
 }

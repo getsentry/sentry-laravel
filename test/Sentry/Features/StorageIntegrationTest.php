@@ -89,7 +89,7 @@ class StorageIntegrationTest extends TestCase
         Storage::delete(['foo', 'bar']);
         Storage::files();
 
-        $breadcrumbs = $this->getCurrentBreadcrumbs();
+        $breadcrumbs = $this->getCurrentSentryBreadcrumbs();
 
         $this->assertArrayHasKey(0, $breadcrumbs);
         $span = $breadcrumbs[0];
@@ -137,7 +137,7 @@ class StorageIntegrationTest extends TestCase
 
         Storage::exists('foo');
 
-        $this->assertCount(0, $this->getCurrentBreadcrumbs());
+        $this->assertCount(0, $this->getCurrentSentryBreadcrumbs());
     }
 
     public function testDriverWorksWhenDisabled(): void

@@ -19,9 +19,9 @@ class ConsoleIntegrationTest extends TestCase
         // We expect a total of 2 events to be sent to Sentry:
         // 1. The start check-in event
         // 2. The finish check-in event
-        $this->assertEquals(2, $this->getEventsCount());
+        $this->assertSentryCheckInCount(2);
 
-        $finishCheckInEvent = $this->getLastEvent();
+        $finishCheckInEvent = $this->getLastSentryEvent();
 
         $this->assertNotNull($finishCheckInEvent->getCheckIn());
         $this->assertEquals('test-monitor', $finishCheckInEvent->getCheckIn()->getMonitorSlug());
@@ -37,9 +37,9 @@ class ConsoleIntegrationTest extends TestCase
         // We expect a total of 2 events to be sent to Sentry:
         // 1. The start check-in event
         // 2. The finish check-in event
-        $this->assertEquals(2, $this->getEventsCount());
+        $this->assertSentryCheckInCount(2);
 
-        $finishCheckInEvent = $this->getLastEvent();
+        $finishCheckInEvent = $this->getLastSentryEvent();
 
         $this->assertNotNull($finishCheckInEvent->getCheckIn());
         $this->assertEquals('scheduled_artisan-inspire', $finishCheckInEvent->getCheckIn()->getMonitorSlug());
@@ -60,7 +60,7 @@ class ConsoleIntegrationTest extends TestCase
 
         $scheduledEvent->run($this->app);
 
-        $this->assertEquals(0, $this->getEventsCount());
+        $this->assertSentryCheckInCount(0);
     }
 
     public function testScheduleMacroIsRegistered(): void

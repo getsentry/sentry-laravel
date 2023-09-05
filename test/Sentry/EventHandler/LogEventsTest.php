@@ -21,7 +21,7 @@ class LogEventsTest extends TestCase
             $context = ['1']
         ));
 
-        $lastBreadcrumb = $this->getLastBreadcrumb();
+        $lastBreadcrumb = $this->getLastSentryBreadcrumb();
 
         $this->assertEquals($level, $lastBreadcrumb->getLevel());
         $this->assertEquals($message, $lastBreadcrumb->getMessage());
@@ -38,6 +38,6 @@ class LogEventsTest extends TestCase
 
         $this->dispatchLaravelEvent(new MessageLogged('debug', 'test message'));
 
-        $this->assertEmpty($this->getCurrentBreadcrumbs());
+        $this->assertEmpty($this->getCurrentSentryBreadcrumbs());
     }
 }

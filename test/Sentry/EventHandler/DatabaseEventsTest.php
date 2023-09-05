@@ -24,7 +24,7 @@ class DatabaseEventsTest extends TestCase
             $this->getMockedConnection()
         ));
 
-        $lastBreadcrumb = $this->getLastBreadcrumb();
+        $lastBreadcrumb = $this->getLastSentryBreadcrumb();
 
         $this->assertEquals($query, $lastBreadcrumb->getMessage());
     }
@@ -44,7 +44,7 @@ class DatabaseEventsTest extends TestCase
             $this->getMockedConnection()
         ));
 
-        $lastBreadcrumb = $this->getLastBreadcrumb();
+        $lastBreadcrumb = $this->getLastSentryBreadcrumb();
 
         $this->assertEquals($query, $lastBreadcrumb->getMessage());
         $this->assertEquals($bindings, $lastBreadcrumb->getMetadata()['bindings']);
@@ -65,7 +65,7 @@ class DatabaseEventsTest extends TestCase
             $this->getMockedConnection()
         ));
 
-        $this->assertEmpty($this->getCurrentBreadcrumbs());
+        $this->assertEmpty($this->getCurrentSentryBreadcrumbs());
     }
 
     public function testSqlBindingsAreRecordedWhenDisabled(): void
@@ -83,7 +83,7 @@ class DatabaseEventsTest extends TestCase
             $this->getMockedConnection()
         ));
 
-        $lastBreadcrumb = $this->getLastBreadcrumb();
+        $lastBreadcrumb = $this->getLastSentryBreadcrumb();
 
         $this->assertEquals($query, $lastBreadcrumb->getMessage());
         $this->assertFalse(isset($lastBreadcrumb->getMetadata()['bindings']));
