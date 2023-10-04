@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.8.1
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.8.1.
+
+### Bug Fixes
+
+- Fix a deprecation notice caused by passing `null` to `Str::startsWith()` [(#780)](https://github.com/getsentry/sentry-laravel/pull/780)
+
 ## 3.8.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.8.0.
