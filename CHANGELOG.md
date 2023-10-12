@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.8.2
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.8.2.
+
+### Bug Fixes
+
+- Fix `DateTimeZone` not properly converted to a string when using Cron Monitoring [(#783)](https://github.com/getsentry/sentry-laravel/pull/783)
+
 ## 3.8.1
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.8.1.
