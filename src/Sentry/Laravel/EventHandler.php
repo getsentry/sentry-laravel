@@ -18,6 +18,7 @@ use Laravel\Octane\Events as Octane;
 use Laravel\Sanctum\Events as Sanctum;
 use RuntimeException;
 use Sentry\Breadcrumb;
+use Sentry\Laravel\Tracing\Middleware;
 use Sentry\SentrySdk;
 use Sentry\State\Scope;
 use Symfony\Component\Console\Input\ArgvInput;

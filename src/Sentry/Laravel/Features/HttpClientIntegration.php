@@ -38,6 +38,7 @@ class HttpClientIntegration extends Feature
             $events->listen(ResponseReceived::class, [$this, 'handleResponseReceivedHandlerForTracing']);
             $events->listen(ConnectionFailed::class, [$this, 'handleConnectionFailedHandlerForTracing']);
 
+            // The `globalRequestMiddleware` functionality was introduced in Laravel 10.14
             if (method_exists($factory, 'globalRequestMiddleware')) {
                 $factory->globalRequestMiddleware([$this, 'attachTracingHeadersToRequest']);
             }

@@ -64,7 +64,7 @@ class HttpClientIntegrationTest extends TestCase
             new Response(new PsrResponse(200, [], 'response'))
         ));
 
-        $this->assertEmpty($this->getCurrentBreadcrumbs());
+        $this->assertEmpty($this->getCurrentSentryBreadcrumbs());
     }
 
     public function testHttpClientSpanIsRecorded(): void
@@ -128,6 +128,10 @@ class HttpClientIntegrationTest extends TestCase
 
     public function testHttpClientRequestTracingHeadersAreAttached(): void
     {
+        if (!method_exists(Http::class, 'globalRequestMiddleware')) {
+            $this->markTestSkipped('The `globalRequestMiddleware` functionality we rely on was introduced in Laravel 10.14');
+        }
+
         $this->resetApplicationWithConfig([
             'sentry.trace_propagation_targets' => ['example.com'],
         ]);
