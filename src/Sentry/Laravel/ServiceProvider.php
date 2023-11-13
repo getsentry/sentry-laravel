@@ -12,7 +12,6 @@ use Illuminate\Http\Request;
 use Laravel\Lumen\Application as Lumen;
 use RuntimeException;
 use Sentry\ClientBuilder;
-use Sentry\ClientBuilderInterface;
 use Sentry\Event;
 use Sentry\EventHint;
 use Sentry\Integration as SdkIntegration;
@@ -216,7 +215,7 @@ class ServiceProvider extends BaseServiceProvider
      */
     protected function configureAndRegisterClient(): void
     {
-        $this->app->bind(ClientBuilderInterface::class, function () {
+        $this->app->bind(ClientBuilder::class, function () {
             $basePath = base_path();
             $userConfig = $this->getUserConfig();
 
@@ -280,8 +279,8 @@ class ServiceProvider extends BaseServiceProvider
         });
 
         $this->app->singleton(HubInterface::class, function () {
-            /** @var \Sentry\ClientBuilderInterface $clientBuilder */
-            $clientBuilder = $this->app->make(ClientBuilderInterface::class);
+            /** @var \Sentry\ClientBuilder $clientBuilder */
+            $clientBuilder = $this->app->make(ClientBuilder::class);
 
             $options = $clientBuilder->getOptions();
 
