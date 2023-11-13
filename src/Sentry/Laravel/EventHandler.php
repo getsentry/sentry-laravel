@@ -11,7 +11,6 @@ use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Events as DatabaseEvents;
-use Illuminate\Http\Client\Events as HttpClientEvents;
 use Illuminate\Http\Request;
 use Illuminate\Log\Events as LogEvents;
 use Illuminate\Routing\Events as RoutingEvents;
@@ -19,8 +18,6 @@ use Laravel\Octane\Events as Octane;
 use Laravel\Sanctum\Events as Sanctum;
 use RuntimeException;
 use Sentry\Breadcrumb;
-use Sentry\Laravel\Tracing\Middleware;
-use Sentry\Laravel\Util\WorksWithUris;
 use Sentry\SentrySdk;
 use Sentry\State\Scope;
 use Symfony\Component\Console\Input\ArgvInput;
@@ -28,8 +25,6 @@ use Symfony\Component\Console\Input\InputInterface;
 
 class EventHandler
 {
-    use WorksWithUris;
-
     /**
      * Map event handlers to events.
      *
@@ -41,8 +36,6 @@ class EventHandler
         DatabaseEvents\QueryExecuted::class => 'queryExecuted',
         ConsoleEvents\CommandStarting::class => 'commandStarting',
         ConsoleEvents\CommandFinished::class => 'commandFinished',
-        HttpClientEvents\ResponseReceived::class => 'httpClientResponseReceived',
-        HttpClientEvents\ConnectionFailed::class => 'httpClientConnectionFailed',
     ];
 
     /**
@@ -124,13 +117,6 @@ class EventHandler
     private $recordOctaneTaskInfo;
 
     /**
-     * Indicates if we should add HTTP client requests info to the breadcrumbs.
-     *
-     * @var bool
-     */
-    private $recordHttpClientRequests;
-
-    /**
      * Indicates if we pushed a scope for Octane.
      *
      * @var bool
@@ -153,7 +139,6 @@ class EventHandler
         $this->recordCommandInfo = ($config['breadcrumbs.command_info'] ?? $config['breadcrumbs']['command_info'] ?? true) === true;
         $this->recordOctaneTickInfo = ($config['breadcrumbs.octane_tick_info'] ?? $config['breadcrumbs']['octane_tick_info'] ?? true) === true;
         $this->recordOctaneTaskInfo = ($config['breadcrumbs.octane_task_info'] ?? $config['breadcrumbs']['octane_task_info'] ?? true) === true;
-        $this->recordHttpClientRequests = ($config['breadcrumbs.http_client_requests'] ?? $config['breadcrumbs']['http_client_requests'] ?? true) === true;
     }
 
     /**
@@ -275,59 +260,6 @@ class EventHandler
             'log.' . $logEntry->level,
             $logEntry->message,
             $logEntry->context
-        ));
-    }
-
-    protected function httpClientResponseReceivedHandler(HttpClientEvents\ResponseReceived $event): void
-    {
-        if (!$this->recordHttpClientRequests) {
-            return;
-        }
-
-        $level = Breadcrumb::LEVEL_INFO;
-        if ($event->response->failed()) {
-            $level = Breadcrumb::LEVEL_ERROR;
-        }
-
-        $fullUri = $this->getFullUri($event->request->url());
-
-        Integration::addBreadcrumb(new Breadcrumb(
-            $level,
-            Breadcrumb::TYPE_HTTP,
-            'http',
-            null,
-            [
-                'url' => $this->getPartialUri($fullUri),
-                'http.request.method' => $event->request->method(),
-                'http.response.status_code' => $event->response->status(),
-                'http.query' => $fullUri->getQuery(),
-                'http.fragment' => $fullUri->getFragment(),
-                'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
-                'http.response.body.size' => $event->response->toPsrResponse()->getBody()->getSize(),
-            ]
-        ));
-    }
-
-    protected function httpClientConnectionFailedHandler(HttpClientEvents\ConnectionFailed $event): void
-    {
-        if (!$this->recordHttpClientRequests) {
-            return;
-        }
-
-        $fullUri = $this->getFullUri($event->request->url());
-
-        Integration::addBreadcrumb(new Breadcrumb(
-            Breadcrumb::LEVEL_ERROR,
-            Breadcrumb::TYPE_HTTP,
-            'http',
-            null,
-            [
-                'url' => $this->getPartialUri($fullUri),
-                'http.request.method' => $event->request->method(),
-                'http.query' => $fullUri->getQuery(),
-                'http.fragment' => $fullUri->getFragment(),
-                'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
-            ]
         ));
     }
 
