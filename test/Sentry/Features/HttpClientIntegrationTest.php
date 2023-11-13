@@ -80,6 +80,6 @@ class HttpClientIntegrationTest extends TestCase
             return;
         }
 
-        $this->markTestSkipped('The Laravel HTTP client global middleware is only available in Laravel 10.31+');
+        $this->markTestSkipped('The Laravel HTTP client global middleware is only available in Laravel 10.14+');
     }
 }
