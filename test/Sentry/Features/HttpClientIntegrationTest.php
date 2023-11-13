@@ -53,6 +53,20 @@ class HttpClientIntegrationTest extends TestCase
         $this->assertEquals('response', $response->toPsrResponse()->getBody()->getContents());
     }
 
+    public function testHttpClientBreadcrumbIsNotRecordedWhenDisabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.breadcrumbs.http_client_requests' => false,
+        ]);
+
+        $this->dispatchLaravelEvent(new ResponseReceived(
+            new Request(new PsrRequest('GET', 'https://example.com', [], 'request')),
+            new Response(new PsrResponse(200, [], 'response'))
+        ));
+
+        $this->assertEmpty($this->getCurrentBreadcrumbs());
+    }
+
     public function testHttpClientSpanIsRecorded(): void
     {
         $transaction = $this->startTransaction();
@@ -92,5 +106,23 @@ class HttpClientIntegrationTest extends TestCase
 
         $this->assertEquals('http.client', $span->getOp());
         $this->assertEquals(SpanStatus::internalError(), $span->getStatus());
+    }
+
+    public function testHttpClientSpanIsNotRecordedWhenDisabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.http_client_requests' => false,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        $client = Http::fake();
+
+        $client->get('https://example.com');
+
+        /** @var \Sentry\Tracing\Span $span */
+        $span = last($transaction->getSpanRecorder()->getSpans());
+
+        $this->assertNotEquals('http.client', $span->getOp());
     }
 }
