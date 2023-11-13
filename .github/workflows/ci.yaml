@@ -10,10 +10,15 @@ on:
 permissions:
   contents: read
 
+# Cancel in progress workflows on pull_requests.
+# https://docs.github.com/en/actions/using-jobs/using-concurrency#example-using-a-fallback-value
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   phpunit:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     env:
       COMPOSER_NO_INTERACTION: 1
 
@@ -29,7 +34,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -55,14 +60,13 @@ jobs:
           composer install --no-interaction --prefer-dist --no-progress
 
       - name: Run phpunit
-        run: composer test:ci
+        run: vendor/bin/phpunit --coverage-clover=coverage.xml
 
       - name: Upload code coverage
         uses: codecov/codecov-action@v3
 
   phpunit-legacy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     env:
       COMPOSER_NO_INTERACTION: 1
 
@@ -118,7 +122,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -145,7 +149,7 @@ jobs:
           composer install --no-interaction --prefer-dist --no-progress
 
       - name: Run phpunit
-        run: composer test:ci
+        run: vendor/bin/phpunit --coverage-clover=coverage.xml
 
       - name: Upload code coverage
         uses: codecov/codecov-action@v3
