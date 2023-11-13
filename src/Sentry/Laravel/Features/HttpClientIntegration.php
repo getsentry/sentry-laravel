@@ -59,9 +59,11 @@ class HttpClientIntegration extends Feature
         $context->setDescription($event->request->method() . ' ' . $partialUri);
         $context->setData([
             'url' => $partialUri,
-            'http.request.method' => $event->request->method(),
+            // See: https://develop.sentry.dev/sdk/performance/span-data-conventions/#http
             'http.query' => $fullUri->getQuery(),
             'http.fragment' => $fullUri->getFragment(),
+            'http.request.method' => $event->request->method(),
+            'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
         ]);
 
         $this->pushSpan($parentSpan->startChild($context));
@@ -73,6 +75,11 @@ class HttpClientIntegration extends Feature
 
         if ($span !== null) {
             $span->finish();
+            $span->setData(array_merge($span->getData(), [
+                // See: https://develop.sentry.dev/sdk/performance/span-data-conventions/#http
+                'http.response.status_code' => $event->response->status(),
+                'http.response.body.size' => $event->response->toPsrResponse()->getBody()->getSize(),
+            ]));
             $span->setHttpStatus($event->response->status());
         }
     }
@@ -104,10 +111,11 @@ class HttpClientIntegration extends Feature
             null,
             [
                 'url' => $this->getPartialUri($fullUri),
-                'http.request.method' => $event->request->method(),
-                'http.response.status_code' => $event->response->status(),
+                // See: https://develop.sentry.dev/sdk/performance/span-data-conventions/#http
                 'http.query' => $fullUri->getQuery(),
                 'http.fragment' => $fullUri->getFragment(),
+                'http.request.method' => $event->request->method(),
+                'http.response.status_code' => $event->response->status(),
                 'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
                 'http.response.body.size' => $event->response->toPsrResponse()->getBody()->getSize(),
             ]
@@ -125,9 +133,10 @@ class HttpClientIntegration extends Feature
             null,
             [
                 'url' => $this->getPartialUri($fullUri),
-                'http.request.method' => $event->request->method(),
+                // See: https://develop.sentry.dev/sdk/performance/span-data-conventions/#http
                 'http.query' => $fullUri->getQuery(),
                 'http.fragment' => $fullUri->getFragment(),
+                'http.request.method' => $event->request->method(),
                 'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
             ]
         ));
@@ -154,7 +163,7 @@ class HttpClientIntegration extends Feature
      */
     private function getPartialUri(UriInterface $uri): string
     {
-        return (string) Uri::fromParts([
+        return (string)Uri::fromParts([
             'scheme' => $uri->getScheme(),
             'host' => $uri->getHost(),
             'port' => $uri->getPort(),
