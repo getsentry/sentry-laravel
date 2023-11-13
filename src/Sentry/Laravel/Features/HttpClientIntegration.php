@@ -7,6 +7,8 @@ use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Client\Events\ConnectionFailed;
 use Illuminate\Http\Client\Events\RequestSending;
 use Illuminate\Http\Client\Events\ResponseReceived;
+use Illuminate\Http\Client\Factory;
+use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\UriInterface;
 use Sentry\Breadcrumb;
 use Sentry\Laravel\Features\Concerns\TracksPushedScopesAndSpans;
@@ -14,6 +16,8 @@ use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\SpanStatus;
+use function Sentry\getBaggage;
+use function Sentry\getTraceparent;
 
 class HttpClientIntegration extends Feature
 {
@@ -27,18 +31,33 @@ class HttpClientIntegration extends Feature
             || $this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY);
     }
 
-    public function onBoot(Dispatcher $events): void
+    public function onBoot(Dispatcher $events, Factory $factory): void
     {
         if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
             $events->listen(RequestSending::class, [$this, 'handleRequestSendingHandlerForTracing']);
             $events->listen(ResponseReceived::class, [$this, 'handleResponseReceivedHandlerForTracing']);
             $events->listen(ConnectionFailed::class, [$this, 'handleConnectionFailedHandlerForTracing']);
+
+            if (method_exists($factory, 'globalRequestMiddleware')) {
+                $factory->globalRequestMiddleware([$this, 'attachTracingHeadersToRequest']);
+            }
         }
 
         if ($this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY)) {
             $events->listen(ResponseReceived::class, [$this, 'handleResponseReceivedHandlerForBreadcrumb']);
             $events->listen(ConnectionFailed::class, [$this, 'handleConnectionFailedHandlerForBreadcrumb']);
         }
+    }
+
+    public function attachTracingHeadersToRequest(RequestInterface $request)
+    {
+        if ($this->shouldAttachTracingHeaders($request)) {
+            return $request
+                ->withHeader('baggage', getBaggage())
+                ->withHeader('sentry-trace', getTraceparent());
+        }
+
+        return $request;
     }
 
     public function handleRequestSendingHandlerForTracing(RequestSending $event): void
@@ -169,5 +188,19 @@ class HttpClientIntegration extends Feature
             'port' => $uri->getPort(),
             'path' => $uri->getPath(),
         ]);
+    }
+
+    private function shouldAttachTracingHeaders(RequestInterface $request): bool
+    {
+        $client = SentrySdk::getCurrentHub()->getClient();
+        if ($client === null) {
+            return false;
+        }
+
+        $sdkOptions = $client->getOptions();
+
+        // Check if the request destination is allow listed in the trace_propagation_targets option.
+        return $sdkOptions->getTracePropagationTargets() === null
+            || in_array($request->getUri()->getHost(), $sdkOptions->getTracePropagationTargets());
     }
 }

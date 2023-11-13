@@ -125,4 +125,25 @@ class HttpClientIntegrationTest extends TestCase
 
         $this->assertNotEquals('http.client', $span->getOp());
     }
+
+    public function testHttpClientRequestTracingHeadersAreAttached(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.trace_propagation_targets' => ['example.com'],
+        ]);
+
+        $client = Http::fake();
+
+        $client->get('https://example.com');
+
+        Http::assertSent(function (Request $request) {
+            return $request->hasHeader('baggage') && $request->hasHeader('sentry-trace');
+        });
+
+        $client->get('https://no-headers.example.com');
+
+        Http::assertSent(function (Request $request) {
+            return !$request->hasHeader('baggage') && !$request->hasHeader('sentry-trace');
+        });
+    }
 }
