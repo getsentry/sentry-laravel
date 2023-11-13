@@ -12,7 +12,7 @@ class ServiceProviderTest extends TestCase
 {
     protected function defineEnvironment($app): void
     {
-        $app['config']->set('sentry.dsn', 'https://publickey:secretkey@sentry.dev/123');
+        $app['config']->set('sentry.dsn', 'https://publickey@sentry.dev/123');
         $app['config']->set('sentry.error_types', E_ALL ^ E_DEPRECATED ^ E_USER_DEPRECATED);
     }
 
