@@ -2,7 +2,9 @@
 
 namespace Sentry\Laravel\Features;
 
+use Illuminate\View\View;
 use Livewire\Component;
+use Livewire\ComponentHook;
 use Livewire\LivewireManager;
 use Livewire\Request;
 use Sentry\Breadcrumb;
@@ -11,6 +13,7 @@ use Sentry\SentrySdk;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\TransactionSource;
+use Livewire;
 
 class LivewirePackageIntegration extends Feature
 {
@@ -43,9 +46,28 @@ class LivewirePackageIntegration extends Feature
         if ($this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY)) {
             $livewireManager->listen('component.mount', [$this, 'handleComponentMount']);
         }
+
+        if (class_exists(ComponentHook::class)) {
+            Livewire\on('mount', [$this, 'handleComponentMount']);
+
+            Livewire\on('hydrate', [$this, 'handleComponentBoot']);
+
+            Livewire\on('dehydrate', [$this, 'handleComponentDehydrate']);
+
+            Livewire\on('call', [$this, 'handleComponentCall']);
+        }
     }
 
     public function handleComponentBoot(Component $component): void
+    {
+        $this->createSpan($component);
+
+        if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
+            $this->updateTransactionName($component->getName());
+        }
+    }
+
+    public function createSpan(Component $component, string $method = null): void
     {
         $currentSpan = SentrySdk::getCurrentHub()->getSpan();
 
@@ -57,7 +79,7 @@ class LivewirePackageIntegration extends Feature
 
         $context = new SpanContext;
         $context->setOp(self::COMPONENT_SPAN_OP);
-        $context->setDescription($component->getName());
+        $context->setDescription($component->getName() . '::' . ($method ?? 'mount'));
 
         $componentSpan = $currentSpan->startChild($context);
 
@@ -66,6 +88,8 @@ class LivewirePackageIntegration extends Feature
 
     public function handleComponentMount(Component $component, array $data): void
     {
+        $this->handleComponentBoot($component);
+
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,
             Breadcrumb::TYPE_DEFAULT,
@@ -90,10 +114,6 @@ class LivewirePackageIntegration extends Feature
                 ['updates' => $request->updates]
             ));
         }
-
-        if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
-            $this->updateTransactionName($component::getName());
-        }
     }
 
     public function handleComponentDehydrate(Component $component): void
@@ -109,6 +129,17 @@ class LivewirePackageIntegration extends Feature
         $previousSpan = array_pop($this->spanStack);
 
         SentrySdk::getCurrentHub()->setSpan($previousSpan);
+    }
+
+    public function handleComponentCall(Component $component, string $method, array $params): void
+    {
+        Integration::addBreadcrumb(new Breadcrumb(
+            Breadcrumb::LEVEL_INFO,
+            Breadcrumb::TYPE_DEFAULT,
+            'livewire',
+            "Component call: {$component->getName()}::{$method}",
+            $params
+        ));
     }
 
     private function updateTransactionName(string $componentName): void
