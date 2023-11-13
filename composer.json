@@ -10,7 +10,9 @@
         "error-monitoring",
         "error-handler",
         "crash-reporting",
-        "crash-reports"
+        "crash-reports",
+        "profiling",
+        "tracing"
     ],
     "homepage": "https://sentry.io",
     "license": "MIT",
@@ -47,21 +49,17 @@
         }
     },
     "scripts": {
-        "test": "vendor/bin/phpunit",
-        "tests": "@test",
-        "test:ci": "vendor/bin/phpunit --coverage-clover=coverage.xml",
-        "phpcs": "vendor/bin/php-cs-fixer fix",
-        "phpcs:ci": "vendor/bin/php-cs-fixer fix --dry-run --diff",
-        "phpstan": "vendor/bin/phpstan analyse",
-        "phpstan:ci": "vendor/bin/phpstan analyse --error-format github"
+        "check": [
+            "@cs-check",
+            "@phpstan",
+            "@tests"
+        ],
+        "tests": "vendor/bin/phpunit --verbose",
+        "cs-check": "vendor/bin/php-cs-fixer fix --verbose --diff --dry-run",
+        "cs-fix": "vendor/bin/php-cs-fixer fix --verbose --diff",
+        "phpstan": "vendor/bin/phpstan analyse"
     },
     "extra": {
-        "branch-alias": {
-            "dev-master": "3.x-dev",
-            "dev-2.x": "2.x-dev",
-            "dev-1.x": "1.x-dev",
-            "dev-0.x": "0.x-dev"
-        },
         "laravel": {
             "providers": [
                 "Sentry\\Laravel\\ServiceProvider",
@@ -72,6 +70,8 @@
             }
         }
     },
-    "prefer-stable": true,
-    "minimum-stability": "dev"
+    "config": {
+        "sort-packages": true
+    },
+    "prefer-stable": true
 }
