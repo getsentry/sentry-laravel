@@ -14,7 +14,6 @@ use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
 use Sentry\State\Scope;
 use Sentry\Tracing\PropagationContext;
-use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\SpanStatus;
 use Sentry\Tracing\TransactionContext;
@@ -26,7 +25,9 @@ use function Sentry\getTraceparent;
 
 class QueueIntegration extends Feature
 {
-    use TracksPushedScopesAndSpans;
+    use TracksPushedScopesAndSpans {
+        pushScope as private pushScopeTrait;
+    }
 
     private const QUEUE_PAYLOAD_BAGGAGE_DATA = 'sentry_baggage_data';
     private const QUEUE_PAYLOAD_TRACE_PARENT_DATA = 'sentry_trace_parent_data';
@@ -171,5 +172,17 @@ class QueueIntegration extends Feature
             $span->finish();
             $span->setStatus($status);
         }
+    }
+
+    protected function pushScope(): void
+    {
+        $this->pushScopeTrait();
+
+        // When a job starts, we want to make sure the scope is cleared of breadcrumbs
+        // as well as setting a new propagation context.
+        SentrySdk::getCurrentHub()->configureScope(static function (Scope $scope) {
+            $scope->clearBreadcrumbs();
+            $scope->setPropagationContext(PropagationContext::fromDefaults());
+        });
     }
 }

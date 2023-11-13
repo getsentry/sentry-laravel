@@ -4,8 +4,6 @@ namespace Sentry\Laravel\Features\Concerns;
 
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
-use Sentry\State\Scope;
-use Sentry\Tracing\PropagationContext;
 use Sentry\Tracing\Span;
 
 trait TracksPushedScopesAndSpans
@@ -47,13 +45,6 @@ trait TracksPushedScopesAndSpans
         SentrySdk::getCurrentHub()->pushScope();
 
         ++$this->pushedScopeCount;
-
-        // When a job starts, we want to make sure the scope is cleared of breadcrumbs
-        // as well as setting a new propagation context.
-        SentrySdk::getCurrentHub()->configureScope(static function (Scope $scope) {
-            $scope->clearBreadcrumbs();
-            $scope->setPropagationContext(PropagationContext::fromDefaults());
-        });
     }
 
     protected function maybePopSpan(): ?Span
