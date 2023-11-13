@@ -56,7 +56,6 @@ class ServiceProviderTest extends TestCase
         $this->assertEquals('https://sentry.dev', $options->getDsn()->getScheme() . '://' . $options->getDsn()->getHost());
         $this->assertEquals(123, $options->getDsn()->getProjectId());
         $this->assertEquals('publickey', $options->getDsn()->getPublicKey());
-        $this->assertEquals('secretkey', $options->getDsn()->getSecretKey());
     }
 
     /**

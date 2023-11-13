@@ -23,9 +23,7 @@
     "require": {
         "php": "^7.2 | ^8.0",
         "illuminate/support": "^6.0 | ^7.0 | ^8.0 | ^9.0 | ^10.0",
-        "sentry/sentry": "^3.20.1",
-        "sentry/sdk": "^3.4",
-        "symfony/psr-http-message-bridge": "^1.0 | ^2.0",
+        "sentry/sdk": "^4.0",
         "nyholm/psr7": "^1.0"
     },
     "autoload": {
@@ -77,8 +75,7 @@
     "minimum-stability": "dev",
     "config": {
         "allow-plugins": {
-            "kylekatarnls/update-helper": false,
-            "php-http/discovery": false
+            "kylekatarnls/update-helper": false
         }
     }
 }
