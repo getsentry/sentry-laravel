@@ -20,8 +20,6 @@ class LivewirePackageIntegration extends Feature
     /** @var array<Span> */
     private $spanStack = [];
 
-    private $livewireManager = null;
-
     public function isApplicable(): bool
     {
         if (!class_exists(LivewireManager::class)) {
@@ -34,8 +32,6 @@ class LivewirePackageIntegration extends Feature
 
     public function onBoot(LivewireManager $livewireManager): void
     {
-        $this->livewireManager = $livewireManager;
-
         if (class_exists(EventBus::class)) {
             $this->registerLivewireThreeEventListeners($livewireManager);
 
@@ -157,17 +153,21 @@ class LivewirePackageIntegration extends Feature
     private function registerLivewireThreeEventListeners($livewireManager): void
     {
         $livewireManager->listen('mount', function ($component, array $data) {
-            $this->handleComponentBoot($component);
-
             if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
+                $this->handleComponentBoot($component);
+            }
+
+            if ($this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY)) {
                 $this->handleComponentMount($component, $data);
             }
         });
 
         $livewireManager->listen('hydrate', function ($component, array $data) {
-            $this->handleComponentBoot($component);
-
             if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
+                $this->handleComponentBoot($component);
+            }
+
+            if ($this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY)) {
                 $this->handleComponentHydrate($component, $data);
             }
         });
@@ -176,7 +176,9 @@ class LivewirePackageIntegration extends Feature
             $livewireManager->listen('dehydrate', [$this, 'handleComponentDehydrate']);
         }
 
-        $livewireManager->listen('call', [$this, 'handleComponentCall']);
+        if ($this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY)) {
+            $livewireManager->listen('call', [$this, 'handleComponentCall']);
+        }
     }
 
     private function updateTransactionName(string $componentName): void
@@ -198,7 +200,14 @@ class LivewirePackageIntegration extends Feature
     private function isLivewireRequest(): bool
     {
         try {
-            return $this->livewireManager->isLivewireRequest();
+            /** @var \Illuminate\Http\Request $request */
+            $request = $this->container()->make('request');
+
+            if ($request === null) {
+                return false;
+            }
+
+            return $request->hasHeader('x-livewire');
         } catch (\Throwable $e) {
             // If the request cannot be resolved, it's probably not a Livewire request.
             return false;
