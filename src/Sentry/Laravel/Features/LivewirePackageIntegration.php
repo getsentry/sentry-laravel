@@ -2,8 +2,10 @@
 
 namespace Sentry\Laravel\Features;
 
+use Livewire\Component;
 use Livewire\EventBus;
 use Livewire\LivewireManager;
+use Livewire\Request;
 use Sentry\Breadcrumb;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
@@ -14,8 +16,6 @@ use Sentry\Tracing\TransactionSource;
 class LivewirePackageIntegration extends Feature
 {
     private const FEATURE_KEY = 'livewire';
-
-    private const COMPONENT_SPAN_OP = 'ui.livewire.component';
 
     /** @var array<Span> */
     private $spanStack = [];
@@ -41,116 +41,7 @@ class LivewirePackageIntegration extends Feature
         $this->registerLivewireTwoEventListeners($livewireManager);
     }
 
-    public function handleComponentBoot($component, ?string $method = null): void
-    {
-        if ($this->isTracingFeatureEnabled(self::FEATURE_KEY) && $this->isLivewireRequest()) {
-            $this->updateTransactionName($component->getName());
-        }
-
-        $currentSpan = SentrySdk::getCurrentHub()->getSpan();
-
-        if ($currentSpan === null) {
-            return;
-        }
-
-        $this->spanStack[] = $currentSpan;
-
-        if (filled($method)) {
-            $method = '::' . $method;
-        }
-
-        $context = new SpanContext;
-        $context->setOp(self::COMPONENT_SPAN_OP);
-        $context->setDescription($component->getName() . $method);
-
-        $componentSpan = $currentSpan->startChild($context);
-
-        SentrySdk::getCurrentHub()->setSpan($componentSpan);
-    }
-
-    public function handleComponentMount($component, array $data): void
-    {
-        Integration::addBreadcrumb(new Breadcrumb(
-            Breadcrumb::LEVEL_INFO,
-            Breadcrumb::TYPE_DEFAULT,
-            'livewire',
-            "Component mount: {$component->getName()}",
-            $data
-        ));
-    }
-
-    public function handleComponentBooted($component, $request): void
-    {
-        if (!$this->isLivewireRequest()) {
-            return;
-        }
-
-        if ($this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY)) {
-            Integration::addBreadcrumb(new Breadcrumb(
-                Breadcrumb::LEVEL_INFO,
-                Breadcrumb::TYPE_DEFAULT,
-                'livewire',
-                "Component booted: {$component->getName()}",
-                ['updates' => $request->updates]
-            ));
-        }
-    }
-
-    public function handleComponentHydrate($component, array $data): void
-    {
-        Integration::addBreadcrumb(new Breadcrumb(
-            Breadcrumb::LEVEL_INFO,
-            Breadcrumb::TYPE_DEFAULT,
-            'livewire',
-            "Component hydrate: {$component->getName()}",
-            $data
-        ));
-    }
-
-    public function handleComponentDehydrate($component): void
-    {
-        $currentSpan = SentrySdk::getCurrentHub()->getSpan();
-
-        if ($currentSpan === null || empty($this->spanStack)) {
-            return;
-        }
-
-        $currentSpan->finish();
-
-        $previousSpan = array_pop($this->spanStack);
-
-        SentrySdk::getCurrentHub()->setSpan($previousSpan);
-    }
-
-    public function handleComponentCall($component, string $method, array $data): void
-    {
-        Integration::addBreadcrumb(new Breadcrumb(
-            Breadcrumb::LEVEL_INFO,
-            Breadcrumb::TYPE_DEFAULT,
-            'livewire',
-            "Component call: {$component->getName()}::{$method}",
-            $data
-        ));
-    }
-
-    private function registerLivewireTwoEventListeners($livewireManager): void
-    {
-        $livewireManager->listen('component.booted', [$this, 'handleComponentBooted']);
-
-        if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
-            $livewireManager->listen('component.boot', function ($component) {
-                $this->handleComponentBoot($component);
-            });
-
-            $livewireManager->listen('component.dehydrate', [$this, 'handleComponentDehydrate']);
-        }
-
-        if ($this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY)) {
-            $livewireManager->listen('component.mount', [$this, 'handleComponentMount']);
-        }
-    }
-
-    private function registerLivewireThreeEventListeners($livewireManager): void
+    private function registerLivewireThreeEventListeners(LivewireManager $livewireManager): void
     {
         $livewireManager->listen('mount', function ($component, array $data) {
             if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
@@ -179,6 +70,119 @@ class LivewirePackageIntegration extends Feature
         if ($this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY)) {
             $livewireManager->listen('call', [$this, 'handleComponentCall']);
         }
+    }
+
+    private function registerLivewireTwoEventListeners(LivewireManager $livewireManager): void
+    {
+        $livewireManager->listen('component.booted', [$this, 'handleComponentBooted']);
+
+        if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
+            $livewireManager->listen('component.boot', function ($component) {
+                $this->handleComponentBoot($component);
+            });
+
+            $livewireManager->listen('component.dehydrate', [$this, 'handleComponentDehydrate']);
+        }
+
+        if ($this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY)) {
+            $livewireManager->listen('component.mount', [$this, 'handleComponentMount']);
+        }
+    }
+
+    public function handleComponentCall(Component $component, string $method, array $data): void
+    {
+        Integration::addBreadcrumb(new Breadcrumb(
+            Breadcrumb::LEVEL_INFO,
+            Breadcrumb::TYPE_DEFAULT,
+            'livewire',
+            "Component call: {$component->getName()}::{$method}",
+            $data
+        ));
+    }
+
+    public function handleComponentBoot(Component $component, ?string $method = null): void
+    {
+        if ($this->isLivewireRequest()) {
+            $this->updateTransactionName($component->getName());
+        }
+
+        $currentSpan = SentrySdk::getCurrentHub()->getSpan();
+
+        if ($currentSpan === null) {
+            return;
+        }
+
+        $this->spanStack[] = $currentSpan;
+
+        $context = new SpanContext;
+        $context->setOp('ui.livewire.component');
+        $context->setDescription(
+            empty($method)
+                ? $component->getName()
+                : "{$component->getName()}::{$method}"
+        );
+
+        $componentSpan = $currentSpan->startChild($context);
+
+        SentrySdk::getCurrentHub()->setSpan($componentSpan);
+    }
+
+    public function handleComponentMount(Component $component, array $data): void
+    {
+        Integration::addBreadcrumb(new Breadcrumb(
+            Breadcrumb::LEVEL_INFO,
+            Breadcrumb::TYPE_DEFAULT,
+            'livewire',
+            "Component mount: {$component->getName()}",
+            $data
+        ));
+    }
+
+    public function handleComponentBooted(Component $component, Request $request): void
+    {
+        if (!$this->isLivewireRequest()) {
+            return;
+        }
+
+        if ($this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY)) {
+            Integration::addBreadcrumb(new Breadcrumb(
+                Breadcrumb::LEVEL_INFO,
+                Breadcrumb::TYPE_DEFAULT,
+                'livewire',
+                "Component booted: {$component->getName()}",
+                ['updates' => $request->updates]
+            ));
+        }
+
+        if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
+            $this->updateTransactionName($component->getName());
+        }
+    }
+
+    public function handleComponentHydrate(Component $component, array $data): void
+    {
+        Integration::addBreadcrumb(new Breadcrumb(
+            Breadcrumb::LEVEL_INFO,
+            Breadcrumb::TYPE_DEFAULT,
+            'livewire',
+            "Component hydrate: {$component->getName()}",
+            $data
+        ));
+    }
+
+    public function handleComponentDehydrate(Component $component): void
+    {
+        $currentSpan = SentrySdk::getCurrentHub()->getSpan();
+
+        if ($currentSpan === null || empty($this->spanStack)) {
+            return;
+        }
+
+        $currentSpan->finish();
+
+        $previousSpan = array_pop($this->spanStack);
+
+        SentrySdk::getCurrentHub()->setSpan($previousSpan);
     }
 
     private function updateTransactionName(string $componentName): void
