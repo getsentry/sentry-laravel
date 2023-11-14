@@ -3,6 +3,7 @@
 namespace Sentry\Laravel\Features;
 
 use Livewire\Component;
+use Livewire\EventBus;
 use Livewire\LivewireManager;
 use Livewire\Request;
 use Sentry\Breadcrumb;
@@ -11,7 +12,6 @@ use Sentry\SentrySdk;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\TransactionSource;
-use Livewire;
 
 class LivewirePackageIntegration extends Feature
 {
@@ -34,8 +34,8 @@ class LivewirePackageIntegration extends Feature
 
     public function onBoot(LivewireManager $livewireManager): void
     {
-        if (function_exists('Livewire\on')) {
-            $this->registerLivewireThreeEventListeners();
+        if (class_exists(EventBus::class)) {
+            $this->registerLivewireThreeEventListeners($livewireManager);
 
             return;
         }
@@ -149,9 +149,9 @@ class LivewirePackageIntegration extends Feature
         }
     }
 
-    private function registerLivewireThreeEventListeners(): void
+    private function registerLivewireThreeEventListeners(LivewireManager $livewireManager): void
     {
-        Livewire\on('mount', function (Component $component, array $data) {
+        $livewireManager->listen('mount', function (Component $component, array $data) {
             $this->handleComponentBoot($component);
 
             if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
@@ -159,7 +159,7 @@ class LivewirePackageIntegration extends Feature
             }
         });
 
-        Livewire\on('hydrate', function (Component $component, array $data) {
+        $livewireManager->listen('hydrate', function (Component $component, array $data) {
             $this->handleComponentBoot($component);
 
             if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
@@ -168,11 +168,11 @@ class LivewirePackageIntegration extends Feature
         });
 
         if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
-            Livewire\on('dehydrate', [$this, 'handleComponentDehydrate']);
+            $livewireManager->listen('dehydrate', [$this, 'handleComponentDehydrate']);
         }
 
         if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
-            Livewire\on('call', [$this, 'handleComponentCall']);
+            $livewireManager->listen('call', [$this, 'handleComponentCall']);
         }
     }
 
