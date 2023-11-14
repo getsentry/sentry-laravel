@@ -2,9 +2,7 @@
 
 namespace Sentry\Laravel\Features;
 
-use Illuminate\View\View;
 use Livewire\Component;
-use Livewire\ComponentHook;
 use Livewire\LivewireManager;
 use Livewire\Request;
 use Sentry\Breadcrumb;
@@ -36,39 +34,21 @@ class LivewirePackageIntegration extends Feature
 
     public function onBoot(LivewireManager $livewireManager): void
     {
-        $livewireManager->listen('component.booted', [$this, 'handleComponentBooted']);
+        if (function_exists('Livewire\on')) {
+            $this->registerLivewireThreeEventListeners();
 
-        if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
-            $livewireManager->listen('component.boot', [$this, 'handleComponentBoot']);
-            $livewireManager->listen('component.dehydrate', [$this, 'handleComponentDehydrate']);
+            return;
         }
 
-        if ($this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY)) {
-            $livewireManager->listen('component.mount', [$this, 'handleComponentMount']);
-        }
-
-        if (class_exists(ComponentHook::class)) {
-            Livewire\on('mount', [$this, 'handleComponentMount']);
-
-            Livewire\on('hydrate', [$this, 'handleComponentBoot']);
-
-            Livewire\on('dehydrate', [$this, 'handleComponentDehydrate']);
-
-            Livewire\on('call', [$this, 'handleComponentCall']);
-        }
+        $this->registerLivewireTwoEventListeners($livewireManager);
     }
 
-    public function handleComponentBoot(Component $component): void
+    public function handleComponentBoot(Component $component, ?string $method = null): void
     {
-        $this->createSpan($component);
-
-        if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
+        if ($this->isTracingFeatureEnabled(self::FEATURE_KEY) && $this->isLivewireRequest()) {
             $this->updateTransactionName($component->getName());
         }
-    }
 
-    public function createSpan(Component $component, string $method = null): void
-    {
         $currentSpan = SentrySdk::getCurrentHub()->getSpan();
 
         if ($currentSpan === null) {
@@ -77,9 +57,13 @@ class LivewirePackageIntegration extends Feature
 
         $this->spanStack[] = $currentSpan;
 
+        if (filled($method)) {
+            $method = '::' . $method;
+        }
+
         $context = new SpanContext;
         $context->setOp(self::COMPONENT_SPAN_OP);
-        $context->setDescription($component->getName() . '::' . ($method ?? 'mount'));
+        $context->setDescription($component->getName() . $method);
 
         $componentSpan = $currentSpan->startChild($context);
 
@@ -88,8 +72,6 @@ class LivewirePackageIntegration extends Feature
 
     public function handleComponentMount(Component $component, array $data): void
     {
-        $this->handleComponentBoot($component);
-
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,
             Breadcrumb::TYPE_DEFAULT,
@@ -116,6 +98,17 @@ class LivewirePackageIntegration extends Feature
         }
     }
 
+    public function handleComponentHydrate(Component $component, array $data): void
+    {
+        Integration::addBreadcrumb(new Breadcrumb(
+            Breadcrumb::LEVEL_INFO,
+            Breadcrumb::TYPE_DEFAULT,
+            'livewire',
+            "Component hydrate: {$component->getName()}",
+            $data
+        ));
+    }
+
     public function handleComponentDehydrate(Component $component): void
     {
         $currentSpan = SentrySdk::getCurrentHub()->getSpan();
@@ -131,15 +124,56 @@ class LivewirePackageIntegration extends Feature
         SentrySdk::getCurrentHub()->setSpan($previousSpan);
     }
 
-    public function handleComponentCall(Component $component, string $method, array $params): void
+    public function handleComponentCall(Component $component, string $method, array $data): void
     {
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,
             Breadcrumb::TYPE_DEFAULT,
             'livewire',
             "Component call: {$component->getName()}::{$method}",
-            $params
+            $data
         ));
+    }
+
+    private function registerLivewireTwoEventListeners(LivewireManager $livewireManager): void
+    {
+        $livewireManager->listen('component.booted', fn (Component $component, $request) => $this->handleComponentBoot($component));
+
+        if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
+            $livewireManager->listen('component.boot', [$this, 'handleComponentBoot']);
+            $livewireManager->listen('component.dehydrate', [$this, 'handleComponentDehydrate']);
+        }
+
+        if ($this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY)) {
+            $livewireManager->listen('component.mount', [$this, 'handleComponentMount']);
+        }
+    }
+
+    private function registerLivewireThreeEventListeners(): void
+    {
+        Livewire\on('mount', function (Component $component, array $data) {
+            $this->handleComponentBoot($component);
+
+            if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
+                $this->handleComponentMount($component, $data);
+            }
+        });
+
+        Livewire\on('hydrate', function (Component $component, array $data) {
+            $this->handleComponentBoot($component);
+
+            if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
+                $this->handleComponentHydrate($component, $data);
+            }
+        });
+
+        if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
+            Livewire\on('dehydrate', [$this, 'handleComponentDehydrate']);
+        }
+
+        if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
+            Livewire\on('call', [$this, 'handleComponentCall']);
+        }
     }
 
     private function updateTransactionName(string $componentName): void
@@ -161,14 +195,9 @@ class LivewirePackageIntegration extends Feature
     private function isLivewireRequest(): bool
     {
         try {
-            /** @var \Illuminate\Http\Request $request */
-            $request = $this->container()->make('request');
+            $livewireManager = app(LivewireManager::class);
 
-            if ($request === null) {
-                return false;
-            }
-
-            return $request->header('x-livewire') === 'true';
+            return $livewireManager->isLivewireRequest();
         } catch (\Throwable $e) {
             // If the request cannot be resolved, it's probably not a Livewire request.
             return false;
