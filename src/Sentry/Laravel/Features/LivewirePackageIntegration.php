@@ -4,7 +4,6 @@ namespace Sentry\Laravel\Features;
 
 use Livewire\EventBus;
 use Livewire\LivewireManager;
-use Livewire\Request;
 use Sentry\Breadcrumb;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
@@ -21,7 +20,6 @@ class LivewirePackageIntegration extends Feature
     /** @var array<Span> */
     private $spanStack = [];
 
-    /** @var null|LivewireManager */
     private $livewireManager = null;
 
     public function isApplicable(): bool
@@ -141,12 +139,13 @@ class LivewirePackageIntegration extends Feature
 
     private function registerLivewireTwoEventListeners($livewireManager): void
     {
-        $livewireManager->listen('component.booted', function ($component, $request) {
-            $this->handleComponentBoot($component);
-        });
+        $livewireManager->listen('component.booted', [$this, 'handleComponentBooted']);
 
         if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
-            $livewireManager->listen('component.boot', [$this, 'handleComponentBoot']);
+            $livewireManager->listen('component.boot', function ($component) {
+                $this->handleComponentBoot($component);
+            });
+
             $livewireManager->listen('component.dehydrate', [$this, 'handleComponentDehydrate']);
         }
 
