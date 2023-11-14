@@ -2,6 +2,7 @@
 
 namespace Sentry\Features;
 
+use DateTimeZone;
 use Illuminate\Console\Scheduling\Schedule;
 use RuntimeException;
 use Sentry\Laravel\Tests\TestCase;
@@ -25,6 +26,34 @@ class ConsoleIntegrationTest extends TestCase
 
         $this->assertNotNull($finishCheckInEvent->getCheckIn());
         $this->assertEquals('test-monitor', $finishCheckInEvent->getCheckIn()->getMonitorSlug());
+    }
+
+    /**
+     * When a timezone was defined on a command this would fail with:
+     * Sentry\MonitorConfig::__construct(): Argument #4 ($timezone) must be of type ?string, DateTimeZone given
+     * This test ensures that the timezone is properly converted to a string as expected.
+     */
+    public function testScheduleMacroWithTimeZone(): void
+    {
+        $expectedTimezone = 'UTC';
+
+        /** @var Event $scheduledEvent */
+        $scheduledEvent = $this->getScheduler()
+            ->call(function () {})
+            ->timezone(new DateTimeZone($expectedTimezone))
+            ->sentryMonitor('test-timezone-monitor');
+
+        $scheduledEvent->run($this->app);
+
+        // We expect a total of 2 events to be sent to Sentry:
+        // 1. The start check-in event
+        // 2. The finish check-in event
+        $this->assertEquals(2, $this->getEventsCount());
+
+        $finishCheckInEvent = $this->getLastEvent();
+
+        $this->assertNotNull($finishCheckInEvent->getCheckIn());
+        $this->assertEquals($expectedTimezone, $finishCheckInEvent->getCheckIn()->getMonitorConfig()->getTimezone());
     }
 
     public function testScheduleMacroAutomaticSlug(): void

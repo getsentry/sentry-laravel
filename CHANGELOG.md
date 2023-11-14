@@ -1,8 +1,31 @@
 # Changelog
 
-## Unreleased
+## 3.8.2
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.8.2.
+
+### Bug Fixes
+
+- Fix `DateTimeZone` not properly converted to a string when using Cron Monitoring [(#783)](https://github.com/getsentry/sentry-laravel/pull/783)
+
+## 3.8.1
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.8.1.
+
+### Bug Fixes
+
+- Fix a deprecation notice caused by passing `null` to `Str::startsWith()` [(#780)](https://github.com/getsentry/sentry-laravel/pull/780)
+
+## 3.8.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v3.8.0.
 
 ### Features
+
+- Initial support for Laravel Folio [(#738)](https://github.com/getsentry/sentry-laravel/pull/738)
+
+  If you are using Laravel Folio in your application, we'll extract a more meaningful transaction name based on the
+  `VieMatched` event.
 
 - The filesystem adapters for the `sentry` driver now extend the well-known Laravel classes they decorate,
   `Illuminate\Filesystem\FilesystemAdapter` and `Illuminate\Filesystem\AwsS3V3Adapter`.
@@ -40,7 +63,26 @@
   ```
 
   By default, both spans and breadcrumbs are enabled.
-  You may disable them by passing the second argument `$enableSpans` or the third argument `$enableBreadcrumbs`.
+  You may disable them by passing the second argument, `$enableSpans` or the third argument, `$enableBreadcrumbs`.
+
+- Add Laravel artisan about command [(#768)](https://github.com/getsentry/sentry-laravel/pull/768)
+
+### Bug Fixes
+
+- Remove usage of `Str::replace` [(#762)](https://github.com/getsentry/sentry-laravel/pull/762)
+
+  - This fixes an issue using Cron Monitoring in Laravel 6, 7 and < 8.41.0
+
+### Misc
+
+- Differentiate between boot and register for features [(#759)](https://github.com/getsentry/sentry-laravel/pull/759)
+
+- Internal improvements [(#769)](https://github.com/getsentry/sentry-laravel/pull/769)
+
+  - Make feature registration agnostic to the service container.
+  - Cleanup tests by using the `@define-env` annotation.
+  - Move the Log channel to a feature and add tests.
+  - Mark BacktraceHelper as `@internal` and make it lazy for the tracing service provider.
 
 ## 3.7.3
 

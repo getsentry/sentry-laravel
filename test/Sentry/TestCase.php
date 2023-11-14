@@ -58,7 +58,7 @@ abstract class TestCase extends LaravelTestCase
             });
 
             if ($config->get('sentry_test.override_dsn') !== true) {
-                $config->set('sentry.dsn', 'https://publickey:secretkey@sentry.dev/123');
+                $config->set('sentry.dsn', 'https://publickey@sentry.dev/123');
             }
 
             foreach ($this->setupConfig as $key => $value) {

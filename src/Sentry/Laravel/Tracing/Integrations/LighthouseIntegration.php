@@ -80,7 +80,7 @@ class LighthouseIntegration implements IntegrationInterface
     private function processEvent(Event $event, Options $options): void
     {
         // Detect if we are processing a GraphQL request, if not skip processing the event
-        if (!Str::startsWith($event->getTransaction(), 'lighthouse?')) {
+        if ($event->getTransaction() === null || !Str::startsWith($event->getTransaction(), 'lighthouse?')) {
             return;
         }
 

@@ -2,6 +2,7 @@
 
 namespace Sentry\Laravel\Features;
 
+use DateTimeZone;
 use Illuminate\Console\Application as ConsoleApplication;
 use Illuminate\Console\Scheduling\Event as SchedulingEvent;
 use Illuminate\Contracts\Cache\Factory as Cache;
@@ -90,11 +91,17 @@ class ConsoleIntegration extends Feature
         $checkIn = $this->createCheckIn($checkInSlug, CheckInStatus::inProgress());
 
         if ($updateMonitorConfig || $slug === null) {
+            $timezone = $scheduled->timezone;
+
+            if ($timezone instanceof DateTimeZone) {
+                $timezone = $timezone->getName();
+            }
+
             $checkIn->setMonitorConfig(new MonitorConfig(
                 MonitorSchedule::crontab($scheduled->getExpression()),
                 $checkInMargin,
                 $maxRuntime,
-                $scheduled->timezone
+                $timezone
             ));
         }
 

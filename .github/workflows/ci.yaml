@@ -7,17 +7,25 @@ on:
       - master
       - release/**
 
+permissions:
+  contents: read
+
+# Cancel in progress workflows on pull_requests.
+# https://docs.github.com/en/actions/using-jobs/using-concurrency#example-using-a-fallback-value
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   phpunit:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     env:
       COMPOSER_NO_INTERACTION: 1
 
     strategy:
       fail-fast: false
       matrix:
-        php: [ "8.2", "8.1" ]
+        php: [ "8.3", "8.2", "8.1" ]
         packages:
           # All versions below only support PHP ^8.1 (Laravel requirement)
           - { laravel: ^10.0,  testbench: ^8.0, phpunit: 9.6.* }
@@ -26,7 +34,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -52,21 +60,20 @@ jobs:
           composer install --no-interaction --prefer-dist --no-progress
 
       - name: Run phpunit
-        run: composer test:ci
+        run: vendor/bin/phpunit --coverage-clover=coverage.xml
 
       - name: Upload code coverage
         uses: codecov/codecov-action@v3
 
   phpunit-legacy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     env:
       COMPOSER_NO_INTERACTION: 1
 
     strategy:
       fail-fast: false
       matrix:
-        php: [ "8.2", "8.1", "8.0", "7.4", "7.3", "7.2" ]
+        php: [ "8.3", "8.2", "8.1", "8.0", "7.4", "7.3", "7.2" ]
         packages:
           # All versions below should be test on PHP ^7.1 (Sentry SDK requirement) and PHP < 8.0 (PHPUnit requirement)
           - { laravel: ^6.0,  testbench: 4.7.*, phpunit: 8.4.* }
@@ -104,11 +111,18 @@ jobs:
           - php: "8.2"
             packages: { laravel: ^7.0,  testbench: 5.1.*, phpunit: 8.4.* }
 
+          - php: "8.3"
+            packages: { laravel: ^6.0,  testbench: 4.7.*, phpunit: 8.4.* }
+          - php: "8.3"
+            packages: { laravel: ^7.0,  testbench: 5.1.*, phpunit: 8.4.* }
+          - php: "8.3"
+            packages: { laravel: ^8.0,  testbench: ^6.0, phpunit: 9.3.* }
+
     name: phpunit (PHP:${{ matrix.php }}, Laravel:${{ matrix.packages.laravel }})
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -135,7 +149,7 @@ jobs:
           composer install --no-interaction --prefer-dist --no-progress
 
       - name: Run phpunit
-        run: composer test:ci
+        run: vendor/bin/phpunit --coverage-clover=coverage.xml
 
       - name: Upload code coverage
         uses: codecov/codecov-action@v3
