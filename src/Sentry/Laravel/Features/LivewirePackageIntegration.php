@@ -2,7 +2,6 @@
 
 namespace Sentry\Laravel\Features;
 
-use Livewire\Component;
 use Livewire\EventBus;
 use Livewire\LivewireManager;
 use Livewire\Request;
