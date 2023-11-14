@@ -48,9 +48,9 @@ class ConsoleIntegrationTest extends TestCase
         // We expect a total of 2 events to be sent to Sentry:
         // 1. The start check-in event
         // 2. The finish check-in event
-        $this->assertEquals(2, $this->getEventsCount());
+        $this->assertSentryEventCount(2);
 
-        $finishCheckInEvent = $this->getLastEvent();
+        $finishCheckInEvent = $this->getLastSentryEvent();
 
         $this->assertNotNull($finishCheckInEvent->getCheckIn());
         $this->assertEquals($expectedTimezone, $finishCheckInEvent->getCheckIn()->getMonitorConfig()->getTimezone());
