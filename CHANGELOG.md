@@ -28,6 +28,30 @@ Please refer to the PHP SDK [sentry-php/UPGRADE-4.0.md](https://github.com/getse
 
 # Features
 
+- Enable distributed tracing for outgoing HTTP client requests [(#797)](https://github.com/getsentry/sentry-laravel/pull/797)
+
+  This feature is only available on Laravel >= 10.14.
+  When making a request using the Laravel `Http` facade, we automatically attach the `sentry-trace` and `baggage` headers.
+
+  This behaviour can be controlled by setting `trace_propagation_targets` in your `config/sentry.php` file.
+
+  ```php
+  // All requests will contain the tracing headers. This is the default behaviour.
+  'trace_propagation_targets' => null,
+
+  // To turn this feature off completely, set the option to an empty array.
+  'trace_propagation_targets' => [],
+
+  // To only attach these headers to some requests, you can allow-list certain hosts.
+  'trace_propagation_targets' => [
+      'examlpe.com',
+      'api.examlpe.com',
+  ],
+  ```
+
+  Please make sure to remove any custom code that injected these headers previously.
+  If you are using the `Sentry\Tracing\GuzzleTracingMiddleware` provided by our underlying PHP SDK, you must also remove it.
+
 - Add new fluent APIs [(#1601)](https://github.com/getsentry/sentry-php/pull/1601)
 
   ```php
