@@ -9,6 +9,7 @@ use Livewire\Request;
 use Sentry\Breadcrumb;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
+use Sentry\State\Scope;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\TransactionSource;
@@ -187,7 +188,9 @@ class LivewirePackageIntegration extends Feature
 
     private function updateTransactionName(string $componentName): void
     {
-        $transaction = SentrySdk::getCurrentHub()->getTransaction();
+        $hub = SentrySdk::getCurrentHub();
+
+        $transaction = $hub->getTransaction();
 
         if ($transaction === null) {
             return;
@@ -199,6 +202,12 @@ class LivewirePackageIntegration extends Feature
         $transaction->getMetadata()->setSource(TransactionSource::custom());
 
         Integration::setTransaction($transactionName);
+
+        $hub->configureScope(function (Scope $scope) {
+            $livewireManager = $this->container()->make(LivewireManager::class);
+
+            $scope->setTag('livewire.original_url', $livewireManager->originalUrl());
+        });
     }
 
     private function isLivewireRequest(): bool
