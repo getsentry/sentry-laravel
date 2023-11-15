@@ -36,6 +36,8 @@ Please refer to the PHP SDK [sentry-php/UPGRADE-4.0.md](https://github.com/getse
   This behaviour can be controlled by setting `trace_propagation_targets` in your `config/sentry.php` file.
 
   ```php
+  // config/sentry.php
+
   // All requests will contain the tracing headers. This is the default behaviour.
   'trace_propagation_targets' => null,
 
