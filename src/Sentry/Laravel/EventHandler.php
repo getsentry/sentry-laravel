@@ -19,6 +19,7 @@ use Laravel\Octane\Events as Octane;
 use Laravel\Sanctum\Events as Sanctum;
 use RuntimeException;
 use Sentry\Breadcrumb;
+use Sentry\Laravel\Tracing\Middleware;
 use Sentry\Laravel\Util\WorksWithUris;
 use Sentry\SentrySdk;
 use Sentry\State\Scope;
@@ -215,6 +216,8 @@ class EventHandler
         if ($routeAlias === 'laravel-folio') {
             return;
         }
+
+        Middleware::signalRouteWasMatched();
 
         [$routeName] = Integration::extractNameAndSourceForRoute($match->route);
 

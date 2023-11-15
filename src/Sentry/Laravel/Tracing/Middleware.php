@@ -15,6 +15,9 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 use function Sentry\continueTrace;
 
+/**
+ * @internal
+ */
 class Middleware
 {
     /**
@@ -60,6 +63,13 @@ class Middleware
     private $registeredTerminatingCallback = false;
 
     /**
+     * Whether a defined route was matched in the application.
+     *
+     * @var bool
+     */
+    private $didRouteMatch = false;
+
+    /**
      * Construct the Sentry tracing middleware.
      *
      * @param LaravelApplication|LumenApplication $app
@@ -80,8 +90,8 @@ class Middleware
      */
     public function handle(Request $request, Closure $next)
     {
-        if (app()->bound(HubInterface::class)) {
-            $this->startTransaction($request, app(HubInterface::class));
+        if ($this->app->bound(HubInterface::class)) {
+            $this->startTransaction($request, $this->app->make(HubInterface::class));
         }
 
         return $next($request);
@@ -98,12 +108,12 @@ class Middleware
     public function terminate(Request $request, $response): void
     {
         // If there is no transaction or the HubInterface is not bound in the container there is nothing for us to do
-        if ($this->transaction === null || !app()->bound(HubInterface::class)) {
+        if ($this->transaction === null || !$this->app->bound(HubInterface::class)) {
             return;
         }
 
         // We stop here if a route has not been matched unless we are configured to trace missing routes
-        if (config('sentry.tracing.missing_routes', false) === false && $request->route() === null) {
+        if (!$this->didRouteMatch && config('sentry.tracing.missing_routes', false) === false) {
             return;
         }
 
@@ -154,6 +164,9 @@ class Middleware
 
     private function startTransaction(Request $request, HubInterface $sentry): void
     {
+        // Reset our internal state in case we are handling multiple requests (e.g. in Octane)
+        $this->didRouteMatch = false;
+
         // Try $_SERVER['REQUEST_TIME_FLOAT'] then LARAVEL_START and fallback to microtime(true) if neither are defined
         $requestStartTime = $request->server(
             'REQUEST_TIME_FLOAT',
@@ -259,5 +272,19 @@ class Middleware
 
         $this->transaction->finish();
         $this->transaction = null;
+    }
+
+    private function internalSignalRouteWasMatched(): void
+    {
+        $this->didRouteMatch = true;
+    }
+
+    public static function signalRouteWasMatched(): void
+    {
+        if (!app()->bound(self::class)) {
+            return;
+        }
+
+        app(self::class)->internalSignalRouteWasMatched();
     }
 }

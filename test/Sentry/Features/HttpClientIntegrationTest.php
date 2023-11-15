@@ -27,9 +27,9 @@ class HttpClientIntegrationTest extends TestCase
             new Response(new PsrResponse(200, [], 'response'))
         ));
 
-        $this->assertCount(1, $this->getCurrentBreadcrumbs());
+        $this->assertCount(1, $this->getCurrentSentryBreadcrumbs());
 
-        $metadata = $this->getLastBreadcrumb()->getMetadata();
+        $metadata = $this->getLastSentryBreadcrumb()->getMetadata();
 
         $this->assertEquals('GET', $metadata['http.request.method']);
         $this->assertEquals('https://example.com', $metadata['url']);
@@ -45,7 +45,7 @@ class HttpClientIntegrationTest extends TestCase
             $response = new Response(new PsrResponse(200, [], 'response'))
         ));
 
-        $this->assertCount(1, $this->getCurrentBreadcrumbs());
+        $this->assertCount(1, $this->getCurrentSentryBreadcrumbs());
 
         $this->assertEquals('request', $request->toPsrRequest()->getBody()->getContents());
         $this->assertEquals('response', $response->toPsrResponse()->getBody()->getContents());

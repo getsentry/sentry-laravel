@@ -29,7 +29,7 @@ class LaravelIntegrationsOptionTest extends TestCase
             ],
         ]);
 
-        $this->assertNotNull($this->getClientFromContainer()->getIntegration(IntegrationsOptionTestIntegrationStub::class));
+        $this->assertNotNull($this->getSentryClientFromContainer()->getIntegration(IntegrationsOptionTestIntegrationStub::class));
     }
 
     public function testCustomIntegrationIsResolvedFromContainerByClass(): void
@@ -40,7 +40,7 @@ class LaravelIntegrationsOptionTest extends TestCase
             ],
         ]);
 
-        $this->assertNotNull($this->getClientFromContainer()->getIntegration(IntegrationsOptionTestIntegrationStub::class));
+        $this->assertNotNull($this->getSentryClientFromContainer()->getIntegration(IntegrationsOptionTestIntegrationStub::class));
     }
 
     public function testCustomIntegrationByInstance(): void
@@ -51,7 +51,7 @@ class LaravelIntegrationsOptionTest extends TestCase
             ],
         ]);
 
-        $this->assertNotNull($this->getClientFromContainer()->getIntegration(IntegrationsOptionTestIntegrationStub::class));
+        $this->assertNotNull($this->getSentryClientFromContainer()->getIntegration(IntegrationsOptionTestIntegrationStub::class));
     }
 
     public function testCustomIntegrationThrowsExceptionIfNotResolvable(): void
@@ -79,7 +79,7 @@ class LaravelIntegrationsOptionTest extends TestCase
 
     public function testDisabledIntegrationsAreNotPresent(): void
     {
-        $client = $this->getClientFromContainer();
+        $client = $this->getSentryClientFromContainer();
 
         $this->assertNull($client->getIntegration(ErrorListenerIntegration::class));
         $this->assertNull($client->getIntegration(ExceptionListenerIntegration::class));
@@ -94,7 +94,7 @@ class LaravelIntegrationsOptionTest extends TestCase
             ],
         ]);
 
-        $client = $this->getClientFromContainer();
+        $client = $this->getSentryClientFromContainer();
 
         $this->assertNotNull($client->getIntegration(IntegrationsOptionTestIntegrationStub::class));
 

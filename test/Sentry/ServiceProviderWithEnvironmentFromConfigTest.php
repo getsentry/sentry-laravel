@@ -17,13 +17,13 @@ class ServiceProviderWithEnvironmentFromConfigTest extends TestCase
             'sentry.environment' => '',
         ]);
 
-        $this->assertEquals('testing', $this->getClientFromContainer()->getOptions()->getEnvironment());
+        $this->assertEquals('testing', $this->getSentryClientFromContainer()->getOptions()->getEnvironment());
 
         $this->resetApplicationWithConfig([
             'sentry.environment' => null,
         ]);
 
-        $this->assertEquals('testing', $this->getClientFromContainer()->getOptions()->getEnvironment());
+        $this->assertEquals('testing', $this->getSentryClientFromContainer()->getOptions()->getEnvironment());
     }
 
     public function testSentryEnvironmentDefaultGetsOverriddenByConfig(): void
@@ -32,6 +32,6 @@ class ServiceProviderWithEnvironmentFromConfigTest extends TestCase
             'sentry.environment' => 'override_env',
         ]);
 
-        $this->assertEquals('override_env', $this->getClientFromContainer()->getOptions()->getEnvironment());
+        $this->assertEquals('override_env', $this->getSentryClientFromContainer()->getOptions()->getEnvironment());
     }
 }

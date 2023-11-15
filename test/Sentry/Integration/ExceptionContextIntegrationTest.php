@@ -14,7 +14,7 @@ class ExceptionContextIntegrationTest extends TestCase
 {
     public function testExceptionContextIntegrationIsRegistered(): void
     {
-        $integration = $this->getHubFromContainer()->getIntegration(ExceptionContextIntegration::class);
+        $integration = $this->getSentryHubFromContainer()->getIntegration(ExceptionContextIntegration::class);
 
         $this->assertInstanceOf(ExceptionContextIntegration::class, $integration);
     }
