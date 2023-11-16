@@ -88,14 +88,14 @@ class LivewirePackageIntegration extends Feature
         }
     }
 
-    public function handleComponentCall(Component $component, string $method, array $args): void
+    public function handleComponentCall(Component $component, string $method, array $arguments): void
     {
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,
             Breadcrumb::TYPE_DEFAULT,
             'livewire',
             "Component call: {$component->getName()}::{$method}",
-            $this->mapCallDataToArguments($component, $method, $args) ?? ['args' => $args]
+            $this->mapCallArgumentsToMethodParameters($component, $method, $arguments) ?? ['arguments' => $arguments]
         ));
     }
 
@@ -207,7 +207,7 @@ class LivewirePackageIntegration extends Feature
         }
     }
 
-    private function mapCallDataToArguments(Component $component, string $method, array $data): ?array
+    private function mapCallArgumentsToMethodParameters(Component $component, string $method, array $data): ?array
     {
         // If the data is empty there is nothing to do and we can return early
         // We also do a quick sanity check the method exists to prevent doing more expensive reflection to come to the same conclusion
@@ -217,24 +217,21 @@ class LivewirePackageIntegration extends Feature
 
         try {
             $reflection = new \ReflectionMethod($component, $method);
-            $parameters = $reflection->getParameters();
+            $parameters = [];
 
-            $arguments = [];
-
-            foreach ($parameters as $parameter) {
+            foreach ($reflection->getParameters() as $parameter) {
                 $defaultValue = $parameter->isDefaultValueAvailable() ? $parameter->getDefaultValue() : '<missing>';
 
-                $arguments[$parameter->getName()] = $data[$parameter->getPosition()] ?? $defaultValue;
+                $parameters["\${$parameter->getName()}"] = $data[$parameter->getPosition()] ?? $defaultValue;
 
                 unset($data[$parameter->getPosition()]);
             }
 
-            // If we still have data left that means there are more arguments than parameters so we add them as `...` which indicates a variadic argument
             if (!empty($data)) {
-                $arguments['...'] = $data;
+                $parameters['additionalArguments'] = $data;
             }
 
-            return $arguments;
+            return $parameters;
         } catch (\ReflectionException $e) {
             // If reflection fails, fail the mapping instead of crashing
             return null;
