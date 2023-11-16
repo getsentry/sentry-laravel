@@ -91,31 +91,6 @@ parameters:
 			path: src/Sentry/Laravel/EventHandler.php
 
 		-
-			message: "#^Parameter \\$component of method Sentry\\\\Laravel\\\\Features\\\\LivewirePackageIntegration\\:\\:handleComponentBoot\\(\\) has invalid type Livewire\\\\Component\\.$#"
-			count: 1
-			path: src/Sentry/Laravel/Features/LivewirePackageIntegration.php
-
-		-
-			message: "#^Parameter \\$component of method Sentry\\\\Laravel\\\\Features\\\\LivewirePackageIntegration\\:\\:handleComponentBooted\\(\\) has invalid type Livewire\\\\Component\\.$#"
-			count: 1
-			path: src/Sentry/Laravel/Features/LivewirePackageIntegration.php
-
-		-
-			message: "#^Parameter \\$component of method Sentry\\\\Laravel\\\\Features\\\\LivewirePackageIntegration\\:\\:handleComponentDehydrate\\(\\) has invalid type Livewire\\\\Component\\.$#"
-			count: 1
-			path: src/Sentry/Laravel/Features/LivewirePackageIntegration.php
-
-		-
-			message: "#^Parameter \\$component of method Sentry\\\\Laravel\\\\Features\\\\LivewirePackageIntegration\\:\\:handleComponentMount\\(\\) has invalid type Livewire\\\\Component\\.$#"
-			count: 1
-			path: src/Sentry/Laravel/Features/LivewirePackageIntegration.php
-
-		-
-			message: "#^Parameter \\$livewireManager of method Sentry\\\\Laravel\\\\Features\\\\LivewirePackageIntegration\\:\\:onBoot\\(\\) has invalid type Livewire\\\\LivewireManager\\.$#"
-			count: 1
-			path: src/Sentry/Laravel/Features/LivewirePackageIntegration.php
-
-		-
 			message: "#^Parameter \\$request of method Sentry\\\\Laravel\\\\Features\\\\LivewirePackageIntegration\\:\\:handleComponentBooted\\(\\) has invalid type Livewire\\\\Request\\.$#"
 			count: 1
 			path: src/Sentry/Laravel/Features/LivewirePackageIntegration.php
