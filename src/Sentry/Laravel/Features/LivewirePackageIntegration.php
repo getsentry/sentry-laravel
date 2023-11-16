@@ -42,7 +42,7 @@ class LivewirePackageIntegration extends Feature
 
     private function registerLivewireThreeEventListeners(LivewireManager $livewireManager): void
     {
-        $livewireManager->listen('mount', function ($component, array $data) {
+        $livewireManager->listen('mount', function (Component $component, array $data) {
             if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
                 $this->handleComponentBoot($component);
             }
@@ -52,13 +52,13 @@ class LivewirePackageIntegration extends Feature
             }
         });
 
-        $livewireManager->listen('hydrate', function ($component, array $data) {
+        $livewireManager->listen('hydrate', function (Component $component) {
             if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
                 $this->handleComponentBoot($component);
             }
 
             if ($this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY)) {
-                $this->handleComponentHydrate($component, $data);
+                $this->handleComponentHydrate($component);
             }
         });
 
@@ -88,14 +88,14 @@ class LivewirePackageIntegration extends Feature
         }
     }
 
-    public function handleComponentCall(Component $component, string $method, array $data): void
+    public function handleComponentCall(Component $component, string $method, array $args): void
     {
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,
             Breadcrumb::TYPE_DEFAULT,
             'livewire',
             "Component call: {$component->getName()}::{$method}",
-            $data
+            $this->mapCallDataToArguments($component, $method, $args) ?? ['args' => $args]
         ));
     }
 
@@ -154,14 +154,14 @@ class LivewirePackageIntegration extends Feature
         }
     }
 
-    public function handleComponentHydrate(Component $component, array $data): void
+    public function handleComponentHydrate(Component $component): void
     {
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,
             Breadcrumb::TYPE_DEFAULT,
             'livewire',
             "Component hydrate: {$component->getName()}",
-            $data
+            $component->all()
         ));
     }
 
@@ -204,6 +204,40 @@ class LivewirePackageIntegration extends Feature
         } catch (\Throwable $e) {
             // If the request cannot be resolved, it's probably not a Livewire request.
             return false;
+        }
+    }
+
+    private function mapCallDataToArguments(Component $component, string $method, array $data): ?array
+    {
+        // If the data is empty there is nothing to do and we can return early
+        // We also do a quick sanity check the method exists to prevent doing more expensive reflection to come to the same conclusion
+        if (empty($data) || !method_exists($component, $method)) {
+            return null;
+        }
+
+        try {
+            $reflection = new \ReflectionMethod($component, $method);
+            $parameters = $reflection->getParameters();
+
+            $arguments = [];
+
+            foreach ($parameters as $parameter) {
+                $defaultValue = $parameter->isDefaultValueAvailable() ? $parameter->getDefaultValue() : '<missing>';
+
+                $arguments[$parameter->getName()] = $data[$parameter->getPosition()] ?? $defaultValue;
+
+                unset($data[$parameter->getPosition()]);
+            }
+
+            // If we still have data left that means there are more arguments than parameters so we add them as `...` which indicates a variadic argument
+            if (!empty($data)) {
+                $arguments['...'] = $data;
+            }
+
+            return $arguments;
+        } catch (\ReflectionException $e) {
+            // If reflection fails, fail the mapping instead of crashing
+            return null;
         }
     }
 }
