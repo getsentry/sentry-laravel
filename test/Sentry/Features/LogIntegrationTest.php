@@ -46,9 +46,9 @@ class LogIntegrationTest extends TestCase
 
         $logger->info('Sentry Laravel info log message');
 
-        $this->assertEquals(1, $this->getEventsCount());
+        $this->assertSentryEventCount(1);
 
-        $event = $this->getLastEvent();
+        $event = $this->getLastSentryEvent();
 
         $this->assertEquals(Severity::info(), $event->getLevel());
         $this->assertEquals('Sentry Laravel info log message', $event->getMessage());
@@ -62,9 +62,9 @@ class LogIntegrationTest extends TestCase
         $logger->warning('Sentry Laravel warning log message');
         $logger->error('Sentry Laravel error log message');
 
-        $this->assertEquals(1, $this->getEventsCount());
+        $this->assertSentryEventCount(1);
 
-        $event = $this->getLastEvent();
+        $event = $this->getLastSentryEvent();
 
         $this->assertEquals(Severity::error(), $event->getLevel());
         $this->assertEquals('Sentry Laravel error log message', $event->getMessage());

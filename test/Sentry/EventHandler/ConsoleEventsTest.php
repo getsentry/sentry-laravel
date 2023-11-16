@@ -19,7 +19,7 @@ class ConsoleEventsTest extends TestCase
 
         $this->dispatchCommandStartEvent();
 
-        $lastBreadcrumb = $this->getLastBreadcrumb();
+        $lastBreadcrumb = $this->getLastSentryBreadcrumb();
 
         $this->assertEquals('Starting Artisan command: test:command', $lastBreadcrumb->getMessage());
         $this->assertEquals('--foo=bar', $lastBreadcrumb->getMetadata()['input']);
@@ -35,7 +35,7 @@ class ConsoleEventsTest extends TestCase
 
         $this->dispatchCommandStartEvent();
 
-        $this->assertEmpty($this->getCurrentBreadcrumbs());
+        $this->assertEmpty($this->getCurrentSentryBreadcrumbs());
     }
 
     private function dispatchCommandStartEvent(): void

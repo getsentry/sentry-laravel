@@ -9,11 +9,11 @@ use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\Events\WorkerStopping;
 use Illuminate\Queue\Queue;
 use Sentry\Breadcrumb;
+use Sentry\Laravel\Features\Concerns\TracksPushedScopesAndSpans;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
 use Sentry\State\Scope;
 use Sentry\Tracing\PropagationContext;
-use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\SpanStatus;
 use Sentry\Tracing\TransactionContext;
@@ -25,29 +25,12 @@ use function Sentry\getTraceparent;
 
 class QueueIntegration extends Feature
 {
+    use TracksPushedScopesAndSpans {
+        pushScope as private pushScopeTrait;
+    }
+
     private const QUEUE_PAYLOAD_BAGGAGE_DATA = 'sentry_baggage_data';
     private const QUEUE_PAYLOAD_TRACE_PARENT_DATA = 'sentry_trace_parent_data';
-
-    /**
-     * Hold the number of times the scope was pushed.
-     *
-     * @var int
-     */
-    private $pushedScopeCount = 0;
-
-    /**
-     * Hold the stack of parent spans that need to be put back on the scope.
-     *
-     * @var array<int, Span|null>
-     */
-    private $parentSpanStack = [];
-
-    /**
-     * Hold the stack of current spans that need to be finished still.
-     *
-     * @var array<int, Span|null>
-     */
-    private $currentSpanStack = [];
 
     public function isApplicable(): bool
     {
@@ -181,57 +164,6 @@ class QueueIntegration extends Feature
         Integration::flushEvents();
     }
 
-    private function pushSpan(Span $span): void
-    {
-        $hub = SentrySdk::getCurrentHub();
-
-        $this->parentSpanStack[] = $hub->getSpan();
-
-        $hub->setSpan($span);
-
-        $this->currentSpanStack[] = $span;
-    }
-
-    private function pushScope(): void
-    {
-        SentrySdk::getCurrentHub()->pushScope();
-
-        ++$this->pushedScopeCount;
-
-        // When a job starts, we want to make sure the scope is cleared of breadcrumbs
-        // as well as setting a new propagation context.
-        SentrySdk::getCurrentHub()->configureScope(static function (Scope $scope) {
-            $scope->clearBreadcrumbs();
-            $scope->setPropagationContext(PropagationContext::fromDefaults());
-        });
-    }
-
-    private function maybePopSpan(): ?Span
-    {
-        if (count($this->currentSpanStack) === 0) {
-            return null;
-        }
-
-        $parent = array_pop($this->parentSpanStack);
-
-        SentrySdk::getCurrentHub()->setSpan($parent);
-
-        return array_pop($this->currentSpanStack);
-    }
-
-    private function maybePopScope(): void
-    {
-        Integration::flushEvents();
-
-        if ($this->pushedScopeCount === 0) {
-            return;
-        }
-
-        SentrySdk::getCurrentHub()->popScope();
-
-        --$this->pushedScopeCount;
-    }
-
     private function finishJobWithStatus(SpanStatus $status): void
     {
         $span = $this->maybePopSpan();
@@ -240,5 +172,17 @@ class QueueIntegration extends Feature
             $span->finish();
             $span->setStatus($status);
         }
+    }
+
+    protected function pushScope(): void
+    {
+        $this->pushScopeTrait();
+
+        // When a job starts, we want to make sure the scope is cleared of breadcrumbs
+        // as well as setting a new propagation context.
+        SentrySdk::getCurrentHub()->configureScope(static function (Scope $scope) {
+            $scope->clearBreadcrumbs();
+            $scope->setPropagationContext(PropagationContext::fromDefaults());
+        });
     }
 }

@@ -15,18 +15,18 @@ class QueueEventsTest extends TestCase
     {
         dispatch(new QueueEventsTestJobWithBreadcrumb);
 
-        $this->assertCount(0, $this->getCurrentBreadcrumbs());
+        $this->assertCount(0, $this->getCurrentSentryBreadcrumbs());
     }
 
     public function testQueueJobThatReportsPushesAndPopsScopeWithBreadcrumbs(): void
     {
         dispatch(new QueueEventsTestJobThatReportsAnExceptionWithBreadcrumb);
 
-        $this->assertCount(0, $this->getCurrentBreadcrumbs());
+        $this->assertCount(0, $this->getCurrentSentryBreadcrumbs());
 
-        $this->assertNotNull($this->getLastEvent());
+        $this->assertNotNull($this->getLastSentryEvent());
 
-        $event = $this->getLastEvent();
+        $event = $this->getLastSentryEvent();
 
         $this->assertCount(2, $event->getBreadcrumbs());
     }
@@ -41,12 +41,12 @@ class QueueEventsTest extends TestCase
 
         // We still expect to find the breadcrumbs from the job here so they are attached to reported exceptions
 
-        $this->assertCount(2, $this->getCurrentBreadcrumbs());
+        $this->assertCount(2, $this->getCurrentSentryBreadcrumbs());
 
-        $firstBreadcrumb = $this->getCurrentBreadcrumbs()[0];
+        $firstBreadcrumb = $this->getCurrentSentryBreadcrumbs()[0];
         $this->assertEquals('queue.job', $firstBreadcrumb->getCategory());
 
-        $secondBreadcrumb = $this->getCurrentBreadcrumbs()[1];
+        $secondBreadcrumb = $this->getCurrentSentryBreadcrumbs()[1];
         $this->assertEquals('test', $secondBreadcrumb->getCategory());
     }
 
@@ -66,12 +66,12 @@ class QueueEventsTest extends TestCase
 
         // We only expect to find the breadcrumbs from the second job here
 
-        $this->assertCount(2, $this->getCurrentBreadcrumbs());
+        $this->assertCount(2, $this->getCurrentSentryBreadcrumbs());
 
-        $firstBreadcrumb = $this->getCurrentBreadcrumbs()[0];
+        $firstBreadcrumb = $this->getCurrentSentryBreadcrumbs()[0];
         $this->assertEquals('queue.job', $firstBreadcrumb->getCategory());
 
-        $secondBreadcrumb = $this->getCurrentBreadcrumbs()[1];
+        $secondBreadcrumb = $this->getCurrentSentryBreadcrumbs()[1];
         $this->assertEquals('test #2', $secondBreadcrumb->getMessage());
     }
 
@@ -83,7 +83,7 @@ class QueueEventsTest extends TestCase
 
         dispatch(new QueueEventsTestJobWithBreadcrumb);
 
-        $this->assertCount(1, $this->getCurrentBreadcrumbs());
+        $this->assertCount(1, $this->getCurrentSentryBreadcrumbs());
     }
 }
 

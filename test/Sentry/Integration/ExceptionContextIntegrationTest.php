@@ -14,7 +14,7 @@ class ExceptionContextIntegrationTest extends TestCase
 {
     public function testExceptionContextIntegrationIsRegistered(): void
     {
-        $integration = $this->getHubFromContainer()->getIntegration(ExceptionContextIntegration::class);
+        $integration = $this->getSentryHubFromContainer()->getIntegration(ExceptionContextIntegration::class);
 
         $this->assertInstanceOf(ExceptionContextIntegration::class, $integration);
     }
@@ -37,7 +37,7 @@ class ExceptionContextIntegrationTest extends TestCase
         });
     }
 
-    public function invokeDataProvider(): iterable
+    public static function invokeDataProvider(): iterable
     {
         yield 'Exception without context method -> no exception context' => [
             new Exception('Exception without context.'),
@@ -47,17 +47,17 @@ class ExceptionContextIntegrationTest extends TestCase
         $context = ['some' => 'context'];
 
         yield 'Exception with context method returning array of context' => [
-            $this->generateExceptionWithContext($context),
+            self::generateExceptionWithContext($context),
             $context,
         ];
 
         yield 'Exception with context method returning string of context' => [
-            $this->generateExceptionWithContext('Invalid context, expects array'),
+            self::generateExceptionWithContext('Invalid context, expects array'),
             null,
         ];
     }
 
-    private function generateExceptionWithContext($context): Exception
+    private static function generateExceptionWithContext($context): Exception
     {
         return new class($context) extends Exception {
             private $context;
