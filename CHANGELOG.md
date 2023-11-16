@@ -54,6 +54,24 @@ Please refer to the PHP SDK [sentry-php/UPGRADE-4.0.md](https://github.com/getse
   Please make sure to remove any custom code that injected these headers previously.
   If you are using the `Sentry\Tracing\GuzzleTracingMiddleware` provided by our underlying PHP SDK, you must also remove it.
 
+- Add support for Laravel Livewire 3 [(#798)](https://github.com/getsentry/sentry-laravel/pull/798)
+
+  The SDK now creates traces and breadcrumbs for Livewire 3 as well.
+  Both the class-based and Volt usage are supported.
+
+  ```php
+  // config/sentry.php
+
+  'breadcrumbs' => [
+      // Capture Livewire components in breadcrumbs
+      'livewire' => true,
+  ],
+  'tracing' => [
+      // Capture Livewire components as spans
+      'livewire' => true,
+  ],
+  ```
+
 - Add new fluent APIs [(#1601)](https://github.com/getsentry/sentry-php/pull/1601)
 
   ```php
