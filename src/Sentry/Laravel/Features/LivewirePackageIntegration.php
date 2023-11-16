@@ -7,19 +7,18 @@ use Livewire\EventBus;
 use Livewire\LivewireManager;
 use Livewire\Request;
 use Sentry\Breadcrumb;
+use Sentry\Laravel\Features\Concerns\TracksPushedScopesAndSpans;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
 use Sentry\State\Scope;
-use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\TransactionSource;
 
 class LivewirePackageIntegration extends Feature
 {
-    private const FEATURE_KEY = 'livewire';
+    use TracksPushedScopesAndSpans;
 
-    /** @var array<Span> */
-    private $spanStack = [];
+    private const FEATURE_KEY = 'livewire';
 
     public function isApplicable(): bool
     {
@@ -107,13 +106,11 @@ class LivewirePackageIntegration extends Feature
             $this->updateTransactionName($component->getName());
         }
 
-        $currentSpan = SentrySdk::getCurrentHub()->getSpan();
+        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
 
-        if ($currentSpan === null) {
+        if ($parentSpan === null) {
             return;
         }
-
-        $this->spanStack[] = $currentSpan;
 
         $context = new SpanContext;
         $context->setOp('ui.livewire.component');
@@ -123,9 +120,7 @@ class LivewirePackageIntegration extends Feature
                 : "{$component->getName()}::{$method}"
         );
 
-        $componentSpan = $currentSpan->startChild($context);
-
-        SentrySdk::getCurrentHub()->setSpan($componentSpan);
+        $this->pushSpan($parentSpan->startChild($context));
     }
 
     public function handleComponentMount(Component $component, array $data): void
@@ -173,17 +168,11 @@ class LivewirePackageIntegration extends Feature
 
     public function handleComponentDehydrate(Component $component): void
     {
-        $currentSpan = SentrySdk::getCurrentHub()->getSpan();
+        $span = $this->maybePopSpan();
 
-        if ($currentSpan === null || empty($this->spanStack)) {
-            return;
+        if ($span !== null) {
+            $span->finish();
         }
-
-        $currentSpan->finish();
-
-        $previousSpan = array_pop($this->spanStack);
-
-        SentrySdk::getCurrentHub()->setSpan($previousSpan);
     }
 
     private function updateTransactionName(string $componentName): void
