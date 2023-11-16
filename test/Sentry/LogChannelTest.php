@@ -48,7 +48,7 @@ class LogChannelTest extends TestCase
 
         $logger->error('test message', $context);
 
-        $lastEvent = $this->getLastEvent();
+        $lastEvent = $this->getLastSentryEvent();
 
         $this->assertNotNull($lastEvent);
         $this->assertEquals('test message', $lastEvent->getMessage());
@@ -57,14 +57,14 @@ class LogChannelTest extends TestCase
         $asserter($lastEvent);
     }
 
-    public function handlerDataProvider(): iterable
+    public static function handlerDataProvider(): iterable
     {
         $context = ['foo' => 'bar'];
 
         yield [
             $context,
             function (Event $event) use ($context) {
-                $this->assertEquals($context, $event->getExtra()['log_context']);
+                self::assertEquals($context, $event->getExtra()['log_context']);
             },
         ];
 
@@ -73,8 +73,8 @@ class LogChannelTest extends TestCase
         yield [
             $context,
             function (Event $event) use ($context) {
-                $this->assertEquals($context['fingerprint'], $event->getFingerprint());
-                $this->assertEmpty($event->getExtra());
+                self::assertEquals($context['fingerprint'], $event->getFingerprint());
+                self::assertEmpty($event->getExtra());
             },
         ];
 
@@ -83,8 +83,8 @@ class LogChannelTest extends TestCase
         yield [
             $context,
             function (Event $event) use ($context) {
-                $this->assertNull($event->getUser());
-                $this->assertEquals($context, $event->getExtra()['log_context']);
+                self::assertNull($event->getUser());
+                self::assertEquals($context, $event->getExtra()['log_context']);
             },
         ];
 
@@ -93,9 +93,9 @@ class LogChannelTest extends TestCase
         yield [
             $context,
             function (Event $event) {
-                $this->assertNotNull($event->getUser());
-                $this->assertEquals(123, $event->getUser()->getId());
-                $this->assertEmpty($event->getExtra());
+                self::assertNotNull($event->getUser());
+                self::assertEquals(123, $event->getUser()->getId());
+                self::assertEmpty($event->getExtra());
             },
         ];
 
@@ -107,11 +107,11 @@ class LogChannelTest extends TestCase
         yield [
             $context,
             function (Event $event) {
-                $this->assertSame([
+                self::assertSame([
                     'foo' => 'bar',
                     'bar' => '123',
                 ], $event->getTags());
-                $this->assertEmpty($event->getExtra());
+                self::assertEmpty($event->getExtra());
             },
         ];
     }

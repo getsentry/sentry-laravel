@@ -58,7 +58,7 @@ abstract class TestCase extends LaravelTestCase
             });
 
             if ($config->get('sentry_test.override_dsn') !== true) {
-                $config->set('sentry.dsn', 'https://publickey:secretkey@sentry.dev/123');
+                $config->set('sentry.dsn', 'https://publickey@sentry.dev/123');
             }
 
             foreach ($this->setupConfig as $key => $value) {
@@ -76,6 +76,12 @@ abstract class TestCase extends LaravelTestCase
     {
         $app['config']->set('sentry.dsn', null);
         $app['config']->set('sentry_test.override_dsn', true);
+    }
+
+    /** @param Application $app */
+    protected function envSamplingAllTransactions($app): void
+    {
+        $app['config']->set('sentry.traces_sample_rate', 1.0);
     }
 
     protected function getPackageProviders($app): array
@@ -98,19 +104,19 @@ abstract class TestCase extends LaravelTestCase
         $this->app['events']->dispatch($event, $payload);
     }
 
-    protected function getHubFromContainer(): HubInterface
+    protected function getSentryHubFromContainer(): HubInterface
     {
         return $this->app->make('sentry');
     }
 
-    protected function getClientFromContainer(): ClientInterface
+    protected function getSentryClientFromContainer(): ClientInterface
     {
-        return $this->getHubFromContainer()->getClient();
+        return $this->getSentryHubFromContainer()->getClient();
     }
 
-    protected function getCurrentScope(): Scope
+    protected function getCurrentSentryScope(): Scope
     {
-        $hub = $this->getHubFromContainer();
+        $hub = $this->getSentryHubFromContainer();
 
         $method = new ReflectionMethod($hub, 'getScope');
         $method->setAccessible(true);
@@ -119,9 +125,9 @@ abstract class TestCase extends LaravelTestCase
     }
 
     /** @return array<array-key, \Sentry\Breadcrumb> */
-    protected function getCurrentBreadcrumbs(): array
+    protected function getCurrentSentryBreadcrumbs(): array
     {
-        $scope = $this->getCurrentScope();
+        $scope = $this->getCurrentSentryScope();
 
         $property = new ReflectionProperty($scope, 'breadcrumbs');
         $property->setAccessible(true);
@@ -129,9 +135,9 @@ abstract class TestCase extends LaravelTestCase
         return $property->getValue($scope);
     }
 
-    protected function getLastBreadcrumb(): ?Breadcrumb
+    protected function getLastSentryBreadcrumb(): ?Breadcrumb
     {
-        $breadcrumbs = $this->getCurrentBreadcrumbs();
+        $breadcrumbs = $this->getCurrentSentryBreadcrumbs();
 
         if (empty($breadcrumbs)) {
             return null;
@@ -140,7 +146,7 @@ abstract class TestCase extends LaravelTestCase
         return end($breadcrumbs);
     }
 
-    protected function getLastEvent(): ?Event
+    protected function getLastSentryEvent(): ?Event
     {
         if (empty(self::$lastSentryEvents)) {
             return null;
@@ -149,7 +155,7 @@ abstract class TestCase extends LaravelTestCase
         return end(self::$lastSentryEvents)[0];
     }
 
-    protected function getLastEventHint(): ?EventHint
+    protected function getLastEventSentryHint(): ?EventHint
     {
         if (empty(self::$lastSentryEvents)) {
             return null;
@@ -158,19 +164,41 @@ abstract class TestCase extends LaravelTestCase
         return end(self::$lastSentryEvents)[1];
     }
 
-    protected function getEventsCount(): int
+    /** @return array<int, array{0: Event, 1: EventHint|null}> */
+    protected function getCapturedSentryEvents(): array
     {
-        return count(self::$lastSentryEvents);
+        return self::$lastSentryEvents;
+    }
+
+    protected function assertSentryEventCount(int $count): void
+    {
+        $this->assertCount($count, array_filter(self::$lastSentryEvents, static function (array $event) {
+            return $event[0]->getType() === EventType::event();
+        }));
+    }
+
+    protected function assertSentryCheckInCount(int $count): void
+    {
+        $this->assertCount($count, array_filter(self::$lastSentryEvents, static function (array $event) {
+            return $event[0]->getType() === EventType::checkIn();
+        }));
+    }
+
+    protected function assertSentryTransactionCount(int $count): void
+    {
+        $this->assertCount($count, array_filter(self::$lastSentryEvents, static function (array $event) {
+            return $event[0]->getType() === EventType::transaction();
+        }));
     }
 
     protected function startTransaction(): Transaction
     {
-        $hub = $this->getHubFromContainer();
+        $hub = $this->getSentryHubFromContainer();
 
         $transaction = $hub->startTransaction(new TransactionContext);
         $transaction->initSpanRecorder();
 
-        $this->getCurrentScope()->setSpan($transaction);
+        $this->getCurrentSentryScope()->setSpan($transaction);
 
         return $transaction;
     }

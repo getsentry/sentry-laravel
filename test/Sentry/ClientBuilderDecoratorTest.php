@@ -2,7 +2,7 @@
 
 namespace Sentry\Laravel\Tests;
 
-use Sentry\ClientBuilderInterface;
+use Sentry\ClientBuilder;
 
 class ClientBuilderDecoratorTest extends TestCase
 {
@@ -10,7 +10,7 @@ class ClientBuilderDecoratorTest extends TestCase
     {
         parent::defineEnvironment($app);
 
-        $app->extend(ClientBuilderInterface::class, function (ClientBuilderInterface $clientBuilder) {
+        $app->extend(ClientBuilder::class, function (ClientBuilder $clientBuilder) {
             $clientBuilder->getOptions()->setEnvironment('from_service_container');
 
             return $clientBuilder;
@@ -21,7 +21,7 @@ class ClientBuilderDecoratorTest extends TestCase
     {
         $this->assertEquals(
             'from_service_container',
-            $this->getClientFromContainer()->getOptions()->getEnvironment()
+            $this->getSentryClientFromContainer()->getOptions()->getEnvironment()
         );
     }
 }

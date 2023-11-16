@@ -18,7 +18,7 @@ class IntegrationTest extends TestCase
 {
     public function testIntegrationIsRegistered(): void
     {
-        $integration = $this->getHubFromContainer()->getIntegration(Integration::class);
+        $integration = $this->getSentryHubFromContainer()->getIntegration(Integration::class);
 
         $this->assertInstanceOf(Integration::class, $integration);
     }
@@ -153,9 +153,9 @@ class IntegrationTest extends TestCase
 
         report($testException);
 
-        $this->assertEquals(1, $this->getEventsCount());
+        $this->assertSentryEventCount(1);
 
-        $hint = $this->getLastEventHint();
+        $hint = $this->getLastEventSentryHint();
 
         $this->assertEquals($testException, $hint->exception);
         $this->assertNotNull($hint->mechanism);
@@ -168,9 +168,9 @@ class IntegrationTest extends TestCase
 
         Integration::captureUnhandledException($testException);
 
-        $this->assertEquals(1, $this->getEventsCount());
+        $this->assertSentryEventCount(1);
 
-        $hint = $this->getLastEventHint();
+        $hint = $this->getLastEventSentryHint();
 
         $this->assertEquals($testException, $hint->exception);
         $this->assertNotNull($hint->mechanism);
