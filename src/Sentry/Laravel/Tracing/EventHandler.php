@@ -170,9 +170,7 @@ class EventHandler
             $queryOrigin = $this->resolveQueryOriginFromBacktrace();
 
             if ($queryOrigin !== null) {
-                $context->setData(array_merge($context->getData(), [
-                    'db.sql.origin' => $queryOrigin
-                ]));
+                $context->setData(array_merge($context->getData(), $queryOrigin));
             }
         }
 
@@ -184,7 +182,7 @@ class EventHandler
      *
      * @return string|null
      */
-    private function resolveQueryOriginFromBacktrace(): ?string
+    private function resolveQueryOriginFromBacktrace(): ?array
     {
         $backtraceHelper = $this->makeBacktraceHelper();
 
@@ -196,7 +194,11 @@ class EventHandler
 
         $filePath = $backtraceHelper->getOriginalViewPathForFrameOfCompiledViewPath($firstAppFrame) ?? $firstAppFrame->getFile();
 
-        return "{$filePath}:{$firstAppFrame->getLine()}";
+        return [
+            'code.filepath' => $filePath,
+            'code.function' => $firstAppFrame->getFunctionName(),
+            'code.lineno' => $firstAppFrame->getLine(),
+        ];
     }
 
     protected function responsePreparedHandler(RoutingEvents\ResponsePrepared $event): void
