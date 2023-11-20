@@ -96,4 +96,7 @@ return [
         'default_integrations' => env('SENTRY_TRACE_DEFAULT_INTEGRATIONS_ENABLED', true),
     ],
 
+    'ignore_exceptions' => [],
+
+    'ignore_transactions' => [],
 ];
