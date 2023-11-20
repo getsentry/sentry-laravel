@@ -2,6 +2,8 @@
 
 namespace Sentry\Laravel\Tests;
 
+use Sentry\SentrySdk;
+use Sentry\Tracing\Span;
 use Sentry\Tracing\Transaction;
 use Illuminate\Config\Repository;
 use Sentry\Tracing\TransactionContext;
@@ -19,6 +21,7 @@ use Sentry\Laravel\Tracing;
 use Sentry\State\HubInterface;
 use Sentry\Laravel\ServiceProvider;
 use Orchestra\Testbench\TestCase as LaravelTestCase;
+use Throwable;
 
 abstract class TestCase extends LaravelTestCase
 {
@@ -153,6 +156,16 @@ abstract class TestCase extends LaravelTestCase
         }
 
         return end(self::$lastSentryEvents)[0];
+    }
+
+    protected function getLastSentrySpan(): ?Span
+    {
+        try {
+            $spans = SentrySdk::getCurrentHub()->getSpan()->getSpanRecorder()->getSpans();
+            return end($spans);
+        } catch (Throwable $throwable) {
+            return null;
+        }
     }
 
     protected function getLastEventSentryHint(): ?EventHint

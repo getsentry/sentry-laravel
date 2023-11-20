@@ -67,6 +67,9 @@ return [
         // Capture SQL queries as spans
         'sql_queries' => env('SENTRY_TRACE_SQL_QUERIES_ENABLED', true),
 
+        // Capture SQL query bindings (parameters) in SQL query spans
+        'sql_bindings' => env('SENTRY_TRACE_SQL_BINDINGS_ENABLED', false),
+
         // Capture where the SQL query originated from on the SQL query spans
         'sql_origin' => env('SENTRY_TRACE_SQL_ORIGIN_ENABLED', true),
 

@@ -42,6 +42,13 @@ class EventHandler
     private $traceSqlQueries;
 
     /**
+     * Indicates if we should add query bindings to query spans.
+     *
+     * @var bool
+     */
+    private $recordSqlBindings;
+
+    /**
      * Indicates if we should we add SQL query origin data to query spans.
      *
      * @var bool
@@ -83,6 +90,7 @@ class EventHandler
     {
         $this->traceSqlQueries = ($config['sql_queries'] ?? true) === true;
         $this->traceSqlQueryOrigins = ($config['sql_origin'] ?? true) === true;
+        $this->recordSqlBindings = ($config['sql_bindings'] ?? true) === true;
 
         $this->traceQueueJobs = ($config['queue_jobs'] ?? false) === true;
         $this->traceQueueJobsAsTransactions = ($config['queue_job_transactions'] ?? false) === true;
@@ -174,6 +182,12 @@ class EventHandler
                     'db.sql.origin' => $queryOrigin
                 ]));
             }
+        }
+
+        if ($this->recordSqlBindings) {
+            $context->setData(array_merge($context->getData(), [
+                'db.sql.bindings' => $query->bindings
+            ]));
         }
 
         $parentSpan->startChild($context);
