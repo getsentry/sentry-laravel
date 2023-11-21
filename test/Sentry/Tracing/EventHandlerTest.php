@@ -4,16 +4,11 @@ namespace Sentry\Laravel\Tests\Tracing;
 
 use Illuminate\Database\Connection;
 use Illuminate\Database\Events\QueryExecuted;
-use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Mockery;
 use ReflectionClass;
-use Sentry\Laravel\Tests\TestCase;
-use Sentry\Laravel\Tracing\BacktraceHelper;
 use RuntimeException;
+use Sentry\Laravel\Tests\TestCase;
 use Sentry\Laravel\Tracing\EventHandler;
-use Sentry\Laravel\Tracing\Middleware;
-use Sentry\SentrySdk;
 
 class EventHandlerTest extends TestCase
 {
@@ -47,7 +42,7 @@ class EventHandlerTest extends TestCase
         $this->startTransaction();
 
         $this->dispatchLaravelEvent(new QueryExecuted(
-            $query = 'SELECT * FROM breadcrumbs WHERE bindings = ?;',
+            $query = 'SELECT * FROM spans WHERE bindings = ?;',
             $bindings = ['1'],
             10,
             $this->getMockedConnection()
@@ -57,6 +52,31 @@ class EventHandlerTest extends TestCase
 
         $this->assertEquals($query, $span->getDescription());
         $this->assertEquals($bindings, $span->getData()['db.sql.bindings']);
+    }
+
+    public function testSqlBindingsAreRecordedWhenDisabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.traces_sample_rate' => 1,
+            'sentry.tracing.sql_queries' => true,
+            'sentry.tracing.sql_bindings' => false,
+        ]);
+
+        $this->assertFalse($this->app['config']->get('sentry.tracing.sql_bindings'));
+
+        $this->startTransaction();
+
+        $this->dispatchLaravelEvent(new QueryExecuted(
+            $query = 'SELECT * FROM spans WHERE bindings = ?;',
+            $bindings = ['1'],
+            10,
+            $this->getMockedConnection()
+        ));
+
+        $span = $this->getLastSentrySpan();
+
+        $this->assertEquals($query, $span->getDescription());
+        $this->assertFalse(isset($span->getData()['db.sql.bindings']));
     }
 
     private function tryAllEventHandlerMethods(array $methods): void
