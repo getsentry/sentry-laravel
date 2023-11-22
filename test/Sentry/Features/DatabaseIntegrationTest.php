@@ -85,11 +85,41 @@ class DatabaseIntegrationTest extends TestCase
         $this->assertNull($span->getData()['server.port']);
     }
 
-    private function executeQueryAndRetrieveSpan(string $query): Span
+    public function testSqlBindingsAreRecordedWhenEnabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.sql_bindings' => true,
+        ]);
+
+        $span = $this->executeQueryAndRetrieveSpan(
+            $query = 'SELECT %',
+            $bindings = ['1']
+        );
+
+        $this->assertEquals($query, $span->getDescription());
+        $this->assertEquals($bindings, $span->getData()['db.sql.bindings']);
+    }
+
+    public function testSqlBindingsAreRecordedWhenDisabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.sql_bindings' => false,
+        ]);
+
+        $span = $this->executeQueryAndRetrieveSpan(
+            $query = 'SELECT %',
+            ['1']
+        );
+
+        $this->assertEquals($query, $span->getDescription());
+        $this->assertFalse(isset($span->getData()['db.sql.bindings']));
+    }
+
+    private function executeQueryAndRetrieveSpan(string $query, array $bindings = []): Span
     {
         $transaction = $this->startTransaction();
 
-        $this->dispatchLaravelEvent(new QueryExecuted($query, [], 123, DB::connection()));
+        $this->dispatchLaravelEvent(new QueryExecuted($query, $bindings, 123, DB::connection()));
 
         $spans = $transaction->getSpanRecorder()->getSpans();
 

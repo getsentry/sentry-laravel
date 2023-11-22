@@ -2,9 +2,6 @@
 
 namespace Sentry\Laravel\Tests\Tracing;
 
-use Illuminate\Database\Connection;
-use Illuminate\Database\Events\QueryExecuted;
-use Mockery;
 use ReflectionClass;
 use RuntimeException;
 use Sentry\Laravel\Tests\TestCase;
@@ -29,56 +26,6 @@ class EventHandlerTest extends TestCase
         );
     }
 
-    public function testSqlBindingsAreRecordedWhenEnabled(): void
-    {
-        $this->resetApplicationWithConfig([
-            'sentry.traces_sample_rate' => 1,
-            'sentry.tracing.sql_queries' => true,
-            'sentry.tracing.sql_bindings' => true,
-        ]);
-
-        $this->assertTrue($this->app['config']->get('sentry.tracing.sql_bindings'));
-
-        $this->startTransaction();
-
-        $this->dispatchLaravelEvent(new QueryExecuted(
-            $query = 'SELECT * FROM spans WHERE bindings = ?;',
-            $bindings = ['1'],
-            10,
-            $this->getMockedConnection()
-        ));
-
-        $span = $this->getLastSentrySpan();
-
-        $this->assertEquals($query, $span->getDescription());
-        $this->assertEquals($bindings, $span->getData()['db.sql.bindings']);
-    }
-
-    public function testSqlBindingsAreRecordedWhenDisabled(): void
-    {
-        $this->resetApplicationWithConfig([
-            'sentry.traces_sample_rate' => 1,
-            'sentry.tracing.sql_queries' => true,
-            'sentry.tracing.sql_bindings' => false,
-        ]);
-
-        $this->assertFalse($this->app['config']->get('sentry.tracing.sql_bindings'));
-
-        $this->startTransaction();
-
-        $this->dispatchLaravelEvent(new QueryExecuted(
-            $query = 'SELECT * FROM spans WHERE bindings = ?;',
-            $bindings = ['1'],
-            10,
-            $this->getMockedConnection()
-        ));
-
-        $span = $this->getLastSentrySpan();
-
-        $this->assertEquals($query, $span->getDescription());
-        $this->assertFalse(isset($span->getData()['db.sql.bindings']));
-    }
-
     private function tryAllEventHandlerMethods(array $methods): void
     {
         $handler = new EventHandler([]);
@@ -99,16 +46,5 @@ class EventHandlerTest extends TestCase
         $attributes = $class->getStaticProperties();
 
         return $attributes['eventHandlerMap'];
-    }
-
-    private function getMockedConnection()
-    {
-        $mock = Mockery::mock(Connection::class);
-        $mock->shouldReceive('getName')->andReturn('test');
-        $mock->shouldReceive('getDatabaseName')->andReturn('test');
-        $mock->shouldReceive('getDriverName')->andReturn('mysql');
-        $mock->shouldReceive('getConfig')->andReturn(['host' => '127.0.0.1', 'port' => 3306]);
-
-        return $mock;
     }
 }
