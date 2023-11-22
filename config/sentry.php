@@ -30,10 +30,10 @@ return [
     'send_default_pii' => env('SENTRY_SEND_DEFAULT_PII', false),
 
     // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#ignore-exceptions
-    'ignore_exceptions' => [],
+    // 'ignore_exceptions' => [],
 
     // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#ignore-transactions
-    'ignore_transactions' => [],
+    // 'ignore_transactions' => [],
 
     // Breadcrumb specific configuration
     'breadcrumbs' => [
@@ -101,4 +101,5 @@ return [
         // Enable the tracing integrations supplied by Sentry (recommended)
         'default_integrations' => env('SENTRY_TRACE_DEFAULT_INTEGRATIONS_ENABLED', true),
     ],
+
 ];
