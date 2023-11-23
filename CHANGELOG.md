@@ -1,10 +1,31 @@
 # Changelog
 
+## 4.1.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.1.0.
+
+### Features
+
+- Capture SQL query bindings (parameters) in SQL query spans [(#804)](https://github.com/getsentry/sentry-laravel/pull/804)
+
+  To enable this feature, update your `config/sentry.php` file or set the `SENTRY_TRACE_SQL_BINDINGS_ENABLED` environment variable to `true`.
+
+  ```php
+  'tracing' => [
+      'sql_bindings' => true,
+  ],
+  ```
+
+### Misc
+
+- Unify backtrace origin span attributes [(#803)](https://github.com/getsentry/sentry-laravel/pull/803)
+- Add `ignore_exceptions` & `ignore_transactions` to default config [(#802)](https://github.com/getsentry/sentry-laravel/pull/802)
+
 ## 4.0.0
 
 The Sentry SDK team is thrilled to announce the immediate availability of Sentry Laravel SDK v4.0.0.
 
-# Breaking Change
+### Breaking Change
 
 This version adds support for the underlying [Sentry PHP SDK v4.0](https://github.com/getsentry/sentry-php).
 Please refer to the PHP SDK [sentry-php/UPGRADE-4.0.md](https://github.com/getsentry/sentry-php/blob/master/UPGRADE-4.0.md) guide for a complete list of breaking changes.
@@ -26,7 +47,7 @@ Please refer to the PHP SDK [sentry-php/UPGRADE-4.0.md](https://github.com/getse
 
   This option performs an [`is_a`](https://www.php.net/manual/en/function.is-a.php) check now, so you can also ignore more generic exceptions.
 
-# Features
+### Features
 
 - Enable distributed tracing for outgoing HTTP client requests [(#797)](https://github.com/getsentry/sentry-laravel/pull/797)
 
@@ -112,6 +133,6 @@ Please refer to the PHP SDK [sentry-php/UPGRADE-4.0.md](https://github.com/getse
 
 - New default cURL HTTP client [(#1589)](https://github.com/getsentry/sentry-php/pull/1589)
 
-# Misc
+### Misc
 
 - The abandoned package `php-http/message-factory` was removed.
