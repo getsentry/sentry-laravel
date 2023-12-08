@@ -19,7 +19,7 @@ use Sentry\SentrySdk;
 class ConsoleIntegration extends Feature
 {
     /**
-     * @var array<string, CheckIn> The list of checkins that are currently in progress.
+     * @var array<string, CheckIn> The list of check-ins that are currently in progress.
      */
     private $checkInStore = [];
 
@@ -48,8 +48,13 @@ class ConsoleIntegration extends Feature
             ?string $monitorSlug = null,
             ?int $checkInMargin = null,
             ?int $maxRuntime = null,
-            bool $updateMonitorConfig = true
+            bool $updateMonitorConfig = true,
+            array $runOnEnvironments = []
         ) use ($startCheckIn, $finishCheckIn) {
+            if (! empty($runOnEnvironments) && ! in_array(config('app.env'), $runOnEnvironments)) {
+                return $this;
+            }
+
             /** @var SchedulingEvent $this */
             if ($monitorSlug === null && $this->command === null) {
                 throw new RuntimeException('The command string is null, please set a slug manually for this scheduled command using the `sentryMonitor(\'your-monitor-slug\')` macro.');
@@ -78,7 +83,8 @@ class ConsoleIntegration extends Feature
             ?string $monitorSlug = null,
             ?int $checkInMargin = null,
             ?int $maxRuntime = null,
-            bool $updateMonitorConfig = true
+            bool $updateMonitorConfig = true,
+            array $runOnEnvironments = []
         ) {
             return $this;
         });

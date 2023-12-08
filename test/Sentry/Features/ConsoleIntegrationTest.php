@@ -83,6 +83,69 @@ class ConsoleIntegrationTest extends TestCase
         $this->getScheduler()->call(function () {})->sentryMonitor();
     }
 
+    public function testScheduledMacroWithSpecifiedEnvironmentsMatching(): void
+    {
+        $this->app['config']->set('app.env', 'production');
+
+        /** @var Event $scheduledEvent */
+        $scheduledEvent = $this->getScheduler()
+            ->call(function () {})
+            ->sentryMonitor('test-monitor', null, null, true, ['production']);
+
+        $scheduledEvent->run($this->app);
+
+        // We expect a total of 2 events to be sent to Sentry:
+        // 1. The start check-in event
+        // 2. The finish check-in event
+        $this->assertSentryCheckInCount(2);
+
+        $finishCheckInEvent = $this->getLastSentryEvent();
+
+        $this->assertNotNull($finishCheckInEvent->getCheckIn());
+        $this->assertEquals('test-monitor', $finishCheckInEvent->getCheckIn()->getMonitorSlug());
+    }
+
+    public function testScheduledMacroWithSpecifiedEnvironmentsNotMatching(): void
+    {
+        $this->app['config']->set('app.env', 'production');
+
+        /** @var Event $scheduledEvent */
+        $scheduledEvent = $this->getScheduler()
+            ->call(function () {})
+            ->sentryMonitor('test-monitor', null, null, true, ['staging']);
+
+        $scheduledEvent->run($this->app);
+
+        // We expect a total of 0 events to be sent to Sentry
+        $this->assertSentryCheckInCount(0);
+
+        $finishCheckInEvent = $this->getLastSentryEvent();
+
+        $this->assertNull($finishCheckInEvent);
+    }
+
+    public function testScheduledMacroWithSpecifiedEnvironmentsEmpty(): void
+    {
+        $this->app['config']->set('app.env', 'production');
+
+        /** @var Event $scheduledEvent */
+        $scheduledEvent = $this->getScheduler()
+            ->call(function () {})
+            ->sentryMonitor('test-monitor', null, null, true, []);
+
+        $scheduledEvent->run($this->app);
+
+        // We expect a total of 2 events to be sent to Sentry:
+        // 1. The start check-in event
+        // 2. The finish check-in event
+        $this->assertSentryCheckInCount(2);
+
+        $finishCheckInEvent = $this->getLastSentryEvent();
+
+        $this->assertNotNull($finishCheckInEvent->getCheckIn());
+        $this->assertEquals('test-monitor', $finishCheckInEvent->getCheckIn()->getMonitorSlug());
+    }
+
     /** @define-env envWithoutDsnSet */
     public function testScheduleMacroWithoutDsnSet(): void
     {

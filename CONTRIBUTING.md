@@ -67,8 +67,10 @@ composer phpstan
 The code is automatically formatted through [php-cs-fixer](https://cs.symfony.com).
 
 ```bash
-composer phpcs
+composer cs-fix
 ```
+
+**Note**: there is a dry run option `composer cs-check`
 
 ## Releasing a new version
 
