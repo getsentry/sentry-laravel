@@ -17,6 +17,13 @@ class CacheIntegration extends Feature
 {
     use ResolvesEventOrigin;
 
+    /**
+     * The most recent Redis span that was created.
+     *
+     * @var \Sentry\Tracing\Span|null
+     */
+    private $lastRedisSpan;
+
     public function isApplicable(): bool
     {
         return $this->isTracingFeatureEnabled('redis_commands')
@@ -25,10 +32,13 @@ class CacheIntegration extends Feature
 
     public function onBoot(Dispatcher $events): void
     {
+        $events->listen([
+            Events\CacheHit::class,
+            Events\CacheMissed::class,
+        ], [$this, 'handleCacheEvent']);
+
         if ($this->isBreadcrumbFeatureEnabled('cache')) {
             $events->listen([
-                Events\CacheHit::class,
-                Events\CacheMissed::class,
                 Events\KeyWritten::class,
                 Events\KeyForgotten::class,
             ], [$this, 'handleCacheEvent']);
@@ -54,22 +64,26 @@ class CacheIntegration extends Feature
                 break;
             case $event instanceof Events\CacheMissed:
                 $message = 'Missed';
+                $this->maybeUpdateLastRedisSpanCacheHitStatus(false);
                 break;
             case $event instanceof Events\CacheHit:
                 $message = 'Read';
+                $this->maybeUpdateLastRedisSpanCacheHitStatus(true);
                 break;
             default:
                 // In case events are added in the future we do nothing when an unknown event is encountered
                 return;
         }
 
-        Integration::addBreadcrumb(new Breadcrumb(
-            Breadcrumb::LEVEL_INFO,
-            Breadcrumb::TYPE_DEFAULT,
-            'cache',
-            "{$message}: {$event->key}",
-            $event->tags ? ['tags' => $event->tags] : []
-        ));
+        if ($this->isBreadcrumbFeatureEnabled('cache')) {
+            Integration::addBreadcrumb(new Breadcrumb(
+                Breadcrumb::LEVEL_INFO,
+                Breadcrumb::TYPE_DEFAULT,
+                'cache',
+                "{$message}: {$event->key}",
+                $event->tags ? ['tags' => $event->tags] : []
+            ));
+        }
     }
 
     public function handleRedisCommand(RedisEvents\CommandExecuted $event): void
@@ -114,6 +128,29 @@ class CacheIntegration extends Feature
 
         $context->setData($data);
 
-        $parentSpan->startChild($context);
+        $this->lastRedisSpan = $parentSpan->startChild($context);
+    }
+
+    /**
+     * Updates the cache hit status of the last Redis span.
+     *
+     * We assume that the last Redis span is the one that was created for the cache event.
+     *
+     * @param bool $hit Whether the cache was hit or missed
+     */
+    private function maybeUpdateLastRedisSpanCacheHitStatus(bool $hit): void
+    {
+        if ($this->lastRedisSpan === null) {
+            return;
+        }
+
+        $this->lastRedisSpan->setData(array_merge(
+            $this->lastRedisSpan->getData(),
+            [
+                'cache.hit' => $hit,
+            ]
+        ));
+
+        $this->lastRedisSpan = null;
     }
 }
