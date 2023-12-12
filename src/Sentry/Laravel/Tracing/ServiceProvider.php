@@ -61,6 +61,12 @@ class ServiceProvider extends BaseServiceProvider
         $this->app->singleton(Middleware::class, function () {
             $continueAfterResponse = ($this->getTracingConfig()['continue_after_response'] ?? true) === true;
 
+            // Lumen introduced the `terminating` method in version 9.1.4.
+            // We check for it's existence and disable the continue after response feature if it's not available.
+            if (!method_exists($this->app, 'terminating')) {
+                $continueAfterResponse = false;
+            }
+
             return new Middleware($this->app, $continueAfterResponse);
         });
     }
