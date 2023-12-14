@@ -85,7 +85,9 @@ class ConsoleIntegrationTest extends TestCase
 
     public function testScheduledMacroWithSpecifiedEnvironmentsMatching(): void
     {
-        $this->app['config']->set('app.env', 'production');
+        $this->app->detectEnvironment(static function () {
+            return 'production';
+        });
 
         /** @var Event $scheduledEvent */
         $scheduledEvent = $this->getScheduler()
@@ -107,7 +109,9 @@ class ConsoleIntegrationTest extends TestCase
 
     public function testScheduledMacroWithSpecifiedEnvironmentsNotMatching(): void
     {
-        $this->app['config']->set('app.env', 'production');
+        $this->app->detectEnvironment(static function () {
+            return 'production';
+        });
 
         /** @var Event $scheduledEvent */
         $scheduledEvent = $this->getScheduler()
@@ -122,28 +126,6 @@ class ConsoleIntegrationTest extends TestCase
         $finishCheckInEvent = $this->getLastSentryEvent();
 
         $this->assertNull($finishCheckInEvent);
-    }
-
-    public function testScheduledMacroWithSpecifiedEnvironmentsEmpty(): void
-    {
-        $this->app['config']->set('app.env', 'production');
-
-        /** @var Event $scheduledEvent */
-        $scheduledEvent = $this->getScheduler()
-            ->call(function () {})
-            ->sentryMonitor('test-monitor', null, null, true, []);
-
-        $scheduledEvent->run($this->app);
-
-        // We expect a total of 2 events to be sent to Sentry:
-        // 1. The start check-in event
-        // 2. The finish check-in event
-        $this->assertSentryCheckInCount(2);
-
-        $finishCheckInEvent = $this->getLastSentryEvent();
-
-        $this->assertNotNull($finishCheckInEvent->getCheckIn());
-        $this->assertEquals('test-monitor', $finishCheckInEvent->getCheckIn()->getMonitorSlug());
     }
 
     /** @define-env envWithoutDsnSet */

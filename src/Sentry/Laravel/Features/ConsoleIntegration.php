@@ -37,6 +37,8 @@ class ConsoleIntegration extends Feature
     {
         $this->cache = $cache;
 
+        $container = $this->container();
+
         $startCheckIn = function (?string $slug, SchedulingEvent $scheduled, ?int $checkInMargin, ?int $maxRuntime, bool $updateMonitorConfig) {
             $this->startCheckIn($slug, $scheduled, $checkInMargin, $maxRuntime, $updateMonitorConfig);
         };
@@ -49,9 +51,13 @@ class ConsoleIntegration extends Feature
             ?int $checkInMargin = null,
             ?int $maxRuntime = null,
             bool $updateMonitorConfig = true,
-            array $runOnEnvironments = []
-        ) use ($startCheckIn, $finishCheckIn) {
-            if (! empty($runOnEnvironments) && ! in_array(config('app.env'), $runOnEnvironments)) {
+            array $onlyOnEnvironments = []
+        ) use ($container, $startCheckIn, $finishCheckIn) {
+            $environment = $container instanceof Application
+                ? $container->environment()
+                : null;
+
+            if (!empty($onlyOnEnvironments) && !in_array($environment, $onlyOnEnvironments)) {
                 return $this;
             }
 
@@ -84,7 +90,7 @@ class ConsoleIntegration extends Feature
             ?int $checkInMargin = null,
             ?int $maxRuntime = null,
             bool $updateMonitorConfig = true,
-            array $runOnEnvironments = []
+            array $onlyOnEnvironments = []
         ) {
             return $this;
         });
