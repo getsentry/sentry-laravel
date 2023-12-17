@@ -9,7 +9,7 @@ use Sentry\Laravel\Tests\TestCase;
 use function Sentry\addBreadcrumb;
 use function Sentry\captureException;
 
-class QueueEventsTest extends TestCase
+class QueueIntegrationTest extends TestCase
 {
     public function testQueueJobPushesAndPopsScopeWithBreadcrumbs(): void
     {
