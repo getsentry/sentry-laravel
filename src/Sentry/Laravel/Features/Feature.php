@@ -23,16 +23,16 @@ abstract class Feature
     /**
      * In-memory cache for the tracing feature flag.
      *
-     * @var bool|null
+     * @var array<string, bool>
      */
-    private $isTracingFeatureEnabled;
+    private $isTracingFeatureEnabled = [];
 
     /**
      * In-memory cache for the breadcumb feature flag.
      *
-     * @var bool|null
+     * @var array<string, bool>
      */
-    private $isBreadcrumbFeatureEnabled;
+    private $isBreadcrumbFeatureEnabled = [];
 
     /**
      * @param Container $container The Laravel application container.
@@ -126,11 +126,11 @@ abstract class Feature
      */
     protected function isTracingFeatureEnabled(string $feature, bool $default = true): bool
     {
-        if ($this->isTracingFeatureEnabled === null) {
-            $this->isTracingFeatureEnabled = $this->isFeatureEnabled('tracing', $feature, $default);
+        if (!array_key_exists($feature, $this->isTracingFeatureEnabled)) {
+            $this->isTracingFeatureEnabled[$feature] = $this->isFeatureEnabled('tracing', $feature, $default);
         }
 
-        return $this->isTracingFeatureEnabled;
+        return $this->isTracingFeatureEnabled[$feature];
     }
 
     /**
@@ -138,11 +138,11 @@ abstract class Feature
      */
     protected function isBreadcrumbFeatureEnabled(string $feature, bool $default = true): bool
     {
-        if ($this->isBreadcrumbFeatureEnabled === null) {
-            $this->isBreadcrumbFeatureEnabled = $this->isFeatureEnabled('breadcrumbs', $feature, $default);
+        if (!array_key_exists($feature, $this->isBreadcrumbFeatureEnabled)) {
+            $this->isBreadcrumbFeatureEnabled[$feature] = $this->isFeatureEnabled('breadcrumbs', $feature, $default);
         }
 
-        return $this->isBreadcrumbFeatureEnabled;
+        return $this->isBreadcrumbFeatureEnabled[$feature];
     }
 
     /**
