@@ -5,6 +5,7 @@ namespace Sentry\Laravel\Tests\EventHandler;
 use Exception;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Sentry\Breadcrumb;
+use Sentry\EventType;
 use Sentry\Laravel\Tests\TestCase;
 use function Sentry\addBreadcrumb;
 use function Sentry\captureException;
@@ -84,6 +85,52 @@ class QueueIntegrationTest extends TestCase
         dispatch(new QueueEventsTestJobWithBreadcrumb);
 
         $this->assertCount(1, $this->getCurrentSentryBreadcrumbs());
+    }
+
+    protected function withoutSampling($app): void
+    {
+        $app['config']->set('sentry.traces_sample_rate', 1.0);
+    }
+
+    /**
+     * @define-env withoutSampling
+     */
+    public function testQueueJobDoesntCreateTransactionByDefault(): void
+    {
+        dispatch(new QueueEventsTestJob);
+
+        $transaction = $this->getLastSentryEvent();
+
+        $this->assertNull($transaction);
+    }
+
+    protected function withQueueJobTracingEnabled($app): void
+    {
+        $app['config']->set('sentry.traces_sample_rate', 1.0);
+        $app['config']->set('sentry.tracing.queue_job_transactions', true);
+    }
+
+    /**
+     * @define-env withQueueJobTracingEnabled
+     */
+    public function testQueueJobCreatesTransactionWhenEnabled(): void
+    {
+        dispatch(new QueueEventsTestJob);
+
+        $transaction = $this->getLastSentryEvent();
+
+        $this->assertNotNull($transaction);
+
+        $this->assertEquals(EventType::transaction(), $transaction->getType());
+        $this->assertEquals(QueueEventsTestJob::class, $transaction->getTransaction());
+    }
+}
+
+class QueueEventsTestJob implements ShouldQueue
+{
+    public function handle(): void
+    {
+        queueEventsTestAddTestBreadcrumb();
     }
 }
 
