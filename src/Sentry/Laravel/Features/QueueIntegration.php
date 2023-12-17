@@ -16,6 +16,7 @@ use Sentry\State\Scope;
 use Sentry\Tracing\PropagationContext;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\SpanStatus;
+use Sentry\Tracing\Transaction;
 use Sentry\Tracing\TransactionContext;
 use Sentry\Tracing\TransactionSource;
 
@@ -169,8 +170,20 @@ class QueueIntegration extends Feature
         $span = $this->maybePopSpan();
 
         if ($span !== null) {
-            $span->finish();
+            $hub = SentrySdk::getCurrentHub();
+
+            $currentSpan = $hub->getSpan();
+
+            if ($span instanceof Transaction) {
+                $hub->setSpan($span);
+            }
+
             $span->setStatus($status);
+            $span->finish();
+
+            if ($span instanceof Transaction) {
+                $hub->setSpan($currentSpan);
+            }
         }
     }
 
