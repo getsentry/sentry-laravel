@@ -123,6 +123,10 @@ class QueueIntegrationTest extends TestCase
 
         $this->assertEquals(EventType::transaction(), $transaction->getType());
         $this->assertEquals(QueueEventsTestJob::class, $transaction->getTransaction());
+
+        $traceContext = $transaction->getContexts()['trace'];
+
+        $this->assertEquals('queue.process', $traceContext['op']);
     }
 }
 
@@ -130,7 +134,6 @@ class QueueEventsTestJob implements ShouldQueue
 {
     public function handle(): void
     {
-        queueEventsTestAddTestBreadcrumb();
     }
 }
 
