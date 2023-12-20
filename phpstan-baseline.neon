@@ -164,3 +164,8 @@ parameters:
 			message: "#^Class Laravel\\\\Lumen\\\\Application not found\\.$#"
 			count: 2
 			path: src/Sentry/Laravel/Tracing/ServiceProvider.php
+
+		-
+		    message: "#^Class Laravel\\\\Lumen\\\\Application not found\\.$#"
+		    count: 1
+		    path: src/Sentry/Laravel/Tracing/Middleware.php
