@@ -112,6 +112,12 @@ class Middleware
             return;
         }
 
+        // lumen uses `nikic/fast-route` instead of `illuminate/routing` and the event will not fire.
+        // `$this->didRouteMatch` is always `false`. We determine if the route matches by `response` directly
+        if ($this->app instanceof LumenApplication && $response->getStatusCode() !== SymfonyResponse::HTTP_NOT_FOUND) {
+            $this->didRouteMatch = true;
+        }
+
         // We stop here if a route has not been matched unless we are configured to trace missing routes
         if (!$this->didRouteMatch && config('sentry.tracing.missing_routes', false) === false) {
             return;
