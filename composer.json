@@ -56,7 +56,7 @@
             "@phpstan",
             "@tests"
         ],
-        "tests": "vendor/bin/phpunit --verbose",
+        "tests": "vendor/bin/phpunit",
         "cs-check": "vendor/bin/php-cs-fixer fix --verbose --diff --dry-run",
         "cs-fix": "vendor/bin/php-cs-fixer fix --verbose --diff",
         "phpstan": "vendor/bin/phpstan analyse"
