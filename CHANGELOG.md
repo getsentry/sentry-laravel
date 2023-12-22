@@ -1,5 +1,15 @@
 # Changelog
 
+## 4.1.1
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.1.1.
+
+### Bug Fixes
+
+- Fix missing `sentryMonitor()` macro when command is called outside the CLI environment [(#812)](https://github.com/getsentry/sentry-laravel/pull/812)
+
+- Don't call `terminating()` in Lumen apps below 9.1.4 [(#815)](https://github.com/getsentry/sentry-laravel/pull/815)
+
 ## 4.1.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.1.0.

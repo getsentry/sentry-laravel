@@ -28,6 +28,11 @@ class ConsoleIntegration extends Feature
      */
     private $cache;
 
+    public function register(): void
+    {
+        $this->onBootInactive();
+    }
+    
     public function isApplicable(): bool
     {
         return $this->container()->make(Application::class)->runningInConsole();
