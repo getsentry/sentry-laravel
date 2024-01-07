@@ -292,11 +292,11 @@ class Integration implements IntegrationInterface
 
             public function __invoke(Model $model, array $attributes): void
             {
-                $attributes = implode(', ', $attributes);
-                SentrySdk::getCurrentHub()->withScope(function (Scope $scope) use ($model, $attributes) {
+                $attributes_imploded = implode(', ', $attributes);
+                SentrySdk::getCurrentHub()->withScope(function (Scope $scope) use ($model, $attributes_imploded) {
                     $scope->setContext('violation', [
                         'model'     => get_class($model),
-                        'attributes' => $attributes,
+                        'attributes' => $attributes_imploded,
                         'origin'    => $this->resolveEventOrigin(),
                         'kind'      => 'discarded_attributes',
                     ]);
@@ -308,7 +308,7 @@ class Integration implements IntegrationInterface
                         EventHint::fromArray([
                             'exception' => new MassAssignmentException(sprintf(
                                 'Add fillable property [%s] to allow mass assignment on [%s].',
-                                $attributes,
+                                $attributes_imploded,
                                 get_class($model)
                             )),
                             'mechanism' => new ExceptionMechanism(ExceptionMechanism::TYPE_GENERIC, true),
@@ -318,7 +318,7 @@ class Integration implements IntegrationInterface
 
                 // Forward the violation to the next handler if there is one
                 if ($this->callback !== null) {
-                    call_user_func($this->callback, $model, $attribute);
+                    call_user_func($this->callback, $model, $attributes);
                 }
             }
         };
