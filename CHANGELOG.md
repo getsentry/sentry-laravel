@@ -1,5 +1,21 @@
 # Changelog
 
+## 4.1.2
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.1.2.
+
+### Bug Fixes
+
+- Fix unable to set `callable` for `integrations` option [(#826)](https://github.com/getsentry/sentry-laravel/pull/826)
+
+- Fix performance traces not being collected for Laravel Lumen unless missing routes are reported [(#822)](https://github.com/getsentry/sentry-laravel/pull/822)
+
+- Fix configuration options for queue job tracing not applying correctly [(#820)](https://github.com/getsentry/sentry-laravel/pull/820)
+
+### Misc
+
+- Allow newer versions of `symfony/psr-http-message-bridge` dependency [(#829)](https://github.com/getsentry/sentry-laravel/pull/829)
+
 ## 4.1.1
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.1.1.
