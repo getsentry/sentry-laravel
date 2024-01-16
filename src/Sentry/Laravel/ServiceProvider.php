@@ -285,9 +285,19 @@ class ServiceProvider extends BaseServiceProvider
 
             $options = $clientBuilder->getOptions();
 
-            $userIntegrations = $this->resolveIntegrationsFromUserConfig();
+            $userConfig = $this->getUserConfig();
 
-            $options->setIntegrations(function (array $integrations) use ($options, $userIntegrations) {
+            /** @var array<array-key, class-string>|callable $userConfig */
+            $userIntegrationOption = $userConfig['integrations'] ?? [];
+
+            $userIntegrations = $this->resolveIntegrationsFromUserConfig(
+                \is_array($userIntegrationOption)
+                    ? $userIntegrationOption
+                    : [],
+                $userConfig['tracing']['default_integrations'] ?? true
+            );
+
+            $options->setIntegrations(static function (array $integrations) use ($options, $userIntegrations, $userIntegrationOption): array {
                 if ($options->hasDefaultIntegrations()) {
                     // Remove the default error and fatal exception listeners to let Laravel handle those
                     // itself. These event are still bubbling up through the documented changes in the users
@@ -320,7 +330,20 @@ class ServiceProvider extends BaseServiceProvider
                     );
                 }
 
-                return array_merge($integrations, $userIntegrations);
+                $integrations = array_merge(
+                    $integrations,
+                    [
+                        new Integration,
+                        new Integration\ExceptionContextIntegration,
+                    ],
+                    $userIntegrations
+                );
+
+                if (\is_callable($userIntegrationOption)) {
+                    return $userIntegrationOption($integrations);
+                }
+
+                return $integrations;
             });
 
             $hub = new Hub($clientBuilder->getClient());
@@ -343,26 +366,16 @@ class ServiceProvider extends BaseServiceProvider
 
     /**
      * Resolve the integrations from the user configuration with the container.
-     *
-     * @return array
      */
-    private function resolveIntegrationsFromUserConfig(): array
+    private function resolveIntegrationsFromUserConfig(array $userIntegrations, bool $enableDefaultTracingIntegrations): array
     {
-        // Default Sentry Laravel SDK integrations
-        $integrations = [
-            new Integration,
-            new Integration\ExceptionContextIntegration,
-        ];
-
-        $userConfig = $this->getUserConfig();
-
-        $integrationsToResolve = array_merge($userConfig['integrations'] ?? []);
-
-        $enableDefaultTracingIntegrations = $userConfig['tracing']['default_integrations'] ?? true;
+        $integrationsToResolve = $userIntegrations;
 
         if ($enableDefaultTracingIntegrations) {
             $integrationsToResolve = array_merge($integrationsToResolve, TracingServiceProvider::DEFAULT_INTEGRATIONS);
         }
+
+        $integrations = [];
 
         foreach ($integrationsToResolve as $userIntegration) {
             if ($userIntegration instanceof SdkIntegration\IntegrationInterface) {
