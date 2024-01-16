@@ -169,8 +169,8 @@ class QueueIntegration extends Feature
         $span = $this->maybePopSpan();
 
         if ($span !== null) {
-            $span->finish();
             $span->setStatus($status);
+            $span->finish();
         }
     }
 
