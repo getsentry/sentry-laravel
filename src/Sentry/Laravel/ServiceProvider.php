@@ -40,6 +40,7 @@ class ServiceProvider extends BaseServiceProvider
         // We do not want these settings to hit the PHP SDK because they are Laravel specific and the PHP SDK will throw errors
         'tracing',
         'breadcrumbs',
+        'crons',
         // We resolve the integrations through the container later, so we initially do not pass it to the SDK yet
         'integrations',
         // This is kept for backwards compatibility and can be dropped in a future breaking release

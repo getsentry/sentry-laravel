@@ -35,6 +35,13 @@ abstract class Feature
     private $isBreadcrumbFeatureEnabled = [];
 
     /**
+     * In-memory cache for the crons feature flag.
+     *
+     * @var array<string, bool>
+     */
+    private $isCronsFeatureEnabled = [];
+
+    /**
      * @param Container $container The Laravel application container.
      */
     public function __construct(Container $container)
@@ -143,6 +150,18 @@ abstract class Feature
         }
 
         return $this->isBreadcrumbFeatureEnabled[$feature];
+    }
+
+    /**
+     * Indicates if the given feature is enabled for Crons.
+     */
+    protected function isCronsFeatureEnabled(string $feature, bool $default = true): bool
+    {
+        if (!array_key_exists($feature, $this->isCronsFeatureEnabled)) {
+            $this->isCronsFeatureEnabled[$feature] = $this->isFeatureEnabled('crons', $feature, $default);
+        }
+
+        return $this->isCronsFeatureEnabled[$feature];
     }
 
     /**

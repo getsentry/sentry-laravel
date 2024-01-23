@@ -105,4 +105,9 @@ return [
         'default_integrations' => env('SENTRY_TRACE_DEFAULT_INTEGRATIONS_ENABLED', true),
     ],
 
+    // Crons monitoring specific configuration
+    'crons' => [
+        // Enable monitoring of scheduled tasks (crons)
+        'monitor_enabled' => env('SENTRY_CRONS_MONITOR_ENABLED', true),
+    ],
 ];

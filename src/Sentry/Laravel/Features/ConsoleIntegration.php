@@ -32,10 +32,10 @@ class ConsoleIntegration extends Feature
     {
         $this->onBootInactive();
     }
-    
+
     public function isApplicable(): bool
     {
-        return $this->container()->make(Application::class)->runningInConsole();
+        return $this->container()->make(Application::class)->runningInConsole() && $this->isCronsFeatureEnabled('monitor_enabled');
     }
 
     public function onBoot(Cache $cache): void

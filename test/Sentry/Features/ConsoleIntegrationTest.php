@@ -10,6 +10,46 @@ use Illuminate\Console\Scheduling\Event;
 
 class ConsoleIntegrationTest extends TestCase
 {
+    public function testScheduleMonitorEnabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.crons.monitor_enabled' => true,
+        ]);
+
+        /** @var Event $scheduledEvent */
+        $scheduledEvent = $this->getScheduler()
+            ->call(function () {})
+            ->sentryMonitor('test-monitor');
+
+        $scheduledEvent->run($this->app);
+
+        // We expect a total of 2 events to be sent to Sentry:
+        // 1. The start check-in event
+        // 2. The finish check-in event
+        $this->assertSentryCheckInCount(2);
+
+        $finishCheckInEvent = $this->getLastSentryEvent();
+
+        $this->assertNotNull($finishCheckInEvent->getCheckIn());
+        $this->assertEquals('test-monitor', $finishCheckInEvent->getCheckIn()->getMonitorSlug());
+    }
+
+    public function testScheduleMonitorDisabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.crons.monitor_enabled' => false,
+        ]);
+
+        /** @var Event $scheduledEvent */
+        $scheduledEvent = $this->getScheduler()
+            ->call(function () {})
+            ->sentryMonitor('test-monitor');
+
+        $scheduledEvent->run($this->app);
+
+        $this->assertSentryCheckInCount(0);
+    }
+
     public function testScheduleMacro(): void
     {
         /** @var Event $scheduledEvent */
