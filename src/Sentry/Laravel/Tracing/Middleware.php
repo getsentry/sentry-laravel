@@ -175,7 +175,7 @@ class Middleware
         );
 
         $context = continueTrace(
-            $request->header('sentry-trace', ''),
+            $request->header('sentry-trace') ?? $request->header('traceparent', ''),
             $request->header('baggage', '')
         );
 
