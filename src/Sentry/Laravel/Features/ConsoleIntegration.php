@@ -42,8 +42,24 @@ class ConsoleIntegration extends Feature
     {
         $this->cache = $cache;
 
-        $startCheckIn = function (?string $slug, SchedulingEvent $scheduled, ?int $checkInMargin, ?int $maxRuntime, bool $updateMonitorConfig) {
-            $this->startCheckIn($slug, $scheduled, $checkInMargin, $maxRuntime, $updateMonitorConfig);
+        $startCheckIn = function (
+            ?string $slug,
+            SchedulingEvent $scheduled,
+            ?int $checkInMargin,
+            ?int $maxRuntime,
+            bool $updateMonitorConfig,
+            ?int $failureIssueThreshold,
+            ?int $recoveryThreshold
+        ) {
+            $this->startCheckIn(
+                $slug,
+                $scheduled,
+                $checkInMargin,
+                $maxRuntime,
+                $updateMonitorConfig,
+                $failureIssueThreshold,
+                $recoveryThreshold
+            );
         };
         $finishCheckIn = function (?string $slug, SchedulingEvent $scheduled, CheckInStatus $status) {
             $this->finishCheckIn($slug, $scheduled, $status);
@@ -53,7 +69,9 @@ class ConsoleIntegration extends Feature
             ?string $monitorSlug = null,
             ?int $checkInMargin = null,
             ?int $maxRuntime = null,
-            bool $updateMonitorConfig = true
+            bool $updateMonitorConfig = true,
+            ?int $failureIssueThreshold = null,
+            ?int $recoveryThreshold = null
         ) use ($startCheckIn, $finishCheckIn) {
             /** @var SchedulingEvent $this */
             if ($monitorSlug === null && $this->command === null) {
@@ -61,9 +79,25 @@ class ConsoleIntegration extends Feature
             }
 
             return $this
-                ->before(function () use ($startCheckIn, $monitorSlug, $checkInMargin, $maxRuntime, $updateMonitorConfig) {
+                ->before(function () use (
+                    $startCheckIn,
+                    $monitorSlug,
+                    $checkInMargin,
+                    $maxRuntime,
+                    $updateMonitorConfig,
+                    $failureIssueThreshold,
+                    $recoveryThreshold
+                ) {
                     /** @var SchedulingEvent $this */
-                    $startCheckIn($monitorSlug, $this, $checkInMargin, $maxRuntime, $updateMonitorConfig);
+                    $startCheckIn(
+                        $monitorSlug,
+                        $this,
+                        $checkInMargin,
+                        $maxRuntime,
+                        $updateMonitorConfig,
+                        $failureIssueThreshold,
+                        $recoveryThreshold
+                    );
                 })
                 ->onSuccess(function () use ($finishCheckIn, $monitorSlug) {
                     /** @var SchedulingEvent $this */
@@ -83,14 +117,23 @@ class ConsoleIntegration extends Feature
             ?string $monitorSlug = null,
             ?int $checkInMargin = null,
             ?int $maxRuntime = null,
-            bool $updateMonitorConfig = true
+            bool $updateMonitorConfig = true,
+            ?int $failureIssueThreshold = null,
+            ?int $recoveryThreshold = null
         ) {
             return $this;
         });
     }
 
-    private function startCheckIn(?string $slug, SchedulingEvent $scheduled, ?int $checkInMargin, ?int $maxRuntime, bool $updateMonitorConfig): void
-    {
+    private function startCheckIn(
+        ?string $slug,
+        SchedulingEvent $scheduled,
+        ?int $checkInMargin,
+        ?int $maxRuntime,
+        bool $updateMonitorConfig,
+        ?int $failureIssueThreshold,
+        ?int $recoveryThreshold
+    ): void {
         $checkInSlug = $slug ?? $this->makeSlugForScheduled($scheduled);
 
         $checkIn = $this->createCheckIn($checkInSlug, CheckInStatus::inProgress());
@@ -106,7 +149,9 @@ class ConsoleIntegration extends Feature
                 MonitorSchedule::crontab($scheduled->getExpression()),
                 $checkInMargin,
                 $maxRuntime,
-                $timezone
+                $timezone,
+                $failureIssueThreshold,
+                $recoveryThreshold
             ));
         }
 
