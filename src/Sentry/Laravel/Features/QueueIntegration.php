@@ -88,8 +88,9 @@ class QueueIntegration extends Feature
         $context = (new SpanContext)
             ->setOp('queue.publish')
             ->setData([
-                'job' => $jobName,
-                'connection' => $event->connectionName,
+                'messaging.system' => 'laravel',
+                'messaging.laravel.job' => $jobName,
+                'messaging.destination.connection' => $event->connectionName,
             ])
             ->setDescription($jobName);
 
