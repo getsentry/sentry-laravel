@@ -13,6 +13,7 @@ use Sentry\State\HubInterface;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\TransactionContext;
 use Sentry\Tracing\TransactionSource;
+use Symfony\Component\Console\Output\OutputInterface;
 use Throwable;
 
 class TestCommand extends Command
@@ -109,6 +110,8 @@ class TestCommand extends Command
 
             public function log($level, $message, array $context = []): void
             {
+                $this->command->info("SDK({$level}): {$message}", OutputInterface::VERBOSITY_VERBOSE);
+
                 if ($level === 'error') {
                     $this->command->logMessageFromSDK($message);
                 }
