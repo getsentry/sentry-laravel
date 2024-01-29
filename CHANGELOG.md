@@ -1,5 +1,21 @@
 # Changelog
 
+## 4.2.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.2.0.
+
+### Features
+
+- Add new spans, measuring the time taken to queue a job [(#833)](https://github.com/getsentry/sentry-laravel/pull/833)
+
+- Add support for `failure_issue_threshold` & `recovery_threshold` for `sentryMonitor()` method on scheduled commands [(#838)](https://github.com/getsentry/sentry-laravel/pull/838)
+
+- Automatically flush metrics when the application terminates [(#841)](https://github.com/getsentry/sentry-laravel/pull/841)
+
+- Add support for the W3C traceparent header [(#834)](https://github.com/getsentry/sentry-laravel/pull/834)
+
+- Improve `php artisan sentry:test` to show internal log messages by default [(#842)](https://github.com/getsentry/sentry-laravel/pull/842)
+
 ## 4.1.2
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.1.2.
