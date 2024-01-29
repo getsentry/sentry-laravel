@@ -6,7 +6,7 @@ The Sentry SDK team is happy to announce the immediate availability of Sentry La
 
 ### Features
 
-- Add span measuring the time taken to queue a job [(#833)](https://github.com/getsentry/sentry-laravel/pull/833)
+- Add new spans, measuring the time taken to queue a job [(#833)](https://github.com/getsentry/sentry-laravel/pull/833)
 
 - Add support for `failure_issue_threshold` & `recovery_threshold` for `sentryMonitor()` method on scheduled commands [(#838)](https://github.com/getsentry/sentry-laravel/pull/838)
 
