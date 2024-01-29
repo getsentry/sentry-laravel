@@ -19,6 +19,7 @@ use Sentry\Laravel\Console\AboutCommandIntegration;
 use Sentry\Laravel\Console\PublishCommand;
 use Sentry\Laravel\Console\TestCommand;
 use Sentry\Laravel\Features\Feature;
+use Sentry\Laravel\Http\FlushEventsMiddleware;
 use Sentry\Laravel\Http\LaravelRequestFetcher;
 use Sentry\Laravel\Http\SetRequestIpMiddleware;
 use Sentry\Laravel\Http\SetRequestMiddleware;
@@ -78,12 +79,14 @@ class ServiceProvider extends BaseServiceProvider
             if ($this->app instanceof Lumen) {
                 $this->app->middleware(SetRequestMiddleware::class);
                 $this->app->middleware(SetRequestIpMiddleware::class);
+                $this->app->middleware(FlushEventsMiddleware::class);
             } elseif ($this->app->bound(HttpKernelInterface::class)) {
                 $httpKernel = $this->app->make(HttpKernelInterface::class);
 
                 if ($httpKernel instanceof HttpKernel) {
                     $httpKernel->pushMiddleware(SetRequestMiddleware::class);
                     $httpKernel->pushMiddleware(SetRequestIpMiddleware::class);
+                    $httpKernel->pushMiddleware(FlushEventsMiddleware::class);
                 }
             }
         }
