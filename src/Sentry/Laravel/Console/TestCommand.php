@@ -46,6 +46,12 @@ class TestCommand extends Command
      */
     public function handle(): int
     {
+        if (!\extension_loaded('curl')) {
+            $this->error('The cURL PHP extension must be enabled.');
+
+            return 1;
+        }
+
         // Maximize error reporting
         $old_error_reporting = error_reporting(E_ALL | E_STRICT);
 
