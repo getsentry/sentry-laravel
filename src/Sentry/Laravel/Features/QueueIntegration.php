@@ -2,10 +2,13 @@
 
 namespace Sentry\Laravel\Features;
 
+use Closure;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Queue\Events\JobExceptionOccurred;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Queue\Events\JobQueued;
+use Illuminate\Queue\Events\JobQueueing;
 use Illuminate\Queue\Events\WorkerStopping;
 use Illuminate\Queue\Queue;
 use Sentry\Breadcrumb;
@@ -45,6 +48,9 @@ class QueueIntegration extends Feature
 
     public function onBoot(Dispatcher $events): void
     {
+        $events->listen(JobQueueing::class, [$this, 'handleJobQueueingEvent']);
+        $events->listen(JobQueued::class, [$this, 'handleJobQueuedEvent']);
+
         $events->listen(JobProcessed::class, [$this, 'handleJobProcessedQueueEvent']);
         $events->listen(JobProcessing::class, [$this, 'handleJobProcessingQueueEvent']);
         $events->listen(WorkerStopping::class, [$this, 'handleWorkerStoppingQueueEvent']);
@@ -59,6 +65,44 @@ class QueueIntegration extends Feature
 
                 return $payload;
             });
+        }
+    }
+
+    public function handleJobQueueingEvent(JobQueueing $event): void
+    {
+        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+
+        // If there is no tracing span active there is no need to handle the event
+        if ($parentSpan === null) {
+            return;
+        }
+
+        $jobName = $event->job;
+
+        if ($jobName instanceof Closure) {
+            $jobName = 'Closure';
+        } elseif (is_object($jobName)) {
+            $jobName = get_class($jobName);
+        }
+
+        $context = (new SpanContext)
+            ->setOp('queue.publish')
+            ->setData([
+                'messaging.system' => 'laravel',
+                'messaging.laravel.job' => $jobName,
+                'messaging.destination.connection' => $event->connectionName,
+            ])
+            ->setDescription($jobName);
+
+        $this->pushSpan($parentSpan->startChild($context));
+    }
+
+    public function handleJobQueuedEvent(JobQueued $event): void
+    {
+        $span = $this->maybePopSpan();
+
+        if ($span !== null) {
+            $span->finish();
         }
     }
 
