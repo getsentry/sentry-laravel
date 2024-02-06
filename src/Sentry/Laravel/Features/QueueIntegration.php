@@ -32,6 +32,8 @@ class QueueIntegration extends Feature
         pushScope as private pushScopeTrait;
     }
 
+    private const QUEUE_SPAN_OP_QUEUE_PUBLISH = 'queue.publish';
+
     private const QUEUE_PAYLOAD_BAGGAGE_DATA = 'sentry_baggage_data';
     private const QUEUE_PAYLOAD_TRACE_PARENT_DATA = 'sentry_trace_parent_data';
 
@@ -57,7 +59,22 @@ class QueueIntegration extends Feature
         $events->listen(JobExceptionOccurred::class, [$this, 'handleJobExceptionOccurredQueueEvent']);
 
         if ($this->isTracingFeatureEnabled('queue_jobs') || $this->isTracingFeatureEnabled('queue_job_transactions')) {
-            Queue::createPayloadUsing(static function (?string $connection, ?string $queue, ?array $payload): ?array {
+            Queue::createPayloadUsing(function (?string $connection, ?string $queue, ?array $payload): ?array {
+                $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+
+                if ($parentSpan !== null) {
+                    $context = (new SpanContext)
+                        ->setOp(self::QUEUE_SPAN_OP_QUEUE_PUBLISH)
+                        ->setData([
+                            'messaging.system' => 'laravel',
+                            'messaging.destination.name' => $queue,
+                            'messaging.destination.connection' => $connection,
+                        ])
+                        ->setDescription($queue);
+
+                    $this->pushSpan($parentSpan->startChild($context));
+                }
+
                 if ($payload !== null) {
                     $payload[self::QUEUE_PAYLOAD_BAGGAGE_DATA] = getBaggage();
                     $payload[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] = getTraceparent();
@@ -70,10 +87,10 @@ class QueueIntegration extends Feature
 
     public function handleJobQueueingEvent(JobQueueing $event): void
     {
-        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+        $currentSpan = SentrySdk::getCurrentHub()->getSpan();
 
         // If there is no tracing span active there is no need to handle the event
-        if ($parentSpan === null) {
+        if ($currentSpan === null || $currentSpan->getOp() !== self::QUEUE_SPAN_OP_QUEUE_PUBLISH) {
             return;
         }
 
@@ -85,16 +102,11 @@ class QueueIntegration extends Feature
             $jobName = get_class($jobName);
         }
 
-        $context = (new SpanContext)
-            ->setOp('queue.publish')
+        $currentSpan
             ->setData([
-                'messaging.system' => 'laravel',
                 'messaging.laravel.job' => $jobName,
-                'messaging.destination.connection' => $event->connectionName,
             ])
             ->setDescription($jobName);
-
-        $this->pushSpan($parentSpan->startChild($context));
     }
 
     public function handleJobQueuedEvent(JobQueued $event): void
