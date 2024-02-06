@@ -4,6 +4,7 @@ namespace Sentry\Laravel;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\LazyLoadingViolationException;
+use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Routing\Route;
 use Sentry\EventHint;
 use Sentry\EventId;
@@ -49,6 +50,16 @@ class Integration implements IntegrationInterface
             }
 
             return $event;
+        });
+    }
+
+    /**
+     * Convienence method to register the exception handler with Laravel 11+.
+     */
+    public static function handles(Exceptions $exceptions): void
+    {
+        $exceptions->reportable(static function (Throwable $exception) {
+            self::captureUnhandledException($exception);
         });
     }
 
