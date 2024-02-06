@@ -59,7 +59,7 @@ class Integration implements IntegrationInterface
     public static function handles(Exceptions $exceptions): void
     {
         $exceptions->reportable(static function (Throwable $exception) {
-            self::captureUnhandledException($throwable);
+            self::captureUnhandledException($exception);
         });
     }
 
