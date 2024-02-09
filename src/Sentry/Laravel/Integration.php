@@ -4,6 +4,7 @@ namespace Sentry\Laravel;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\LazyLoadingViolationException;
+use Illuminate\Database\MassAssignmentException;
 use Illuminate\Routing\Route;
 use Sentry\EventHint;
 use Sentry\EventId;
@@ -278,6 +279,60 @@ class Integration implements IntegrationInterface
                 // Forward the violation to the next handler if there is one
                 if ($this->callback !== null) {
                     call_user_func($this->callback, $model, $relation);
+                }
+            }
+        };
+    }
+
+    /**
+     * Returns a callback that can be passed to `Model::handleDiscardedAttributeViolationUsing` to report discarded attribute violations to Sentry.
+     *
+     * @param callable|null $callback Optional callback to be called after the violation is reported to Sentry.
+     *
+     * @return callable
+     */
+    public static function discardedAttributeViolationReporter(?callable $callback = null): callable
+    {
+        return new class($callback) {
+            use ResolvesEventOrigin;
+
+            /** @var callable|null $callback */
+            private $callback;
+
+            public function __construct(?callable $callback)
+            {
+                $this->callback = $callback;
+            }
+
+            public function __invoke(Model $model, array $attributes): void
+            {
+                $attributes_imploded = implode(', ', $attributes);
+                SentrySdk::getCurrentHub()->withScope(function (Scope $scope) use ($model, $attributes_imploded) {
+                    $scope->setContext('violation', [
+                        'model'     => get_class($model),
+                        'attributes' => $attributes_imploded,
+                        'origin'    => $this->resolveEventOrigin(),
+                        'kind'      => 'discarded_attributes',
+                    ]);
+
+                    SentrySdk::getCurrentHub()->captureEvent(
+                        tap(Event::createEvent(), static function (Event $event) {
+                            $event->setLevel(Severity::warning());
+                        }),
+                        EventHint::fromArray([
+                            'exception' => new MassAssignmentException(sprintf(
+                                'Add fillable property [%s] to allow mass assignment on [%s].',
+                                $attributes_imploded,
+                                get_class($model)
+                            )),
+                            'mechanism' => new ExceptionMechanism(ExceptionMechanism::TYPE_GENERIC, true),
+                        ])
+                    );
+                });
+
+                // Forward the violation to the next handler if there is one
+                if ($this->callback !== null) {
+                    call_user_func($this->callback, $model, $attributes);
                 }
             }
         };
