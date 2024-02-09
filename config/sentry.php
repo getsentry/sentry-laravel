@@ -60,6 +60,9 @@ return [
 
         // Capture HTTP client request information as breadcrumbs
         'http_client_requests' => env('SENTRY_BREADCRUMBS_HTTP_CLIENT_REQUESTS_ENABLED', true),
+
+        // Capture send notifications as breadcrumbs
+        'notifications' => env('SENTRY_BREADCRUMBS_NOTIFICATIONS_ENABLED', true),
     ],
 
     // Performance monitoring specific configuration
@@ -93,6 +96,9 @@ return [
 
         // Capture where the Redis command originated from on the Redis command spans
         'redis_origin' => env('SENTRY_TRACE_REDIS_ORIGIN_ENABLED', true),
+
+        // Capture send notifications as spans
+        'notifications' => env('SENTRY_TRACE_NOTIFICATIONS_ENABLED', true),
 
         // Enable tracing for requests without a matching route (404's)
         'missing_routes' => env('SENTRY_TRACE_MISSING_ROUTES_ENABLED', false),
