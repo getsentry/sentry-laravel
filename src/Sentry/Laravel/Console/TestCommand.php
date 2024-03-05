@@ -88,13 +88,27 @@ class TestCommand extends Command
             return 1;
         }
 
-        try {
-            $clientBuilder = ClientBuilder::create([
-                'dsn' => $dsn,
-                'release' => $laravelClient === null ? null : $laravelClient->getOptions()->getRelease(),
-                'environment' => $laravelClient === null ? null : $laravelClient->getOptions()->getEnvironment(),
-                'traces_sample_rate' => 1.0,
+        $options = [
+            'dsn' => $dsn,
+            'traces_sample_rate' => 1.0,
+        ];
+
+        if ($laravelClient !== null) {
+            $options = array_merge($options, [
+                'release' => $laravelClient->getOptions()->getRelease(),
+                'environment' => $laravelClient->getOptions()->getEnvironment(),
+                'http_client' => $laravelClient->getOptions()->getHttpClient(),
+                'http_proxy' => $laravelClient->getOptions()->getHttpProxy(),
+                'http_proxy_authentication' => $laravelClient->getOptions()->getHttpProxyAuthentication(),
+                'http_connect_timeout' => $laravelClient->getOptions()->getHttpConnectTimeout(),
+                'http_timeout' => $laravelClient->getOptions()->getHttpTimeout(),
+                'http_ssl_verify_peer' => $laravelClient->getOptions()->getHttpSslVerifyPeer(),
+                'http_compression' => $laravelClient->getOptions()->isHttpCompressionEnabled(),
             ]);
+        }
+
+        try {
+            $clientBuilder = ClientBuilder::create($options);
         } catch (Exception $e) {
             $this->error($e->getMessage());
 
