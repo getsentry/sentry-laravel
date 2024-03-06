@@ -33,7 +33,10 @@ return [
     // 'ignore_exceptions' => [],
 
     // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#ignore-transactions
-    // 'ignore_transactions' => [],
+    'ignore_transactions' => [
+        // Ignore Laravel's health URL
+        '/up',
+    ],
 
     // Breadcrumb specific configuration
     'breadcrumbs' => [
