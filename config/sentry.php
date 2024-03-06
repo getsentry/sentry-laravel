@@ -34,7 +34,7 @@ return [
 
     // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#ignore-transactions
     'ignore_transactions' => [
-        // Ignore Laravel's health URL
+        // Ignore Laravel's default health URL
         '/up',
     ],
 
