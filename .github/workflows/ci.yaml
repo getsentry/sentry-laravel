@@ -156,7 +156,7 @@ jobs:
           composer install --no-interaction --prefer-dist --no-progress
 
       - name: Run phpunit
-        run: vendor/bin/phpunit --coverage-clover=coverage.xml --coverage-filter=src/Sentry
+        run: vendor/bin/phpunit --coverage-clover=coverage.xml --whitelist=src/Sentry
 
       - name: Upload code coverage
         uses: codecov/codecov-action@v3
