@@ -54,7 +54,7 @@ class Integration implements IntegrationInterface
     }
 
     /**
-     * Convienence method to register the exception handler with Laravel 11+.
+     * Convienence method to register the exception handler with Laravel 11.0 and up.
      */
     public static function handles(Exceptions $exceptions): void
     {
