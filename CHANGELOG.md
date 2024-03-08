@@ -1,5 +1,53 @@
 # Changelog
 
+## 4.3.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.3.0.
+
+### Features
+
+- Add support for Laravel 11.0 [(#845)](https://github.com/getsentry/sentry-laravel/pull/845)
+
+  If you're upgrading an existing Laravel 10 application to the new Laravel 11 directory structure, you must change how Sentry integrates into the exception handler. Update your `bootstrap/app.php` with:
+
+  ```php
+  <?php
+
+  use Illuminate\Foundation\Application;
+  use Illuminate\Foundation\Configuration\Exceptions;
+  use Illuminate\Foundation\Configuration\Middleware;
+  use Sentry\Laravel\Integration;
+  
+  return Application::configure(basePath: dirname(__DIR__))
+      ->withRouting(
+          web: __DIR__.'/../routes/web.php',
+          commands: __DIR__.'/../routes/console.php',
+          health: '/up',
+      )
+      ->withMiddleware(function (Middleware $middleware) {
+          //
+      })
+      ->withExceptions(function (Exceptions $exceptions) {
+          Integration::handles($exceptions);
+      })->create();
+    ```
+
+  If you plan to perform up-time checks against the new Laravel 11 `/up` health URL, ignore this transaction in your `config/sentry.php` file, as not doing so could consume a substantial amount of your performance unit quota.
+
+  ```php
+  // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#ignore-transactions
+  'ignore_transactions' => [
+      // Ignore Laravel's default health URL
+      '/up',
+  ],
+  ```
+
+### Bug Fixes
+
+- Set `queue.publish` spans as the parent of `queue.process` spans [(#850)](https://github.com/getsentry/sentry-laravel/pull/850)
+
+- Consider all `http_*` SDK options from the Laravel client in the test command [(#859)](https://github.com/getsentry/sentry-laravel/pull/859)
+
 ## 4.2.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.2.0.
