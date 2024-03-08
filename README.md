@@ -19,11 +19,12 @@ This is the official Laravel SDK for [Sentry](https://sentry.io).
 
 ## Getting Started
 
-The installation steps below work on versions 8.x, 9.x and 10.x of the Laravel framework.
+The installation steps below work on version 11.x of the Laravel framework.
 
 For older Laravel versions and Lumen see:
 
-- [Laravel 8.x & 9.x & 10.x](https://docs.sentry.io/platforms/php/guides/laravel/)
+- [Laravel 11.x](https://docs.sentry.io/platforms/php/guides/laravel/)
+- [Laravel 8.x & 9.x & 10.x](https://docs.sentry.io/platforms/php/guides/other-versions/laravel8-10)
 - [Laravel 6.x & 7.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel6-7/)
 - [Laravel 5.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel5/)
 - [Laravel 4.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel4/)
@@ -37,17 +38,28 @@ Install the `sentry/sentry-laravel` package:
 composer require sentry/sentry-laravel
 ```
 
-Enable capturing unhandled exception to report to Sentry by making the following change to your `app/Exceptions/Handler.php`:
+Enable capturing unhandled exception to report to Sentry by making the following change to your `bootstrap/app.php`:
 
-```php {filename:app/Exceptions/Handler.php}
+```php {filename:bootstrap/app.php}
+<?php
+
+use Illuminate\Foundation\Application;
+use Illuminate\Foundation\Configuration\Exceptions;
+use Illuminate\Foundation\Configuration\Middleware;
 use Sentry\Laravel\Integration;
 
-public function register(): void
-{
-    $this->reportable(function (Throwable $e) {
-        Integration::captureUnhandledException($e);
-    });
-}
+return Application::configure(basePath: dirname(__DIR__))
+    ->withRouting(
+        web: __DIR__.'/../routes/web.php',
+        commands: __DIR__.'/../routes/console.php',
+        health: '/up',
+    )
+    ->withMiddleware(function (Middleware $middleware) {
+        //
+    })
+    ->withExceptions(function (Exceptions $exceptions) {
+        Integration::handles($exceptions);
+    })->create();
 ```
 
 > Alternatively, you can configure Sentry as a [Laravel Log Channel](https://docs.sentry.io/platforms/php/guides/laravel/usage/#log-channels), allowing you to capture `info` and `debug` logs as well.
@@ -84,6 +96,7 @@ To learn more about how to use the SDK [refer to our docs](https://docs.sentry.i
 
 The Laravel and Lumen versions listed below are all currently supported:
 
+- Laravel `>= 11.x.x` on PHP `>= 8.2` is supported starting from `4.3.0`
 - Laravel `>= 10.x.x` on PHP `>= 8.1` is supported starting from `3.2.0`
 - Laravel `>= 9.x.x` on PHP `>= 8.0` is supported starting from `2.11.0`
 - Laravel `>= 8.x.x` on PHP `>= 7.3` is supported starting from `1.9.0`

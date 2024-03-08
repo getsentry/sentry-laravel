@@ -12,16 +12,4 @@
             <directory>./test/Sentry/</directory>
         </testsuite>
     </testsuites>
-
-    <coverage>
-        <include>
-            <directory suffix=".php">./src/Sentry/</directory>
-        </include>
-    </coverage>
-
-    <filter>
-        <whitelist>
-            <directory suffix=".php">src</directory>
-        </whitelist>
-    </filter>
 </phpunit>
