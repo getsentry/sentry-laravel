@@ -30,6 +30,12 @@ jobs:
           # All versions below only support PHP ^8.1 (Laravel requirement)
           - { laravel: ^10.0,  testbench: ^8.0, phpunit: 9.6.* }
 
+          # All versions below only support PHP ^8.2 (Laravel requirement)
+          - { laravel: ^11.0,  testbench: ^9.0, phpunit: 10.5.* }
+        exclude:
+          - php: "8.1"
+            packages: { laravel: ^11.0,  testbench: ^9.0, phpunit: 10.5.* }
+
     name: phpunit (PHP:${{ matrix.php }}, Laravel:${{ matrix.packages.laravel }})
 
     steps:
@@ -60,7 +66,7 @@ jobs:
           composer install --no-interaction --prefer-dist --no-progress
 
       - name: Run phpunit
-        run: vendor/bin/phpunit --coverage-clover=coverage.xml
+        run: vendor/bin/phpunit --coverage-clover=coverage.xml --coverage-filter=src/Sentry
 
       - name: Upload code coverage
         uses: codecov/codecov-action@v3
@@ -150,7 +156,7 @@ jobs:
           composer install --no-interaction --prefer-dist --no-progress
 
       - name: Run phpunit
-        run: vendor/bin/phpunit --coverage-clover=coverage.xml
+        run: vendor/bin/phpunit --coverage-clover=coverage.xml --whitelist=src/Sentry
 
       - name: Upload code coverage
         uses: codecov/codecov-action@v3
