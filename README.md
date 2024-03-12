@@ -24,7 +24,7 @@ The installation steps below work on version 11.x of the Laravel framework.
 For older Laravel versions and Lumen see:
 
 - [Laravel 11.x](https://docs.sentry.io/platforms/php/guides/laravel/)
-- [Laravel 8.x & 9.x & 10.x](https://docs.sentry.io/platforms/php/guides/other-versions/laravel8-10)
+- [Laravel 8.x & 9.x & 10.x](https://docs.sentry.io/platforms/php/guides/other-versions/laravel8-10/)
 - [Laravel 6.x & 7.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel6-7/)
 - [Laravel 5.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel5/)
 - [Laravel 4.x](https://docs.sentry.io/platforms/php/guides/laravel/other-versions/laravel4/)
