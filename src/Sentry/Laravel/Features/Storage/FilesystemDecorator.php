@@ -67,6 +67,11 @@ trait FilesystemDecorator
         return $this->filesystem->{$method}(...$args);
     }
 
+    public function path($path)
+    {
+        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path'));
+    }
+
     public function exists($path)
     {
         return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path'));
@@ -87,6 +92,16 @@ trait FilesystemDecorator
         $description = is_string($contents) ? sprintf('%s (%s)', $path, Filesize::toHuman(strlen($contents))) : $path;
 
         return $this->withSentry(__FUNCTION__, func_get_args(), $description, compact('path', 'options'));
+    }
+
+    public function putFile($path, $file = null, $options = [])
+    {
+        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path', 'file', 'options'));
+    }
+
+    public function putFileAs($path, $file, $name = null, $options = [])
+    {
+        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path', 'file', 'name', 'options'));
     }
 
     public function writeStream($path, $resource, array $options = [])
