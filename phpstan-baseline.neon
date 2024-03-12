@@ -101,11 +101,6 @@ parameters:
 			path: src/Sentry/Laravel/Features/Storage/Integration.php
 
 		-
-			message: "#^Parameter \\$exceptions of method Sentry\\\\Laravel\\\\Integration\\:\\:handles\\(\\) has invalid type Illuminate\\\\Foundation\\\\Configuration\\\\Exceptions\\.$#"
-			count: 1
-			path: src/Sentry/Laravel/Integration.php
-
-		-
 			message: "#^Class Laravel\\\\Lumen\\\\Application not found\\.$#"
 			count: 3
 			path: src/Sentry/Laravel/ServiceProvider.php
