@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.3.1
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.3.1.
+
+### Bug Fixes
+
+- Add missing methods to `FilesystemDecorator` [(#865)](https://github.com/getsentry/sentry-laravel/pull/865)
+
 ## 4.3.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.3.0.
