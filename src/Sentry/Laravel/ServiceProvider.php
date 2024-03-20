@@ -61,6 +61,7 @@ class ServiceProvider extends BaseServiceProvider
         Features\Storage\Integration::class,
         Features\HttpClientIntegration::class,
         Features\FolioPackageIntegration::class,
+        Features\NotificationsIntegration::class,
         Features\LivewirePackageIntegration::class,
     ];
 
