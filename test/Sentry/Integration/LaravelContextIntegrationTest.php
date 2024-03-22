@@ -40,6 +40,30 @@ class LaravelContextIntegrationTest extends TestCase
         $this->assertContextIsCaptured($event->getContexts());
     }
 
+    public function testExceptionIsCapturedWithoutLaravelContextIfEmpty(): void
+    {
+        captureException(new Exception('Context test'));
+
+        $event = $this->getLastSentryEvent();
+
+        $this->assertNotNull($event);
+        $this->assertEquals($event->getType(), EventType::event());
+        $this->assertArrayNotHasKey('laravel', $event->getContexts());
+    }
+
+    public function testExceptionIsCapturedWithoutLaravelContextIfOnlyHidden(): void
+    {
+        Context::addHidden('hidden', 'value');
+
+        captureException(new Exception('Context test'));
+
+        $event = $this->getLastSentryEvent();
+
+        $this->assertNotNull($event);
+        $this->assertEquals($event->getType(), EventType::event());
+        $this->assertArrayNotHasKey('laravel', $event->getContexts());
+    }
+
     public function testTransactionIsCapturedWithLaravelContext(): void
     {
         $this->setupTestContext();
