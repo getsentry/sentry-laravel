@@ -30,9 +30,7 @@ class LaravelContextIntegration implements IntegrationInterface
                 return $event;
             }
 
-            if (!Context::isEmpty()) {
-                $event->setContext('laravel', Context::all());
-            }
+            $event->setContext('laravel', Context::all());
 
             return $event;
         });
