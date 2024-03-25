@@ -1,5 +1,17 @@
 # Changelog
 
+## 4.4.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.4.0.
+
+### Features
+
+- Add support for Laravel 11 Context [(#869)](https://github.com/getsentry/sentry-laravel/pull/869)
+
+  If you are using Laravel 11 and the new "Context" capabilities we now automatically capture that context for you and it will be visible in Sentry.
+  Read more about the feature in the [Laravel documentation](https://laravel.com/docs/11.x/context) and how to use it.
+
+
 ## 4.3.1
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.3.1.
