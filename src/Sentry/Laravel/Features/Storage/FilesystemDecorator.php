@@ -135,13 +135,7 @@ trait FilesystemDecorator
 
     public function delete($paths)
     {
-        if (is_array($paths)) {
-            $data = compact('paths');
-            $description = sprintf('%s paths', count($paths));
-        } else {
-            $data = ['path' => $paths];
-            $description = $paths;
-        }
+        [$description, $data] = $this->getDescriptionAndDataForPathOrPaths($paths);
 
         return $this->withSentry(__FUNCTION__, func_get_args(), $description, $data);
     }
@@ -199,5 +193,18 @@ trait FilesystemDecorator
     public function __call($name, $arguments)
     {
         return $this->filesystem->{$name}(...$arguments);
+    }
+
+    protected function getDescriptionAndDataForPathOrPaths($pathOrPaths): array
+    {
+        if (is_array($pathOrPaths)) {
+            $description = sprintf('%s paths', count($pathOrPaths));
+            $data = ['paths' => $pathOrPaths];
+        } else {
+            $description = $pathOrPaths;
+            $data = ['path' => $pathOrPaths];
+        }
+
+        return [$description, $data];
     }
 }
