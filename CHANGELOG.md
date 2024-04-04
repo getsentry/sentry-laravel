@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.4.1
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.4.1.
+
+### Bug Fixes
+
+- Fix `assertExists`/`assertMissing` can throw on the `FilesystemDecorator` [(#877)](https://github.com/getsentry/sentry-laravel/pull/877)
+
 ## 4.4.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.4.0.
