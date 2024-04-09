@@ -338,6 +338,7 @@ class ServiceProvider extends BaseServiceProvider
                     $integrations,
                     [
                         new Integration,
+                        new Integration\LaravelContextIntegration,
                         new Integration\ExceptionContextIntegration,
                     ],
                     $userIntegrations

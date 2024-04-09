@@ -68,8 +68,10 @@ jobs:
       - name: Run phpunit
         run: vendor/bin/phpunit --coverage-clover=coverage.xml --coverage-filter=src/Sentry
 
-      - name: Upload code coverage
-        uses: codecov/codecov-action@v3
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   phpunit-legacy:
     runs-on: ubuntu-latest
@@ -158,5 +160,7 @@ jobs:
       - name: Run phpunit
         run: vendor/bin/phpunit --coverage-clover=coverage.xml --whitelist=src/Sentry
 
-      - name: Upload code coverage
-        uses: codecov/codecov-action@v3
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
