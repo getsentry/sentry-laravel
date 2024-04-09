@@ -10,6 +10,10 @@ use Sentry\Tracing\SpanStatus;
 
 class NotificationsIntegrationTest extends TestCase
 {
+    protected $defaultSetupConfig = [
+        'sentry.tracing.views' => false,
+    ];
+
     public function testSpanIsRecorded(): void
     {
         $span = $this->sendNotificationAndRetrieveSpan();
