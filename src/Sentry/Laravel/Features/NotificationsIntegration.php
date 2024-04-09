@@ -4,7 +4,6 @@ namespace Sentry\Laravel\Features;
 
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Http\Client\Factory;
 use Illuminate\Notifications\Events\NotificationSending;
 use Illuminate\Notifications\Events\NotificationSent;
 use Sentry\Breadcrumb;
@@ -26,7 +25,7 @@ class NotificationsIntegration extends Feature
             || $this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY);
     }
 
-    public function onBoot(Dispatcher $events, Factory $factory): void
+    public function onBoot(Dispatcher $events): void
     {
         if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
             $events->listen(NotificationSending::class, [$this, 'handleNotificationSending']);
