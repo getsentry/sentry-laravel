@@ -31,6 +31,8 @@ abstract class TestCase extends LaravelTestCase
         // or use the `$this->resetApplicationWithConfig([ /* config */ ]);` helper method
     ];
 
+    protected $defaultSetupConfig = [];
+
     /** @var array<int, array{0: Event, 1: EventHint|null}> */
     protected static $lastSentryEvents = [];
 
@@ -59,6 +61,10 @@ abstract class TestCase extends LaravelTestCase
 
             if ($config->get('sentry_test.override_dsn') !== true) {
                 $config->set('sentry.dsn', 'https://publickey@sentry.dev/123');
+            }
+
+            foreach ($this->defaultSetupConfig as $key => $value) {
+                $config->set($key, $value);
             }
 
             foreach ($this->setupConfig as $key => $value) {
