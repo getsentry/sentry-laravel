@@ -25,6 +25,7 @@ use Sentry\Laravel\Http\SetRequestIpMiddleware;
 use Sentry\Laravel\Http\SetRequestMiddleware;
 use Sentry\Laravel\Tracing\BacktraceHelper;
 use Sentry\Laravel\Tracing\ServiceProvider as TracingServiceProvider;
+use Sentry\Logger\DebugFileLogger;
 use Sentry\SentrySdk;
 use Sentry\Serializer\RepresentationSerializer;
 use Sentry\State\Hub;
@@ -115,6 +116,10 @@ class ServiceProvider extends BaseServiceProvider
         }
 
         $this->mergeConfigFrom(__DIR__ . '/../../../config/sentry.php', static::$abstract);
+
+        $this->app->singleton(DebugFileLogger::class, function () {
+            return new DebugFileLogger(storage_path('logs/sentry.log'));
+        });
 
         $this->configureAndRegisterClient();
 
