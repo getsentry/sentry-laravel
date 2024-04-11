@@ -52,6 +52,13 @@ class ServiceProvider extends BaseServiceProvider
     ];
 
     /**
+     * List of options that should be resolved from the container instead of being passed directly to the SDK.
+     */
+    protected const OPTIONS_TO_RESOLVE_FROM_CONTAINER = [
+        'logger',
+    ];
+
+    /**
      * List of features that are provided by the SDK.
      */
     protected const FEATURES = [
@@ -277,6 +284,12 @@ class ServiceProvider extends BaseServiceProvider
 
                 $options['before_send'] = $wrapBeforeSend($options['before_send'] ?? null);
                 $options['before_send_transaction'] = $wrapBeforeSend($options['before_send_transaction'] ?? null);
+            }
+
+            foreach (self::OPTIONS_TO_RESOLVE_FROM_CONTAINER as $option) {
+                if (isset($options[$option]) && is_string($options[$option])) {
+                    $options[$option] = $this->app->make($options[$option]);
+                }
             }
 
             $clientBuilder = ClientBuilder::create($options);
