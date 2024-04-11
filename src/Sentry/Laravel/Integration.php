@@ -7,8 +7,7 @@ use Illuminate\Routing\Route;
 use Sentry\EventHint;
 use Sentry\EventId;
 use Sentry\ExceptionMechanism;
-use Sentry\Laravel\Integration\ModelViolations\LazyLoadingModelViolationReporter;
-use Sentry\Laravel\Integration\ModelViolations\MissingAttributeModelViolationReporter;
+use Sentry\Laravel\Integration\ModelViolations as ModelViolationReports;
 use Sentry\SentrySdk;
 use Sentry\Tracing\TransactionSource;
 use Throwable;
@@ -248,7 +247,7 @@ class Integration implements IntegrationInterface
      */
     public static function missingAttributeViolationReporter(?callable $callback = null, bool $suppressDuplicateReports = true): callable
     {
-        return new MissingAttributeModelViolationReporter($callback, $suppressDuplicateReports);
+        return new ModelViolationReports\MissingAttributeModelViolationReporter($callback, $suppressDuplicateReports);
     }
 
     /**
@@ -261,7 +260,20 @@ class Integration implements IntegrationInterface
      */
     public static function lazyLoadingViolationReporter(?callable $callback = null, bool $suppressDuplicateReports = true): callable
     {
-        return new LazyLoadingModelViolationReporter($callback, $suppressDuplicateReports);
+        return new ModelViolationReports\LazyLoadingModelViolationReporter($callback, $suppressDuplicateReports);
+    }
+
+    /**
+     * Returns a callback that can be passed to `Model::handleDiscardedAttributeViolationUsing` to report discarded attribute violations to Sentry.
+     *
+     * @param callable|null $callback                 Optional callback to be called after the violation is reported to Sentry.
+     * @param bool          $suppressDuplicateReports Whether to suppress duplicate reports of the same violation.
+     *
+     * @return callable
+     */
+    public static function discardedAttributeViolationReporter(?callable $callback = null, bool $suppressDuplicateReports = true): callable
+    {
+        return new ModelViolationReports\DiscardedAttributeViolationReporter($callback, $suppressDuplicateReports);
     }
 
     /**
