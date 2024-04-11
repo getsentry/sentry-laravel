@@ -22,13 +22,17 @@ abstract class ModelViolationReporter
     /** @var bool $suppressDuplicateReports */
     private $suppressDuplicateReports;
 
+    /** @var bool $reportAfterResponse */
+    private $reportAfterResponse;
+
     /** @var array<string, true> $reportedViolations */
     private $reportedViolations = [];
 
-    public function __construct(?callable $callback, bool $suppressDuplicateReports)
+    public function __construct(?callable $callback, bool $suppressDuplicateReports, bool $reportAfterResponse)
     {
         $this->callback = $callback;
         $this->suppressDuplicateReports = $suppressDuplicateReports;
+        $this->reportAfterResponse = $reportAfterResponse;
     }
 
     public function __invoke(Model $model, string $property): void
@@ -39,26 +43,12 @@ abstract class ModelViolationReporter
 
         $this->markAsReported($model, $property);
 
-        SentrySdk::getCurrentHub()->withScope(function (Scope $scope) use ($model, $property) {
-            $scope->setContext('violation', array_merge([
-                'model' => get_class($model),
-                'origin' => $this->resolveEventOrigin(),
-            ], $this->getViolationContext($model, $property)));
-
-            SentrySdk::getCurrentHub()->captureEvent(
-                tap(Event::createEvent(), static function (Event $event) {
-                    $event->setLevel(Severity::warning());
-                }),
-                EventHint::fromArray([
-                    'exception' => $this->getViolationException($model, $property),
-                    'mechanism' => new ExceptionMechanism(ExceptionMechanism::TYPE_GENERIC, true),
-                ])
-            );
-        });
-
-        // Forward the violation to the next handler if there is one
-        if ($this->callback !== null) {
-            call_user_func($this->callback, $model, $property);
+        if ($this->reportAfterResponse) {
+            app()->terminating(function () use ($model, $property) {
+                $this->report($model, $property);
+            });
+        } else {
+            $this->report($model, $property);
         }
     }
 
@@ -82,5 +72,30 @@ abstract class ModelViolationReporter
         }
 
         $this->reportedViolations[get_class($model) . $property] = true;
+    }
+
+    private function report(Model $model, string $property): void
+    {
+        SentrySdk::getCurrentHub()->withScope(function (Scope $scope) use ($model, $property) {
+            $scope->setContext('violation', array_merge([
+                'model' => get_class($model),
+                'origin' => $this->resolveEventOrigin(),
+            ], $this->getViolationContext($model, $property)));
+
+            SentrySdk::getCurrentHub()->captureEvent(
+                tap(Event::createEvent(), static function (Event $event) {
+                    $event->setLevel(Severity::warning());
+                }),
+                EventHint::fromArray([
+                    'exception' => $this->getViolationException($model, $property),
+                    'mechanism' => new ExceptionMechanism(ExceptionMechanism::TYPE_GENERIC, true),
+                ])
+            );
+        });
+
+        // Forward the violation to the next handler if there is one
+        if ($this->callback !== null) {
+            call_user_func($this->callback, $model, $property);
+        }
     }
 }

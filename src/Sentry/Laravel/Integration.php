@@ -242,12 +242,13 @@ class Integration implements IntegrationInterface
      *
      * @param callable|null $callback                 Optional callback to be called after the violation is reported to Sentry.
      * @param bool          $suppressDuplicateReports Whether to suppress duplicate reports of the same violation.
+     * @param bool          $reportAfterResponse      Whether to delay sending the report to after the response has been sent.
      *
      * @return callable
      */
-    public static function missingAttributeViolationReporter(?callable $callback = null, bool $suppressDuplicateReports = true): callable
+    public static function missingAttributeViolationReporter(?callable $callback = null, bool $suppressDuplicateReports = true, bool $reportAfterResponse = true): callable
     {
-        return new ModelViolationReports\MissingAttributeModelViolationReporter($callback, $suppressDuplicateReports);
+        return new ModelViolationReports\MissingAttributeModelViolationReporter($callback, $suppressDuplicateReports, $reportAfterResponse);
     }
 
     /**
@@ -255,12 +256,13 @@ class Integration implements IntegrationInterface
      *
      * @param callable|null $callback                 Optional callback to be called after the violation is reported to Sentry.
      * @param bool          $suppressDuplicateReports Whether to suppress duplicate reports of the same violation.
+     * @param bool          $reportAfterResponse      Whether to delay sending the report to after the response has been sent.
      *
      * @return callable
      */
-    public static function lazyLoadingViolationReporter(?callable $callback = null, bool $suppressDuplicateReports = true): callable
+    public static function lazyLoadingViolationReporter(?callable $callback = null, bool $suppressDuplicateReports = true, bool $reportAfterResponse = true): callable
     {
-        return new ModelViolationReports\LazyLoadingModelViolationReporter($callback, $suppressDuplicateReports);
+        return new ModelViolationReports\LazyLoadingModelViolationReporter($callback, $suppressDuplicateReports, $reportAfterResponse);
     }
 
     /**
@@ -268,12 +270,13 @@ class Integration implements IntegrationInterface
      *
      * @param callable|null $callback                 Optional callback to be called after the violation is reported to Sentry.
      * @param bool          $suppressDuplicateReports Whether to suppress duplicate reports of the same violation.
+     * @param bool          $reportAfterResponse      Whether to delay sending the report to after the response has been sent.
      *
      * @return callable
      */
-    public static function discardedAttributeViolationReporter(?callable $callback = null, bool $suppressDuplicateReports = true): callable
+    public static function discardedAttributeViolationReporter(?callable $callback = null, bool $suppressDuplicateReports = true, bool $reportAfterResponse = true): callable
     {
-        return new ModelViolationReports\DiscardedAttributeViolationReporter($callback, $suppressDuplicateReports);
+        return new ModelViolationReports\DiscardedAttributeViolationReporter($callback, $suppressDuplicateReports, $reportAfterResponse);
     }
 
     /**
