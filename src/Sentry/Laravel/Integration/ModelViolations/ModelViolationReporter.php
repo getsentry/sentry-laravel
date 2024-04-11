@@ -43,12 +43,14 @@ abstract class ModelViolationReporter
 
         $this->markAsReported($model, $property);
 
+        $origin = $this->resolveEventOrigin();
+
         if ($this->reportAfterResponse) {
-            app()->terminating(function () use ($model, $property) {
-                $this->report($model, $property);
+            app()->terminating(function () use ($model, $property, $origin) {
+                $this->report($model, $property, $origin);
             });
         } else {
-            $this->report($model, $property);
+            $this->report($model, $property, $origin);
         }
     }
 
@@ -74,12 +76,12 @@ abstract class ModelViolationReporter
         $this->reportedViolations[get_class($model) . $property] = true;
     }
 
-    private function report(Model $model, string $property): void
+    private function report(Model $model, string $property, $origin): void
     {
-        SentrySdk::getCurrentHub()->withScope(function (Scope $scope) use ($model, $property) {
+        SentrySdk::getCurrentHub()->withScope(function (Scope $scope) use ($model, $property, $origin) {
             $scope->setContext('violation', array_merge([
                 'model' => get_class($model),
-                'origin' => $this->resolveEventOrigin(),
+                'origin' => $origin,
             ], $this->getViolationContext($model, $property)));
 
             SentrySdk::getCurrentHub()->captureEvent(
