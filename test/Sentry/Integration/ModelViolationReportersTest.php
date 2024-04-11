@@ -2,6 +2,7 @@
 
 namespace Sentry\Integration;
 
+use Illuminate\Database\Eloquent\MissingAttributeException;
 use Illuminate\Database\Eloquent\Model;
 use Sentry\Laravel\Integration;
 use Sentry\Laravel\Tests\TestCase;
@@ -12,6 +13,15 @@ use Sentry\Laravel\Tests\TestCase;
  */
 class ModelViolationReportersTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        if (!class_exists(MissingAttributeException::class)) {
+            $this->markTestSkipped('Laravel introduced model violations in version 9.');
+        }
+
+        parent::setUp();
+    }
+
     public function testModelViolationReportersCanBeRegistered(): void
     {
         $this->expectNotToPerformAssertions();
