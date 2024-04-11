@@ -16,7 +16,7 @@ trait ResolvesEventOrigin
     {
         $backtraceHelper = $this->makeBacktraceHelper();
 
-        $firstAppFrame = $backtraceHelper->findFirstInAppFrameForBacktrace(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS));
+        $firstAppFrame = $backtraceHelper->findFirstInAppFrameForBacktrace(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 20));
 
         if ($firstAppFrame === null) {
             return null;

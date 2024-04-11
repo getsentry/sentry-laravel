@@ -194,13 +194,13 @@ class EventHandler
     /**
      * Try to find the origin of the SQL query that was just executed.
      *
-     * @return string|null
+     * @return array|null
      */
     private function resolveQueryOriginFromBacktrace(): ?array
     {
         $backtraceHelper = $this->makeBacktraceHelper();
 
-        $firstAppFrame = $backtraceHelper->findFirstInAppFrameForBacktrace(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS));
+        $firstAppFrame = $backtraceHelper->findFirstInAppFrameForBacktrace(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 20));
 
         if ($firstAppFrame === null) {
             return null;
