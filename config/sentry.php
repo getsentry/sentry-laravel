@@ -85,7 +85,7 @@ return [
         // Capture where the SQL query originated from on the SQL query spans
         'sql_origin' => env('SENTRY_TRACE_SQL_ORIGIN_ENABLED', true),
 
-        // Define a treshold in milliseconds for SQL queries to resolve their origin
+        // Define a threshold in milliseconds for SQL queries to resolve their origin
         'sql_origin_threshold_ms' => env('SENTRY_TRACE_SQL_ORIGIN_THRESHOLD_MS', 100),
 
         // Capture views rendered as spans
