@@ -2,6 +2,7 @@
 
 namespace Sentry\Laravel;
 
+use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Routing\Route;
 use Sentry\EventHint;
 use Sentry\EventId;
@@ -20,6 +21,8 @@ use function Sentry\addBreadcrumb;
 use function Sentry\configureScope;
 use function Sentry\getBaggage;
 use function Sentry\getTraceparent;
+use function Sentry\getW3CTraceparent;
+use function Sentry\metrics;
 
 class Integration implements IntegrationInterface
 {
@@ -45,6 +48,16 @@ class Integration implements IntegrationInterface
             }
 
             return $event;
+        });
+    }
+
+    /**
+     * Convienence method to register the exception handler with Laravel 11.0 and up.
+     */
+    public static function handles(Exceptions $exceptions): void
+    {
+        $exceptions->reportable(static function (Throwable $exception) {
+            self::captureUnhandledException($exception);
         });
     }
 
@@ -97,7 +110,7 @@ class Integration implements IntegrationInterface
     }
 
     /**
-     * Block until all async events are processed for the HTTP transport.
+     * Block until all events are processed by the PHP SDK client. Also flushes metrics.
      *
      * @internal This is not part of the public API and is here temporarily until
      *  the underlying issue can be resolved, this method will be removed.
@@ -109,6 +122,8 @@ class Integration implements IntegrationInterface
         if ($client !== null) {
             $client->flush();
         }
+
+        metrics()->flush();
     }
 
     /**
@@ -166,7 +181,7 @@ class Integration implements IntegrationInterface
      */
     public static function sentryMeta(): string
     {
-        return self::sentryTracingMeta() . self::sentryBaggageMeta();
+        return self::sentryTracingMeta() . self::sentryW3CTracingMeta() . self::sentryBaggageMeta();
     }
 
     /**
@@ -177,6 +192,16 @@ class Integration implements IntegrationInterface
     public static function sentryTracingMeta(): string
     {
         return sprintf('<meta name="sentry-trace" content="%s"/>', getTraceparent());
+    }
+
+    /**
+     * Retrieve the `traceparent` meta tag with tracing information to link this request to front-end requests.
+     *
+     * @return string
+     */
+    public static function sentryW3CTracingMeta(): string
+    {
+        return sprintf('<meta name="traceparent" content="%s"/>', getW3CTraceparent());
     }
 
     /**
@@ -216,25 +241,27 @@ class Integration implements IntegrationInterface
     /**
      * Returns a callback that can be passed to `Model::handleMissingAttributeViolationUsing` to report missing attribute violations to Sentry.
      *
-     * @param callable|null $callback Optional callback to be called after the violation is reported to Sentry.
+     * @param callable|null $callback                 Optional callback to be called after the violation is reported to Sentry.
+     * @param bool          $suppressDuplicateReports Whether to suppress duplicate reports of the same violation.
      *
      * @return callable
      */
-    public static function missingAttributeViolationReporter(?callable $callback = null, bool $supressDuplicateReports = true): callable
+    public static function missingAttributeViolationReporter(?callable $callback = null, bool $suppressDuplicateReports = true): callable
     {
-        return new MissingAttributeModelViolationReporter($callback, $supressDuplicateReports);
+        return new MissingAttributeModelViolationReporter($callback, $suppressDuplicateReports);
     }
 
     /**
      * Returns a callback that can be passed to `Model::handleLazyLoadingViolationUsing` to report lazy loading violations to Sentry.
      *
-     * @param callable|null $callback Optional callback to be called after the violation is reported to Sentry.
+     * @param callable|null $callback                 Optional callback to be called after the violation is reported to Sentry.
+     * @param bool          $suppressDuplicateReports Whether to suppress duplicate reports of the same violation.
      *
      * @return callable
      */
-    public static function lazyLoadingViolationReporter(?callable $callback = null, bool $supressDuplicateReports = true): callable
+    public static function lazyLoadingViolationReporter(?callable $callback = null, bool $suppressDuplicateReports = true): callable
     {
-        return new LazyLoadingModelViolationReporter($callback, $supressDuplicateReports);
+        return new LazyLoadingModelViolationReporter($callback, $suppressDuplicateReports);
     }
 
     /**

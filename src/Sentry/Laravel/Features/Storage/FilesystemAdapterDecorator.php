@@ -8,12 +8,16 @@ trait FilesystemAdapterDecorator
 
     public function assertExists($path, $content = null)
     {
-        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path'));
+        [$description, $data] = $this->getDescriptionAndDataForPathOrPaths($path);
+
+        return $this->withSentry(__FUNCTION__, func_get_args(), $description, $data);
     }
 
     public function assertMissing($path)
     {
-        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path'));
+        [$description, $data] = $this->getDescriptionAndDataForPathOrPaths($path);
+
+        return $this->withSentry(__FUNCTION__, func_get_args(), $description, $data);
     }
 
     public function assertDirectoryEmpty($path)

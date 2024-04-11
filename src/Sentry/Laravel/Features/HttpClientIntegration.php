@@ -18,6 +18,7 @@ use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\SpanStatus;
 use function Sentry\getBaggage;
 use function Sentry\getTraceparent;
+use function Sentry\getW3CTraceparent;
 
 class HttpClientIntegration extends Feature
 {
@@ -55,7 +56,8 @@ class HttpClientIntegration extends Feature
         if ($this->shouldAttachTracingHeaders($request)) {
             return $request
                 ->withHeader('baggage', getBaggage())
-                ->withHeader('sentry-trace', getTraceparent());
+                ->withHeader('sentry-trace', getTraceparent())
+                ->withHeader('traceparent', getW3CTraceparent());
         }
 
         return $request;
@@ -94,13 +96,13 @@ class HttpClientIntegration extends Feature
         $span = $this->maybePopSpan();
 
         if ($span !== null) {
-            $span->finish();
             $span->setData(array_merge($span->getData(), [
                 // See: https://develop.sentry.dev/sdk/performance/span-data-conventions/#http
                 'http.response.status_code' => $event->response->status(),
                 'http.response.body.size' => $event->response->toPsrResponse()->getBody()->getSize(),
             ]));
             $span->setHttpStatus($event->response->status());
+            $span->finish();
         }
     }
 
@@ -109,8 +111,8 @@ class HttpClientIntegration extends Feature
         $span = $this->maybePopSpan();
 
         if ($span !== null) {
-            $span->finish();
             $span->setStatus(SpanStatus::internalError());
+            $span->finish();
         }
     }
 

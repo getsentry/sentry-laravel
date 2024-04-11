@@ -1,5 +1,113 @@
 # Changelog
 
+## 4.4.1
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.4.1.
+
+### Bug Fixes
+
+- Fix `assertExists`/`assertMissing` can throw on the `FilesystemDecorator` [(#877)](https://github.com/getsentry/sentry-laravel/pull/877)
+
+## 4.4.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.4.0.
+
+### Features
+
+- Add support for Laravel 11 Context [(#869)](https://github.com/getsentry/sentry-laravel/pull/869)
+
+  If you are using Laravel 11 and the new "Context" capabilities we now automatically capture that context for you and it will be visible in Sentry.
+  Read more about the feature in the [Laravel documentation](https://laravel.com/docs/11.x/context) and how to use it.
+
+
+## 4.3.1
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.3.1.
+
+### Bug Fixes
+
+- Add missing methods to `FilesystemDecorator` [(#865)](https://github.com/getsentry/sentry-laravel/pull/865)
+
+## 4.3.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.3.0.
+
+### Features
+
+- Add support for Laravel 11.0 [(#845)](https://github.com/getsentry/sentry-laravel/pull/845)
+
+  If you're upgrading an existing Laravel 10 application to the new Laravel 11 directory structure, you must change how Sentry integrates into the exception handler. Update your `bootstrap/app.php` with:
+
+  ```php
+  <?php
+
+  use Illuminate\Foundation\Application;
+  use Illuminate\Foundation\Configuration\Exceptions;
+  use Illuminate\Foundation\Configuration\Middleware;
+  use Sentry\Laravel\Integration;
+  
+  return Application::configure(basePath: dirname(__DIR__))
+      ->withRouting(
+          web: __DIR__.'/../routes/web.php',
+          commands: __DIR__.'/../routes/console.php',
+          health: '/up',
+      )
+      ->withMiddleware(function (Middleware $middleware) {
+          //
+      })
+      ->withExceptions(function (Exceptions $exceptions) {
+          Integration::handles($exceptions);
+      })->create();
+    ```
+
+  If you plan to perform up-time checks against the new Laravel 11 `/up` health URL, ignore this transaction in your `config/sentry.php` file, as not doing so could consume a substantial amount of your performance unit quota.
+
+  ```php
+  // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#ignore-transactions
+  'ignore_transactions' => [
+      // Ignore Laravel's default health URL
+      '/up',
+  ],
+  ```
+
+### Bug Fixes
+
+- Set `queue.publish` spans as the parent of `queue.process` spans [(#850)](https://github.com/getsentry/sentry-laravel/pull/850)
+
+- Consider all `http_*` SDK options from the Laravel client in the test command [(#859)](https://github.com/getsentry/sentry-laravel/pull/859)
+
+## 4.2.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.2.0.
+
+### Features
+
+- Add new spans, measuring the time taken to queue a job [(#833)](https://github.com/getsentry/sentry-laravel/pull/833)
+
+- Add support for `failure_issue_threshold` & `recovery_threshold` for `sentryMonitor()` method on scheduled commands [(#838)](https://github.com/getsentry/sentry-laravel/pull/838)
+
+- Automatically flush metrics when the application terminates [(#841)](https://github.com/getsentry/sentry-laravel/pull/841)
+
+- Add support for the W3C traceparent header [(#834)](https://github.com/getsentry/sentry-laravel/pull/834)
+
+- Improve `php artisan sentry:test` to show internal log messages by default [(#842)](https://github.com/getsentry/sentry-laravel/pull/842)
+
+## 4.1.2
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.1.2.
+
+### Bug Fixes
+
+- Fix unable to set `callable` for `integrations` option [(#826)](https://github.com/getsentry/sentry-laravel/pull/826)
+
+- Fix performance traces not being collected for Laravel Lumen unless missing routes are reported [(#822)](https://github.com/getsentry/sentry-laravel/pull/822)
+
+- Fix configuration options for queue job tracing not applying correctly [(#820)](https://github.com/getsentry/sentry-laravel/pull/820)
+
+### Misc
+
+- Allow newer versions of `symfony/psr-http-message-bridge` dependency [(#829)](https://github.com/getsentry/sentry-laravel/pull/829)
+
 ## 4.1.1
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.1.1.

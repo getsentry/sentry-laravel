@@ -22,6 +22,7 @@ class StorageIntegrationTest extends TestCase
         Storage::delete('foo');
         Storage::delete(['foo', 'bar']);
         Storage::files();
+        Storage::assertMissing(['foo', 'bar']);
 
         $spans = $transaction->getSpanRecorder()->getSpans();
 
@@ -61,6 +62,12 @@ class StorageIntegrationTest extends TestCase
         $this->assertSame('file.files', $span->getOp());
         $this->assertNull($span->getDescription());
         $this->assertSame(['directory' => null, 'recursive' => false, 'disk' => 'local', 'driver' => 'local'], $span->getData());
+
+        $this->assertArrayHasKey(7, $spans);
+        $span = $spans[7];
+        $this->assertSame('file.assertMissing', $span->getOp());
+        $this->assertSame('2 paths', $span->getDescription());
+        $this->assertSame(['paths' => ['foo', 'bar'], 'disk' => 'local', 'driver' => 'local'], $span->getData());
     }
 
     public function testDoesntCreateSpansWhenDisabled(): void

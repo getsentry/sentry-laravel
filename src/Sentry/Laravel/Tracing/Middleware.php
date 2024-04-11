@@ -112,8 +112,7 @@ class Middleware
             return;
         }
 
-        // We stop here if a route has not been matched unless we are configured to trace missing routes
-        if (!$this->didRouteMatch && config('sentry.tracing.missing_routes', false) === false) {
+        if ($this->shouldRouteBeIgnored($request)) {
             return;
         }
 
@@ -176,7 +175,7 @@ class Middleware
         );
 
         $context = continueTrace(
-            $request->header('sentry-trace', ''),
+            $request->header('sentry-trace') ?? $request->header('traceparent', ''),
             $request->header('baggage', '')
         );
 
@@ -277,6 +276,21 @@ class Middleware
     private function internalSignalRouteWasMatched(): void
     {
         $this->didRouteMatch = true;
+    }
+
+    /**
+     * Indicates if the route should be ignored and the transaction discarded.
+     */
+    private function shouldRouteBeIgnored(Request $request): bool
+    {
+        // Laravel Lumen doesn't use `illuminate/routing`.
+        // Instead we use the route available on the request to detect if a route was matched.
+        if ($this->app instanceof LumenApplication) {
+            return $request->route() === null && config('sentry.tracing.missing_routes', false) === false;
+        }
+
+        // If a route has not been matched we ignore unless we are configured to trace missing routes
+        return !$this->didRouteMatch && config('sentry.tracing.missing_routes', false) === false;
     }
 
     public static function signalRouteWasMatched(): void

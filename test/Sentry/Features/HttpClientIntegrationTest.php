@@ -5,6 +5,7 @@ namespace Sentry\Laravel\Tests\Features;
 use GuzzleHttp\Psr7\Request as PsrRequest;
 use GuzzleHttp\Psr7\Response as PsrResponse;
 use Illuminate\Http\Client\Events\ResponseReceived;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -128,7 +129,7 @@ class HttpClientIntegrationTest extends TestCase
 
     public function testHttpClientRequestTracingHeadersAreAttached(): void
     {
-        if (!method_exists(Http::class, 'globalRequestMiddleware')) {
+        if (!method_exists(Factory::class, 'globalRequestMiddleware')) {
             $this->markTestSkipped('The `globalRequestMiddleware` functionality we rely on was introduced in Laravel 10.14');
         }
 

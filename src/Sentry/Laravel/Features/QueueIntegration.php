@@ -2,10 +2,13 @@
 
 namespace Sentry\Laravel\Features;
 
+use Closure;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Queue\Events\JobExceptionOccurred;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Queue\Events\JobQueued;
+use Illuminate\Queue\Events\JobQueueing;
 use Illuminate\Queue\Events\WorkerStopping;
 use Illuminate\Queue\Queue;
 use Sentry\Breadcrumb;
@@ -29,6 +32,8 @@ class QueueIntegration extends Feature
         pushScope as private pushScopeTrait;
     }
 
+    private const QUEUE_SPAN_OP_QUEUE_PUBLISH = 'queue.publish';
+
     private const QUEUE_PAYLOAD_BAGGAGE_DATA = 'sentry_baggage_data';
     private const QUEUE_PAYLOAD_TRACE_PARENT_DATA = 'sentry_trace_parent_data';
 
@@ -45,13 +50,31 @@ class QueueIntegration extends Feature
 
     public function onBoot(Dispatcher $events): void
     {
+        $events->listen(JobQueueing::class, [$this, 'handleJobQueueingEvent']);
+        $events->listen(JobQueued::class, [$this, 'handleJobQueuedEvent']);
+
         $events->listen(JobProcessed::class, [$this, 'handleJobProcessedQueueEvent']);
         $events->listen(JobProcessing::class, [$this, 'handleJobProcessingQueueEvent']);
         $events->listen(WorkerStopping::class, [$this, 'handleWorkerStoppingQueueEvent']);
         $events->listen(JobExceptionOccurred::class, [$this, 'handleJobExceptionOccurredQueueEvent']);
 
         if ($this->isTracingFeatureEnabled('queue_jobs') || $this->isTracingFeatureEnabled('queue_job_transactions')) {
-            Queue::createPayloadUsing(static function (?string $connection, ?string $queue, ?array $payload): ?array {
+            Queue::createPayloadUsing(function (?string $connection, ?string $queue, ?array $payload): ?array {
+                $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+
+                if ($parentSpan !== null) {
+                    $context = (new SpanContext)
+                        ->setOp(self::QUEUE_SPAN_OP_QUEUE_PUBLISH)
+                        ->setData([
+                            'messaging.system' => 'laravel',
+                            'messaging.destination.name' => $queue,
+                            'messaging.destination.connection' => $connection,
+                        ])
+                        ->setDescription($queue);
+
+                    $this->pushSpan($parentSpan->startChild($context));
+                }
+
                 if ($payload !== null) {
                     $payload[self::QUEUE_PAYLOAD_BAGGAGE_DATA] = getBaggage();
                     $payload[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] = getTraceparent();
@@ -59,6 +82,39 @@ class QueueIntegration extends Feature
 
                 return $payload;
             });
+        }
+    }
+
+    public function handleJobQueueingEvent(JobQueueing $event): void
+    {
+        $currentSpan = SentrySdk::getCurrentHub()->getSpan();
+
+        // If there is no tracing span active there is no need to handle the event
+        if ($currentSpan === null || $currentSpan->getOp() !== self::QUEUE_SPAN_OP_QUEUE_PUBLISH) {
+            return;
+        }
+
+        $jobName = $event->job;
+
+        if ($jobName instanceof Closure) {
+            $jobName = 'Closure';
+        } elseif (is_object($jobName)) {
+            $jobName = get_class($jobName);
+        }
+
+        $currentSpan
+            ->setData([
+                'messaging.laravel.job' => $jobName,
+            ])
+            ->setDescription($jobName);
+    }
+
+    public function handleJobQueuedEvent(JobQueued $event): void
+    {
+        $span = $this->maybePopSpan();
+
+        if ($span !== null) {
+            $span->finish();
         }
     }
 
@@ -169,8 +225,8 @@ class QueueIntegration extends Feature
         $span = $this->maybePopSpan();
 
         if ($span !== null) {
-            $span->finish();
             $span->setStatus($status);
+            $span->finish();
         }
     }
 

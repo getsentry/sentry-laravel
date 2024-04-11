@@ -19,11 +19,13 @@ use Sentry\Laravel\Console\AboutCommandIntegration;
 use Sentry\Laravel\Console\PublishCommand;
 use Sentry\Laravel\Console\TestCommand;
 use Sentry\Laravel\Features\Feature;
+use Sentry\Laravel\Http\FlushEventsMiddleware;
 use Sentry\Laravel\Http\LaravelRequestFetcher;
 use Sentry\Laravel\Http\SetRequestIpMiddleware;
 use Sentry\Laravel\Http\SetRequestMiddleware;
 use Sentry\Laravel\Tracing\BacktraceHelper;
 use Sentry\Laravel\Tracing\ServiceProvider as TracingServiceProvider;
+use Sentry\Logger\DebugFileLogger;
 use Sentry\SentrySdk;
 use Sentry\Serializer\RepresentationSerializer;
 use Sentry\State\Hub;
@@ -50,6 +52,13 @@ class ServiceProvider extends BaseServiceProvider
     ];
 
     /**
+     * List of options that should be resolved from the container instead of being passed directly to the SDK.
+     */
+    protected const OPTIONS_TO_RESOLVE_FROM_CONTAINER = [
+        'logger',
+    ];
+
+    /**
      * List of features that are provided by the SDK.
      */
     protected const FEATURES = [
@@ -60,6 +69,7 @@ class ServiceProvider extends BaseServiceProvider
         Features\Storage\Integration::class,
         Features\HttpClientIntegration::class,
         Features\FolioPackageIntegration::class,
+        Features\NotificationsIntegration::class,
         Features\LivewirePackageIntegration::class,
     ];
 
@@ -78,12 +88,14 @@ class ServiceProvider extends BaseServiceProvider
             if ($this->app instanceof Lumen) {
                 $this->app->middleware(SetRequestMiddleware::class);
                 $this->app->middleware(SetRequestIpMiddleware::class);
+                $this->app->middleware(FlushEventsMiddleware::class);
             } elseif ($this->app->bound(HttpKernelInterface::class)) {
                 $httpKernel = $this->app->make(HttpKernelInterface::class);
 
                 if ($httpKernel instanceof HttpKernel) {
                     $httpKernel->pushMiddleware(SetRequestMiddleware::class);
                     $httpKernel->pushMiddleware(SetRequestIpMiddleware::class);
+                    $httpKernel->pushMiddleware(FlushEventsMiddleware::class);
                 }
             }
         }
@@ -111,6 +123,10 @@ class ServiceProvider extends BaseServiceProvider
         }
 
         $this->mergeConfigFrom(__DIR__ . '/../../../config/sentry.php', static::$abstract);
+
+        $this->app->singleton(DebugFileLogger::class, function () {
+            return new DebugFileLogger(storage_path('logs/sentry.log'));
+        });
 
         $this->configureAndRegisterClient();
 
@@ -270,6 +286,12 @@ class ServiceProvider extends BaseServiceProvider
                 $options['before_send_transaction'] = $wrapBeforeSend($options['before_send_transaction'] ?? null);
             }
 
+            foreach (self::OPTIONS_TO_RESOLVE_FROM_CONTAINER as $option) {
+                if (isset($options[$option]) && is_string($options[$option])) {
+                    $options[$option] = $this->app->make($options[$option]);
+                }
+            }
+
             $clientBuilder = ClientBuilder::create($options);
 
             // Set the Laravel SDK identifier and version
@@ -285,9 +307,19 @@ class ServiceProvider extends BaseServiceProvider
 
             $options = $clientBuilder->getOptions();
 
-            $userIntegrations = $this->resolveIntegrationsFromUserConfig();
+            $userConfig = $this->getUserConfig();
 
-            $options->setIntegrations(function (array $integrations) use ($options, $userIntegrations) {
+            /** @var array<array-key, class-string>|callable $userConfig */
+            $userIntegrationOption = $userConfig['integrations'] ?? [];
+
+            $userIntegrations = $this->resolveIntegrationsFromUserConfig(
+                \is_array($userIntegrationOption)
+                    ? $userIntegrationOption
+                    : [],
+                $userConfig['tracing']['default_integrations'] ?? true
+            );
+
+            $options->setIntegrations(static function (array $integrations) use ($options, $userIntegrations, $userIntegrationOption): array {
                 if ($options->hasDefaultIntegrations()) {
                     // Remove the default error and fatal exception listeners to let Laravel handle those
                     // itself. These event are still bubbling up through the documented changes in the users
@@ -320,7 +352,21 @@ class ServiceProvider extends BaseServiceProvider
                     );
                 }
 
-                return array_merge($integrations, $userIntegrations);
+                $integrations = array_merge(
+                    $integrations,
+                    [
+                        new Integration,
+                        new Integration\LaravelContextIntegration,
+                        new Integration\ExceptionContextIntegration,
+                    ],
+                    $userIntegrations
+                );
+
+                if (\is_callable($userIntegrationOption)) {
+                    return $userIntegrationOption($integrations);
+                }
+
+                return $integrations;
             });
 
             $hub = new Hub($clientBuilder->getClient());
@@ -343,26 +389,16 @@ class ServiceProvider extends BaseServiceProvider
 
     /**
      * Resolve the integrations from the user configuration with the container.
-     *
-     * @return array
      */
-    private function resolveIntegrationsFromUserConfig(): array
+    private function resolveIntegrationsFromUserConfig(array $userIntegrations, bool $enableDefaultTracingIntegrations): array
     {
-        // Default Sentry Laravel SDK integrations
-        $integrations = [
-            new Integration,
-            new Integration\ExceptionContextIntegration,
-        ];
-
-        $userConfig = $this->getUserConfig();
-
-        $integrationsToResolve = array_merge($userConfig['integrations'] ?? []);
-
-        $enableDefaultTracingIntegrations = $userConfig['tracing']['default_integrations'] ?? true;
+        $integrationsToResolve = $userIntegrations;
 
         if ($enableDefaultTracingIntegrations) {
             $integrationsToResolve = array_merge($integrationsToResolve, TracingServiceProvider::DEFAULT_INTEGRATIONS);
         }
+
+        $integrations = [];
 
         foreach ($integrationsToResolve as $userIntegration) {
             if ($userIntegration instanceof SdkIntegration\IntegrationInterface) {

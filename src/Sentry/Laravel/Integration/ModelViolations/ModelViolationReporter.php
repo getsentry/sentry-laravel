@@ -19,16 +19,16 @@ abstract class ModelViolationReporter
     /** @var callable|null $callback */
     private $callback;
 
-    /** @var bool $supressDuplicateReports */
-    private $supressDuplicateReports;
+    /** @var bool $suppressDuplicateReports */
+    private $suppressDuplicateReports;
 
     /** @var array<string, true> $reportedViolations */
     private $reportedViolations = [];
 
-    public function __construct(?callable $callback, bool $supressDuplicateReports)
+    public function __construct(?callable $callback, bool $suppressDuplicateReports)
     {
         $this->callback = $callback;
-        $this->supressDuplicateReports = $supressDuplicateReports;
+        $this->suppressDuplicateReports = $suppressDuplicateReports;
     }
 
     public function __invoke(Model $model, string $property): void
@@ -68,7 +68,7 @@ abstract class ModelViolationReporter
 
     protected function shouldReport(Model $model, string $property): bool
     {
-        if (!$this->supressDuplicateReports) {
+        if (!$this->suppressDuplicateReports) {
             return true;
         }
 
@@ -77,7 +77,7 @@ abstract class ModelViolationReporter
 
     protected function markAsReported(Model $model, string $property): void
     {
-        if (!$this->supressDuplicateReports) {
+        if (!$this->suppressDuplicateReports) {
             return;
         }
 

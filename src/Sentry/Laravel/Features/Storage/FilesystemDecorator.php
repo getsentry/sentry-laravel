@@ -67,6 +67,11 @@ trait FilesystemDecorator
         return $this->filesystem->{$method}(...$args);
     }
 
+    public function path($path)
+    {
+        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path'));
+    }
+
     public function exists($path)
     {
         return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path'));
@@ -87,6 +92,16 @@ trait FilesystemDecorator
         $description = is_string($contents) ? sprintf('%s (%s)', $path, Filesize::toHuman(strlen($contents))) : $path;
 
         return $this->withSentry(__FUNCTION__, func_get_args(), $description, compact('path', 'options'));
+    }
+
+    public function putFile($path, $file = null, $options = [])
+    {
+        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path', 'file', 'options'));
+    }
+
+    public function putFileAs($path, $file, $name = null, $options = [])
+    {
+        return $this->withSentry(__FUNCTION__, func_get_args(), $path, compact('path', 'file', 'name', 'options'));
     }
 
     public function writeStream($path, $resource, array $options = [])
@@ -120,13 +135,7 @@ trait FilesystemDecorator
 
     public function delete($paths)
     {
-        if (is_array($paths)) {
-            $data = compact('paths');
-            $description = sprintf('%s paths', count($paths));
-        } else {
-            $data = ['path' => $paths];
-            $description = $paths;
-        }
+        [$description, $data] = $this->getDescriptionAndDataForPathOrPaths($paths);
 
         return $this->withSentry(__FUNCTION__, func_get_args(), $description, $data);
     }
@@ -184,5 +193,18 @@ trait FilesystemDecorator
     public function __call($name, $arguments)
     {
         return $this->filesystem->{$name}(...$arguments);
+    }
+
+    protected function getDescriptionAndDataForPathOrPaths($pathOrPaths): array
+    {
+        if (is_array($pathOrPaths)) {
+            $description = sprintf('%s paths', count($pathOrPaths));
+            $data = ['paths' => $pathOrPaths];
+        } else {
+            $description = $pathOrPaths;
+            $data = ['path' => $pathOrPaths];
+        }
+
+        return [$description, $data];
     }
 }

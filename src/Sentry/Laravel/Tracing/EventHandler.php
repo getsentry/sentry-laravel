@@ -266,8 +266,8 @@ class EventHandler
         $span = $this->popSpan();
 
         if ($span !== null) {
-            $span->finish();
             $span->setStatus(SpanStatus::ok());
+            $span->finish();
         }
     }
 
@@ -276,8 +276,8 @@ class EventHandler
         $span = $this->popSpan();
 
         if ($span !== null) {
-            $span->finish();
             $span->setStatus(SpanStatus::internalError());
+            $span->finish();
         }
     }
 
