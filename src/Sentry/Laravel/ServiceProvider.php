@@ -65,6 +65,7 @@ class ServiceProvider extends BaseServiceProvider
         Features\LogIntegration::class,
         Features\CacheIntegration::class,
         Features\QueueIntegration::class,
+        Features\ConsoleIntegration::class,
         Features\Storage\Integration::class,
         Features\HttpClientIntegration::class,
         Features\FolioPackageIntegration::class,

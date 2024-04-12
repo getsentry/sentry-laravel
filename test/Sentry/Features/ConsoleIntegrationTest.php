@@ -7,7 +7,7 @@ use Sentry\Laravel\Tests\TestCase;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 
-class ConsoleEventsTest extends TestCase
+class ConsoleIntegrationTest extends TestCase
 {
     public function testCommandBreadcrumbIsRecordedWhenEnabled(): void
     {
