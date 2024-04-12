@@ -16,7 +16,7 @@ use Sentry\MonitorConfig;
 use Sentry\MonitorSchedule;
 use Sentry\SentrySdk;
 
-class ConsoleIntegration extends Feature
+class ConsoleSchedulingIntegration extends Feature
 {
     /**
      * @var array<string, CheckIn> The list of checkins that are currently in progress.
@@ -32,7 +32,7 @@ class ConsoleIntegration extends Feature
     {
         $this->onBootInactive();
     }
-    
+
     public function isApplicable(): bool
     {
         return $this->container()->make(Application::class)->runningInConsole();

@@ -8,7 +8,7 @@ use RuntimeException;
 use Sentry\Laravel\Tests\TestCase;
 use Illuminate\Console\Scheduling\Event;
 
-class ConsoleIntegrationTest extends TestCase
+class ConsoleSchedulingIntegrationTest extends TestCase
 {
     public function testScheduleMacro(): void
     {
