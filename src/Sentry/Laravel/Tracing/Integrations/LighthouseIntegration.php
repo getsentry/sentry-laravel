@@ -125,10 +125,9 @@ class LighthouseIntegration implements IntegrationInterface
             return;
         }
 
-        /** @var \GraphQL\Language\AST\OperationDefinitionNode|null $operationDefinition */
-        $operationDefinition = $startExecution->query->definitions[0] ?? null;
+        $operationDefinition = $this->extractOperationDefinitionNode($startExecution->query);
 
-        if (!$operationDefinition instanceof OperationDefinitionNode) {
+        if ($operationDefinition === null) {
             return;
         }
 
@@ -237,6 +236,17 @@ class LighthouseIntegration implements IntegrationInterface
         sort($selectionSet, SORT_STRING);
 
         return $selectionSet;
+    }
+
+    private function extractOperationDefinitionNode(DocumentNode $query): ?OperationDefinitionNode
+    {
+        foreach ($query->definitions as $definition) {
+            if ($definition instanceof OperationDefinitionNode) {
+                return $definition;
+            }
+        }
+
+        return null;
     }
 
     private function isApplicable(): bool
