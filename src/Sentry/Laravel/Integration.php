@@ -272,7 +272,7 @@ class Integration implements IntegrationInterface
                     $scope->setContext('violation', [
                         'model'    => get_class($model),
                         'relation' => $relation,
-                        'origin'   => $this->resolveEventOrigin(),
+                        'origin'   => $this->resolveEventOriginAsString(),
                     ]);
 
                     SentrySdk::getCurrentHub()->captureEvent(

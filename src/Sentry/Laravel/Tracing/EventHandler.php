@@ -189,7 +189,7 @@ class EventHandler
         }
 
         if ($this->traceSqlQueryOrigin && $query->time >= $this->traceSqlQueryOriginTreshHoldMs) {
-            $queryOrigin = $this->resolveQueryOriginFromBacktrace();
+            $queryOrigin = $this->resolveEventOrigin();
 
             if ($queryOrigin !== null) {
                 $context->setData(array_merge($context->getData(), $queryOrigin));
@@ -197,30 +197,6 @@ class EventHandler
         }
 
         $parentSpan->startChild($context);
-    }
-
-    /**
-     * Try to find the origin of the SQL query that was just executed.
-     *
-     * @return array|null
-     */
-    private function resolveQueryOriginFromBacktrace(): ?array
-    {
-        $backtraceHelper = $this->makeBacktraceHelper();
-
-        $firstAppFrame = $backtraceHelper->findFirstInAppFrameForBacktrace(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 20));
-
-        if ($firstAppFrame === null) {
-            return null;
-        }
-
-        $filePath = $backtraceHelper->getOriginalViewPathForFrameOfCompiledViewPath($firstAppFrame) ?? $firstAppFrame->getFile();
-
-        return [
-            'code.filepath' => $filePath,
-            'code.function' => $firstAppFrame->getFunctionName(),
-            'code.lineno' => $firstAppFrame->getLine(),
-        ];
     }
 
     protected function responsePreparedHandler(RoutingEvents\ResponsePrepared $event): void
