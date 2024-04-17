@@ -108,7 +108,7 @@ class CacheIntegration extends Feature
             $commandOrigin = $this->resolveEventOrigin();
 
             if ($commandOrigin !== null) {
-                $data['db.redis.origin'] = $commandOrigin;
+                $data = array_merge($data, $commandOrigin);
             }
         }
 

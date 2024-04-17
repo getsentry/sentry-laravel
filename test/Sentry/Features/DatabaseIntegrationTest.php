@@ -115,11 +115,46 @@ class DatabaseIntegrationTest extends TestCase
         $this->assertFalse(isset($span->getData()['db.sql.bindings']));
     }
 
-    private function executeQueryAndRetrieveSpan(string $query, array $bindings = []): Span
+    public function testSqlOriginIsResolvedWhenEnabledAndOverTreshold(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.sql_origin' => true,
+            'sentry.tracing.sql_origin_threshold_ms' => 10,
+        ]);
+
+        $span = $this->executeQueryAndRetrieveSpan('SELECT 1', [], 20);
+
+        $this->assertArrayHasKey('code.filepath', $span->getData());
+    }
+
+    public function testSqlOriginIsNotResolvedWhenDisabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.sql_origin' => false,
+        ]);
+
+        $span = $this->executeQueryAndRetrieveSpan('SELECT 1');
+
+        $this->assertArrayNotHasKey('code.filepath', $span->getData());
+    }
+
+    public function testSqlOriginIsNotResolvedWhenUnderThreshold(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.sql_origin' => true,
+            'sentry.tracing.sql_origin_threshold_ms' => 10,
+        ]);
+
+        $span = $this->executeQueryAndRetrieveSpan('SELECT 1', [], 5);
+
+        $this->assertArrayNotHasKey('code.filepath', $span->getData());
+    }
+
+    private function executeQueryAndRetrieveSpan(string $query, array $bindings = [], int $time = 123): Span
     {
         $transaction = $this->startTransaction();
 
-        $this->dispatchLaravelEvent(new QueryExecuted($query, $bindings, 123, DB::connection()));
+        $this->dispatchLaravelEvent(new QueryExecuted($query, $bindings, $time, DB::connection()));
 
         $spans = $transaction->getSpanRecorder()->getSpans();
 
