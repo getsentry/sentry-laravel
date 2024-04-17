@@ -71,6 +71,7 @@ class ServiceProvider extends BaseServiceProvider
         Features\FolioPackageIntegration::class,
         Features\NotificationsIntegration::class,
         Features\LivewirePackageIntegration::class,
+        Features\ConsoleSchedulingIntegration::class,
     ];
 
     /**
