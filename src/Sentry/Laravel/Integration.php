@@ -2,17 +2,13 @@
 
 namespace Sentry\Laravel;
 
-use Illuminate\Database\Eloquent\MissingAttributeException;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\LazyLoadingViolationException;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Routing\Route;
 use Sentry\EventHint;
 use Sentry\EventId;
 use Sentry\ExceptionMechanism;
-use Sentry\Laravel\Features\Concerns\ResolvesEventOrigin;
+use Sentry\Laravel\Integration\ModelViolations as ModelViolationReports;
 use Sentry\SentrySdk;
-use Sentry\Severity;
 use Sentry\Tracing\TransactionSource;
 use Throwable;
 use Sentry\Breadcrumb;
@@ -244,105 +240,43 @@ class Integration implements IntegrationInterface
     /**
      * Returns a callback that can be passed to `Model::handleMissingAttributeViolationUsing` to report missing attribute violations to Sentry.
      *
-     * @param callable|null $callback Optional callback to be called after the violation is reported to Sentry.
+     * @param callable|null $callback                 Optional callback to be called after the violation is reported to Sentry.
+     * @param bool          $suppressDuplicateReports Whether to suppress duplicate reports of the same violation.
+     * @param bool          $reportAfterResponse      Whether to delay sending the report to after the response has been sent.
      *
      * @return callable
      */
-    public static function missingAttributeViolationReporter(?callable $callback = null): callable
+    public static function missingAttributeViolationReporter(?callable $callback = null, bool $suppressDuplicateReports = true, bool $reportAfterResponse = true): callable
     {
-        return new class($callback) {
-            use ResolvesEventOrigin;
-
-            /** @var callable|null $callback */
-            private $callback;
-
-            public function __construct(?callable $callback)
-            {
-                $this->callback = $callback;
-            }
-
-            public function __invoke(Model $model, string $attribute): void
-            {
-                SentrySdk::getCurrentHub()->withScope(function (Scope $scope) use ($model, $attribute) {
-                    $scope->setContext('violation', [
-                        'model'     => get_class($model),
-                        'attribute' => $attribute,
-                        'origin'    => $this->resolveEventOrigin(),
-                        'kind'      => 'missing_attribute',
-                    ]);
-
-                    SentrySdk::getCurrentHub()->captureEvent(
-                        tap(Event::createEvent(), static function (Event $event) {
-                            $event->setLevel(Severity::warning());
-                        }),
-                        EventHint::fromArray([
-                            'exception' => new MissingAttributeException($model, $attribute),
-                            'mechanism' => new ExceptionMechanism(ExceptionMechanism::TYPE_GENERIC, true),
-                        ])
-                    );
-                });
-
-                // Forward the violation to the next handler if there is one
-                if ($this->callback !== null) {
-                    call_user_func($this->callback, $model, $attribute);
-                }
-            }
-        };
+        return new ModelViolationReports\MissingAttributeModelViolationReporter($callback, $suppressDuplicateReports, $reportAfterResponse);
     }
 
     /**
      * Returns a callback that can be passed to `Model::handleLazyLoadingViolationUsing` to report lazy loading violations to Sentry.
      *
-     * @param callable|null $callback Optional callback to be called after the violation is reported to Sentry.
+     * @param callable|null $callback                 Optional callback to be called after the violation is reported to Sentry.
+     * @param bool          $suppressDuplicateReports Whether to suppress duplicate reports of the same violation.
+     * @param bool          $reportAfterResponse      Whether to delay sending the report to after the response has been sent.
      *
      * @return callable
      */
-    public static function lazyLoadingViolationReporter(?callable $callback = null): callable
+    public static function lazyLoadingViolationReporter(?callable $callback = null, bool $suppressDuplicateReports = true, bool $reportAfterResponse = true): callable
     {
-        return new class($callback) {
-            use ResolvesEventOrigin;
+        return new ModelViolationReports\LazyLoadingModelViolationReporter($callback, $suppressDuplicateReports, $reportAfterResponse);
+    }
 
-            /** @var callable|null $callback */
-            private $callback;
-
-            public function __construct(?callable $callback)
-            {
-                $this->callback = $callback;
-            }
-
-            public function __invoke(Model $model, string $relation): void
-            {
-                // Laravel uses these checks itself to not throw an exception if the model doesn't exist or was just created
-                // See: https://github.com/laravel/framework/blob/438d02d3a891ab4d73ffea2c223b5d37947b5e93/src/Illuminate/Database/Eloquent/Concerns/HasAttributes.php#L559-L561
-                if (!$model->exists || $model->wasRecentlyCreated) {
-                    return;
-                }
-
-                SentrySdk::getCurrentHub()->withScope(function (Scope $scope) use ($model, $relation) {
-                    $scope->setContext('violation', [
-                        'model'    => get_class($model),
-                        'relation' => $relation,
-                        'origin'   => $this->resolveEventOriginAsString(),
-                        'kind'     => 'lazy_loading',
-                    ]);
-
-                    SentrySdk::getCurrentHub()->captureEvent(
-                        tap(Event::createEvent(), static function (Event $event) {
-                            $event->setLevel(Severity::warning());
-                        }),
-                        EventHint::fromArray([
-                            'exception' => new LazyLoadingViolationException($model, $relation),
-                            'mechanism' => new ExceptionMechanism(ExceptionMechanism::TYPE_GENERIC, true),
-                        ])
-                    );
-                });
-
-                // Forward the violation to the next handler if there is one
-                if ($this->callback !== null) {
-                    call_user_func($this->callback, $model, $relation);
-                }
-            }
-        };
+    /**
+     * Returns a callback that can be passed to `Model::handleDiscardedAttributeViolationUsing` to report discarded attribute violations to Sentry.
+     *
+     * @param callable|null $callback                 Optional callback to be called after the violation is reported to Sentry.
+     * @param bool          $suppressDuplicateReports Whether to suppress duplicate reports of the same violation.
+     * @param bool          $reportAfterResponse      Whether to delay sending the report to after the response has been sent.
+     *
+     * @return callable
+     */
+    public static function discardedAttributeViolationReporter(?callable $callback = null, bool $suppressDuplicateReports = true, bool $reportAfterResponse = true): callable
+    {
+        return new ModelViolationReports\DiscardedAttributeViolationReporter($callback, $suppressDuplicateReports, $reportAfterResponse);
     }
 
     /**
