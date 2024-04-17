@@ -136,6 +136,11 @@ parameters:
 			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
 
 		-
+			message: "#^Method Sentry\\\\Laravel\\\\Tracing\\\\Integrations\\\\LighthouseIntegration\\:\\:extractOperationDefinitionNode\\(\\) has invalid return type GraphQL\\\\Language\\\\AST\\\\OperationDefinitionNode\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
+
+		-
 			message: "#^Parameter \\$endExecution of method Sentry\\\\Laravel\\\\Tracing\\\\Integrations\\\\LighthouseIntegration\\:\\:handleEndExecution\\(\\) has invalid type Nuwave\\\\Lighthouse\\\\Events\\\\EndExecution\\.$#"
 			count: 1
 			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
@@ -147,6 +152,11 @@ parameters:
 
 		-
 			message: "#^Parameter \\$operation of method Sentry\\\\Laravel\\\\Tracing\\\\Integrations\\\\LighthouseIntegration\\:\\:extractOperationNames\\(\\) has invalid type GraphQL\\\\Language\\\\AST\\\\OperationDefinitionNode\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
+
+		-
+			message: "#^Parameter \\$query of method Sentry\\\\Laravel\\\\Tracing\\\\Integrations\\\\LighthouseIntegration\\:\\:extractOperationDefinitionNode\\(\\) has invalid type GraphQL\\\\Language\\\\AST\\\\DocumentNode\\.$#"
 			count: 1
 			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
 

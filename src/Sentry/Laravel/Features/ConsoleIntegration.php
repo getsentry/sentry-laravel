@@ -2,246 +2,88 @@
 
 namespace Sentry\Laravel\Features;
 
-use DateTimeZone;
-use Illuminate\Console\Application as ConsoleApplication;
-use Illuminate\Console\Scheduling\Event as SchedulingEvent;
-use Illuminate\Contracts\Cache\Factory as Cache;
-use Illuminate\Contracts\Foundation\Application;
-use Illuminate\Support\Str;
-use RuntimeException;
-use Sentry\CheckIn;
-use Sentry\CheckInStatus;
-use Sentry\Event as SentryEvent;
-use Sentry\MonitorConfig;
-use Sentry\MonitorSchedule;
-use Sentry\SentrySdk;
+use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Console\Events as ConsoleEvents;
+use Sentry\Breadcrumb;
+use Sentry\Laravel\Integration;
+use Sentry\State\Scope;
+use Symfony\Component\Console\Input\ArgvInput;
+use Symfony\Component\Console\Input\InputInterface;
 
 class ConsoleIntegration extends Feature
 {
-    /**
-     * @var array<string, CheckIn> The list of checkins that are currently in progress.
-     */
-    private $checkInStore = [];
+    private const FEATURE_KEY = 'command_info';
 
-    /**
-     * @var Cache The cache repository.
-     */
-    private $cache;
-
-    public function register(): void
-    {
-        $this->onBootInactive();
-    }
-    
     public function isApplicable(): bool
     {
-        return $this->container()->make(Application::class)->runningInConsole();
+        return true;
     }
 
-    public function onBoot(Cache $cache): void
+    public function onBoot(Dispatcher $events): void
     {
-        $this->cache = $cache;
-
-        $startCheckIn = function (
-            ?string $slug,
-            SchedulingEvent $scheduled,
-            ?int $checkInMargin,
-            ?int $maxRuntime,
-            bool $updateMonitorConfig,
-            ?int $failureIssueThreshold,
-            ?int $recoveryThreshold
-        ) {
-            $this->startCheckIn(
-                $slug,
-                $scheduled,
-                $checkInMargin,
-                $maxRuntime,
-                $updateMonitorConfig,
-                $failureIssueThreshold,
-                $recoveryThreshold
-            );
-        };
-        $finishCheckIn = function (?string $slug, SchedulingEvent $scheduled, CheckInStatus $status) {
-            $this->finishCheckIn($slug, $scheduled, $status);
-        };
-
-        SchedulingEvent::macro('sentryMonitor', function (
-            ?string $monitorSlug = null,
-            ?int $checkInMargin = null,
-            ?int $maxRuntime = null,
-            bool $updateMonitorConfig = true,
-            ?int $failureIssueThreshold = null,
-            ?int $recoveryThreshold = null
-        ) use ($startCheckIn, $finishCheckIn) {
-            /** @var SchedulingEvent $this */
-            if ($monitorSlug === null && $this->command === null) {
-                throw new RuntimeException('The command string is null, please set a slug manually for this scheduled command using the `sentryMonitor(\'your-monitor-slug\')` macro.');
-            }
-
-            return $this
-                ->before(function () use (
-                    $startCheckIn,
-                    $monitorSlug,
-                    $checkInMargin,
-                    $maxRuntime,
-                    $updateMonitorConfig,
-                    $failureIssueThreshold,
-                    $recoveryThreshold
-                ) {
-                    /** @var SchedulingEvent $this */
-                    $startCheckIn(
-                        $monitorSlug,
-                        $this,
-                        $checkInMargin,
-                        $maxRuntime,
-                        $updateMonitorConfig,
-                        $failureIssueThreshold,
-                        $recoveryThreshold
-                    );
-                })
-                ->onSuccess(function () use ($finishCheckIn, $monitorSlug) {
-                    /** @var SchedulingEvent $this */
-                    $finishCheckIn($monitorSlug, $this, CheckInStatus::ok());
-                })
-                ->onFailure(function () use ($finishCheckIn, $monitorSlug) {
-                    /** @var SchedulingEvent $this */
-                    $finishCheckIn($monitorSlug, $this, CheckInStatus::error());
-                });
-        });
+        $events->listen(ConsoleEvents\CommandStarting::class, [$this, 'commandStarting']);
+        $events->listen(ConsoleEvents\CommandFinished::class, [$this, 'commandFinished']);
     }
 
-    public function onBootInactive(): void
+    public function commandStarting(ConsoleEvents\CommandStarting $event): void
     {
-        // This is an exact copy of the macro above, but without doing anything so that even when no DSN is configured the user can still use the macro
-        SchedulingEvent::macro('sentryMonitor', function (
-            ?string $monitorSlug = null,
-            ?int $checkInMargin = null,
-            ?int $maxRuntime = null,
-            bool $updateMonitorConfig = true,
-            ?int $failureIssueThreshold = null,
-            ?int $recoveryThreshold = null
-        ) {
-            return $this;
-        });
-    }
-
-    private function startCheckIn(
-        ?string $slug,
-        SchedulingEvent $scheduled,
-        ?int $checkInMargin,
-        ?int $maxRuntime,
-        bool $updateMonitorConfig,
-        ?int $failureIssueThreshold,
-        ?int $recoveryThreshold
-    ): void {
-        $checkInSlug = $slug ?? $this->makeSlugForScheduled($scheduled);
-
-        $checkIn = $this->createCheckIn($checkInSlug, CheckInStatus::inProgress());
-
-        if ($updateMonitorConfig || $slug === null) {
-            $timezone = $scheduled->timezone;
-
-            if ($timezone instanceof DateTimeZone) {
-                $timezone = $timezone->getName();
-            }
-
-            $checkIn->setMonitorConfig(new MonitorConfig(
-                MonitorSchedule::crontab($scheduled->getExpression()),
-                $checkInMargin,
-                $maxRuntime,
-                $timezone,
-                $failureIssueThreshold,
-                $recoveryThreshold
-            ));
-        }
-
-        $cacheKey = $this->buildCacheKey($scheduled->mutexName(), $checkInSlug);
-
-        $this->checkInStore[$cacheKey] = $checkIn;
-
-        if ($scheduled->runInBackground) {
-            $this->cache->store()->put($cacheKey, $checkIn->getId(), $scheduled->expiresAt * 60);
-        }
-
-        $this->sendCheckIn($checkIn);
-    }
-
-    private function finishCheckIn(?string $slug, SchedulingEvent $scheduled, CheckInStatus $status): void
-    {
-        $mutex = $scheduled->mutexName();
-
-        $checkInSlug = $slug ?? $this->makeSlugForScheduled($scheduled);
-
-        $cacheKey = $this->buildCacheKey($mutex, $checkInSlug);
-
-        $checkIn = $this->checkInStore[$cacheKey] ?? null;
-
-        if ($checkIn === null && $scheduled->runInBackground) {
-            $checkInId = $this->cache->store()->get($cacheKey);
-
-            if ($checkInId !== null) {
-                $checkIn = $this->createCheckIn($checkInSlug, $status, $checkInId);
-            }
-        }
-
-        // This should never happen (because we should always start before we finish), but better safe than sorry
-        if ($checkIn === null) {
+        if (!$event->command) {
             return;
         }
 
-        // We don't need to keep the checkIn ID stored since we finished executing the command
-        unset($this->checkInStore[$mutex]);
+        Integration::configureScope(static function (Scope $scope) use ($event): void {
+            $scope->setTag('command', $event->command);
+        });
 
-        if ($scheduled->runInBackground) {
-            $this->cache->store()->forget($cacheKey);
+        if ($this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY)) {
+            Integration::addBreadcrumb(new Breadcrumb(
+                Breadcrumb::LEVEL_INFO,
+                Breadcrumb::TYPE_DEFAULT,
+                'artisan.command',
+                'Starting Artisan command: ' . $event->command,
+                [
+                    'input' => $this->extractConsoleCommandInput($event->input),
+                ]
+            ));
+        }
+    }
+
+    public function commandFinished(ConsoleEvents\CommandFinished $event): void
+    {
+        if ($this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY)) {
+            Integration::addBreadcrumb(new Breadcrumb(
+                Breadcrumb::LEVEL_INFO,
+                Breadcrumb::TYPE_DEFAULT,
+                'artisan.command',
+                'Finished Artisan command: ' . $event->command,
+                [
+                    'exit' => $event->exitCode,
+                    'input' => $this->extractConsoleCommandInput($event->input),
+                ]
+            ));
         }
 
-        $checkIn->setStatus($status);
+        // Flush any and all events that were possibly generated by the command
+        Integration::flushEvents();
 
-        $this->sendCheckIn($checkIn);
+        Integration::configureScope(static function (Scope $scope): void {
+            $scope->removeTag('command');
+        });
     }
 
-    private function sendCheckIn(CheckIn $checkIn): void
+    /**
+     * Extract the command input arguments if possible.
+     *
+     * @param \Symfony\Component\Console\Input\InputInterface|null $input
+     *
+     * @return string|null
+     */
+    private function extractConsoleCommandInput(?InputInterface $input): ?string
     {
-        $event = SentryEvent::createCheckIn();
-        $event->setCheckIn($checkIn);
+        if ($input instanceof ArgvInput) {
+            return (string)$input;
+        }
 
-        SentrySdk::getCurrentHub()->captureEvent($event);
-    }
-
-    private function createCheckIn(string $slug, CheckInStatus $status, string $id = null): CheckIn
-    {
-        $options = SentrySdk::getCurrentHub()->getClient()->getOptions();
-
-        return new CheckIn(
-            $slug,
-            $status,
-            $id,
-            $options->getRelease(),
-            $options->getEnvironment()
-        );
-    }
-
-    private function buildCacheKey(string $mutex, string $slug): string
-    {
-        // We use the mutex name as part of the cache key to avoid collisions between the same commands with the same schedule but with different slugs
-        return 'sentry:checkIn:' . sha1("{$mutex}:{$slug}");
-    }
-
-    private function makeSlugForScheduled(SchedulingEvent $scheduled): string
-    {
-        $generatedSlug = Str::slug(
-            str_replace(
-                // `:` is commonly used in the command name, so we replace it with `-` to avoid it being stripped out by the slug function
-                ':',
-                '-',
-                trim(
-                    // The command string always starts with the PHP binary, so we remove it since it's not relevant to the slug
-                    Str::after($scheduled->command, ConsoleApplication::phpBinary())
-                )
-            )
-        );
-
-        return "scheduled_{$generatedSlug}";
+        return null;
     }
 }

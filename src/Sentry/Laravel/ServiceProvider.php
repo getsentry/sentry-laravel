@@ -25,6 +25,7 @@ use Sentry\Laravel\Http\SetRequestIpMiddleware;
 use Sentry\Laravel\Http\SetRequestMiddleware;
 use Sentry\Laravel\Tracing\BacktraceHelper;
 use Sentry\Laravel\Tracing\ServiceProvider as TracingServiceProvider;
+use Sentry\Logger\DebugFileLogger;
 use Sentry\SentrySdk;
 use Sentry\Serializer\RepresentationSerializer;
 use Sentry\State\Hub;
@@ -51,6 +52,13 @@ class ServiceProvider extends BaseServiceProvider
     ];
 
     /**
+     * List of options that should be resolved from the container instead of being passed directly to the SDK.
+     */
+    protected const OPTIONS_TO_RESOLVE_FROM_CONTAINER = [
+        'logger',
+    ];
+
+    /**
      * List of features that are provided by the SDK.
      */
     protected const FEATURES = [
@@ -63,6 +71,7 @@ class ServiceProvider extends BaseServiceProvider
         Features\FolioPackageIntegration::class,
         Features\NotificationsIntegration::class,
         Features\LivewirePackageIntegration::class,
+        Features\ConsoleSchedulingIntegration::class,
     ];
 
     /**
@@ -115,6 +124,10 @@ class ServiceProvider extends BaseServiceProvider
         }
 
         $this->mergeConfigFrom(__DIR__ . '/../../../config/sentry.php', static::$abstract);
+
+        $this->app->singleton(DebugFileLogger::class, function () {
+            return new DebugFileLogger(storage_path('logs/sentry.log'));
+        });
 
         $this->configureAndRegisterClient();
 
@@ -272,6 +285,12 @@ class ServiceProvider extends BaseServiceProvider
 
                 $options['before_send'] = $wrapBeforeSend($options['before_send'] ?? null);
                 $options['before_send_transaction'] = $wrapBeforeSend($options['before_send_transaction'] ?? null);
+            }
+
+            foreach (self::OPTIONS_TO_RESOLVE_FROM_CONTAINER as $option) {
+                if (isset($options[$option]) && is_string($options[$option])) {
+                    $options[$option] = $this->app->make($options[$option]);
+                }
             }
 
             $clientBuilder = ClientBuilder::create($options);

@@ -10,6 +10,9 @@ return [
     // @see https://docs.sentry.io/product/sentry-basics/dsn-explainer/
     'dsn' => env('SENTRY_LARAVEL_DSN', env('SENTRY_DSN')),
 
+    // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#logger
+    // 'logger' => Sentry\Logger\DebugFileLogger::class, // By default this will log to `storage_path('logs/sentry.log')`
+
     // The release version of your application
     // Example with dynamic git hash: trim(exec('git --git-dir ' . base_path('.git') . ' log --pretty="%h" -n1 HEAD'))
     'release' => env('SENTRY_RELEASE'),

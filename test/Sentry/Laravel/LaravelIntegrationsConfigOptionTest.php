@@ -10,7 +10,7 @@ use Sentry\Integration\ExceptionListenerIntegration;
 use Sentry\Integration\FatalErrorListenerIntegration;
 use Sentry\Laravel\Tests\TestCase;
 
-class LaravelIntegrationsOptionTest extends TestCase
+class LaravelIntegrationsConfigOptionTest extends TestCase
 {
     protected function defineEnvironment($app): void
     {
