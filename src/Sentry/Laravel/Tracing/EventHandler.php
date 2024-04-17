@@ -53,7 +53,14 @@ class EventHandler
      *
      * @var bool
      */
-    private $traceSqlQueryOrigins;
+    private $traceSqlQueryOrigin;
+
+    /**
+     * The threshold in milliseconds to consider a SQL query origin.
+     *
+     * @var int
+     */
+    private $traceSqlQueryOriginTreshHoldMs;
 
     /**
      * Indicates if we should trace queue job spans.
@@ -90,7 +97,8 @@ class EventHandler
     {
         $this->traceSqlQueries = ($config['sql_queries'] ?? true) === true;
         $this->traceSqlBindings = ($config['sql_bindings'] ?? true) === true;
-        $this->traceSqlQueryOrigins = ($config['sql_origin'] ?? true) === true;
+        $this->traceSqlQueryOrigin = ($config['sql_origin'] ?? true) === true;
+        $this->traceSqlQueryOriginTreshHoldMs = $config['sql_origin_threshold_ms'] ?? 100;
 
         $this->traceQueueJobs = ($config['queue_jobs'] ?? false) === true;
         $this->traceQueueJobsAsTransactions = ($config['queue_job_transactions'] ?? false) === true;
@@ -180,8 +188,8 @@ class EventHandler
             ]));
         }
 
-        if ($this->traceSqlQueryOrigins) {
-            $queryOrigin = $this->resolveQueryOriginFromBacktrace();
+        if ($this->traceSqlQueryOrigin && $query->time >= $this->traceSqlQueryOriginTreshHoldMs) {
+            $queryOrigin = $this->resolveEventOrigin();
 
             if ($queryOrigin !== null) {
                 $context->setData(array_merge($context->getData(), $queryOrigin));
@@ -189,30 +197,6 @@ class EventHandler
         }
 
         $parentSpan->startChild($context);
-    }
-
-    /**
-     * Try to find the origin of the SQL query that was just executed.
-     *
-     * @return string|null
-     */
-    private function resolveQueryOriginFromBacktrace(): ?array
-    {
-        $backtraceHelper = $this->makeBacktraceHelper();
-
-        $firstAppFrame = $backtraceHelper->findFirstInAppFrameForBacktrace(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS));
-
-        if ($firstAppFrame === null) {
-            return null;
-        }
-
-        $filePath = $backtraceHelper->getOriginalViewPathForFrameOfCompiledViewPath($firstAppFrame) ?? $firstAppFrame->getFile();
-
-        return [
-            'code.filepath' => $filePath,
-            'code.function' => $firstAppFrame->getFunctionName(),
-            'code.lineno' => $firstAppFrame->getLine(),
-        ];
     }
 
     protected function responsePreparedHandler(RoutingEvents\ResponsePrepared $event): void

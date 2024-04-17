@@ -1,128 +1,51 @@
 <?php
 
-namespace Sentry\Features;
+namespace Sentry\Laravel\Tests\EventHandler;
 
-use DateTimeZone;
-use Illuminate\Console\Scheduling\Schedule;
-use RuntimeException;
+use Illuminate\Console\Events\CommandStarting;
 use Sentry\Laravel\Tests\TestCase;
-use Illuminate\Console\Scheduling\Event;
+use Symfony\Component\Console\Input\ArgvInput;
+use Symfony\Component\Console\Output\BufferedOutput;
 
 class ConsoleIntegrationTest extends TestCase
 {
-    public function testScheduleMacro(): void
+    public function testCommandBreadcrumbIsRecordedWhenEnabled(): void
     {
-        /** @var Event $scheduledEvent */
-        $scheduledEvent = $this->getScheduler()
-            ->call(function () {})
-            ->sentryMonitor('test-monitor');
+        $this->resetApplicationWithConfig([
+            'sentry.breadcrumbs.command_info' => true,
+        ]);
 
-        $scheduledEvent->run($this->app);
+        $this->assertTrue($this->app['config']->get('sentry.breadcrumbs.command_info'));
 
-        // We expect a total of 2 events to be sent to Sentry:
-        // 1. The start check-in event
-        // 2. The finish check-in event
-        $this->assertSentryCheckInCount(2);
+        $this->dispatchCommandStartEvent();
 
-        $finishCheckInEvent = $this->getLastSentryEvent();
+        $lastBreadcrumb = $this->getLastSentryBreadcrumb();
 
-        $this->assertNotNull($finishCheckInEvent->getCheckIn());
-        $this->assertEquals('test-monitor', $finishCheckInEvent->getCheckIn()->getMonitorSlug());
+        $this->assertEquals('Starting Artisan command: test:command', $lastBreadcrumb->getMessage());
+        $this->assertEquals('--foo=bar', $lastBreadcrumb->getMetadata()['input']);
     }
 
-    /**
-     * When a timezone was defined on a command this would fail with:
-     * Sentry\MonitorConfig::__construct(): Argument #4 ($timezone) must be of type ?string, DateTimeZone given
-     * This test ensures that the timezone is properly converted to a string as expected.
-     */
-    public function testScheduleMacroWithTimeZone(): void
+    public function testCommandBreadcrumIsNotRecordedWhenDisabled(): void
     {
-        $expectedTimezone = 'UTC';
+        $this->resetApplicationWithConfig([
+            'sentry.breadcrumbs.command_info' => false,
+        ]);
 
-        /** @var Event $scheduledEvent */
-        $scheduledEvent = $this->getScheduler()
-            ->call(function () {})
-            ->timezone(new DateTimeZone($expectedTimezone))
-            ->sentryMonitor('test-timezone-monitor');
+        $this->assertFalse($this->app['config']->get('sentry.breadcrumbs.command_info'));
 
-        $scheduledEvent->run($this->app);
+        $this->dispatchCommandStartEvent();
 
-        // We expect a total of 2 events to be sent to Sentry:
-        // 1. The start check-in event
-        // 2. The finish check-in event
-        $this->assertSentryCheckInCount(2);
-
-        $finishCheckInEvent = $this->getLastSentryEvent();
-
-        $this->assertNotNull($finishCheckInEvent->getCheckIn());
-        $this->assertEquals($expectedTimezone, $finishCheckInEvent->getCheckIn()->getMonitorConfig()->getTimezone());
+        $this->assertEmpty($this->getCurrentSentryBreadcrumbs());
     }
 
-    public function testScheduleMacroAutomaticSlug(): void
+    private function dispatchCommandStartEvent(): void
     {
-        /** @var Event $scheduledEvent */
-        $scheduledEvent = $this->getScheduler()->command('inspire')->sentryMonitor();
-
-        $scheduledEvent->run($this->app);
-
-        // We expect a total of 2 events to be sent to Sentry:
-        // 1. The start check-in event
-        // 2. The finish check-in event
-        $this->assertSentryCheckInCount(2);
-
-        $finishCheckInEvent = $this->getLastSentryEvent();
-
-        $this->assertNotNull($finishCheckInEvent->getCheckIn());
-        $this->assertEquals('scheduled_artisan-inspire', $finishCheckInEvent->getCheckIn()->getMonitorSlug());
-    }
-
-    public function testScheduleMacroWithoutSlugOrCommandName(): void
-    {
-        $this->expectException(RuntimeException::class);
-
-        $this->getScheduler()->call(function () {})->sentryMonitor();
-    }
-
-    /** @define-env envWithoutDsnSet */
-    public function testScheduleMacroWithoutDsnSet(): void
-    {
-        /** @var Event $scheduledEvent */
-        $scheduledEvent = $this->getScheduler()->call(function () {})->sentryMonitor('test-monitor');
-
-        $scheduledEvent->run($this->app);
-
-        $this->assertSentryCheckInCount(0);
-    }
-
-    public function testScheduleMacroIsRegistered(): void
-    {
-        if (!method_exists(Event::class, 'flushMacros')) {
-            $this->markTestSkipped('Macroable::flushMacros() is not available in this Laravel version.');
-        }
-
-        Event::flushMacros();
-
-        $this->refreshApplication();
-
-        $this->assertTrue(Event::hasMacro('sentryMonitor'));
-    }
-
-    /** @define-env envWithoutDsnSet */
-    public function testScheduleMacroIsRegisteredWithoutDsnSet(): void
-    {
-        if (!method_exists(Event::class, 'flushMacros')) {
-            $this->markTestSkipped('Macroable::flushMacros() is not available in this Laravel version.');
-        }
-
-        Event::flushMacros();
-
-        $this->refreshApplication();
-
-        $this->assertTrue(Event::hasMacro('sentryMonitor'));
-    }
-
-    private function getScheduler(): Schedule
-    {
-        return $this->app->make(Schedule::class);
+        $this->dispatchLaravelEvent(
+            new CommandStarting(
+                'test:command',
+                new ArgvInput(['artisan', '--foo=bar']),
+                new BufferedOutput()
+            )
+        );
     }
 }
