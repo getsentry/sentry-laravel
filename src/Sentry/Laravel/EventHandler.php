@@ -274,12 +274,14 @@ class EventHandler
 
         // If the user is a Laravel Eloquent model we try to extract some common fields from it
         if ($authUser instanceof Model) {
+            $username = $authUser->getAttribute('username');
+
             $userData = [
                 'id' => $authUser instanceof Authenticatable
                     ? $authUser->getAuthIdentifier()
                     : $authUser->getKey(),
                 'email' => $authUser->getAttribute('email') ?? $authUser->getAttribute('mail'),
-                'username' => $authUser->getAttribute('username'),
+                'username' => $username === null ? $username : (string)$username,
             ];
         }
 
