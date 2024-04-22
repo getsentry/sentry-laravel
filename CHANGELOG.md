@@ -1,5 +1,35 @@
 # Changelog
 
+## 4.5.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.5.0.
+
+### Features
+
+- Limit when SQL query origins are being captured [(#881)](https://github.com/getsentry/sentry-laravel/pull/881)
+
+  We now only capture the origin of a SQL query when the query is slower than 100ms, configurable by the `SENTRY_TRACE_SQL_ORIGIN_THRESHOLD_MS` environment variable.
+
+- Add tracing and breadcrumbs for [Notifications](https://laravel.com/docs/11.x/notifications) [(#852)](https://github.com/getsentry/sentry-laravel/pull/852)
+
+- Add reporter for `Model::preventAccessingMissingAttributes()` [(#824)](https://github.com/getsentry/sentry-laravel/pull/824)
+
+- Make it easier to enable the debug logger [(#880)](https://github.com/getsentry/sentry-laravel/pull/880)
+
+  You can now enable the debug logger by adding the following to your `config/sentry.php` file:
+
+  ```php
+  'logger' => Sentry\Logger\DebugFileLogger::class, // This will log SDK logs to `storage_path('logs/sentry.log')`
+  ```
+  
+  Only use this in development and testing environments, as it can generate a lot of logs.
+
+### Bug Fixes
+
+- Fix Lighthouse operation not detected when query contained a fragment before the operation [(#883)](https://github.com/getsentry/sentry-laravel/pull/883)
+
+- Fix an exception being thrown when the username extracted from the authenticated user model is not a string [(#887)](https://github.com/getsentry/sentry-laravel/pull/887)
+
 ## 4.4.1
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.4.1.
