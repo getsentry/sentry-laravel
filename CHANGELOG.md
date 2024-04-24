@@ -1,5 +1,15 @@
 # Changelog
 
+# Changelog
+
+## 4.5.1
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.5.1.
+
+### Bug Fixes
+
+- Fix discarded attribute violation reporter not accepting multiple property names [(#890)](https://github.com/getsentry/sentry-laravel/pull/890)
+
 ## 4.5.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.5.0.
