@@ -31,6 +31,36 @@ class ModelViolationReportersTest extends TestCase
         Model::handleDiscardedAttributeViolationUsing(Integration::discardedAttributeViolationReporter());
     }
 
+    public function testViolationReporterAcceptsSingleProperty(): void
+    {
+        $reporter = Integration::discardedAttributeViolationReporter(null, true, false);
+
+        $reporter(new ViolationReporterTestModel, 'foo');
+
+        $this->assertCount(1, $this->getCapturedSentryEvents());
+
+        $violation = $this->getLastSentryEvent()->getContexts()['violation'];
+
+        $this->assertSame('foo', $violation['attribute']);
+        $this->assertSame('discarded_attribute', $violation['kind']);
+        $this->assertSame(ViolationReporterTestModel::class, $violation['model']);
+    }
+
+    public function testViolationReporterAcceptsListOfProperties(): void
+    {
+        $reporter = Integration::discardedAttributeViolationReporter(null, true, false);
+
+        $reporter(new ViolationReporterTestModel, ['foo', 'bar']);
+
+        $this->assertCount(1, $this->getCapturedSentryEvents());
+
+        $violation = $this->getLastSentryEvent()->getContexts()['violation'];
+
+        $this->assertSame('foo, bar', $violation['attribute']);
+        $this->assertSame('discarded_attribute', $violation['kind']);
+        $this->assertSame(ViolationReporterTestModel::class, $violation['model']);
+    }
+
     public function testViolationReporterPassesThroughToCallback(): void
     {
         $callbackCalled = false;
