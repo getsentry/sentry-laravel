@@ -35,8 +35,13 @@ abstract class ModelViolationReporter
         $this->reportAfterResponse = $reportAfterResponse;
     }
 
-    public function __invoke(Model $model, string $property): void
+    /** @param string|array<int, string> $propertyOrProperties */
+    public function __invoke(Model $model, $propertyOrProperties): void
     {
+        $property = is_array($propertyOrProperties)
+            ? implode(', ', $propertyOrProperties)
+            : $propertyOrProperties;
+
         if (!$this->shouldReport($model, $property)) {
             return;
         }
