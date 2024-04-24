@@ -36,6 +36,7 @@ class QueueIntegration extends Feature
 
     private const QUEUE_PAYLOAD_BAGGAGE_DATA = 'sentry_baggage_data';
     private const QUEUE_PAYLOAD_TRACE_PARENT_DATA = 'sentry_trace_parent_data';
+    private const QUEUE_PAYLOAD_PUBLISH_TIME = 'sentry_publish_time';
 
     public function isApplicable(): bool
     {
@@ -78,6 +79,7 @@ class QueueIntegration extends Feature
                 if ($payload !== null) {
                     $payload[self::QUEUE_PAYLOAD_BAGGAGE_DATA] = getBaggage();
                     $payload[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] = getTraceparent();
+                    $payload[self::QUEUE_PAYLOAD_PUBLISH_TIME] = microtime(true);
                 }
 
                 return $payload;
@@ -181,12 +183,25 @@ class QueueIntegration extends Feature
 
         $resolvedJobName = $event->job->resolveName();
 
+        $receiveLatency = null;
+        if ($event->job->payload()[self::QUEUE_PAYLOAD_PUBLISH_TIME] !== null) {
+            $receiveLatency = microtime(true) - $event->job->payload()[self::QUEUE_PAYLOAD_PUBLISH_TIME];
+        }
+
         $job = [
             'job' => $event->job->getName(),
-            'queue' => $event->job->getQueue(),
             'resolved' => $resolvedJobName,
-            'attempts' => $event->job->attempts(),
-            'connection' => $event->connectionName,
+
+            'messaging.system' => 'laravel',
+            
+            'messaging.destination.name' => $event->job->getQueue(),
+            'messaging.destination.connection' => $event->connectionName,
+            
+            'messaging.message.id' => $event->job->getJobId(),
+            'messaging.message.envelope.size' => mb_strlen($event->job->getRawBody()),
+            'messaging.message.body.size' => mb_strlen(json_encode($event->job->payload()['data'])),
+            'messaging.message.retry.count' => $event->job->attempts(),
+            'messaging.message.receive.latency' => $receiveLatency,
         ];
 
         if ($context instanceof TransactionContext) {
