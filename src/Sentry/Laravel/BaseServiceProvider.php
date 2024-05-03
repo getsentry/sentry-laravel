@@ -22,7 +22,7 @@ abstract class BaseServiceProvider extends ServiceProvider
     {
         $config = $this->getUserConfig();
 
-        return !empty($config['dsn']);
+        return !empty($config['dsn']) || ($config['spotlight'] ?? false) === true;
     }
 
     /**
@@ -42,12 +42,14 @@ abstract class BaseServiceProvider extends ServiceProvider
      *
      * Because of `traces_sampler` being dynamic we can never be 100% confident but that is also not important.
      *
+     * @deprecated This method is deprecated and will be removed in the next major release.
+     *
      * @return bool
      */
     protected function couldHavePerformanceTracingEnabled(): bool
     {
         $config = $this->getUserConfig();
 
-        return !empty($config['traces_sample_rate']) || !empty($config['traces_sampler']);
+        return !empty($config['traces_sample_rate']) || !empty($config['traces_sampler']) || ($config['spotlight'] ?? false) === true;
     }
 }
