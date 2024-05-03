@@ -22,7 +22,19 @@ abstract class BaseServiceProvider extends ServiceProvider
     {
         $config = $this->getUserConfig();
 
-        return !empty($config['dsn']) || ($config['spotlight'] ?? false) === true;
+        return !empty($config['dsn']);
+    }
+
+    /**
+     * Check if Spotlight was enabled in the config.
+     *
+     * @return bool
+     */
+    protected function hasSpotlightEnabled(): bool
+    {
+        $config = $this->getUserConfig();
+
+        return ($config['spotlight'] ?? false) === true;
     }
 
     /**
@@ -42,7 +54,7 @@ abstract class BaseServiceProvider extends ServiceProvider
      *
      * Because of `traces_sampler` being dynamic we can never be 100% confident but that is also not important.
      *
-     * @deprecated This method is deprecated and will be removed in the next major release.
+     * @deprecated since version 4.6. To be removed in version 5.0.
      *
      * @return bool
      */

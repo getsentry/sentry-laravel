@@ -83,7 +83,7 @@ class ServiceProvider extends BaseServiceProvider
 
         $this->bootFeatures();
 
-        if ($this->hasDsnSet()) {
+        if ($this->hasDsnSet() || $this->hasSpotlightEnabled()) {
             $this->bindEvents();
 
             if ($this->app instanceof Lumen) {
@@ -188,7 +188,7 @@ class ServiceProvider extends BaseServiceProvider
      */
     protected function bootFeatures(): void
     {
-        $bootActive = $this->hasDsnSet();
+        $bootActive = $this->hasDsnSet() || $this->hasSpotlightEnabled();
 
         foreach (self::FEATURES as $feature) {
             try {
