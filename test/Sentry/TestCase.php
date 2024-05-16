@@ -203,6 +203,7 @@ abstract class TestCase extends LaravelTestCase
 
         $transaction = $hub->startTransaction(new TransactionContext);
         $transaction->initSpanRecorder();
+        $transaction->setSampled(true);
 
         $this->getCurrentSentryScope()->setSpan($transaction);
 

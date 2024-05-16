@@ -107,7 +107,8 @@ class LivewirePackageIntegration extends Feature
 
         $parentSpan = SentrySdk::getCurrentHub()->getSpan();
 
-        if ($parentSpan === null) {
+        // If there is no sampled span there is no need to handle the event
+        if ($parentSpan === null || !$parentSpan->getSampled()) {
             return;
         }
 

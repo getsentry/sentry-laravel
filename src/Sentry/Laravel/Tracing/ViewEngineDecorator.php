@@ -30,7 +30,8 @@ final class ViewEngineDecorator implements Engine
     {
         $parentSpan = SentrySdk::getCurrentHub()->getSpan();
 
-        if ($parentSpan === null) {
+        // If there is no sampled span there is no need to wrap the engine call
+        if ($parentSpan === null || !$parentSpan->getSampled()) {
             return $this->engine->get($path, $data);
         }
 

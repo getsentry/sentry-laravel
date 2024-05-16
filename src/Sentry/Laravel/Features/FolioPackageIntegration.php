@@ -45,7 +45,7 @@ class FolioPackageIntegration extends Feature
 
         $transaction = SentrySdk::getCurrentHub()->getTransaction();
 
-        if ($transaction === null) {
+        if ($transaction === null || !$transaction->getSampled()) {
             return;
         }
 
