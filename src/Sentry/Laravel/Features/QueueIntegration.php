@@ -105,9 +105,6 @@ class QueueIntegration extends Feature
         }
 
         $currentSpan
-            ->setData([
-                'messaging.laravel.job' => $jobName,
-            ])
             ->setDescription($jobName);
     }
 
@@ -189,9 +186,6 @@ class QueueIntegration extends Feature
         }
 
         $job = [
-            'job' => $event->job->getName(),
-            'resolved' => $resolvedJobName,
-
             'messaging.system' => 'laravel',
             
             'messaging.destination.name' => $event->job->getQueue(),
