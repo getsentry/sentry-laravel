@@ -83,7 +83,9 @@ class ServiceProvider extends BaseServiceProvider
 
         $this->bootFeatures();
 
-        if ($this->hasDsnSet()) {
+        // Only register if a DSN is set or Spotlight is enabled
+        // No events can be sent without a DSN set or Spotlight enabled
+        if ($this->hasDsnSet() || $this->hasSpotlightEnabled()) {
             $this->bindEvents();
 
             if ($this->app instanceof Lumen) {
@@ -188,7 +190,9 @@ class ServiceProvider extends BaseServiceProvider
      */
     protected function bootFeatures(): void
     {
-        $bootActive = $this->hasDsnSet();
+        // Only register if a DSN is set or Spotlight is enabled
+        // No events can be sent without a DSN set or Spotlight enabled
+        $bootActive = $this->hasDsnSet() || $this->hasSpotlightEnabled();
 
         foreach (self::FEATURES as $feature) {
             try {

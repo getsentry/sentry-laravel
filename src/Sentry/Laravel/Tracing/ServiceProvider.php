@@ -26,8 +26,9 @@ class ServiceProvider extends BaseServiceProvider
 
     public function boot(): void
     {
-        // If there is no DSN set we register nothing since it's impossible for us to send traces without a DSN set
-        if (!$this->hasDsnSet()) {
+        // Only register if a DSN is set or Spotlight is enabled
+        // No events can be sent without a DSN set or Spotlight enabled
+        if (!$this->hasDsnSet() && !$this->hasSpotlightEnabled()) {
             return;
         }
 
