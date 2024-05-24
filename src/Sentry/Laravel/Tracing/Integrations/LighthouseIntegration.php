@@ -101,7 +101,8 @@ class LighthouseIntegration implements IntegrationInterface
     {
         $this->previousSpan = SentrySdk::getCurrentHub()->getSpan();
 
-        if ($this->previousSpan === null) {
+        // If there is no sampled span there is no need to handle the event
+        if ($this->previousSpan === null || !$this->previousSpan->getSampled()) {
             return;
         }
 

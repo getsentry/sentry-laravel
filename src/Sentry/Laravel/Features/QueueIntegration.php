@@ -62,7 +62,7 @@ class QueueIntegration extends Feature
             Queue::createPayloadUsing(function (?string $connection, ?string $queue, ?array $payload): ?array {
                 $parentSpan = SentrySdk::getCurrentHub()->getSpan();
 
-                if ($parentSpan !== null) {
+                if ($parentSpan !== null && $parentSpan->getSampled()) {
                     $context = (new SpanContext)
                         ->setOp(self::QUEUE_SPAN_OP_QUEUE_PUBLISH)
                         ->setData([

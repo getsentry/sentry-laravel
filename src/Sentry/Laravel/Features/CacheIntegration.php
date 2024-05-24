@@ -76,8 +76,8 @@ class CacheIntegration extends Feature
     {
         $parentSpan = SentrySdk::getCurrentHub()->getSpan();
 
-        // If there is no tracing span active there is no need to handle the event
-        if ($parentSpan === null) {
+        // If there is no sampled span there is no need to handle the event
+        if ($parentSpan === null || !$parentSpan->getSampled()) {
             return;
         }
 

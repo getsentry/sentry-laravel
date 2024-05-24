@@ -163,6 +163,11 @@ class Middleware
 
     private function startTransaction(Request $request, HubInterface $sentry): void
     {
+        // Prevent starting a new transaction if we are already in a transaction
+        if ($sentry->getTransaction() !== null) {
+            return;
+        }
+
         // Reset our internal state in case we are handling multiple requests (e.g. in Octane)
         $this->didRouteMatch = false;
 
@@ -193,14 +198,14 @@ class Middleware
 
         $transaction = $sentry->startTransaction($context);
 
+        SentrySdk::getCurrentHub()->setSpan($transaction);
+
         // If this transaction is not sampled, we can stop here to prevent doing work for nothing
         if (!$transaction->getSampled()) {
             return;
         }
 
         $this->transaction = $transaction;
-
-        SentrySdk::getCurrentHub()->setSpan($this->transaction);
 
         $bootstrapSpan = $this->addAppBootstrapSpan();
 
