@@ -6,7 +6,6 @@ use DateTimeZone;
 use Illuminate\Console\Application as ConsoleApplication;
 use Illuminate\Console\Scheduling\Event as SchedulingEvent;
 use Illuminate\Contracts\Cache\Factory as Cache;
-use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Sentry\CheckIn;
@@ -23,25 +22,10 @@ class ConsoleSchedulingIntegration extends Feature
      */
     private $checkInStore = [];
 
-    /**
-     * @var Cache The cache repository.
-     */
-    private $cache;
+    private $shouldHandleCheckIn = false;
 
     public function register(): void
     {
-        $this->onBootInactive();
-    }
-
-    public function isApplicable(): bool
-    {
-        return $this->container()->make(Application::class)->runningInConsole();
-    }
-
-    public function onBoot(Cache $cache): void
-    {
-        $this->cache = $cache;
-
         $startCheckIn = function (
             ?string $slug,
             SchedulingEvent $scheduled,
@@ -110,19 +94,19 @@ class ConsoleSchedulingIntegration extends Feature
         });
     }
 
+    public function isApplicable(): bool
+    {
+        return true;
+    }
+
+    public function onBoot(): void
+    {
+        $this->shouldHandleCheckIn = true;
+    }
+
     public function onBootInactive(): void
     {
-        // This is an exact copy of the macro above, but without doing anything so that even when no DSN is configured the user can still use the macro
-        SchedulingEvent::macro('sentryMonitor', function (
-            ?string $monitorSlug = null,
-            ?int $checkInMargin = null,
-            ?int $maxRuntime = null,
-            bool $updateMonitorConfig = true,
-            ?int $failureIssueThreshold = null,
-            ?int $recoveryThreshold = null
-        ) {
-            return $this;
-        });
+        $this->shouldHandleCheckIn = false;
     }
 
     private function startCheckIn(
@@ -134,6 +118,10 @@ class ConsoleSchedulingIntegration extends Feature
         ?int $failureIssueThreshold,
         ?int $recoveryThreshold
     ): void {
+        if (!$this->shouldHandleCheckIn) {
+            return;
+        }
+
         $checkInSlug = $slug ?? $this->makeSlugForScheduled($scheduled);
 
         $checkIn = $this->createCheckIn($checkInSlug, CheckInStatus::inProgress());
@@ -160,7 +148,7 @@ class ConsoleSchedulingIntegration extends Feature
         $this->checkInStore[$cacheKey] = $checkIn;
 
         if ($scheduled->runInBackground) {
-            $this->cache->store()->put($cacheKey, $checkIn->getId(), $scheduled->expiresAt * 60);
+            $this->resolveCache()->store()->put($cacheKey, $checkIn->getId(), $scheduled->expiresAt * 60);
         }
 
         $this->sendCheckIn($checkIn);
@@ -168,6 +156,10 @@ class ConsoleSchedulingIntegration extends Feature
 
     private function finishCheckIn(?string $slug, SchedulingEvent $scheduled, CheckInStatus $status): void
     {
+        if (!$this->shouldHandleCheckIn) {
+            return;
+        }
+
         $mutex = $scheduled->mutexName();
 
         $checkInSlug = $slug ?? $this->makeSlugForScheduled($scheduled);
@@ -177,7 +169,7 @@ class ConsoleSchedulingIntegration extends Feature
         $checkIn = $this->checkInStore[$cacheKey] ?? null;
 
         if ($checkIn === null && $scheduled->runInBackground) {
-            $checkInId = $this->cache->store()->get($cacheKey);
+            $checkInId = $this->resolveCache()->store()->get($cacheKey);
 
             if ($checkInId !== null) {
                 $checkIn = $this->createCheckIn($checkInSlug, $status, $checkInId);
@@ -193,7 +185,7 @@ class ConsoleSchedulingIntegration extends Feature
         unset($this->checkInStore[$mutex]);
 
         if ($scheduled->runInBackground) {
-            $this->cache->store()->forget($cacheKey);
+            $this->resolveCache()->store()->forget($cacheKey);
         }
 
         $checkIn->setStatus($status);
@@ -243,5 +235,10 @@ class ConsoleSchedulingIntegration extends Feature
         );
 
         return "scheduled_{$generatedSlug}";
+    }
+
+    private function resolveCache(): Cache
+    {
+        return $this->container()->make(Cache::class);
     }
 }
