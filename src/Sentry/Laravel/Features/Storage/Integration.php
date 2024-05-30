@@ -47,11 +47,8 @@ class Integration extends Feature
                     unset($config['sentry_original_driver']);
 
                     $diskResolver = (function (string $disk, array $config) {
-                        // This is a "hack" to make sure that the original driver is resolved by the FilesystemManager
-                        config(["filesystems.disks.{$disk}" => $config]);
-
                         /** @var FilesystemManager $this */
-                        return $this->resolve($disk);
+                        return $this->resolve($disk, $config);
                     })->bindTo($filesystemManager, FilesystemManager::class);
 
                     /** @var Filesystem $originalFilesystem */
