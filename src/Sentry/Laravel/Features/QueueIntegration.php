@@ -180,22 +180,19 @@ class QueueIntegration extends Feature
 
         $resolvedJobName = $event->job->resolveName();
 
-        $receiveLatency = null;
-        if ($event->job->payload()[self::QUEUE_PAYLOAD_PUBLISH_TIME] !== null) {
-            $receiveLatency = microtime(true) - $event->job->payload()[self::QUEUE_PAYLOAD_PUBLISH_TIME];
-        }
+        $jobPublishedAt = $event->job->payload()[self::QUEUE_PAYLOAD_PUBLISH_TIME] ?? null;
 
         $job = [
             'messaging.system' => 'laravel',
-            
+
             'messaging.destination.name' => $event->job->getQueue(),
             'messaging.destination.connection' => $event->connectionName,
-            
-            'messaging.message.id' => (string) $event->job->getJobId(),
+
+            'messaging.message.id' => $event->job->getJobId(),
             'messaging.message.envelope.size' => strlen($event->job->getRawBody()),
             'messaging.message.body.size' => strlen(json_encode($event->job->payload()['data'])),
             'messaging.message.retry.count' => $event->job->attempts(),
-            'messaging.message.receive.latency' => $receiveLatency,
+            'messaging.message.receive.latency' => $jobPublishedAt !== null ? microtime(true) - $jobPublishedAt : null,
         ];
 
         if ($context instanceof TransactionContext) {
