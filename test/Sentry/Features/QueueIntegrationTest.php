@@ -87,33 +87,15 @@ class QueueIntegrationTest extends TestCase
         $this->assertCount(1, $this->getCurrentSentryBreadcrumbs());
     }
 
-    protected function withoutSampling($app): void
+    protected function withTracingEnabled($app): void
     {
         $app['config']->set('sentry.traces_sample_rate', 1.0);
     }
 
     /**
-     * @define-env withoutSampling
+     * @define-env withTracingEnabled
      */
-    public function testQueueJobDoesntCreateTransactionByDefault(): void
-    {
-        dispatch(new QueueEventsTestJob);
-
-        $transaction = $this->getLastSentryEvent();
-
-        $this->assertNull($transaction);
-    }
-
-    protected function withQueueJobTracingEnabled($app): void
-    {
-        $app['config']->set('sentry.traces_sample_rate', 1.0);
-        $app['config']->set('sentry.tracing.queue_job_transactions', true);
-    }
-
-    /**
-     * @define-env withQueueJobTracingEnabled
-     */
-    public function testQueueJobCreatesTransactionWhenEnabled(): void
+    public function testQueueJobCreatesTransactionByDefault(): void
     {
         dispatch(new QueueEventsTestJob);
 
@@ -127,6 +109,24 @@ class QueueIntegrationTest extends TestCase
         $traceContext = $transaction->getContexts()['trace'];
 
         $this->assertEquals('queue.process', $traceContext['op']);
+    }
+
+    protected function withQueueJobTracingDisabled($app): void
+    {
+        $app['config']->set('sentry.traces_sample_rate', 1.0);
+        $app['config']->set('sentry.tracing.queue_job_transactions', false);
+    }
+
+    /**
+     * @define-env withQueueTracingDisabled
+     */
+    public function testQueueJobDoesntCreateTransaction(): void
+    {
+        dispatch(new QueueEventsTestJob);
+
+        $transaction = $this->getLastSentryEvent();
+
+        $this->assertNull($transaction);
     }
 }
 
