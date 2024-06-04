@@ -3,6 +3,7 @@
 namespace Sentry\Laravel\Features;
 
 use Closure;
+use Illuminate\Support\Str;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Queue\Events\JobExceptionOccurred;
 use Illuminate\Queue\Events\JobProcessed;
@@ -69,7 +70,8 @@ class QueueIntegration extends Feature
                         ->setData([
                             'messaging.system' => 'laravel',
                             'messaging.message.id' => $payload['uuid'] ?? null,
-                            'messaging.destination.name' => $queue,
+                            // Jobs pushed onto the Redis driver are formatted as queues:<queue>
+                            'messaging.destination.name' => Str::after($queue ?? '', 'queues:'),
                             'messaging.destination.connection' => $connection,
                         ])
                         ->setDescription($queue);
