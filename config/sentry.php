@@ -77,7 +77,7 @@ return [
     // Performance monitoring specific configuration
     'tracing' => [
         // Trace queue jobs as their own transactions (this enables tracing for queue jobs)
-        'queue_job_transactions' => env('SENTRY_TRACE_QUEUE_ENABLED', false),
+        'queue_job_transactions' => env('SENTRY_TRACE_QUEUE_ENABLED', true),
 
         // Capture queue jobs as spans when executed on the sync driver
         'queue_jobs' => env('SENTRY_TRACE_QUEUE_JOBS_ENABLED', true),
