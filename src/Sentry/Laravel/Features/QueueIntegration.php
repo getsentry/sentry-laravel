@@ -165,9 +165,11 @@ class QueueIntegration extends Feature
             return;
         }
 
+        $jobPayload = $event->job->payload();
+
         if ($parentSpan === null) {
-            $baggage = $event->job->payload()[self::QUEUE_PAYLOAD_BAGGAGE_DATA] ?? null;
-            $traceParent = $event->job->payload()[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] ?? null;
+            $baggage = $jobPayload[self::QUEUE_PAYLOAD_BAGGAGE_DATA] ?? null;
+            $traceParent = $jobPayload[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] ?? null;
 
             $context = continueTrace($traceParent ?? '', $baggage ?? '');
 
@@ -181,7 +183,7 @@ class QueueIntegration extends Feature
 
         $resolvedJobName = $event->job->resolveName();
 
-        $jobPublishedAt = $event->job->payload()[self::QUEUE_PAYLOAD_PUBLISH_TIME] ?? null;
+        $jobPublishedAt = $jobPayload[self::QUEUE_PAYLOAD_PUBLISH_TIME] ?? null;
 
         $job = [
             'messaging.system' => 'laravel',
@@ -189,9 +191,9 @@ class QueueIntegration extends Feature
             'messaging.destination.name' => $event->job->getQueue(),
             'messaging.destination.connection' => $event->connectionName,
 
-            'messaging.message.id' => $event->job->getJobId(),
+            'messaging.message.id' => $jobPayload['uuid'] ?? $event->job->getJobId(),
             'messaging.message.envelope.size' => strlen($event->job->getRawBody()),
-            'messaging.message.body.size' => strlen(json_encode($event->job->payload()['data'])),
+            'messaging.message.body.size' => strlen(json_encode($jobPayload['data'] ?? [])),
             'messaging.message.retry.count' => $event->job->attempts(),
             'messaging.message.receive.latency' => $jobPublishedAt !== null ? microtime(true) - $jobPublishedAt : null,
         ];
