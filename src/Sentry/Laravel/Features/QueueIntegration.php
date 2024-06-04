@@ -68,6 +68,7 @@ class QueueIntegration extends Feature
                         ->setOp(self::QUEUE_SPAN_OP_QUEUE_PUBLISH)
                         ->setData([
                             'messaging.system' => 'laravel',
+                            'messaging.message.id' => $payload['uuid'] ?? null,
                             'messaging.destination.name' => $queue,
                             'messaging.destination.connection' => $connection,
                         ])
