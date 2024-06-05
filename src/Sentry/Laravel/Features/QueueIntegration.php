@@ -193,7 +193,7 @@ class QueueIntegration extends Feature
             'messaging.destination.name' => $event->job->getQueue(),
             'messaging.destination.connection' => $event->connectionName,
 
-            'messaging.message.id' => $jobPayload['uuid'] ?? $event->job->getJobId(),
+            'messaging.message.id' => $jobPayload['uuid'] ?? null,
             'messaging.message.envelope.size' => strlen($event->job->getRawBody()),
             'messaging.message.body.size' => strlen(json_encode($jobPayload['data'] ?? [])),
             'messaging.message.retry.count' => $event->job->attempts(),
