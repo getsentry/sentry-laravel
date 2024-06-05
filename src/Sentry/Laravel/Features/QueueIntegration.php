@@ -162,8 +162,8 @@ class QueueIntegration extends Feature
             return;
         }
 
-        // If there is a parent span we can record that job as a child unless configured to not do so
-        if ($parentSpan !== null && !$this->isTracingFeatureEnabled('queue_jobs')) {
+        // If there is a parent span we can record the job as a child unless the parent is not sample or we are configured to not do so
+        if ($parentSpan !== null && (!$parentSpan->getSampled() || !$this->isTracingFeatureEnabled('queue_jobs'))) {
             return;
         }
 
