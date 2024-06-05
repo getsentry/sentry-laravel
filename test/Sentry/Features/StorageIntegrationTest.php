@@ -164,6 +164,7 @@ class StorageIntegrationTest extends TestCase
         $this->resetApplicationWithConfig([
             'filesystems.disks' => Integration::configureDisks(config('filesystems.disks')),
         ]);
+
         $originalConfig = config('filesystems.disks.local');
 
         Storage::disk('local');

@@ -49,10 +49,14 @@ class Integration extends Feature
                     $diskResolver = (function (string $disk, array $config) {
                         // This is a "hack" to make sure that the original driver is resolved by the FilesystemManager
                         $oldConfig = config("filesystems.disks.{$disk}");
+
                         config(["filesystems.disks.{$disk}" => $config]);
+
                         /** @var FilesystemManager $this */
                         $resolved = $this->resolve($disk);
+
                         config(["filesystems.disks.{$disk}" => $oldConfig]);
+
                         return $resolved;
                     })->bindTo($filesystemManager, FilesystemManager::class);
 
