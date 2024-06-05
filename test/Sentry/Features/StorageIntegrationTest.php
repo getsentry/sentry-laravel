@@ -159,6 +159,19 @@ class StorageIntegrationTest extends TestCase
         $this->expectNotToPerformAssertions();
     }
 
+    public function testResolvingDiskDoesNotModifyConfig(): void
+    {
+        $this->resetApplicationWithConfig([
+            'filesystems.disks' => Integration::configureDisks(config('filesystems.disks')),
+        ]);
+
+        $originalConfig = config('filesystems.disks.local');
+
+        Storage::disk('local');
+
+        $this->assertEquals($originalConfig, config('filesystems.disks.local'));
+    }
+
     public function testThrowsIfDiskConfigurationDoesntSpecifyDiskName(): void
     {
         $this->resetApplicationWithConfig([
