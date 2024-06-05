@@ -3,6 +3,7 @@
 namespace Sentry\Laravel\Features;
 
 use Closure;
+use Illuminate\Support\Str;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Queue\Events\JobExceptionOccurred;
 use Illuminate\Queue\Events\JobProcessed;
@@ -68,7 +69,9 @@ class QueueIntegration extends Feature
                         ->setOp(self::QUEUE_SPAN_OP_QUEUE_PUBLISH)
                         ->setData([
                             'messaging.system' => 'laravel',
-                            'messaging.destination.name' => $queue,
+                            'messaging.message.id' => $payload['uuid'] ?? null,
+                            // Jobs pushed onto the Redis driver are formatted as queues:<queue>
+                            'messaging.destination.name' => Str::after($queue ?? '', 'queues:'),
                             'messaging.destination.connection' => $connection,
                         ])
                         ->setDescription($queue);
@@ -159,14 +162,16 @@ class QueueIntegration extends Feature
             return;
         }
 
-        // If there is a parent span we can record that job as a child unless configured to not do so
-        if ($parentSpan !== null && !$this->isTracingFeatureEnabled('queue_jobs')) {
+        // If there is a parent span we can record the job as a child unless the parent is not sample or we are configured to not do so
+        if ($parentSpan !== null && (!$parentSpan->getSampled() || !$this->isTracingFeatureEnabled('queue_jobs'))) {
             return;
         }
 
+        $jobPayload = $event->job->payload();
+
         if ($parentSpan === null) {
-            $baggage = $event->job->payload()[self::QUEUE_PAYLOAD_BAGGAGE_DATA] ?? null;
-            $traceParent = $event->job->payload()[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] ?? null;
+            $baggage = $jobPayload[self::QUEUE_PAYLOAD_BAGGAGE_DATA] ?? null;
+            $traceParent = $jobPayload[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] ?? null;
 
             $context = continueTrace($traceParent ?? '', $baggage ?? '');
 
@@ -180,22 +185,19 @@ class QueueIntegration extends Feature
 
         $resolvedJobName = $event->job->resolveName();
 
-        $receiveLatency = null;
-        if ($event->job->payload()[self::QUEUE_PAYLOAD_PUBLISH_TIME] !== null) {
-            $receiveLatency = microtime(true) - $event->job->payload()[self::QUEUE_PAYLOAD_PUBLISH_TIME];
-        }
+        $jobPublishedAt = $jobPayload[self::QUEUE_PAYLOAD_PUBLISH_TIME] ?? null;
 
         $job = [
             'messaging.system' => 'laravel',
-            
+
             'messaging.destination.name' => $event->job->getQueue(),
             'messaging.destination.connection' => $event->connectionName,
-            
-            'messaging.message.id' => (string) $event->job->getJobId(),
+
+            'messaging.message.id' => $jobPayload['uuid'] ?? null,
             'messaging.message.envelope.size' => strlen($event->job->getRawBody()),
-            'messaging.message.body.size' => strlen(json_encode($event->job->payload()['data'])),
+            'messaging.message.body.size' => strlen(json_encode($jobPayload['data'] ?? [])),
             'messaging.message.retry.count' => $event->job->attempts(),
-            'messaging.message.receive.latency' => $receiveLatency,
+            'messaging.message.receive.latency' => $jobPublishedAt !== null ? microtime(true) - $jobPublishedAt : null,
         ];
 
         if ($context instanceof TransactionContext) {
