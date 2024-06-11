@@ -1,6 +1,26 @@
 # Changelog
 
-# Changelog
+## 4.6.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.6.0.
+
+### Features
+
+- Add support for the Queue Insights Module [(#902)](https://github.com/getsentry/sentry-laravel/pull/902). To learn more about this module, visit https://docs.sentry.io/product/performance/queue-monitoring/.
+
+- Enable queue tracing by default for new SDK installations. To enable this feature in your existing installation, update your `config/sentry.php` file with `'queue_jobs' => env('SENTRY_TRACE_QUEUE_JOBS_ENABLED', true),` or set `SENTRY_TRACE_QUEUE_JOBS_ENABLED=true` in your environment [(#903)](https://github.com/getsentry/sentry-laravel/pull/903)
+
+### Bug Fixes
+
+- Check if a span is sampled before creating child spans [(#898)](https://github.com/getsentry/sentry-laravel/pull/898)
+
+- Always register the console `sentryMonitor()` macro. This fixes the macro not being available when using Laravel Lumen [(#900)](https://github.com/getsentry/sentry-laravel/pull/900)
+
+- Avoid manipulating the config when resolving disks [(#901)](https://github.com/getsentry/sentry-laravel/pull/901)
+
+### Misc
+
+- Various Spotlight improvements, such as the addition of a new `SENTRY_SPOTLIGHT` environment variable and not requiring a DSN to be set to use Spotlight [(#892)](https://github.com/getsentry/sentry-laravel/pull/892)
 
 ## 4.5.1
 
