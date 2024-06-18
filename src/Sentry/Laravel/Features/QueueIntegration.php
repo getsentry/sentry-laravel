@@ -70,8 +70,7 @@ class QueueIntegration extends Feature
                         ->setData([
                             'messaging.system' => 'laravel',
                             'messaging.message.id' => $payload['uuid'] ?? null,
-                            // Jobs pushed onto the Redis driver are formatted as queues:<queue>
-                            'messaging.destination.name' => Str::after($queue ?? '', 'queues:'),
+                            'messaging.destination.name' => $this->normalizeQueueName($queue),
                             'messaging.destination.connection' => $connection,
                         ])
                         ->setDescription($queue);
@@ -190,7 +189,7 @@ class QueueIntegration extends Feature
         $job = [
             'messaging.system' => 'laravel',
 
-            'messaging.destination.name' => $event->job->getQueue(),
+            'messaging.destination.name' => $this->normalizeQueueName($event->job->getQueue()),
             'messaging.destination.connection' => $event->connectionName,
 
             'messaging.message.id' => $jobPayload['uuid'] ?? null,
@@ -239,6 +238,21 @@ class QueueIntegration extends Feature
             $span->setStatus($status);
             $span->finish();
         }
+    }
+
+    private function normalizeQueueName(?string $queue): string
+    {
+        if ($queue === null) {
+            return '';
+        }
+
+        // SQS queues are sometimes formatted like: https://sqs.<region>.amazonaws.com/<id>/<queue_name>
+        if (filter_var($queue, FILTER_VALIDATE_URL) !== false) {
+            return Str::afterLast($queue, '/');
+        }
+
+        // Jobs pushed onto the Redis driver are formatted as queues:<queue>
+        return Str::after($queue, 'queues:');
     }
 
     protected function pushScope(): void
