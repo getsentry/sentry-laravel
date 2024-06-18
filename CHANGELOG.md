@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.6.1
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.6.1.
+
+### Bug Fixes
+
+- Fix wrong queue grouping in the queue Insights Module [(#910)](https://github.com/getsentry/sentry-laravel/pull/910)
+
 ## 4.6.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.6.0.
