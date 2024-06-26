@@ -38,7 +38,9 @@ Install the `sentry/sentry-laravel` package:
 composer require sentry/sentry-laravel
 ```
 
-Enable capturing unhandled exception to report to Sentry by making the following change to your `bootstrap/app.php`:
+Enable capturing unhandled exception to report to Sentry by making the following change:
+
+1. If you are creating a new project from `laravel 11`, or upgrading from `laravel 10` to `laravel 11`, and have restructured your project, please refer to the following change to your `bootstrap/app.php`:
 
 ```php {filename:bootstrap/app.php}
 <?php
@@ -60,6 +62,19 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions) {
         Integration::handles($exceptions);
     })->create();
+```
+
+2. If you are upgrading from `laravel 10` to `laravel 11`, and the structure is not adjusted, please refer to the following change to your `app/Exceptions/Handler.php`:
+
+```php {filename:app/Exceptions/Handler.php}
+use Sentry\Laravel\Integration;
+
+public function register(): void
+{
+    $this->reportable(function (Throwable $e) {
+        Integration::captureUnhandledException($e);
+    });
+}
 ```
 
 > Alternatively, you can configure Sentry as a [Laravel Log Channel](https://docs.sentry.io/platforms/php/guides/laravel/usage/#log-channels), allowing you to capture `info` and `debug` logs as well.
