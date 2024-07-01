@@ -9,17 +9,22 @@ use Illuminate\Redis\RedisManager;
 use Illuminate\Support\Str;
 use Sentry\Breadcrumb;
 use Sentry\Laravel\Features\Concerns\ResolvesEventOrigin;
+use Sentry\Laravel\Features\Concerns\TracksPushedScopesAndSpans;
+use Sentry\Laravel\Features\Concerns\WorksWithSpans;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
+use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
+use Sentry\Tracing\SpanStatus;
 
 class CacheIntegration extends Feature
 {
-    use ResolvesEventOrigin;
+    use WorksWithSpans, TracksPushedScopesAndSpans, ResolvesEventOrigin;
 
     public function isApplicable(): bool
     {
-        return $this->isTracingFeatureEnabled('redis_commands')
+        return $this->isTracingFeatureEnabled('redis_commands', false)
+            || $this->isTracingFeatureEnabled('cache')
             || $this->isBreadcrumbFeatureEnabled('cache');
     }
 
@@ -31,11 +36,29 @@ class CacheIntegration extends Feature
                 Events\CacheMissed::class,
                 Events\KeyWritten::class,
                 Events\KeyForgotten::class,
-            ], [$this, 'handleCacheEvent']);
+            ], [$this, 'handleCacheEventsForBreadcrumbs']);
+        }
+
+        if ($this->isTracingFeatureEnabled('cache')) {
+            $events->listen([
+                Events\RetrievingKey::class,
+                Events\RetrievingManyKeys::class,
+                Events\CacheHit::class,
+                Events\CacheMissed::class,
+
+                Events\WritingKey::class,
+                Events\WritingManyKeys::class,
+                Events\KeyWritten::class,
+                Events\KeyWriteFailed::class,
+
+                Events\ForgettingKey::class,
+                Events\KeyForgotten::class,
+                Events\KeyForgetFailed::class,
+            ], [$this, 'handleCacheEventsForTracing']);
         }
 
         if ($this->isTracingFeatureEnabled('redis_commands', false)) {
-            $events->listen(RedisEvents\CommandExecuted::class, [$this, 'handleRedisCommand']);
+            $events->listen(RedisEvents\CommandExecuted::class, [$this, 'handleRedisCommands']);
 
             $this->container()->afterResolving(RedisManager::class, static function (RedisManager $redis): void {
                 $redis->enableEvents();
@@ -43,7 +66,7 @@ class CacheIntegration extends Feature
         }
     }
 
-    public function handleCacheEvent(Events\CacheEvent $event): void
+    public function handleCacheEventsForBreadcrumbs(Events\CacheEvent $event): void
     {
         switch (true) {
             case $event instanceof Events\KeyWritten:
@@ -72,7 +95,64 @@ class CacheIntegration extends Feature
         ));
     }
 
-    public function handleRedisCommand(RedisEvents\CommandExecuted $event): void
+    public function handleCacheEventsForTracing(Events\CacheEvent $event): void
+    {
+        if ($this->maybeHandleCacheEventAsEndOfSpan($event)) {
+            return;
+        }
+
+        $this->withParentSpanIfSampled(function (Span $parentSpan) use ($event) {
+            if ($event instanceof Events\RetrievingKey || $event instanceof Events\RetrievingManyKeys) {
+                $keys = $event instanceof Events\RetrievingKey
+                    ? [$event->key]
+                    : $event->keys;
+
+                $this->pushSpan(
+                    $parentSpan->startChild(
+                        SpanContext::make()
+                            ->setOp('cache.get')
+                            ->setData([
+                                'cache.key' => $keys,
+                            ])
+                            ->setDescription(implode(', ', $keys))
+                    )
+                );
+            }
+
+            if ($event instanceof Events\WritingKey || $event instanceof Events\WritingManyKeys) {
+                $keys = $event instanceof Events\WritingKey
+                    ? [$event->key]
+                    : $event->keys;
+
+                $this->pushSpan(
+                    $parentSpan->startChild(
+                        SpanContext::make()
+                            ->setOp('cache.put')
+                            ->setData([
+                                'cache.key' => $keys,
+                                'cache.ttl' => $event->seconds,
+                            ])
+                            ->setDescription(implode(', ', $keys))
+                    )
+                );
+            }
+
+            if ($event instanceof Events\ForgettingKey) {
+                $this->pushSpan(
+                    $parentSpan->startChild(
+                        SpanContext::make()
+                            ->setOp('cache.remove')
+                            ->setData([
+                                'cache.key' => [$event->key],
+                            ])
+                            ->setDescription($event->key)
+                    )
+                );
+            }
+        });
+    }
+
+    public function handleRedisCommands(RedisEvents\CommandExecuted $event): void
     {
         $parentSpan = SentrySdk::getCurrentHub()->getSpan();
 
@@ -115,5 +195,45 @@ class CacheIntegration extends Feature
         $context->setData($data);
 
         $parentSpan->startChild($context);
+    }
+
+    private function maybeHandleCacheEventAsEndOfSpan(Events\CacheEvent $event): bool
+    {
+        // End of span for RetrievingKey and RetrievingManyKeys events
+        if ($event instanceof Events\CacheHit || $event instanceof Events\CacheMissed) {
+            $finishedSpan = $this->maybeFinishSpan(SpanStatus::ok());
+
+            if ($finishedSpan !== null && count($finishedSpan->getData()['cache.key'] ?? []) === 1) {
+                $finishedSpan->setData([
+                    'cache.hit' => $event instanceof Events\CacheHit,
+                ]);
+            }
+
+            return true;
+        }
+
+        // End of span for WritingKey and WritingManyKeys events
+        if ($event instanceof Events\KeyWritten || $event instanceof Events\KeyWriteFailed) {
+            $finishedSpan = $this->maybeFinishSpan(
+                $event instanceof Events\KeyWritten ? SpanStatus::ok() : SpanStatus::internalError()
+            );
+
+            if ($finishedSpan !== null) {
+                $finishedSpan->setData([
+                    'cache.success' => $event instanceof Events\KeyWritten,
+                ]);
+            }
+
+            return true;
+        }
+
+        // End of span for ForgettingKey event
+        if ($event instanceof Events\KeyForgotten || $event instanceof Events\KeyForgetFailed) {
+            $this->maybeFinishSpan();
+
+            return true;
+        }
+
+        return false;
     }
 }
