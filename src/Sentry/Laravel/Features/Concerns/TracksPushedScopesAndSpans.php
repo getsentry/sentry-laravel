@@ -5,6 +5,7 @@ namespace Sentry\Laravel\Features\Concerns;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
 use Sentry\Tracing\Span;
+use Sentry\Tracing\SpanStatus;
 
 trait TracksPushedScopesAndSpans
 {
@@ -71,5 +72,22 @@ trait TracksPushedScopesAndSpans
         SentrySdk::getCurrentHub()->popScope();
 
         --$this->pushedScopeCount;
+    }
+
+    protected function maybeFinishSpan(?SpanStatus $status = null): ?Span
+    {
+        $span = $this->maybePopSpan();
+
+        if ($span === null) {
+            return null;
+        }
+
+        if ($status !== null) {
+            $span->setStatus($status);
+        }
+
+        $span->finish();
+
+        return $span;
     }
 }

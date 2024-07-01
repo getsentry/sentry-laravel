@@ -112,16 +112,12 @@ class QueueIntegration extends Feature
 
     public function handleJobQueuedEvent(JobQueued $event): void
     {
-        $span = $this->maybePopSpan();
-
-        if ($span !== null) {
-            $span->finish();
-        }
+        $this->maybeFinishSpan();
     }
 
     public function handleJobProcessedQueueEvent(JobProcessed $event): void
     {
-        $this->finishJobWithStatus(SpanStatus::ok());
+        $this->maybeFinishSpan(SpanStatus::ok());
 
         $this->maybePopScope();
     }
@@ -225,19 +221,9 @@ class QueueIntegration extends Feature
 
     public function handleJobExceptionOccurredQueueEvent(JobExceptionOccurred $event): void
     {
-        $this->finishJobWithStatus(SpanStatus::internalError());
+        $this->maybeFinishSpan(SpanStatus::internalError());
 
         Integration::flushEvents();
-    }
-
-    private function finishJobWithStatus(SpanStatus $status): void
-    {
-        $span = $this->maybePopSpan();
-
-        if ($span !== null) {
-            $span->setStatus($status);
-            $span->finish();
-        }
     }
 
     private function normalizeQueueName(?string $queue): string

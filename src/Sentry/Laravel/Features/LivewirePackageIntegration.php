@@ -168,11 +168,7 @@ class LivewirePackageIntegration extends Feature
 
     public function handleComponentDehydrate(Component $component): void
     {
-        $span = $this->maybePopSpan();
-
-        if ($span !== null) {
-            $span->finish();
-        }
+        $span = $this->maybeFinishSpan();
     }
 
     private function updateTransactionName(string $componentName): void

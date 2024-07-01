@@ -108,12 +108,7 @@ class HttpClientIntegration extends Feature
 
     public function handleConnectionFailedHandlerForTracing(ConnectionFailed $event): void
     {
-        $span = $this->maybePopSpan();
-
-        if ($span !== null) {
-            $span->setStatus(SpanStatus::internalError());
-            $span->finish();
-        }
+        $this->maybeFinishSpan(SpanStatus::internalError());
     }
 
     public function handleResponseReceivedHandlerForBreadcrumb(ResponseReceived $event): void

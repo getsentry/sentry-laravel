@@ -2,8 +2,10 @@
 
 namespace Sentry\Laravel\Tests\Features;
 
+use Illuminate\Cache\Events\RetrievingKey;
 use Illuminate\Support\Facades\Cache;
 use Sentry\Laravel\Tests\TestCase;
+use Sentry\Tracing\Span;
 
 class CacheIntegrationTest extends TestCase
 {
@@ -47,5 +49,110 @@ class CacheIntegrationTest extends TestCase
         Cache::get('foo');
 
         $this->assertEmpty($this->getCurrentSentryBreadcrumbs());
+    }
+
+    public function testCacheGetSpanIsRecorded(): void
+    {
+        $this->markSkippedIfTracingEventsNotAvailable();
+
+        $span = $this->executeAndReturnMostRecentSpan(function () {
+            Cache::get('foo');
+        });
+
+        $this->assertEquals('cache.get', $span->getOp());
+        $this->assertEquals('foo', $span->getDescription());
+        $this->assertEquals(['foo'], $span->getData()['cache.key']);
+        $this->assertFalse($span->getData()['cache.hit']);
+    }
+
+    public function testCacheGetSpanIsRecordedForBatchOperation(): void
+    {
+        $this->markSkippedIfTracingEventsNotAvailable();
+
+        $span = $this->executeAndReturnMostRecentSpan(function () {
+            Cache::get(['foo', 'bar']);
+        });
+
+        $this->assertEquals('cache.get', $span->getOp());
+        $this->assertEquals('foo, bar', $span->getDescription());
+        $this->assertEquals(['foo', 'bar'], $span->getData()['cache.key']);
+    }
+
+    public function testCacheGetSpanIsRecordedWithCorrectHitData(): void
+    {
+        $this->markSkippedIfTracingEventsNotAvailable();
+
+        $span = $this->executeAndReturnMostRecentSpan(function () {
+            Cache::put('foo', 'bar');
+            Cache::get('foo');
+        });
+
+        $this->assertEquals('cache.get', $span->getOp());
+        $this->assertEquals('foo', $span->getDescription());
+        $this->assertEquals(['foo'], $span->getData()['cache.key']);
+        $this->assertTrue($span->getData()['cache.hit']);
+    }
+
+    public function testCachePutSpanIsRecorded(): void
+    {
+        $this->markSkippedIfTracingEventsNotAvailable();
+
+        $span = $this->executeAndReturnMostRecentSpan(function () {
+            Cache::put('foo', 'bar', 99);
+        });
+
+        $this->assertEquals('cache.put', $span->getOp());
+        $this->assertEquals('foo', $span->getDescription());
+        $this->assertEquals(['foo'], $span->getData()['cache.key']);
+        $this->assertEquals(99, $span->getData()['cache.ttl']);
+    }
+
+    public function testCachePutSpanIsRecordedForBatchOperation(): void
+    {
+        $this->markSkippedIfTracingEventsNotAvailable();
+
+        $span = $this->executeAndReturnMostRecentSpan(function () {
+            Cache::putMany(['foo' => 'bar', 'baz' => 'qux'], 99);
+        });
+
+        $this->assertEquals('cache.put', $span->getOp());
+        $this->assertEquals('foo, baz', $span->getDescription());
+        $this->assertEquals(['foo', 'baz'], $span->getData()['cache.key']);
+        $this->assertEquals(99, $span->getData()['cache.ttl']);
+    }
+
+    public function testCacheRemoveSpanIsRecorded(): void
+    {
+        $this->markSkippedIfTracingEventsNotAvailable();
+
+        $span = $this->executeAndReturnMostRecentSpan(function () {
+            Cache::forget('foo');
+        });
+
+        $this->assertEquals('cache.remove', $span->getOp());
+        $this->assertEquals('foo', $span->getDescription());
+        $this->assertEquals(['foo'], $span->getData()['cache.key']);
+    }
+
+    private function markSkippedIfTracingEventsNotAvailable(): void
+    {
+        if (class_exists(RetrievingKey::class)) {
+            return;
+        }
+
+        $this->markTestSkipped('The required cache events are not available in this Laravel version');
+    }
+
+    private function executeAndReturnMostRecentSpan(callable $callable): Span
+    {
+        $transaction = $this->startTransaction();
+
+        $callable();
+
+        $spans = $transaction->getSpanRecorder()->getSpans();
+
+        $this->assertTrue(count($spans) >= 2);
+
+        return array_pop($spans);
     }
 }
