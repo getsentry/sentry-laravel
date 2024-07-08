@@ -58,7 +58,7 @@ class NotificationsIntegration extends Feature
 
     public function handleNotificationSent(NotificationSent $event): void
     {
-        $this->finishSpanWithStatus(SpanStatus::ok());
+        $this->maybeFinishSpan(SpanStatus::ok());
 
         if ($this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY)) {
             Integration::addBreadcrumb(new Breadcrumb(
@@ -72,16 +72,6 @@ class NotificationsIntegration extends Feature
                     'notification' => get_class($event->notification),
                 ]
             ));
-        }
-    }
-
-    private function finishSpanWithStatus(SpanStatus $status): void
-    {
-        $span = $this->maybePopSpan();
-
-        if ($span !== null) {
-            $span->setStatus($status);
-            $span->finish();
         }
     }
 

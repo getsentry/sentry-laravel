@@ -103,6 +103,9 @@ return [
         // Capture HTTP client requests as spans
         'http_client_requests' => env('SENTRY_TRACE_HTTP_CLIENT_REQUESTS_ENABLED', true),
 
+        // Capture Laravel cache events (hits, writes etc.) as spans
+        'cache' => env('SENTRY_TRACE_CACHE_ENABLED', true),
+
         // Capture Redis operations as spans (this enables Redis events in Laravel)
         'redis_commands' => env('SENTRY_TRACE_REDIS_COMMANDS', false),
 
