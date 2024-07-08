@@ -1,5 +1,15 @@
 # Changelog
 
+## 4.7.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.7.0.
+
+### Features
+
+- Add support for Cache Insights Module [(#914)](https://github.com/getsentry/sentry-laravel/pull/914). To learn more about this module, visit https://docs.sentry.io/product/insights/caches/. This feature requires Laravel v11.11.0 or higher.
+
+  Cache tracing is enabled by default for new SDK installations. To enable this feature in your existing installation, update your `config/sentry.php` file with `'cache' => env('SENTRY_TRACE_CACHE_ENABLED', true),` under `'tracing'`.
+
 ## 4.6.1
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.6.1.
@@ -16,7 +26,7 @@ The Sentry SDK team is happy to announce the immediate availability of Sentry La
 
 - Add support for the Queue Insights Module [(#902)](https://github.com/getsentry/sentry-laravel/pull/902). To learn more about this module, visit https://docs.sentry.io/product/performance/queue-monitoring/.
 
-- Enable queue tracing by default for new SDK installations. To enable this feature in your existing installation, update your `config/sentry.php` file with `'queue_jobs' => env('SENTRY_TRACE_QUEUE_JOBS_ENABLED', true),` or set `SENTRY_TRACE_QUEUE_JOBS_ENABLED=true` in your environment [(#903)](https://github.com/getsentry/sentry-laravel/pull/903)
+  Queue tracing is enabled by default for new SDK installations. To enable this feature in your existing installation, update your `config/sentry.php` file with `'queue_jobs' => env('SENTRY_TRACE_QUEUE_JOBS_ENABLED', true),` or set `SENTRY_TRACE_QUEUE_JOBS_ENABLED=true` in your environment [(#903)](https://github.com/getsentry/sentry-laravel/pull/903)
 
 ### Bug Fixes
 
