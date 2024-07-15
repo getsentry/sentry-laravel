@@ -18,6 +18,14 @@ body:
       placeholder: e.g. 3.6.1
     validations:
       required: true
+  - type: input
+    id: laravel
+    attributes:
+      label: Laravel version
+      description: Which Laravel version do you use?
+      placeholder: e.g. 11.15.0
+    validations:
+      required: true
   - type: textarea
     id: repro
     attributes:
