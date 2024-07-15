@@ -3,7 +3,6 @@
 namespace Sentry\Laravel\Tracing;
 
 use Closure;
-use Illuminate\Contracts\Foundation\Application as LaravelApplication;
 use Illuminate\Http\Request;
 use Laravel\Lumen\Application as LumenApplication;
 use Sentry\SentrySdk;
@@ -42,13 +41,6 @@ class Middleware
     private $bootedTimestamp;
 
     /**
-     * The Laravel or Lumen application instance.
-     *
-     * @var LaravelApplication|LumenApplication
-     */
-    private $app;
-
-    /**
      * Whether we should continue tracing after the response has been sent to the client.
      *
      * @var bool
@@ -71,12 +63,9 @@ class Middleware
 
     /**
      * Construct the Sentry tracing middleware.
-     *
-     * @param LaravelApplication|LumenApplication $app
      */
-    public function __construct($app, bool $continueAfterResponse = true)
+    public function __construct(bool $continueAfterResponse = true)
     {
-        $this->app = $app;
         $this->continueAfterResponse = $continueAfterResponse;
     }
 
@@ -84,14 +73,14 @@ class Middleware
      * Handle an incoming request.
      *
      * @param \Illuminate\Http\Request $request
-     * @param \Closure                 $next
+     * @param \Closure $next
      *
      * @return mixed
      */
     public function handle(Request $request, Closure $next)
     {
-        if ($this->app->bound(HubInterface::class)) {
-            $this->startTransaction($request, $this->app->make(HubInterface::class));
+        if (app()->bound(HubInterface::class)) {
+            $this->startTransaction($request, app(HubInterface::class));
         }
 
         return $next($request);
@@ -101,14 +90,14 @@ class Middleware
      * Handle the application termination.
      *
      * @param \Illuminate\Http\Request $request
-     * @param mixed                    $response
+     * @param mixed $response
      *
      * @return void
      */
     public function terminate(Request $request, $response): void
     {
         // If there is no transaction or the HubInterface is not bound in the container there is nothing for us to do
-        if ($this->transaction === null || !$this->app->bound(HubInterface::class)) {
+        if ($this->transaction === null || !app()->bound(HubInterface::class)) {
             return;
         }
 
@@ -137,7 +126,7 @@ class Middleware
             // dispatched using dispatch(...)->afterResponse(). This middleware is called
             // before the terminating callbacks so we are 99.9% sure to be the last one
             // to run except if another terminating callback is registered after ours.
-            $this->app->terminating(function () {
+            app()->terminating(function () {
                 $this->finishTransaction();
             });
 
@@ -290,7 +279,7 @@ class Middleware
     {
         // Laravel Lumen doesn't use `illuminate/routing`.
         // Instead we use the route available on the request to detect if a route was matched.
-        if ($this->app instanceof LumenApplication) {
+        if (app() instanceof LumenApplication) {
             return $request->route() === null && config('sentry.tracing.missing_routes', false) === false;
         }
 
