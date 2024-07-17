@@ -78,6 +78,19 @@ class CacheIntegrationTest extends TestCase
         $this->assertEquals(['foo', 'bar'], $span->getData()['cache.key']);
     }
 
+    public function testCacheGetSpanIsRecordedForMultipleOperation(): void
+    {
+        $this->markSkippedIfTracingEventsNotAvailable();
+
+        $span = $this->executeAndReturnMostRecentSpan(function () {
+            Cache::getMultiple(['foo', 'bar']);
+        });
+
+        $this->assertEquals('cache.get', $span->getOp());
+        $this->assertEquals('foo, bar', $span->getDescription());
+        $this->assertEquals(['foo', 'bar'], $span->getData()['cache.key']);
+    }
+
     public function testCacheGetSpanIsRecordedWithCorrectHitData(): void
     {
         $this->markSkippedIfTracingEventsNotAvailable();
@@ -107,7 +120,7 @@ class CacheIntegrationTest extends TestCase
         $this->assertEquals(99, $span->getData()['cache.ttl']);
     }
 
-    public function testCachePutSpanIsRecordedForBatchOperation(): void
+    public function testCachePutSpanIsRecordedForManyOperation(): void
     {
         $this->markSkippedIfTracingEventsNotAvailable();
 

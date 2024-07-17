@@ -103,9 +103,11 @@ class CacheIntegration extends Feature
 
         $this->withParentSpanIfSampled(function (Span $parentSpan) use ($event) {
             if ($event instanceof Events\RetrievingKey || $event instanceof Events\RetrievingManyKeys) {
-                $keys = $event instanceof Events\RetrievingKey
-                    ? [$event->key]
-                    : $event->keys;
+                $keys = $this->normalizeKeyOrKeys(
+                    $event instanceof Events\RetrievingKey
+                        ? [$event->key]
+                        : $event->keys
+                );
 
                 $this->pushSpan(
                     $parentSpan->startChild(
@@ -120,9 +122,11 @@ class CacheIntegration extends Feature
             }
 
             if ($event instanceof Events\WritingKey || $event instanceof Events\WritingManyKeys) {
-                $keys = $event instanceof Events\WritingKey
-                    ? [$event->key]
-                    : $event->keys;
+                $keys = $this->normalizeKeyOrKeys(
+                    $event instanceof Events\WritingKey
+                        ? [$event->key]
+                        : $event->keys
+                );
 
                 $this->pushSpan(
                     $parentSpan->startChild(
@@ -235,5 +239,23 @@ class CacheIntegration extends Feature
         }
 
         return false;
+    }
+
+    /**
+     * Normalize the array of keys to a array of only strings.
+     *
+     * @param string|string[]|array<array-key, mixed> $keyOrKeys
+     *
+     * @return string[]
+     */
+    private function normalizeKeyOrKeys($keyOrKeys): array
+    {
+        if (is_string($keyOrKeys)) {
+            return [$keyOrKeys];
+        }
+
+        return collect($keyOrKeys)->map(function ($value, $key) {
+            return is_string($key) ? $key : $value;
+        })->values()->all();
     }
 }
