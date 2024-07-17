@@ -1,5 +1,17 @@
 # Changelog
 
+## 4.7.1
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.7.1.
+
+### Bug Fixes
+
+- Always remove the `XSRF-TOKEN` cookie value before sending to Sentry [(#920)](https://github.com/getsentry/sentry-laravel/pull/920)
+- Fix trace durations when using Octane [(#921)](https://github.com/getsentry/sentry-laravel/pull/921)
+- Handle clousre route names [(#921)](https://github.com/getsentry/sentry-laravel/pull/921)
+- Don't rely on facades when accessing the Laravel context [(#922)](https://github.com/getsentry/sentry-laravel/pull/922)
+- Normalize array of cache key names before converting to string [(#923)](https://github.com/getsentry/sentry-laravel/pull/923)
+
 ## 4.7.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.7.0.
