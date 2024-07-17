@@ -2,7 +2,7 @@
 
 namespace Sentry\Laravel\Integration;
 
-use Illuminate\Support\Facades\Context;
+use Illuminate\Log\Context\Repository as ContextRepository;
 use Sentry\Event;
 use Sentry\EventHint;
 use Sentry\EventType;
@@ -15,7 +15,7 @@ class LaravelContextIntegration implements IntegrationInterface
     public function setupOnce(): void
     {
         // Context was introduced in Laravel 11 so we need to check if we can use it otherwise we skip the event processor
-        if (!class_exists(Context::class)) {
+        if (!class_exists(ContextRepository::class)) {
             return;
         }
 
@@ -30,7 +30,7 @@ class LaravelContextIntegration implements IntegrationInterface
                 return $event;
             }
 
-            $event->setContext('laravel', Context::all());
+            $event->setContext('laravel', app(ContextRepository::class)->all());
 
             return $event;
         });

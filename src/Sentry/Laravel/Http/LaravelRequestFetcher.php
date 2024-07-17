@@ -40,7 +40,7 @@ class LaravelRequestFetcher implements RequestFetcherInterface
         $cookies = new Collection($request->getCookieParams());
 
         // We need to filter out the cookies that are not allowed to be sent to Sentry because they are very sensitive
-        $forbiddenCookies = [config('session.cookie'), 'remember_*'];
+        $forbiddenCookies = [config('session.cookie'), 'remember_*', 'XSRF-TOKEN'];
 
         return $request->withCookieParams(
             $cookies->map(function ($value, string $key) use ($forbiddenCookies) {
