@@ -68,7 +68,7 @@ class ServiceProvider extends BaseServiceProvider
                 $continueAfterResponse = false;
             }
 
-            return new Middleware($this->app, $continueAfterResponse);
+            return new Middleware($continueAfterResponse);
         });
     }
 

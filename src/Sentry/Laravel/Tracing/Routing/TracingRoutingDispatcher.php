@@ -2,6 +2,7 @@
 
 namespace Sentry\Laravel\Tracing\Routing;
 
+use Closure;
 use Illuminate\Routing\Route;
 use Sentry\SentrySdk;
 use Sentry\Tracing\SpanContext;
@@ -17,9 +18,13 @@ abstract class TracingRoutingDispatcher
             return $dispatch();
         }
 
+        // The action name can be a Closure curiously enough... so we guard againt that here
+        // @see: https://github.com/getsentry/sentry-laravel/issues/917
+        $action = $route->getActionName() instanceof Closure ? 'Closure' : $route->getActionName();
+
         $context = new SpanContext;
         $context->setOp('http.route');
-        $context->setDescription($route->getActionName());
+        $context->setDescription($action);
 
         $span = $parentSpan->startChild($context);
 
