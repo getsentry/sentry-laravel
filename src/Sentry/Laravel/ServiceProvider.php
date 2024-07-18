@@ -248,7 +248,10 @@ class ServiceProvider extends BaseServiceProvider
             $options = \array_merge(
                 [
                     'prefixes' => [$basePath],
-                    'in_app_exclude' => ["{$basePath}/vendor"],
+                    'in_app_exclude' => [
+                        "{$basePath}/vendor",
+                        "{$basePath}/artisan",
+                    ],
                 ],
                 $userConfig
             );
