@@ -3,6 +3,7 @@
 namespace Sentry\Laravel\Console;
 
 use Exception;
+use Sentry\Event;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
 use Psr\Log\AbstractLogger;
@@ -18,18 +19,7 @@ use Throwable;
 
 class TestCommand extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'sentry:test {--transaction} {--dsn=}';
-
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
     protected $description = 'Generate a test event and send it to Sentry';
 
     /**
@@ -90,10 +80,31 @@ class TestCommand extends Command
 
         $options = [
             'dsn' => $dsn,
+            'before_send' => static function (Event $event): ?Event {
+                foreach ($event->getExceptions() as $exception) {
+                    $stacktrace = $exception->getStacktrace();
+
+                    if ($stacktrace === null) {
+                        continue;
+                    }
+
+                    foreach ($stacktrace->getFrames() as $frame) {
+                        if (str_starts_with($frame->getAbsoluteFilePath(), __DIR__))  {
+                            $frame->setIsInApp(true);
+                        }
+                    }
+                }
+
+                return $event;
+            },
+            // We include this file as "in-app" so that the events generated have something to show
+            'in_app_include' => [__DIR__],
+            'in_app_exclude' => [base_path('artisan'), base_path('vendor')],
             'traces_sample_rate' => 1.0,
         ];
 
         if ($laravelClient !== null) {
+            // Some options are taken from the client as configured by the user
             $options = array_merge($options, [
                 'release' => $laravelClient->getOptions()->getRelease(),
                 'environment' => $laravelClient->getOptions()->getEnvironment(),
@@ -143,6 +154,7 @@ class TestCommand extends Command
             }
         });
 
+        // We create a new Hub and Client to prevent user configuration from affecting the test command
         $hub = new Hub($clientBuilder->getClient());
 
         $this->info('Sending test event...');
@@ -199,14 +211,9 @@ class TestCommand extends Command
     }
 
     /**
-     * Generate a test exception to send to Sentry.
-     *
-     * @param $command
-     * @param $arg
-     *
-     * @return \Exception
+     * Generate an example exception to send to Sentry.
      */
-    protected function generateTestException($command, $arg): Exception
+    protected function generateTestException(string $command, array $arg): Exception
     {
         // Do something silly
         try {
