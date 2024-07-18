@@ -112,7 +112,7 @@ class PublishCommand extends Command
         if (count($values) > 0) {
             foreach ($values as $envKey => $envValue) {
                 if ($this->isEnvKeySet($envKey, $envFileContents)) {
-                    $envFileContents = preg_replace("/^{$envKey}=.*?[\s$]/m", "{$envKey}={$envValue}\n", $envFileContents);
+                    $envFileContents = preg_replace("/^{$envKey}=\"?.*?\"?(\s|$)/m", "{$envKey}={$envValue}\n", $envFileContents);
 
                     $this->info("Updated {$envKey} with new value in your `.env` file.");
                 } else {
@@ -136,7 +136,7 @@ class PublishCommand extends Command
     {
         $envFileContents = $envFileContents ?? file_get_contents(app()->environmentFilePath());
 
-        return (bool)preg_match("/^{$envKey}=.*?[\s$]/m", $envFileContents);
+        return (bool)preg_match("/^{$envKey}=\"?.*?\"?(\s|$)/m", $envFileContents);
     }
 
     private function askForDsnInput(): string
