@@ -89,7 +89,7 @@ class TestCommand extends Command
                     }
 
                     foreach ($stacktrace->getFrames() as $frame) {
-                        if (str_starts_with($frame->getAbsoluteFilePath(), __DIR__))  {
+                        if (str_starts_with($frame->getAbsoluteFilePath(), __DIR__)) {
                             $frame->setIsInApp(true);
                         }
                     }
