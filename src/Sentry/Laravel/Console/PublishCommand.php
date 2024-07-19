@@ -5,10 +5,8 @@ namespace Sentry\Laravel\Console;
 use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
-use RuntimeException;
 use Sentry\Dsn;
 use Sentry\Laravel\ServiceProvider;
-use Symfony\Component\Process\Process;
 
 class PublishCommand extends Command
 {
@@ -90,9 +88,6 @@ class PublishCommand extends Command
         if (!$this->setEnvValues($env)) {
             return 1;
         }
-        if ($this->confirm('Do you want to install one of our JavaScript SDKs?', !$this->option('without-javascript-sdk'))) {
-            $this->installJavaScriptSdk();
-        }
 
         return 0;
     }
@@ -164,122 +159,5 @@ class PublishCommand extends Command
                 $this->error('The DSN is not valid, please make sure to paste a valid DSN!');
             }
         }
-    }
-
-    private function installJavaScriptSdk(): void
-    {
-        $framework = $this->choice(
-            'Which frontend framework are you using?',
-            [
-                self::SDK_CHOICE_BROWSER,
-                self::SDK_CHOICE_VUE,
-                self::SDK_CHOICE_REACT,
-                self::SDK_CHOICE_ANGULAR,
-                self::SDK_CHOICE_SVELTE,
-            ],
-            self::SDK_CHOICE_BROWSER
-        );
-
-        $snippet = '';
-
-        switch ($framework) {
-            case self::SDK_CHOICE_BROWSER:
-                $this->updateNodePackages(function ($packages) {
-                    return [
-                        '@sentry/browser' => '^7.40.0',
-                    ] + $packages;
-                });
-                $snippet = file_get_contents(__DIR__ . '/../../../../stubs/sentry-javascript/browser.js');
-                break;
-            case self::SDK_CHOICE_VUE:
-                $this->updateNodePackages(function ($packages) {
-                    return [
-                        '@sentry/vue' => '^7.40.0',
-                    ] + $packages;
-                });
-                $snippet = file_get_contents(__DIR__ . '/../../../../stubs/sentry-javascript/vue.js');
-                break;
-            case self::SDK_CHOICE_REACT:
-                $this->updateNodePackages(function ($packages) {
-                    return [
-                        '@sentry/react' => '^7.40.0',
-                    ] + $packages;
-                });
-                $snippet = file_get_contents(__DIR__ . '/../../../../stubs/sentry-javascript/react.js');
-                break;
-            case self::SDK_CHOICE_ANGULAR:
-                $this->updateNodePackages(function ($packages) {
-                    return [
-                        '@sentry/angular' => '^7.40.0',
-                    ] + $packages;
-                });
-                $snippet = file_get_contents(__DIR__ . '/../../../../stubs/sentry-javascript/angular.js');
-                break;
-            case self::SDK_CHOICE_SVELTE:
-                $this->updateNodePackages(function ($packages) {
-                    return [
-                        '@sentry/svelte' => '^7.40.0',
-                    ] + $packages;
-                });
-                $snippet = file_get_contents(__DIR__ . '/../../../../stubs/sentry-javascript/svelte.js');
-                break;
-        }
-
-        $env['VITE_SENTRY_DSN_PUBLIC'] ='"${SENTRY_LARAVEL_DSN}"';
-        $this->setEnvValues($env);
-
-        if (file_exists(base_path('pnpm-lock.yaml'))) {
-            $this->runCommands(['pnpm install']);
-        } elseif (file_exists(base_path('yarn.lock'))) {
-            $this->runCommands(['yarn install']);
-        } else {
-            $this->runCommands(['npm install']);
-        }
-
-        $this->newLine();
-        $this->components->info('Sentry JavaScript SDK installed successfully.');
-        $this->line('Put the following snippet into your JavaScript entry file:');
-        $this->newLine();
-        $this->line('<bg=blue>' . $snippet . '</>');
-        $this->newLine();
-        $this->line('For the best Sentry experience, we recommend you to set up dedicated projects for your Laravel and JavaScript applications.');
-    }
-
-    private function updateNodePackages(callable $callback)
-    {
-        if (! file_exists(base_path('package.json'))) {
-            return;
-        }
-
-        $packages = json_decode(file_get_contents(base_path('package.json')), true);
-
-        $packages['dependencies'] = $callback(
-            array_key_exists('dependencies', $packages) ? $packages['dependencies'] : [],
-            'dependencies'
-        );
-
-        ksort($packages['dependencies']);
-
-        file_put_contents(
-            base_path('package.json'),
-            json_encode($packages, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT).PHP_EOL
-        );
-    }
-
-    private function runCommands($commands)
-    {
-        $process = Process::fromShellCommandline(implode(' && ', $commands), null, null, null, null);
-
-        if ('\\' !== DIRECTORY_SEPARATOR && file_exists('/dev/tty') && is_readable('/dev/tty')) {
-            try {
-                $process->setTty(true);
-            } catch (RuntimeException $e) {
-                $this->output->writeln('  <bg=yellow;fg=black> WARN </> '.$e->getMessage().PHP_EOL);
-            }
-        }
-
-        $process->run(function ($type, $line) {
-            $this->output->write('    '.$line);
-        });
     }
 }
