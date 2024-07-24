@@ -1,6 +1,6 @@
 <?php
 
-namespace Sentry\Features;
+namespace Sentry\Laravel\Tests\Features;
 
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;

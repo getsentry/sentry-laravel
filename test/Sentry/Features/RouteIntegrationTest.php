@@ -1,6 +1,6 @@
 <?php
 
-namespace Sentry\Features;
+namespace Sentry\Laravel\Tests\Features;
 
 use Illuminate\Routing\Router;
 use Sentry\Laravel\Tests\TestCase;

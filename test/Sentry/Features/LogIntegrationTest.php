@@ -1,6 +1,6 @@
 <?php
 
-namespace Sentry\Features;
+namespace Sentry\Laravel\Tests\Features;
 
 use Illuminate\Config\Repository;
 use Illuminate\Support\Facades\Log;
