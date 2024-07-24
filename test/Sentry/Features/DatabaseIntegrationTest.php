@@ -100,6 +100,18 @@ class DatabaseIntegrationTest extends TestCase
         $this->assertSame($bindings, $span->getData()['db.sql.bindings']);
     }
 
+    public function testSqlBindingsAreInlined(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.sql_bindings' => 'embed',
+        ]);
+
+        $span = $this->executeQueryAndRetrieveSpan('SELECT ?', [true]);
+
+        $this->assertSame('SELECT 1', $span->getDescription());
+        $this->assertArrayNotHasKey('db.sql.bindings', $span->getData());
+    }
+
     public function testSqlBindingsAreNotRecordedWhenDisabled(): void
     {
         $this->resetApplicationWithConfig([
