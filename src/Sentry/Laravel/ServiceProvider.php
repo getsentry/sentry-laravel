@@ -46,8 +46,7 @@ class ServiceProvider extends BaseServiceProvider
         'integrations',
         // This is kept for backwards compatibility and can be dropped in a future breaking release
         'breadcrumbs.sql_bindings',
-
-        // This config option is no longer in use but to prevent errors when upgrading we leave it here to be discarded
+        // This config option is no longer in use, but to prevent errors when upgrading we leave it here to be discarded
         'controllers_base_namespace',
     ];
 

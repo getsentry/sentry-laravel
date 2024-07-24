@@ -78,9 +78,9 @@ class EventHandler
     private $recordSqlQueries;
 
     /**
-     * Indicates if we should add query bindings to the breadcrumbs.
+     * Indicates if and how we should add query bindings to the breadcrumbs.
      *
-     * @var bool
+     * @var bool|string
      */
     private $recordSqlBindings;
 
@@ -123,7 +123,7 @@ class EventHandler
         $this->container = $container;
 
         $this->recordSqlQueries = ($config['breadcrumbs.sql_queries'] ?? $config['breadcrumbs']['sql_queries'] ?? true) === true;
-        $this->recordSqlBindings = ($config['breadcrumbs.sql_bindings'] ?? $config['breadcrumbs']['sql_bindings'] ?? false) === true;
+        $this->recordSqlBindings = $config['breadcrumbs.sql_bindings'] ?? $config['breadcrumbs']['sql_bindings'] ?? false;
         $this->recordLaravelLogs = ($config['breadcrumbs.logs'] ?? $config['breadcrumbs']['logs'] ?? true) === true;
         $this->recordOctaneTickInfo = ($config['breadcrumbs.octane_tick_info'] ?? $config['breadcrumbs']['octane_tick_info'] ?? true) === true;
         $this->recordOctaneTaskInfo = ($config['breadcrumbs.octane_task_info'] ?? $config['breadcrumbs']['octane_task_info'] ?? true) === true;
@@ -216,15 +216,24 @@ class EventHandler
             $data['executionTimeMs'] = $query->time;
         }
 
-        if ($this->recordSqlBindings) {
-            $data['bindings'] = $query->bindings;
+        if ($this->recordSqlBindings === 'embed') {
+            // TODO use QueryExecuted::toRawSQL() once we require https://github.com/laravel/framework/releases/tag/v11.17.0
+            $sql = $query->connection
+                ->query()
+                ->getGrammar()
+                ->substituteBindingsIntoRawSql($query->sql, $query->connection->prepareBindings($query->bindings));
+        } else {
+            $sql = $query->sql;
+            if ($this->recordSqlBindings === true || $this->recordSqlBindings === 'append') {
+                $data['bindings'] = $query->bindings;
+            }
         }
 
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,
             Breadcrumb::TYPE_DEFAULT,
             'db.sql.query',
-            $query->sql,
+            $sql,
             $data
         ));
     }

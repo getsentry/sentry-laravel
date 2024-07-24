@@ -42,9 +42,9 @@ class EventHandler
     private $traceSqlQueries;
 
     /**
-     * Indicates if we should add query bindings to query spans.
+     * Indicates if and how we should add query bindings to query spans.
      *
-     * @var bool
+     * @var bool|string
      */
     private $traceSqlBindings;
 
@@ -96,7 +96,7 @@ class EventHandler
     public function __construct(array $config)
     {
         $this->traceSqlQueries = ($config['sql_queries'] ?? true) === true;
-        $this->traceSqlBindings = ($config['sql_bindings'] ?? true) === true;
+        $this->traceSqlBindings = $config['sql_bindings'] ?? false;
         $this->traceSqlQueryOrigin = ($config['sql_origin'] ?? true) === true;
         $this->traceSqlQueryOriginTreshHoldMs = $config['sql_origin_threshold_ms'] ?? 100;
 
@@ -172,29 +172,39 @@ class EventHandler
 
         $context = new SpanContext();
         $context->setOp('db.sql.query');
-        $context->setDescription($query->sql);
-        $context->setData([
+        $context->setStartTimestamp(microtime(true) - $query->time / 1000);
+        $context->setEndTimestamp($context->getStartTimestamp() + $query->time / 1000);
+
+        $data = [
             'db.name' => $query->connection->getDatabaseName(),
             'db.system' => $query->connection->getDriverName(),
             'server.address' => $query->connection->getConfig('host'),
             'server.port' => $query->connection->getConfig('port'),
-        ]);
-        $context->setStartTimestamp(microtime(true) - $query->time / 1000);
-        $context->setEndTimestamp($context->getStartTimestamp() + $query->time / 1000);
+        ];
 
-        if ($this->traceSqlBindings) {
-            $context->setData(array_merge($context->getData(), [
-                'db.sql.bindings' => $query->bindings
-            ]));
+        if ($this->traceSqlBindings === 'embed') {
+            // TODO use QueryExecuted::toRawSQL() once we require https://github.com/laravel/framework/releases/tag/v11.17.0
+            $sql = $query->connection
+                ->query()
+                ->getGrammar()
+                ->substituteBindingsIntoRawSql($query->sql, $query->connection->prepareBindings($query->bindings));
+        } else {
+            $sql = $query->sql;
+            if ($this->traceSqlBindings === true || $this->traceSqlBindings === 'append') {
+                $data['db.sql.bindings'] = $query->bindings;
+            }
         }
+        $context->setDescription($sql);
 
         if ($this->traceSqlQueryOrigin && $query->time >= $this->traceSqlQueryOriginTreshHoldMs) {
             $queryOrigin = $this->resolveEventOrigin();
 
             if ($queryOrigin !== null) {
-                $context->setData(array_merge($context->getData(), $queryOrigin));
+                $data = array_merge($data, $queryOrigin);
             }
         }
+
+        $context->setData($data);
 
         $parentSpan->startChild($context);
     }

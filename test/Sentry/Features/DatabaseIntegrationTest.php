@@ -96,11 +96,11 @@ class DatabaseIntegrationTest extends TestCase
             $bindings = ['1']
         );
 
-        $this->assertEquals($query, $span->getDescription());
-        $this->assertEquals($bindings, $span->getData()['db.sql.bindings']);
+        $this->assertSame($query, $span->getDescription());
+        $this->assertSame($bindings, $span->getData()['db.sql.bindings']);
     }
 
-    public function testSqlBindingsAreRecordedWhenDisabled(): void
+    public function testSqlBindingsAreNotRecordedWhenDisabled(): void
     {
         $this->resetApplicationWithConfig([
             'sentry.tracing.sql_bindings' => false,
@@ -111,8 +111,8 @@ class DatabaseIntegrationTest extends TestCase
             ['1']
         );
 
-        $this->assertEquals($query, $span->getDescription());
-        $this->assertFalse(isset($span->getData()['db.sql.bindings']));
+        $this->assertSame($query, $span->getDescription());
+        $this->assertArrayNotHasKey('db.sql.bindings', $span->getData());
     }
 
     public function testSqlOriginIsResolvedWhenEnabledAndOverTreshold(): void

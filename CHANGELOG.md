@@ -1,5 +1,20 @@
 # Changelog
 
+### Features
+
+- Allow embedding SQL query bindings (parameters) in SQL query breadcrumbs and spans.
+
+  To enable this feature, update your `config/sentry.php` file or set the `SENTRY_TRACE_SQL_BINDINGS_ENABLED` and `SENTRY_BREADCRUMBS_SQL_BINDINGS_ENABLED` environment variables to `embed`.
+
+  ```php
+  'breadcrumbs' => [
+      'sql_bindings' => 'embed',
+  ],
+  'tracing' => [
+      'sql_bindings' => 'embed',
+  ],
+  ```
+
 ## 4.7.1
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.7.1.
