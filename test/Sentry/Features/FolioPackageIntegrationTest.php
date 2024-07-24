@@ -1,6 +1,6 @@
 <?php
 
-namespace Sentry\Features;
+namespace Sentry\Laravel\Tests\Features;
 
 use Laravel\Folio\Folio;
 use Sentry\EventType;

@@ -1,6 +1,6 @@
 <?php
 
-namespace Sentry\EventHandler;
+namespace Sentry\Laravel\Tests\EventHandler;
 
 use Illuminate\Auth\Events\Authenticated;
 use Illuminate\Contracts\Auth\Authenticatable;
