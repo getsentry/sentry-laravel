@@ -72,23 +72,25 @@ class HttpClientIntegration extends Feature
             return;
         }
 
-        $context = new SpanContext;
-
         $fullUri = $this->getFullUri($event->request->url());
         $partialUri = $this->getPartialUri($fullUri);
 
-        $context->setOp('http.client');
-        $context->setDescription($event->request->method() . ' ' . $partialUri);
-        $context->setData([
-            'url' => $partialUri,
-            // See: https://develop.sentry.dev/sdk/performance/span-data-conventions/#http
-            'http.query' => $fullUri->getQuery(),
-            'http.fragment' => $fullUri->getFragment(),
-            'http.request.method' => $event->request->method(),
-            'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
-        ]);
-
-        $this->pushSpan($parentSpan->startChild($context));
+        $this->pushSpan(
+            $parentSpan->startChild(
+                SpanContext::make()
+                    ->setOp('http.client')
+                    ->setData([
+                        'url' => $partialUri,
+                        // See: https://develop.sentry.dev/sdk/performance/span-data-conventions/#http
+                        'http.query' => $fullUri->getQuery(),
+                        'http.fragment' => $fullUri->getFragment(),
+                        'http.request.method' => $event->request->method(),
+                        'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
+                    ])
+                    ->setOrigin('auto.http.client')
+                    ->setDescription($event->request->method() . ' ' . $partialUri)
+            )
+        );
     }
 
     public function handleResponseReceivedHandlerForTracing(ResponseReceived $event): void

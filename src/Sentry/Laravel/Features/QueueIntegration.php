@@ -202,6 +202,7 @@ class QueueIntegration extends Feature
 
         $context->setOp('queue.process');
         $context->setData($job);
+        $context->setOrigin('auto.queue');
         $context->setStartTimestamp(microtime(true));
 
         // When the parent span is null we start a new transaction otherwise we start a child of the current span

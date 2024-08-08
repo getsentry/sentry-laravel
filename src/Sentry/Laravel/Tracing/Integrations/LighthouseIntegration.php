@@ -45,7 +45,7 @@ class LighthouseIntegration implements IntegrationInterface
 
     public function __construct(EventDispatcher $eventDispatcher, bool $ignoreOperationName = false)
     {
-        $this->eventDispatcher     = $eventDispatcher;
+        $this->eventDispatcher = $eventDispatcher;
         $this->ignoreOperationName = $ignoreOperationName;
     }
 
@@ -106,11 +106,12 @@ class LighthouseIntegration implements IntegrationInterface
             return;
         }
 
-        $context = new SpanContext;
-        $context->setOp('graphql.request');
+        $context = SpanContext::make()
+            ->setOp('graphql.request')
+            ->setOrigin('auto.graphql.server');
 
-        $this->operations    = [];
-        $this->requestSpan   = $this->previousSpan->startChild($context);
+        $this->operations = [];
+        $this->requestSpan = $this->previousSpan->startChild($context);
         $this->operationSpan = null;
 
         SentrySdk::getCurrentHub()->setSpan($this->requestSpan);
@@ -136,8 +137,9 @@ class LighthouseIntegration implements IntegrationInterface
 
         $this->updateTransactionName();
 
-        $context = new SpanContext;
-        $context->setOp("graphql.{$operationDefinition->operation}");
+        $context = SpanContext::make()
+            ->setOp("graphql.{$operationDefinition->operation}")
+            ->setOrigin('auto.graphql.server');
 
         $this->operationSpan = $this->requestSpan->startChild($context);
 

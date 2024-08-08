@@ -35,11 +35,12 @@ final class ViewEngineDecorator implements Engine
             return $this->engine->get($path, $data);
         }
 
-        $context = new SpanContext();
-        $context->setOp('view.render');
-        $context->setDescription($this->viewFactory->shared(self::SHARED_KEY, basename($path)));
-
-        $span = $parentSpan->startChild($context);
+        $span = $parentSpan->startChild(
+            SpanContext::make()
+                ->setOp('view.render')
+                ->setOrigin('auto.view')
+                ->setDescription($this->viewFactory->shared(self::SHARED_KEY, basename($path)))
+        );
 
         SentrySdk::getCurrentHub()->setSpan($span);
 
