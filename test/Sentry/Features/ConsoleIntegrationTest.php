@@ -1,6 +1,6 @@
 <?php
 
-namespace Sentry\Laravel\Tests\EventHandler;
+namespace Sentry\Laravel\Tests\Features;
 
 use Illuminate\Console\Events\CommandStarting;
 use Sentry\Laravel\Tests\TestCase;

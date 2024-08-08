@@ -1,8 +1,6 @@
 <?php
 
-namespace Sentry;
-
-use Sentry\Laravel\Tests\TestCase;
+namespace Sentry\Laravel\Tests;
 
 class ServiceProviderWithEnvironmentFromConfigTest extends TestCase
 {

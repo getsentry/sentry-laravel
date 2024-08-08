@@ -1,6 +1,6 @@
 <?php
 
-namespace Sentry\Integration;
+namespace Sentry\Laravel\Tests\Integration;
 
 use Exception;
 use Illuminate\Support\Facades\Context;

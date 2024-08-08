@@ -1,6 +1,6 @@
 <?php
 
-namespace Sentry\Console;
+namespace Sentry\Laravel\Tests\Console;
 
 use Illuminate\Foundation\Console\AboutCommand;
 use Illuminate\Support\Facades\Artisan;

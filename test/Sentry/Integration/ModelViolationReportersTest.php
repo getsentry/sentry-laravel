@@ -1,6 +1,6 @@
 <?php
 
-namespace Sentry\Integration;
+namespace Sentry\Laravel\Tests\Integration;
 
 use Illuminate\Database\Eloquent\MissingAttributeException;
 use Illuminate\Database\Eloquent\Model;

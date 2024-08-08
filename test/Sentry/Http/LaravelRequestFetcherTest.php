@@ -1,6 +1,6 @@
 <?php
 
-namespace Sentry\Http;
+namespace Sentry\Laravel\Tests\Http;
 
 use Nyholm\Psr7\ServerRequest;
 use Sentry\Laravel\Http\LaravelRequestFetcher;
