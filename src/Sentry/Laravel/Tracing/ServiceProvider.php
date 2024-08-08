@@ -59,6 +59,8 @@ class ServiceProvider extends BaseServiceProvider
 
     public function register(): void
     {
+        $this->app->singleton(TransactionFinisher::class);
+
         $this->app->singleton(Middleware::class, function () {
             $continueAfterResponse = ($this->getTracingConfig()['continue_after_response'] ?? true) === true;
 

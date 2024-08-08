@@ -48,13 +48,6 @@ class Middleware
     private $continueAfterResponse;
 
     /**
-     * Whether the terminating callback has been registered.
-     *
-     * @var bool
-     */
-    private $registeredTerminatingCallback = false;
-
-    /**
      * Whether a defined route was matched in the application.
      *
      * @var bool
@@ -115,22 +108,11 @@ class Middleware
         }
 
         if ($this->continueAfterResponse) {
-            // Ensure we do not register the terminating callback multiple times since there is no point in doing so
-            if ($this->registeredTerminatingCallback) {
-                return;
-            }
-
-            // We need to finish the transaction after the response has been sent to the client
-            // so we register a terminating callback to do so, this allows us to also capture
-            // spans that are created during the termination of the application like queue
-            // dispatched using dispatch(...)->afterResponse(). This middleware is called
-            // before the terminating callbacks so we are 99.9% sure to be the last one
-            // to run except if another terminating callback is registered after ours.
-            app()->terminating(function () {
-                $this->finishTransaction();
-            });
-
-            $this->registeredTerminatingCallback = true;
+            // Resolving the transaction finisher class will register the terminating callback
+            // which is responsible for calling `finishTransaction`. We have registered the
+            // class as a singleton to keep the state in the container and away from here
+            // this way we ensure the callback is only registered once even for Octane.
+            app(TransactionFinisher::class);
         } else {
             $this->finishTransaction();
         }
@@ -220,11 +202,11 @@ class Middleware
 
         $span = $this->transaction->startChild($spanContextStart);
 
-        // Consume the booted timestamp, because we don't want to report the bootstrap span more than once
-        $this->bootedTimestamp = null;
-
         // Add more information about the bootstrap section if possible
         $this->addBootDetailTimeSpans($span);
+
+        // Consume the booted timestamp, because we don't want to report the boot(strap) spans more than once
+        $this->bootedTimestamp = null;
 
         return $span;
     }
@@ -250,7 +232,7 @@ class Middleware
         $this->transaction->setHttpStatus($response->getStatusCode());
     }
 
-    private function finishTransaction(): void
+    public function finishTransaction(): void
     {
         // We could end up multiple times here since we register a terminating callback so
         // double check if we have a transaction before trying to finish it since it could
