@@ -126,7 +126,7 @@ class EventHandler
      * Pass through the event and capture any errors.
      *
      * @param string $method
-     * @param array  $arguments
+     * @param array $arguments
      */
     public function __call(string $method, array $arguments)
     {
@@ -170,16 +170,18 @@ class EventHandler
             return;
         }
 
-        $context = new SpanContext();
-        $context->setOp('db.sql.query');
-        $context->setDescription($query->sql);
-        $context->setData([
-            'db.name' => $query->connection->getDatabaseName(),
-            'db.system' => $query->connection->getDriverName(),
-            'server.address' => $query->connection->getConfig('host'),
-            'server.port' => $query->connection->getConfig('port'),
-        ]);
-        $context->setStartTimestamp(microtime(true) - $query->time / 1000);
+        $context = SpanContext::make()
+            ->setOp('db.sql.query')
+            ->setData([
+                'db.name' => $query->connection->getDatabaseName(),
+                'db.system' => $query->connection->getDriverName(),
+                'server.address' => $query->connection->getConfig('host'),
+                'server.port' => $query->connection->getConfig('port'),
+            ])
+            ->setOrigin('auto.db')
+            ->setDescription($query->sql)
+            ->setStartTimestamp(microtime(true) - $query->time / 1000);
+
         $context->setEndTimestamp($context->getStartTimestamp() + $query->time / 1000);
 
         if ($this->traceSqlBindings) {
@@ -224,10 +226,13 @@ class EventHandler
             return;
         }
 
-        $context = new SpanContext;
-        $context->setOp('http.route.response');
-
-        $this->pushSpan($parentSpan->startChild($context));
+        $this->pushSpan(
+            $parentSpan->startChild(
+                SpanContext::make()
+                    ->setOp('http.route.response')
+                    ->setOrigin('auto.http.server')
+            )
+        );
     }
 
     protected function transactionBeginningHandler(DatabaseEvents\TransactionBeginning $event): void
@@ -239,10 +244,13 @@ class EventHandler
             return;
         }
 
-        $context = new SpanContext;
-        $context->setOp('db.transaction');
-
-        $this->pushSpan($parentSpan->startChild($context));
+        $this->pushSpan(
+            $parentSpan->startChild(
+                SpanContext::make()
+                    ->setOp('db.transaction')
+                    ->setOrigin('auto.db')
+            )
+        );
     }
 
     protected function transactionCommittedHandler(DatabaseEvents\TransactionCommitted $event): void

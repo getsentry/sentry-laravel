@@ -22,11 +22,12 @@ abstract class TracingRoutingDispatcher
         // @see: https://github.com/getsentry/sentry-laravel/issues/917
         $action = $route->getActionName() instanceof Closure ? 'Closure' : $route->getActionName();
 
-        $context = new SpanContext;
-        $context->setOp('http.route');
-        $context->setDescription($action);
-
-        $span = $parentSpan->startChild($context);
+        $span = $parentSpan->startChild(
+            SpanContext::make()
+                ->setOp('http.route')
+                ->setOrigin('auto.http.server')
+                ->setDescription($action)
+        );
 
         SentrySdk::getCurrentHub()->setSpan($span);
 

@@ -112,15 +112,18 @@ class LivewirePackageIntegration extends Feature
             return;
         }
 
-        $context = new SpanContext;
-        $context->setOp('ui.livewire.component');
-        $context->setDescription(
-            empty($method)
-                ? $component->getName()
-                : "{$component->getName()}::{$method}"
+        $this->pushSpan(
+            $parentSpan->startChild(
+                SpanContext::make()
+                    ->setOp('ui.livewire.component')
+                    ->setOrigin('auto.laravel.livewire')
+                    ->setDescription(
+                        empty($method)
+                            ? $component->getName()
+                            : "{$component->getName()}::{$method}"
+                    )
+            )
         );
-
-        $this->pushSpan($parentSpan->startChild($context));
     }
 
     public function handleComponentMount(Component $component, array $data): void

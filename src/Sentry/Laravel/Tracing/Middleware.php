@@ -159,6 +159,7 @@ class Middleware
 
         $context->setOp('http.server');
         $context->setName($requestPath);
+        $context->setOrigin('auto.http.server');
         $context->setSource(TransactionSource::url());
         $context->setStartTimestamp($requestStartTime);
 
@@ -180,11 +181,12 @@ class Middleware
 
         $bootstrapSpan = $this->addAppBootstrapSpan();
 
-        $appContextStart = new SpanContext;
-        $appContextStart->setOp('middleware.handle');
-        $appContextStart->setStartTimestamp($bootstrapSpan ? $bootstrapSpan->getEndTimestamp() : microtime(true));
-
-        $this->appSpan = $this->transaction->startChild($appContextStart);
+        $this->appSpan = $this->transaction->startChild(
+            SpanContext::make()
+                ->setOp('middleware.handle')
+                ->setOrigin('auto.http.server')
+                ->setStartTimestamp($bootstrapSpan ? $bootstrapSpan->getEndTimestamp() : microtime(true))
+        );
 
         SentrySdk::getCurrentHub()->setSpan($this->appSpan);
     }
@@ -195,12 +197,13 @@ class Middleware
             return null;
         }
 
-        $spanContextStart = new SpanContext;
-        $spanContextStart->setOp('app.bootstrap');
-        $spanContextStart->setStartTimestamp($this->transaction->getStartTimestamp());
-        $spanContextStart->setEndTimestamp($this->bootedTimestamp);
-
-        $span = $this->transaction->startChild($spanContextStart);
+        $span = $this->transaction->startChild(
+            SpanContext::make()
+                ->setOp('app.bootstrap')
+                ->setOrigin('auto.http.server')
+                ->setStartTimestamp($this->transaction->getStartTimestamp())
+                ->setEndTimestamp($this->bootedTimestamp)
+        );
 
         // Add more information about the bootstrap section if possible
         $this->addBootDetailTimeSpans($span);
@@ -219,12 +222,13 @@ class Middleware
             return;
         }
 
-        $autoload = new SpanContext;
-        $autoload->setOp('app.php.autoload');
-        $autoload->setStartTimestamp($this->transaction->getStartTimestamp());
-        $autoload->setEndTimestamp(SENTRY_AUTOLOAD);
-
-        $bootstrap->startChild($autoload);
+        $bootstrap->startChild(
+            SpanContext::make()
+                ->setOp('app.php.autoload')
+                ->setOrigin('auto.http.server')
+                ->setStartTimestamp($this->transaction->getStartTimestamp())
+                ->setEndTimestamp(SENTRY_AUTOLOAD)
+        );
     }
 
     private function hydrateResponseData(SymfonyResponse $response): void

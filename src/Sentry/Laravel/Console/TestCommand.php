@@ -176,18 +176,20 @@ class TestCommand extends Command
         if ($this->option('transaction')) {
             $this->clearErrorMessagesFromSDK();
 
-            $transactionContext = new TransactionContext();
-            $transactionContext->setSampled(true);
-            $transactionContext->setName('Sentry Test Transaction');
-            $transactionContext->setSource(TransactionSource::custom());
-            $transactionContext->setOp('sentry.test');
+            $transaction = $hub->startTransaction(
+                TransactionContext::make()
+                    ->setOp('sentry.test')
+                    ->setName('Sentry Test Transaction')
+                    ->setOrigin('auto.test.transaction')
+                    ->setSource(TransactionSource::custom())
+                    ->setSampled(true)
+            );
 
-            $transaction = $hub->startTransaction($transactionContext);
-
-            $spanContext = new SpanContext();
-            $spanContext->setOp('sentry.sent');
-
-            $span = $transaction->startChild($spanContext);
+            $span = $transaction->startChild(
+                SpanContext::make()
+                    ->setOp('sentry.sent')
+                    ->setOrigin('auto.test.span')
+            );
 
             $this->info('Sending transaction...');
 

@@ -54,14 +54,16 @@ trait FilesystemDecorator
         }
 
         if ($this->recordSpans) {
-            $spanContext = new SpanContext;
-            $spanContext->setOp($op);
-            $spanContext->setData($data);
-            $spanContext->setDescription($description);
-
-            return trace(function () use ($method, $args) {
-                return $this->filesystem->{$method}(...$args);
-            }, $spanContext);
+            return trace(
+                function () use ($method, $args) {
+                    return $this->filesystem->{$method}(...$args);
+                },
+                SpanContext::make()
+                    ->setOp($op)
+                    ->setData($data)
+                    ->setOrigin('auto.filesystem')
+                    ->setDescription($description)
+            );
         }
 
         return $this->filesystem->{$method}(...$args);

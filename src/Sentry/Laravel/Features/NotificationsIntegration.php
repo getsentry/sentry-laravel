@@ -43,7 +43,7 @@ class NotificationsIntegration extends Feature
             return;
         }
 
-        $context = (new SpanContext)
+        $context = SpanContext::make()
             ->setOp('notification.send')
             ->setData([
                 'id' => $event->notification->id,
@@ -51,6 +51,7 @@ class NotificationsIntegration extends Feature
                 'notifiable' => $this->formatNotifiable($event->notifiable),
                 'notification' => get_class($event->notification),
             ])
+            ->setOrigin('auto.laravel.notifications')
             ->setDescription($event->channel);
 
         $this->pushSpan($parentSpan->startChild($context));
