@@ -116,6 +116,7 @@ class CacheIntegration extends Feature
                             ->setData([
                                 'cache.key' => $keys,
                             ])
+                            ->setOrigin('auto.cache')
                             ->setDescription(implode(', ', $keys))
                     )
                 );
@@ -136,6 +137,7 @@ class CacheIntegration extends Feature
                                 'cache.key' => $keys,
                                 'cache.ttl' => $event->seconds,
                             ])
+                            ->setOrigin('auto.cache')
                             ->setDescription(implode(', ', $keys))
                     )
                 );
@@ -149,6 +151,7 @@ class CacheIntegration extends Feature
                             ->setData([
                                 'cache.key' => [$event->key],
                             ])
+                            ->setOrigin('auto.cache')
                             ->setDescription($event->key)
                     )
                 );
@@ -165,8 +168,9 @@ class CacheIntegration extends Feature
             return;
         }
 
-        $context = new SpanContext();
-        $context->setOp('db.redis');
+        $context = SpanContext::make()
+            ->setOp('db.redis')
+            ->setOrigin('auto.cache.redis');
 
         $keyForDescription = '';
 
