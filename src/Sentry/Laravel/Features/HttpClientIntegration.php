@@ -115,7 +115,9 @@ class HttpClientIntegration extends Feature
     {
         $level = Breadcrumb::LEVEL_INFO;
 
-        if ($event->response->failed()) {
+        if ($event->response->clientError()) {
+            $level = Breadcrumb::LEVEL_WARNING;
+        } elseif ($event->response->serverError()) {
             $level = Breadcrumb::LEVEL_ERROR;
         }
 
