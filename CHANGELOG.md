@@ -1,5 +1,21 @@
 # Changelog
 
+## 4.8.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.8.0.
+
+### Bug Fixes
+
+- Fix `php artisan sentry:publish` mangling the .env file [(#928)](https://github.com/getsentry/sentry-laravel/pull/928)
+
+- Fix not (correctly) reporting transactions when using Laravel Octane [(#936)](https://github.com/getsentry/sentry-laravel/pull/936)
+
+### Misc
+
+- Improve stacktrace of `php artisan sentry:test` event [(#926)](https://github.com/getsentry/sentry-laravel/pull/926)
+
+- Remove outdated JS SDK installation step from `php artisan sentry:publish` [(#930)](https://github.com/getsentry/sentry-laravel/pull/930)
+
 ## 4.7.1
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.7.1.
