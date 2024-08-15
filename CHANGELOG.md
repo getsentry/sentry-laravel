@@ -12,7 +12,7 @@ The Sentry SDK team is happy to announce the immediate availability of Sentry La
 
 ### Misc
 
-- Improve stacktrace of `php artisan sentry:test` event [(#926)](https://github.com/getsentry/sentry-laravel/pull/926)
+- Improve the stacktrace of the `php artisan sentry:test` event [(#926)](https://github.com/getsentry/sentry-laravel/pull/926)
 
 - Remove outdated JS SDK installation step from `php artisan sentry:publish` [(#930)](https://github.com/getsentry/sentry-laravel/pull/930)
 
