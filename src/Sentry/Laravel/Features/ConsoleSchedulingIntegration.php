@@ -6,6 +6,7 @@ use DateTimeZone;
 use Illuminate\Console\Application as ConsoleApplication;
 use Illuminate\Console\Scheduling\Event as SchedulingEvent;
 use Illuminate\Contracts\Cache\Factory as Cache;
+use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Sentry\CheckIn;
@@ -17,6 +18,8 @@ use Sentry\SentrySdk;
 
 class ConsoleSchedulingIntegration extends Feature
 {
+    private $cacheStore = null;
+
     /**
      * @var array<string, CheckIn> The list of checkins that are currently in progress.
      */
@@ -109,6 +112,11 @@ class ConsoleSchedulingIntegration extends Feature
         $this->shouldHandleCheckIn = false;
     }
 
+    public function useCacheStore(?string $name): void
+    {
+        $this->cacheStore = $name;
+    }
+
     private function startCheckIn(
         ?string $slug,
         SchedulingEvent $scheduled,
@@ -148,7 +156,7 @@ class ConsoleSchedulingIntegration extends Feature
         $this->checkInStore[$cacheKey] = $checkIn;
 
         if ($scheduled->runInBackground) {
-            $this->resolveCache()->store()->put($cacheKey, $checkIn->getId(), $scheduled->expiresAt * 60);
+            $this->resolveCache()->put($cacheKey, $checkIn->getId(), $scheduled->expiresAt * 60);
         }
 
         $this->sendCheckIn($checkIn);
@@ -169,7 +177,7 @@ class ConsoleSchedulingIntegration extends Feature
         $checkIn = $this->checkInStore[$cacheKey] ?? null;
 
         if ($checkIn === null && $scheduled->runInBackground) {
-            $checkInId = $this->resolveCache()->store()->get($cacheKey);
+            $checkInId = $this->resolveCache()->get($cacheKey);
 
             if ($checkInId !== null) {
                 $checkIn = $this->createCheckIn($checkInSlug, $status, $checkInId);
@@ -185,7 +193,7 @@ class ConsoleSchedulingIntegration extends Feature
         unset($this->checkInStore[$mutex]);
 
         if ($scheduled->runInBackground) {
-            $this->resolveCache()->store()->forget($cacheKey);
+            $this->resolveCache()->forget($cacheKey);
         }
 
         $checkIn->setStatus($status);
@@ -237,8 +245,8 @@ class ConsoleSchedulingIntegration extends Feature
         return "scheduled_{$generatedSlug}";
     }
 
-    private function resolveCache(): Cache
+    private function resolveCache(): Repository
     {
-        return $this->container()->make(Cache::class);
+        return $this->container()->make(Cache::class)->store($this->cacheStore);
     }
 }
