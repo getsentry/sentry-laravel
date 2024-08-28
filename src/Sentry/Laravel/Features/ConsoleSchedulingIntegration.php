@@ -18,6 +18,9 @@ use Sentry\SentrySdk;
 
 class ConsoleSchedulingIntegration extends Feature
 {
+    /**
+     * @var string|null
+     */
     private $cacheStore = null;
 
     /**
