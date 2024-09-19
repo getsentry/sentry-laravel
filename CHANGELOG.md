@@ -1,5 +1,15 @@
 # Changelog
 
+## 4.9.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.9.0.
+
+### Misc
+
+- Allow the cache store used by the console scheduling integration to be overridden [(#942)](https://github.com/getsentry/sentry-laravel/pull/942)
+
+- Set `http` breadcrumb levels based on response code [(#940)](https://github.com/getsentry/sentry-laravel/pull/940)
+
 ## 4.8.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.8.0.
