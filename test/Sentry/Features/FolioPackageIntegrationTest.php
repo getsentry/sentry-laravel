@@ -167,7 +167,7 @@ class FolioPackageIntegrationTest extends TestCase
 
         // This looks a little odd, but that is because we want to make the route model binding work in our tests
         // normally this would look like `/folio/user/{User}` instead, see: https://laravel.com/docs/10.x/folio#route-model-binding.
-        $this->assertEquals('/folio/user/{.Sentry.Features.FolioPackageIntegrationUserModel}', Integration::getTransaction());
+        $this->assertEquals('/folio/user/{.Sentry.Laravel.Tests.Features.FolioPackageIntegrationUserModel}', Integration::getTransaction());
     }
 }
 
