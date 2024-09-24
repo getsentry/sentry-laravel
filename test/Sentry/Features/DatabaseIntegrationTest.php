@@ -1,6 +1,6 @@
 <?php
 
-namespace Sentry\Features;
+namespace Sentry\Laravel\Tests\Features;
 
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
