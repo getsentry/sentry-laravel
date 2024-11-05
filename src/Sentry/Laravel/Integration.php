@@ -109,7 +109,7 @@ class Integration implements IntegrationInterface
     }
 
     /**
-     * Block until all events are processed by the PHP SDK client. Also flushes metrics.
+     * Block until all events are processed by the PHP SDK client.
      *
      * @internal This is not part of the public API and is here temporarily until
      *  the underlying issue can be resolved, this method will be removed.
@@ -121,8 +121,6 @@ class Integration implements IntegrationInterface
         if ($client !== null) {
             $client->flush();
         }
-
-        metrics()->flush();
     }
 
     /**
