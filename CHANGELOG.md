@@ -10,7 +10,7 @@ The Sentry SDK team is happy to announce the immediate availability of Sentry La
 
 ### Misc
 
-- The SDK does no longer emit Metrics. All public Metrics APIs are now no-op, intneral APIs were removed [(#951)](https://github.com/getsentry/sentry-laravel/pull/951)
+- The SDK does no longer emit Metrics. All public Metrics APIs are now no-op, internal APIs were removed [(#951)](https://github.com/getsentry/sentry-laravel/pull/951)
 
 ## 4.9.0
 
