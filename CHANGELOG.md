@@ -1,5 +1,17 @@
 # Changelog
 
+## 4.10.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.10.0.
+
+### Features
+
+- The SDK was updated to support PHP 8.4 [(#952)](https://github.com/getsentry/sentry-laravel/pull/952)
+
+### Misc
+
+- The SDK does no longer emit Metrics. All public Metrics APIs are now no-op, intneral APIs were removed [(#951)](https://github.com/getsentry/sentry-laravel/pull/951)
+
 ## 4.9.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.9.0.
