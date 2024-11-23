@@ -212,7 +212,7 @@ class ConsoleSchedulingIntegration extends Feature
         SentrySdk::getCurrentHub()->captureEvent($event);
     }
 
-    private function createCheckIn(string $slug, CheckInStatus $status, string $id = null): CheckIn
+    private function createCheckIn(string $slug, CheckInStatus $status, ?string $id = null): CheckIn
     {
         $options = SentrySdk::getCurrentHub()->getClient()->getOptions();
 
