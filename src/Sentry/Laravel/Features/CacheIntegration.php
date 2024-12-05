@@ -5,7 +5,7 @@ namespace Sentry\Laravel\Features;
 use Illuminate\Cache\Events;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Redis\Events as RedisEvents;
-use Illuminate\Redis\RedisManager;
+use Illuminate\Contracts\Redis\Factory as RedisFactoryContract;
 use Illuminate\Support\Str;
 use Sentry\Breadcrumb;
 use Sentry\Laravel\Features\Concerns\ResolvesEventOrigin;
@@ -60,7 +60,7 @@ class CacheIntegration extends Feature
         if ($this->isTracingFeatureEnabled('redis_commands', false)) {
             $events->listen(RedisEvents\CommandExecuted::class, [$this, 'handleRedisCommands']);
 
-            $this->container()->afterResolving(RedisManager::class, static function (RedisManager $redis): void {
+            $this->container()->afterResolving(RedisFactoryContract::class, static function (RedisFactoryContract $redis): void {
                 $redis->enableEvents();
             });
         }
