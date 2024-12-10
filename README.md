@@ -115,6 +115,12 @@ The Laravel versions listed below were supported in previous versions of the Sen
 
 Please refer to [CONTRIBUTING.md](CONTRIBUTING.md).
 
+### Thanks to all the people who contributed so far!
+
+<a href="https://github.com/getsentry/sentry-laravel/graphs/contributors">
+  <img src="https://contributors-img.web.app/image?repo=getsentry/sentry-laravel" />
+</a>
+
 ## Getting Help/Support
 
 If you need help setting up or configuring the Laravel SDK (or anything else in the Sentry universe) please head over to the [Sentry Community on Discord](https://discord.com/invite/Ww9hbqr). There is a ton of great people in our Discord community ready to help you!
