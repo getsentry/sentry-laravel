@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.10.2
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.10.2.
+
+### Bug Fixes
+
+- Fixed a PHP 8.4 deprecation notice when running `php artisan sentry:test` [(#963)](https://github.com/getsentry/sentry-laravel/pull/963)
+
 ## 4.10.1
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.10.1.
