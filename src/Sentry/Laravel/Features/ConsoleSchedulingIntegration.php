@@ -26,9 +26,7 @@ use Sentry\Tracing\TransactionSource;
 
 class ConsoleSchedulingIntegration extends Feature
 {
-    use TracksPushedScopesAndSpans {
-        pushScope as private pushScopeTrait;
-    }
+    use TracksPushedScopesAndSpans;
 
     /**
      * @var string|null
@@ -142,12 +140,19 @@ class ConsoleSchedulingIntegration extends Feature
             return;
         }
 
+        // When scheduling a command class the command name will be the most descriptive
+        // When a job is scheduled the command name is `null` and the job class name (or display name) is set as the description
+        // When a closure is scheduled both the command name and description are `null`
+        $name = $this->getCommandNameForScheduled($event->task) ?? $event->task->description ?? 'Closure';
+
+        dump($name);
+
         $context = TransactionContext::make()
-            ->setName($event->task->description)
+            ->setName($name)
             ->setSource(TransactionSource::task())
-            ->setOp('console.command')
+            ->setOp('console.command.scheduled')
             ->setStartTimestamp(microtime(true));
-        
+
         $transaction = SentrySdk::getCurrentHub()->startTransaction($context);
 
         $this->pushSpan($transaction);
@@ -291,6 +296,18 @@ class ConsoleSchedulingIntegration extends Feature
         );
 
         return "scheduled_{$generatedSlug}";
+    }
+
+    private function getCommandNameForScheduled(SchedulingEvent $scheduled): ?string
+    {
+        if (!$scheduled->command) {
+            return null;
+        }
+
+        // The command string always starts with the PHP binary, so we remove it since it's not relevant to the slug
+        return trim(
+            Str::after($scheduled->command, ConsoleApplication::phpBinary() . ' ' . ConsoleApplication::artisanBinary())
+        );
     }
 
     private function resolveCache(): Repository
