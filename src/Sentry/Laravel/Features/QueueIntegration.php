@@ -191,7 +191,7 @@ class QueueIntegration extends Feature
             'messaging.message.id' => $jobPayload['uuid'] ?? null,
             'messaging.message.envelope.size' => strlen($event->job->getRawBody()),
             'messaging.message.body.size' => strlen(json_encode($jobPayload['data'] ?? [])),
-            'messaging.message.retry.count' => $event->job->attempts(),
+            'messaging.message.retry.count' => $event->job->attempts() - 1,
             'messaging.message.receive.latency' => $jobPublishedAt !== null ? microtime(true) - $jobPublishedAt : null,
         ];
 
