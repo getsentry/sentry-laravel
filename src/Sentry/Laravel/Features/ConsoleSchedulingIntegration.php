@@ -145,8 +145,6 @@ class ConsoleSchedulingIntegration extends Feature
         // When a closure is scheduled both the command name and description are `null`
         $name = $this->getCommandNameForScheduled($event->task) ?? $event->task->description ?? 'Closure';
 
-        dump($name);
-
         $context = TransactionContext::make()
             ->setName($name)
             ->setSource(TransactionSource::task())
@@ -304,7 +302,7 @@ class ConsoleSchedulingIntegration extends Feature
             return null;
         }
 
-        // The command string always starts with the PHP binary, so we remove it since it's not relevant to the slug
+        // The command string always starts with the PHP binary and artisan binary, so we remove it since it's not relevant to the name
         return trim(
             Str::after($scheduled->command, ConsoleApplication::phpBinary() . ' ' . ConsoleApplication::artisanBinary())
         );
