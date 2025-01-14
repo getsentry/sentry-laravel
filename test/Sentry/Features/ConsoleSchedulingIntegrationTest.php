@@ -4,6 +4,8 @@ namespace Sentry\Laravel\Tests\Features;
 
 use DateTimeZone;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Queue\Queueable;
 use RuntimeException;
 use Sentry\Laravel\Tests\TestCase;
 use Illuminate\Console\Scheduling\Event;
@@ -121,8 +123,59 @@ class ConsoleSchedulingIntegrationTest extends TestCase
         $this->assertTrue(Event::hasMacro('sentryMonitor'));
     }
 
+    /** @define-env envSamplingAllTransactions */
+    public function testScheduledCommandCreatesTransaction(): void
+    {
+        $this->getScheduler()->command('inspire')->everyMinute();
+
+        $this->artisan('schedule:run');
+
+        $this->assertSentryTransactionCount(1);
+
+        $transaction = $this->getLastSentryEvent();
+
+        $this->assertEquals('inspire', $transaction->getTransaction());
+    }
+
+    /** @define-env envSamplingAllTransactions */
+    public function testScheduledClosureCreatesTransaction(): void
+    {
+        $this->getScheduler()->call(function () {})->everyMinute();
+
+        $this->artisan('schedule:run');
+
+        $this->assertSentryTransactionCount(1);
+
+        $transaction = $this->getLastSentryEvent();
+
+        $this->assertEquals('Closure', $transaction->getTransaction());
+    }
+
+    /** @define-env envSamplingAllTransactions */
+    public function testScheduledJobCreatesTransaction(): void
+    {
+        $this->getScheduler()->job(ScheduledQueuedJob::class)->everyMinute();
+
+        $this->artisan('schedule:run');
+
+        $this->assertSentryTransactionCount(1);
+
+        $transaction = $this->getLastSentryEvent();
+
+        $this->assertEquals(ScheduledQueuedJob::class, $transaction->getTransaction());
+    }
+
     private function getScheduler(): Schedule
     {
         return $this->app->make(Schedule::class);
+    }
+}
+
+class ScheduledQueuedJob implements ShouldQueue
+{
+    use Queueable;
+
+    public function handle(): void
+    {
     }
 }
