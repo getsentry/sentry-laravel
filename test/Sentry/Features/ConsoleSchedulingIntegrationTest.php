@@ -3,9 +3,9 @@
 namespace Sentry\Laravel\Tests\Features;
 
 use DateTimeZone;
+use Illuminate\Bus\Queueable;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Queue\Queueable;
 use RuntimeException;
 use Sentry\Laravel\Tests\TestCase;
 use Illuminate\Console\Scheduling\Event;
