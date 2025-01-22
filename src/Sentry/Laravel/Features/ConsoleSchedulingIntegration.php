@@ -4,20 +4,30 @@ namespace Sentry\Laravel\Features;
 
 use DateTimeZone;
 use Illuminate\Console\Application as ConsoleApplication;
+use Illuminate\Console\Events\ScheduledTaskFailed;
+use Illuminate\Console\Events\ScheduledTaskFinished;
+use Illuminate\Console\Events\ScheduledTaskStarting;
 use Illuminate\Console\Scheduling\Event as SchedulingEvent;
 use Illuminate\Contracts\Cache\Factory as Cache;
 use Illuminate\Contracts\Cache\Repository;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Sentry\CheckIn;
 use Sentry\CheckInStatus;
 use Sentry\Event as SentryEvent;
+use Sentry\Laravel\Features\Concerns\TracksPushedScopesAndSpans;
 use Sentry\MonitorConfig;
 use Sentry\MonitorSchedule;
 use Sentry\SentrySdk;
+use Sentry\Tracing\SpanStatus;
+use Sentry\Tracing\TransactionContext;
+use Sentry\Tracing\TransactionSource;
 
 class ConsoleSchedulingIntegration extends Feature
 {
+    use TracksPushedScopesAndSpans;
+
     /**
      * @var string|null
      */
@@ -105,9 +115,13 @@ class ConsoleSchedulingIntegration extends Feature
         return true;
     }
 
-    public function onBoot(): void
+    public function onBoot(Dispatcher $events): void
     {
         $this->shouldHandleCheckIn = true;
+
+        $events->listen(ScheduledTaskStarting::class, [$this, 'handleScheduledTaskStarting']);
+        $events->listen(ScheduledTaskFinished::class, [$this, 'handleScheduledTaskFinished']);
+        $events->listen(ScheduledTaskFailed::class, [$this, 'handleScheduledTaskFailed']);
     }
 
     public function onBootInactive(): void
@@ -118,6 +132,40 @@ class ConsoleSchedulingIntegration extends Feature
     public function useCacheStore(?string $name): void
     {
         $this->cacheStore = $name;
+    }
+
+    public function handleScheduledTaskStarting(ScheduledTaskStarting $event): void
+    {
+        if (!$event->task) {
+            return;
+        }
+
+        // When scheduling a command class the command name will be the most descriptive
+        // When a job is scheduled the command name is `null` and the job class name (or display name) is set as the description
+        // When a closure is scheduled both the command name and description are `null`
+        $name = $this->getCommandNameForScheduled($event->task) ?? $event->task->description ?? 'Closure';
+
+        $context = TransactionContext::make()
+            ->setName($name)
+            ->setSource(TransactionSource::task())
+            ->setOp('console.command.scheduled')
+            ->setStartTimestamp(microtime(true));
+
+        $transaction = SentrySdk::getCurrentHub()->startTransaction($context);
+
+        $this->pushSpan($transaction);
+    }
+
+    public function handleScheduledTaskFinished(): void
+    {
+        $this->maybeFinishSpan(SpanStatus::ok());
+        $this->maybePopScope();
+    }
+
+    public function handleScheduledTaskFailed(): void
+    {
+        $this->maybeFinishSpan(SpanStatus::internalError());
+        $this->maybePopScope();
     }
 
     private function startCheckIn(
@@ -246,6 +294,18 @@ class ConsoleSchedulingIntegration extends Feature
         );
 
         return "scheduled_{$generatedSlug}";
+    }
+
+    private function getCommandNameForScheduled(SchedulingEvent $scheduled): ?string
+    {
+        if (!$scheduled->command) {
+            return null;
+        }
+
+        // The command string always starts with the PHP binary and artisan binary, so we remove it since it's not relevant to the name
+        return trim(
+            Str::after($scheduled->command, ConsoleApplication::phpBinary() . ' ' . ConsoleApplication::artisanBinary())
+        );
     }
 
     private function resolveCache(): Repository
