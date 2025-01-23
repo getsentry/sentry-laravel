@@ -1,5 +1,17 @@
 # Changelog
 
+## 4.11.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.11.0.
+
+### Features
+
+- Add Scheduled Task Tracing [(#968)](https://github.com/getsentry/sentry-laravel/pull/968)
+
+### Bug Fixes
+
+- Fix retry count for queued jobs [(#967)](https://github.com/getsentry/sentry-laravel/pull/967)
+
 ## 4.10.2
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.10.2.
