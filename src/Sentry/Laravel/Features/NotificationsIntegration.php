@@ -76,14 +76,22 @@ class NotificationsIntegration extends Feature
         }
     }
 
-    private function formatNotifiable(object $notifiable): string
+    private function formatNotifiable($notifiable): string
     {
-        $notifiable = get_class($notifiable);
-
-        if ($notifiable instanceof Model) {
-            $notifiable .= "({$notifiable->getKey()})";
+        if (is_string($notifiable) || is_numeric($notifiable)) {
+            return (string)$notifiable;
         }
 
-        return $notifiable;
+        if (is_object($notifiable)) {
+            $result = get_class($notifiable);
+
+            if ($notifiable instanceof Model) {
+                $result .= "({$notifiable->getKey()})";
+            }
+
+            return $result;
+        }
+
+        return 'unknown';
     }
 }
