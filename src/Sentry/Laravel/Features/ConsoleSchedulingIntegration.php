@@ -11,6 +11,7 @@ use Illuminate\Console\Scheduling\Event as SchedulingEvent;
 use Illuminate\Contracts\Cache\Factory as Cache;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Support\ProcessUtils;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Sentry\CheckIn;
@@ -136,8 +137,28 @@ class ConsoleSchedulingIntegration extends Feature
 
     public function handleScheduledTaskStarting(ScheduledTaskStarting $event): void
     {
-        // There is nothing for us to track if it's a background task since it will be handled by a separate process
-        if (!$event->task || $event->task->runInBackground) {
+        if (!$event->task) {
+            return;
+        }
+
+        // If the command is run in the background we need to add the trace argument to the command string
+        if ($event->task->command && $event->task->runInBackground) {
+            if (Str::contains($event->task->command, '--sentry-trace')) {
+                return;
+            }
+
+            $traceArgument = ProcessUtils::escapeArgument('console.command.scheduled');
+
+            $event->task->command = "{$event->task->command} --sentry-trace={$traceArgument}";
+
+            // We have modified the command string and at this point there is nothing for us to do
+            // The framework will create a child process and run the command in the background with the new command
+            // We will pick up the `--sentry-trace` option in the new process and start a new transaction from there
+            return;
+        }
+
+        // If the command is run in the background we don't want to start a transaction here since it will be useless because the actual work will take place in a different process
+        if ($event->task->runInBackground) {
             return;
         }
 
