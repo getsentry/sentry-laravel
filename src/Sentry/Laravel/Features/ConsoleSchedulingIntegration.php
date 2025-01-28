@@ -136,7 +136,8 @@ class ConsoleSchedulingIntegration extends Feature
 
     public function handleScheduledTaskStarting(ScheduledTaskStarting $event): void
     {
-        if (!$event->task) {
+        // There is nothing for us to track if it's a background task since it will be handled by a separate process
+        if (!$event->task || $event->task->runInBackground) {
             return;
         }
 
