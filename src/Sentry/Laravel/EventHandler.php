@@ -274,14 +274,24 @@ class EventHandler
 
         // If the user is a Laravel Eloquent model we try to extract some common fields from it
         if ($authUser instanceof Model) {
-            $username = $authUser->getAttribute('username');
+            $email = null;
+
+            if ($this->modelHasAttribute($authUser, 'email')) {
+                $email = $authUser->getAttribute('email');
+            } elseif ($this->modelHasAttribute($authUser, 'mail')) {
+                $email = $authUser->getAttribute('mail');
+            }
+
+            $username = $this->modelHasAttribute($authUser, 'username')
+                ? (string)$authUser->getAttribute('username')
+                : null;
 
             $userData = [
                 'id' => $authUser instanceof Authenticatable
                     ? $authUser->getAuthIdentifier()
                     : $authUser->getKey(),
-                'email' => $authUser->getAttribute('email') ?? $authUser->getAttribute('mail'),
-                'username' => $username === null ? $username : (string)$username,
+                'email' => $email,
+                'username' => $username,
             ];
         }
 
@@ -303,6 +313,15 @@ class EventHandler
         Integration::configureScope(static function (Scope $scope) use ($userData): void {
             $scope->setUser(array_filter($userData));
         });
+    }
+
+    private function modelHasAttribute(Model $model, string $key): bool
+    {
+        // Taken from: https://github.com/laravel/framework/blob/v11.41.3/src/Illuminate/Database/Eloquent/Concerns/HasAttributes.php#L445
+        // Laravel 11 introduced the `hasAttribute` method we are (almost) mirroring here since it's not available in earlier Laravel versions we support
+        return array_key_exists($key, $model->getAttributes()) ||
+            $model->hasGetMutator($key) ||
+            (method_exists($model, 'hasAttributeMutator') && $model->hasAttributeMutator($key));
     }
 
     protected function octaneRequestReceivedHandler(Octane\RequestReceived $event): void
