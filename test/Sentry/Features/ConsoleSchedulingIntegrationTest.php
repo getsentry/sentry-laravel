@@ -60,7 +60,7 @@ class ConsoleSchedulingIntegrationTest extends TestCase
         $this->assertEquals($expectedTimezone, $finishCheckInEvent->getCheckIn()->getMonitorConfig()->getTimezone());
     }
 
-    public function testScheduleMacroAutomaticSlug(): void
+    public function testScheduleMacroAutomaticSlugForCommand(): void
     {
         /** @var Event $scheduledEvent */
         $scheduledEvent = $this->getScheduler()->command('inspire')->sentryMonitor();
@@ -78,7 +78,26 @@ class ConsoleSchedulingIntegrationTest extends TestCase
         $this->assertEquals('scheduled_artisan-inspire', $finishCheckInEvent->getCheckIn()->getMonitorSlug());
     }
 
-    public function testScheduleMacroWithoutSlugOrCommandName(): void
+    public function testScheduleMacroAutomaticSlugForJob(): void
+    {
+        /** @var Event $scheduledEvent */
+        $scheduledEvent = $this->getScheduler()->job(ScheduledQueuedJob::class)->sentryMonitor();
+
+        $scheduledEvent->run($this->app);
+
+        // We expect a total of 2 events to be sent to Sentry:
+        // 1. The start check-in event
+        // 2. The finish check-in event
+        $this->assertSentryCheckInCount(2);
+
+        $finishCheckInEvent = $this->getLastSentryEvent();
+
+        $this->assertNotNull($finishCheckInEvent->getCheckIn());
+        // Scheduled is duplicated here because of the class name of the queued job, this is not a bug just unfortunate naming for the test class
+        $this->assertEquals('scheduled_scheduledqueuedjob-features-tests-laravel-sentry', $finishCheckInEvent->getCheckIn()->getMonitorSlug());
+    }
+
+    public function testScheduleMacroWithoutSlugCommandOrDescriptionOrName(): void
     {
         $this->expectException(RuntimeException::class);
 

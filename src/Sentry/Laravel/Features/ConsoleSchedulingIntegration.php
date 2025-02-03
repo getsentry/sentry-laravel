@@ -74,8 +74,8 @@ class ConsoleSchedulingIntegration extends Feature
             ?int $recoveryThreshold = null
         ) use ($startCheckIn, $finishCheckIn) {
             /** @var SchedulingEvent $this */
-            if ($monitorSlug === null && $this->command === null) {
-                throw new RuntimeException('The command string is null, please set a slug manually for this scheduled command using the `sentryMonitor(\'your-monitor-slug\')` macro.');
+            if ($monitorSlug === null && empty($this->command) && empty($this->description)) {
+                throw new RuntimeException('The command and description are not set, please set a slug manually for this scheduled command using the `sentryMonitor(\'your-monitor-slug\')` macro.');
             }
 
             return $this
@@ -266,7 +266,7 @@ class ConsoleSchedulingIntegration extends Feature
         $options = SentrySdk::getCurrentHub()->getClient()->getOptions();
 
         return new CheckIn(
-            $slug,
+            Str::limit($slug, 128, ''),
             $status,
             $id,
             $options->getRelease(),
@@ -282,17 +282,28 @@ class ConsoleSchedulingIntegration extends Feature
 
     private function makeSlugForScheduled(SchedulingEvent $scheduled): string
     {
-        $generatedSlug = Str::slug(
-            str_replace(
-                // `:` is commonly used in the command name, so we replace it with `-` to avoid it being stripped out by the slug function
-                ':',
-                '-',
-                trim(
-                    // The command string always starts with the PHP binary, so we remove it since it's not relevant to the slug
-                    Str::after($scheduled->command, ConsoleApplication::phpBinary())
+        if (empty($scheduled->command)) {
+            if (!empty($scheduled->description) && class_exists($scheduled->description)) {
+                $generatedSlug = Str::slug(
+                    // We reverse the class name to have the class name at the start of the slug instead of at the end (and possibly cut off)
+                    implode('_', array_reverse(explode('\\', $scheduled->description)))
+                );
+            } else {
+                $generatedSlug = Str::slug($scheduled->description);
+            }
+        } else {
+            $generatedSlug = Str::slug(
+                str_replace(
+                    // `:` is commonly used in the command name, so we replace it with `-` to avoid it being stripped out by the slug function
+                    ':',
+                    '-',
+                    trim(
+                        // The command string always starts with the PHP binary, so we remove it since it's not relevant to the slug
+                        Str::after($scheduled->command, ConsoleApplication::phpBinary())
+                    )
                 )
-            )
-        );
+            );
+        }
 
         return "scheduled_{$generatedSlug}";
     }
