@@ -1,5 +1,27 @@
 # Changelog
 
+## 4.12.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.12.0.
+
+### Features
+
+- Improve generation of slug for scheduled job cron monitoring [(#977)](https://github.com/getsentry/sentry-laravel/pull/977)
+
+  For scheduled jobs it's no longer needed to manually provide a slug to the [`->sentryMonitor()`](https://docs.sentry.io/platforms/php/guides/laravel/crons/#job-monitoring) call, it will be derived from the job class name.
+
+### Bug Fixes
+
+- Fix unable to parse notifiable [(#974)](https://github.com/getsentry/sentry-laravel/pull/974)
+- Fix triggering a missing attribute violation [(#978)](https://github.com/getsentry/sentry-laravel/pull/978)
+
+### Misc
+
+- Disable scheduled task tracing for backgrounded tasks [(#975)](https://github.com/getsentry/sentry-laravel/pull/975)
+
+  Backgrounded tasks show up a ~1ms transactions right now because we are effectively monitoring the time it takes to start the background process instead of the execution.
+  We are [working on a solution](https://github.com/getsentry/sentry-laravel/pull/976) to this problem, but in the meantime, we are disabling the monitoring of backgrounded tasks (that was introduces in 4.11.0).
+
 ## 4.11.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.11.0.
