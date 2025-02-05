@@ -15,11 +15,13 @@ class AuthEventsTest extends TestCase
 
     public function testAuthenticatedEventFillsUserOnScope(): void
     {
-        $user = new AuthEventsTestUserModel();
+        $user = new AuthEventsTestUserModel;
 
-        $user->id = 123;
-        $user->username = 'username';
-        $user->email = 'foo@example.com';
+        $user->forceFill([
+            'id' => 123,
+            'username' => 'username',
+            'email' => 'foo@example.com',
+        ]);
 
         $scope = $this->getCurrentSentryScope();
 
@@ -29,17 +31,19 @@ class AuthEventsTest extends TestCase
 
         $this->assertNotNull($scope->getUser());
 
-        $this->assertEquals($scope->getUser()->getId(), 123);
-        $this->assertEquals($scope->getUser()->getUsername(), 'username');
-        $this->assertEquals($scope->getUser()->getEmail(), 'foo@example.com');
+        $this->assertEquals(123, $scope->getUser()->getId());
+        $this->assertEquals('username', $scope->getUser()->getUsername());
+        $this->assertEquals('foo@example.com', $scope->getUser()->getEmail());
     }
 
     public function testAuthenticatedEventFillsUserOnScopeWhenUsernameIsNotAString(): void
     {
         $user = new AuthEventsTestUserModel();
 
-        $user->id = 123;
-        $user->username = 456;
+        $user->forceFill([
+            'id' => 123,
+            'username' => 456,
+        ]);
 
         $scope = $this->getCurrentSentryScope();
 
@@ -49,8 +53,8 @@ class AuthEventsTest extends TestCase
 
         $this->assertNotNull($scope->getUser());
 
-        $this->assertEquals($scope->getUser()->getId(), 123);
-        $this->assertEquals($scope->getUser()->getUsername(), '456');
+        $this->assertEquals(123, $scope->getUser()->getId());
+        $this->assertEquals('456', $scope->getUser()->getUsername());
     }
 
     public function testAuthenticatedEventDoesNotFillUserOnScopeWhenPIIShouldNotBeSent(): void
