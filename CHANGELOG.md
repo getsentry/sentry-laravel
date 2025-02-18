@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.13.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.13.0.
+
+### Features
+
+- Add support for Laravel 12.0 [(#980)](https://github.com/getsentry/sentry-laravel/pull/980)
+
 ## 4.12.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.12.0.
