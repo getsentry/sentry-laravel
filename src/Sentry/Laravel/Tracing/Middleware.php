@@ -234,6 +234,9 @@ class Middleware
     private function hydrateResponseData(SymfonyResponse $response): void
     {
         $this->transaction->setHttpStatus($response->getStatusCode());
+        $this->transaction->setData([
+            'http.response.status_code' => $response->getStatusCode(),
+        ]);
     }
 
     public function finishTransaction(): void
