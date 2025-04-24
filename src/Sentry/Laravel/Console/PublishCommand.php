@@ -10,34 +10,17 @@ use Sentry\Laravel\ServiceProvider;
 
 class PublishCommand extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'sentry:publish {--dsn=}
-                                           {--without-performance-monitoring}
-                                           {--without-test}
-                                           {--without-javascript-sdk}';
+    protected $signature = <<<COMMAND
+sentry:publish 
+    { --dsn= : The DSN to configure }
+    { --without-test : Do not send a test event }
+    { --with-send-default-pii : Include information such as request headers, IP address and the authenticated user to events collected by the SDK }
+    { --without-performance-monitoring : Do not enable performance monitoring }
+    { --without-javascript-sdk : Do not enable the JavaScript SDK (deprecated; option unused) }
+COMMAND;
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
     protected $description = 'Publishes and configures the Sentry config.';
 
-    protected const SDK_CHOICE_BROWSER = 'JavaScript (default)';
-    protected const SDK_CHOICE_VUE     = 'Vue.js';
-    protected const SDK_CHOICE_REACT   = 'React';
-    protected const SDK_CHOICE_ANGULAR = 'Angular';
-    protected const SDK_CHOICE_SVELTE  = 'Svelte';
-
-    /**
-     * Execute the console command.
-     *
-     * @return int
-     */
     public function handle(): int
     {
         $arg = [];
@@ -60,6 +43,17 @@ class PublishCommand extends Command
 
             $env['SENTRY_LARAVEL_DSN'] = $dsn;
             $arg['--dsn']              = $dsn;
+        }
+
+        $sendDefaultPii = $this->confirm(
+            "Do you want to include information such as request headers, IP address and the authenticated user to events collected by the SDK?\n You can read more about this on https://docs.sentry.io/platforms/php/guides/laravel/data-management/data-collected/",
+            $this->option('with-send-default-pii') === true
+        );
+
+        if ($sendDefaultPii) {
+            $env['SENTRY_SEND_DEFAULT_PII'] = 'true';
+        } elseif ($this->isEnvKeySet('SENTRY_SEND_DEFAULT_PII')) {
+            $env['SENTRY_SEND_DEFAULT_PII'] = 'false';
         }
 
         $testCommandPrompt = 'Do you want to send a test event to Sentry?';
