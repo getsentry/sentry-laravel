@@ -18,7 +18,6 @@ use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\SpanStatus;
 use function Sentry\getBaggage;
 use function Sentry\getTraceparent;
-use function Sentry\getW3CTraceparent;
 
 class HttpClientIntegration extends Feature
 {
@@ -56,8 +55,7 @@ class HttpClientIntegration extends Feature
         if ($this->shouldAttachTracingHeaders($request)) {
             return $request
                 ->withHeader('baggage', getBaggage())
-                ->withHeader('sentry-trace', getTraceparent())
-                ->withHeader('traceparent', getW3CTraceparent());
+                ->withHeader('sentry-trace', getTraceparent());
         }
 
         return $request;
