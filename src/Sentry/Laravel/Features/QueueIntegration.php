@@ -80,6 +80,7 @@ class QueueIntegration extends Feature
 
                 if ($payload !== null) {
                     $payload[self::QUEUE_PAYLOAD_BAGGAGE_DATA] = getBaggage();
+                    $payload[self::QUEUE_PAYLOAD_TRACE_PARENT_DATA] = getTraceparent();
                     $payload[self::QUEUE_PAYLOAD_PUBLISH_TIME] = microtime(true);
                 }
 
