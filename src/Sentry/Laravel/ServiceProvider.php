@@ -107,7 +107,7 @@ class ServiceProvider extends BaseServiceProvider
             if ($this->app instanceof Laravel) {
                 $this->publishes([
                     __DIR__ . '/../../../config/sentry.php' => config_path(static::$abstract . '.php'),
-                ], 'config');
+                ], 'sentry-config');
             }
 
             $this->registerArtisanCommands();
