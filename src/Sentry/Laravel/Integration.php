@@ -194,11 +194,12 @@ class Integration implements IntegrationInterface
     /**
      * Retrieve the `traceparent` meta tag with tracing information to link this request to front-end requests.
      *
+     * @deprecated since version 4.14. To be removed in version 5.0.
      * @return string
      */
     public static function sentryW3CTracingMeta(): string
     {
-        return sprintf('<meta name="traceparent" content="%s"/>', getW3CTraceparent());
+        return '';
     }
 
     /**
