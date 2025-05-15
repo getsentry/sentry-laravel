@@ -2,6 +2,7 @@
 
 namespace Sentry\Laravel\Logs;
 
+use Illuminate\Support\Arr;
 use Monolog\Level;
 use Sentry\Logs\LogLevel;
 use Monolog\Formatter\LineFormatter;
@@ -105,7 +106,7 @@ class LogsHandler extends AbstractProcessingHandler
             $this->getLevelFromMonologLevel($record['level']),
             $record['message'],
             [],
-            array_merge($record['context'], $record['extra'])
+            Arr::dot(array_merge($record['context'], $record['extra']))
         );
     }
 
