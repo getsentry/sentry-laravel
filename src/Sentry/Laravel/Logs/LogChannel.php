@@ -1,22 +1,22 @@
 <?php
 
-namespace Sentry\Laravel;
+namespace Sentry\Laravel\Logs;
 
 use Monolog\Handler\FingersCrossedHandler;
+use Monolog\Handler\PsrHandler;
 use Monolog\Logger;
 use Illuminate\Log\LogManager;
-use Sentry\State\HubInterface;
+use Sentry\Logger\LogsLogger;
 
 class LogChannel extends LogManager
 {
     public function __invoke(array $config = []): Logger
     {
-        $handler = new SentryHandler(
-            $this->app->make(HubInterface::class),
+        $handler = new PsrHandler(
+            new LogsLogger(),
             $config['level'] ?? Logger::DEBUG,
             $config['bubble'] ?? true,
-            $config['report_exceptions'] ?? true,
-            isset($config['formatter']) && $config['formatter'] !== 'default'
+            $config['include_extra'] ?? true
         );
 
         if (isset($config['action_level'])) {

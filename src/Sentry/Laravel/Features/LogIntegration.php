@@ -4,6 +4,7 @@ namespace Sentry\Laravel\Features;
 
 use Illuminate\Support\Facades\Log;
 use Sentry\Laravel\LogChannel;
+use Sentry\Laravel\Logs\LogChannel as LogsLogChannel;
 
 class LogIntegration extends Feature
 {
@@ -14,8 +15,12 @@ class LogIntegration extends Feature
 
     public function register(): void
     {
-        Log::extend('sentry', function ($app, array $config) {
+        Log::extend('sentry', static function ($app, array $config) {
             return (new LogChannel($app))($config);
+        });
+
+        Log::extend('sentry_logs', static function ($app, array $config) {
+            return (new LogsLogChannel($app))($config);
         });
     }
 }
