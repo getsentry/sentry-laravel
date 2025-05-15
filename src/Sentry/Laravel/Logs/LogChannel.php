@@ -5,7 +5,6 @@ namespace Sentry\Laravel\Logs;
 use Monolog\Handler\FingersCrossedHandler;
 use Monolog\Logger;
 use Illuminate\Log\LogManager;
-use Sentry\State\HubInterface;
 
 class LogChannel extends LogManager
 {
