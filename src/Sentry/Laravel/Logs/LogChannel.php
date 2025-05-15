@@ -3,7 +3,6 @@
 namespace Sentry\Laravel\Logs;
 
 use Monolog\Handler\FingersCrossedHandler;
-use Monolog\Handler\PsrHandler;
 use Monolog\Logger;
 use Illuminate\Log\LogManager;
 use Sentry\Logger\LogsLogger;
@@ -12,7 +11,7 @@ class LogChannel extends LogManager
 {
     public function __invoke(array $config = []): Logger
     {
-        $handler = new PsrHandler(
+        $handler = new ExceptionIgnoringPsrHandler(
             new LogsLogger(),
             $config['level'] ?? Logger::DEBUG,
             $config['bubble'] ?? true,
