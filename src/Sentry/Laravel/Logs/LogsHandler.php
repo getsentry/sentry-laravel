@@ -112,7 +112,7 @@ class LogsHandler extends AbstractProcessingHandler
 
     private function getLevelFromMonologLevel(int $level): LogLevel
     {
-        switch ($level) {
+        switch (Level::from($level)) {
             case Level::Debug:
                 return LogLevel::debug();
             case Level::Warning:
