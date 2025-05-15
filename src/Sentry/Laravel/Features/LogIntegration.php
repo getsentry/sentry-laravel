@@ -15,11 +15,11 @@ class LogIntegration extends Feature
 
     public function register(): void
     {
-        Log::extend('sentry', static function ($app, array $config) {
+        Log::extend('sentry', function ($app, array $config) {
             return (new LogChannel($app))($config);
         });
 
-        Log::extend('sentry_logs', static function ($app, array $config) {
+        Log::extend('sentry_logs', function ($app, array $config) {
             return (new LogsLogChannel($app))($config);
         });
     }
