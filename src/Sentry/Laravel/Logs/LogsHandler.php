@@ -106,7 +106,7 @@ class LogsHandler extends AbstractProcessingHandler
             $this->getLevelFromMonologLevel($record['level']),
             $record['message'],
             [],
-            Arr::dot(array_merge($record['context'], $record['extra']))
+            array_merge($record['context'], $record['extra'])
         );
     }
 
