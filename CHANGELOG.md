@@ -1,5 +1,23 @@
 # Changelog
 
+## 4.14.0
+
+### Bug Fixes
+
+- Fix tracing when using Laravel Octane [(#997)](https://github.com/getsentry/sentry-laravel/pull/997)
+
+  When using Laravel Octane, the SDK now correctly cleans up it's state after each request, ensuring that traces are correctly reported.
+
+### Misc
+
+- Add `sentry` prefix to publish group name [(#992)](https://github.com/getsentry/sentry-laravel/pull/992)
+
+  When running `php artisan vendor:publish`, the Sentry package exports are now prefixed with `sentry`, making it easier to distinguish from other packages.
+
+- Remove support for `traceparent` header [(#994)](https://github.com/getsentry/sentry-laravel/pull/994)
+
+  The W3C's `traceparent` header is no longer automatically picked up and emitted by the SDK to prevent non-Sentry SDKs from starting a trace that is unwanted.
+
 ## 4.13.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.13.0.
