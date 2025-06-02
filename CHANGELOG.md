@@ -2,8 +2,6 @@
 
 ## 4.14.0
 
-The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.14.0.
-
 ### Bug Fixes
 
 - Fix tracing when using Laravel Octane [(#997)](https://github.com/getsentry/sentry-laravel/pull/997)
