@@ -105,6 +105,10 @@ COMMAND;
 
                     $this->info("Updated {$envKey} with new value in your `.env` file.");
                 } else {
+                    // Ensure there is a newline before writing env variables
+                    if (substr($envFileContents, -1) !== "\n") {
+                        $envFileContents .= "\n";
+                    }
                     $envFileContents .= "{$envKey}={$envValue}\n";
 
                     $this->info("Added {$envKey} to your `.env` file.");
