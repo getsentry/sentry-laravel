@@ -2,13 +2,12 @@
 
 namespace Sentry\Laravel\Logs;
 
-use Illuminate\Support\Arr;
-use Monolog\Level;
 use Sentry\Logs\LogLevel;
 use Monolog\Formatter\LineFormatter;
 use Monolog\Formatter\FormatterInterface;
 use Monolog\Handler\AbstractProcessingHandler;
 use Sentry\Monolog\CompatibilityProcessingHandlerTrait;
+use Sentry\Severity;
 use Throwable;
 
 class LogsHandler extends AbstractProcessingHandler
@@ -103,28 +102,27 @@ class LogsHandler extends AbstractProcessingHandler
         }
 
         \Sentry\logger()->aggregator()->add(
-            $this->getLevelFromMonologLevel($record['level']),
+            // This seems a little bit of a roundabout way to get the log level, but this is done for compatibility
+            self::getLogLevelFromSeverity(
+                self::getSeverityFromLevel($record['level'])
+            ),
             $record['message'],
             [],
             array_merge($record['context'], $record['extra'])
         );
     }
 
-    private function getLevelFromMonologLevel(int $level): LogLevel
+    private static function getLogLevelFromSeverity(Severity $severity): LogLevel
     {
-        switch (Level::from($level)) {
-            case Level::Debug:
+        switch ($severity) {
+            case Severity::debug():
                 return LogLevel::debug();
-            case Level::Warning:
+            case Severity::warning():
                 return LogLevel::warn();
-            case Level::Error:
+            case Severity::error():
                 return LogLevel::error();
-            case Level::Critical:
-            case Level::Alert:
-            case Level::Emergency:
+            case Severity::fatal():
                 return LogLevel::fatal();
-            case Level::Info:
-            case Level::Notice:
             default:
                 return LogLevel::info();
         }
