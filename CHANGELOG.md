@@ -1,5 +1,37 @@
 # Changelog
 
+## 4.15.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.15.0.
+
+### Features
+
+- Add support for Sentry Structured Logs [(#1000)](https://github.com/getsentry/sentry-laravel/pull/1000)
+
+
+  To enable this feature, add the `sentry_logs` log channel in your `config/logging.php` configuration:
+
+  ```php
+  'channels' => [
+      ...
+      'sentry' => [
+          'driver' => 'sentry_logs',
+          'level' => env('LOG_LEVEL', 'info'),
+      ],
+      ...
+  ],
+  ```
+
+  Add `SENTRY_ENABLE_LOGS=true` to your `.env` file.
+
+  Use the Log facade to sent your logs to Sentry. To learn more, head over to the [Laravel docs](https://laravel.com/docs/logging).
+
+  ```php
+  use use Illuminate\Support\Facades\Log;
+
+  Log::driver('sentry')->info('User {id} failed to login.', ['id' => $user->id]);
+  ```
+
 ## 4.14.1
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.14.1.
