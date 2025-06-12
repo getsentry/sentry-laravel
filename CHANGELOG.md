@@ -1,6 +1,18 @@
 # Changelog
 
+## 4.14.1
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.14.1.
+
+### Bug Fixes
+
+- Ensure there is a newline before writing env variables [(#1002)](https://github.com/getsentry/sentry-laravel/pull/1002)
+
+  Fixed an issue where the `php artisan sentry:publish` command might not properly add newlines when writing environment variables to the `.env` file.
+
 ## 4.14.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.14.0.
 
 ### Bug Fixes
 
