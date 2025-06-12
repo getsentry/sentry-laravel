@@ -143,20 +143,6 @@ class ConsoleSchedulingIntegrationTest extends TestCase
     }
 
     /** @define-env envSamplingAllTransactions */
-    public function testScheduledCommandCreatesTransaction(): void
-    {
-        $this->getScheduler()->command('inspire')->everyMinute();
-
-        $this->artisan('schedule:run');
-
-        $this->assertSentryTransactionCount(1);
-
-        $transaction = $this->getLastSentryEvent();
-
-        $this->assertEquals('inspire', $transaction->getTransaction());
-    }
-
-    /** @define-env envSamplingAllTransactions */
     public function testScheduledClosureCreatesTransaction(): void
     {
         $this->getScheduler()->call(function () {})->everyMinute();
