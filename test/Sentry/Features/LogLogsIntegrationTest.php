@@ -6,6 +6,7 @@ use Illuminate\Config\Repository;
 use Illuminate\Support\Facades\Log;
 use Sentry\Laravel\Tests\TestCase;
 use Sentry\Logs\LogLevel;
+use function Sentry\logger;
 
 class LogLogsIntegrationTest extends TestCase
 {
@@ -107,6 +108,10 @@ class LogLogsIntegrationTest extends TestCase
     /** @return \Sentry\Logs\Log[] */
     private function getAndFlushCapturedLogs(): array
     {
-        return \Sentry\logger()->aggregator()->flushWithoutEvent();
+        $logs = logger()->aggregator()->all();
+
+        logger()->aggregator()->flush();
+
+        return $logs;
     }
 }
