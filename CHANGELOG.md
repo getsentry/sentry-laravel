@@ -27,9 +27,9 @@ The Sentry SDK team is happy to announce the immediate availability of Sentry La
   Use the Log facade to sent your logs to Sentry. To learn more, head over to the [Laravel docs](https://laravel.com/docs/logging).
 
   ```php
-  use use Illuminate\Support\Facades\Log;
+  use Illuminate\Support\Facades\Log;
 
-  Log::driver('sentry')->info('User {id} failed to login.', ['id' => $user->id]);
+  Log::channel('sentry')->info('User {id} failed to login.', ['id' => $user->id]);
   ```
 
 ## 4.14.1
