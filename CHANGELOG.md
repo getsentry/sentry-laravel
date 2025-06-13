@@ -32,6 +32,8 @@ The Sentry SDK team is happy to announce the immediate availability of Sentry La
   Log::channel('sentry')->info('User {id} failed to login.', ['id' => $user->id]);
   ```
 
+  To learn more, head over to our [docs](https://docs.sentry.io/platforms/php/guides/laravel/logs/).
+
 ## 4.14.1
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.14.1.
