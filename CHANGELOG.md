@@ -8,13 +8,12 @@ The Sentry SDK team is happy to announce the immediate availability of Sentry La
 
 - Add support for Sentry Structured Logs [(#1000)](https://github.com/getsentry/sentry-laravel/pull/1000)
 
-
   To enable this feature, add the `sentry_logs` log channel in your `config/logging.php` configuration:
 
   ```php
   'channels' => [
       ...
-      'sentry' => [
+      'sentry_logs' => [
           'driver' => 'sentry_logs',
           'level' => env('LOG_LEVEL', 'info'),
       ],
@@ -29,7 +28,7 @@ The Sentry SDK team is happy to announce the immediate availability of Sentry La
   ```php
   use Illuminate\Support\Facades\Log;
 
-  Log::channel('sentry')->info('User {id} failed to login.', ['id' => $user->id]);
+  Log::channel('sentry_logs')->info('User {id} failed to login.', ['id' => $user->id]);
   ```
 
   To learn more, head over to our [docs](https://docs.sentry.io/platforms/php/guides/laravel/logs/).
