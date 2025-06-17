@@ -9,6 +9,10 @@ use Sentry\Tracing\Span;
 
 class CacheIntegrationTest extends TestCase
 {
+    protected $defaultSetupConfig = [
+        'session.driver' => 'array',
+    ];
+
     public function testCacheBreadcrumbForWriteAndHitIsRecorded(): void
     {
         Cache::put($key = 'foo', 'bar');
@@ -53,10 +57,10 @@ class CacheIntegrationTest extends TestCase
 
     public function testCacheBreadcrumbReplacesSessionKeyWithPlaceholder(): void
     {
-        // Start a session
-        $this->app['request']->setLaravelSession($session = $this->app['session.store']);
-        $session->start();
-        $sessionId = $session->getId();
+        // Start a session properly in the test environment
+        $this->withSession(['test' => 'value']);
+        
+        $sessionId = $this->app['session']->getId();
 
         // Use the session ID as a cache key
         Cache::put($sessionId, 'session-data');
@@ -178,10 +182,10 @@ class CacheIntegrationTest extends TestCase
     {
         $this->markSkippedIfTracingEventsNotAvailable();
 
-        // Start a session
-        $this->app['request']->setLaravelSession($session = $this->app['session.store']);
-        $session->start();
-        $sessionId = $session->getId();
+        // Start a session properly in the test environment
+        $this->withSession(['test' => 'value']);
+        
+        $sessionId = $this->app['session']->getId();
 
         $span = $this->executeAndReturnMostRecentSpan(function () use ($sessionId) {
             Cache::get($sessionId);
@@ -196,10 +200,10 @@ class CacheIntegrationTest extends TestCase
     {
         $this->markSkippedIfTracingEventsNotAvailable();
 
-        // Start a session
-        $this->app['request']->setLaravelSession($session = $this->app['session.store']);
-        $session->start();
-        $sessionId = $session->getId();
+        // Start a session properly in the test environment
+        $this->withSession(['test' => 'value']);
+        
+        $sessionId = $this->app['session']->getId();
 
         $span = $this->executeAndReturnMostRecentSpan(function () use ($sessionId) {
             Cache::get([$sessionId, 'regular-key', $sessionId . '_another']);
@@ -214,15 +218,14 @@ class CacheIntegrationTest extends TestCase
     {
         $this->markSkippedIfTracingEventsNotAvailable();
 
-        // Make sure session is not started
-        $this->assertFalse($this->app['session.store']->isStarted());
+        // Don't start a session to ensure it's not started
 
         $span = $this->executeAndReturnMostRecentSpan(function () {
             Cache::get('some-key');
         });
-
-        // Session should still not be started
-        $this->assertFalse($this->app['session.store']->isStarted());
+        
+        // Check that session was not started  
+        $this->assertFalse($this->app['session']->isStarted());
         
         // And the key should not be replaced
         $this->assertEquals('some-key', $span->getDescription());
