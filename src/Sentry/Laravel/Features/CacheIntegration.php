@@ -278,23 +278,27 @@ class CacheIntegration extends Feature
             $request = $this->container()->make('request');
 
             // Check if the request has a session
-            if (!$request->hasSession()) {
+            if (!method_exists($request, 'hasSession') || !$request->hasSession()) {
                 return false;
             }
 
             $session = $request->session();
 
             // Don't start the session if it hasn't been started yet
-            if (!$session->isStarted()) {
+            if (!method_exists($session, 'isStarted') || !$session->isStarted()) {
                 return false;
             }
 
-            // Get the session ID and check if the cache key matches
+            // Get the session ID and check if the cache key matches exactly
             $sessionId = $session->getId();
+            
+            // Check for empty session ID
+            if (empty($sessionId)) {
+                return false;
+            }
 
-            // Check if the key equals the session ID or contains it
-            // This handles cases where the cache key might be prefixed
-            return $key === $sessionId || Str::endsWith($key, $sessionId);
+            // Check if the key equals the session ID exactly
+            return $key === $sessionId;
         } catch (\Exception $e) {
             // If anything goes wrong, we assume it's not a session key
             return false;

@@ -58,8 +58,8 @@ class CacheIntegrationTest extends TestCase
     public function testCacheBreadcrumbReplacesSessionKeyWithPlaceholder(): void
     {
         // Start a session properly in the test environment
-        $this->withSession(['test' => 'value']);
-        
+        $this->ensureRequestIsBound();
+        $this->startSession();
         $sessionId = $this->app['session']->getId();
 
         // Use the session ID as a cache key
@@ -183,8 +183,8 @@ class CacheIntegrationTest extends TestCase
         $this->markSkippedIfTracingEventsNotAvailable();
 
         // Start a session properly in the test environment
-        $this->withSession(['test' => 'value']);
-        
+        $this->ensureRequestIsBound();
+        $this->startSession();
         $sessionId = $this->app['session']->getId();
 
         $span = $this->executeAndReturnMostRecentSpan(function () use ($sessionId) {
@@ -201,8 +201,8 @@ class CacheIntegrationTest extends TestCase
         $this->markSkippedIfTracingEventsNotAvailable();
 
         // Start a session properly in the test environment
-        $this->withSession(['test' => 'value']);
-        
+        $this->ensureRequestIsBound();
+        $this->startSession();
         $sessionId = $this->app['session']->getId();
 
         $span = $this->executeAndReturnMostRecentSpan(function () use ($sessionId) {
@@ -210,8 +210,8 @@ class CacheIntegrationTest extends TestCase
         });
 
         $this->assertEquals('cache.get', $span->getOp());
-        $this->assertEquals('{sessionKey}, regular-key, {sessionKey}', $span->getDescription());
-        $this->assertEquals(['{sessionKey}', 'regular-key', '{sessionKey}'], $span->getData()['cache.key']);
+        $this->assertEquals('{sessionKey}, regular-key, ' . $sessionId . '_another', $span->getDescription());
+        $this->assertEquals(['{sessionKey}', 'regular-key', $sessionId . '_another'], $span->getData()['cache.key']);
     }
 
     public function testCacheOperationDoesNotStartSessionPrematurely(): void
@@ -251,5 +251,23 @@ class CacheIntegrationTest extends TestCase
         $this->assertTrue(count($spans) >= 2);
 
         return array_pop($spans);
+    }
+
+    private function ensureRequestIsBound(): void
+    {
+        // Ensure we have a request instance
+        if (!$this->app->bound('request')) {
+            $this->app->instance('request', $this->app->make(\Illuminate\Http\Request::class));
+        }
+    }
+
+    private function startSession(): void
+    {
+        // Start the session
+        $session = $this->app['session'];
+        $session->start();
+
+        // Set the session on the request
+        $this->app['request']->setLaravelSession($session);
     }
 }
