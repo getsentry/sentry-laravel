@@ -86,11 +86,13 @@ class CacheIntegration extends Feature
                 return;
         }
 
+        $displayKey = $this->replaceSessionKey($event->key);
+
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,
             Breadcrumb::TYPE_DEFAULT,
             'cache',
-            "{$message}: {$event->key}",
+            "{$message}: {$displayKey}",
             $event->tags ? ['tags' => $event->tags] : []
         ));
     }
@@ -109,15 +111,17 @@ class CacheIntegration extends Feature
                         : $event->keys
                 );
 
+                $displayKeys = $this->replaceSessionKeys($keys);
+
                 $this->pushSpan(
                     $parentSpan->startChild(
                         SpanContext::make()
                             ->setOp('cache.get')
                             ->setData([
-                                'cache.key' => $keys,
+                                'cache.key' => $displayKeys,
                             ])
                             ->setOrigin('auto.cache')
-                            ->setDescription(implode(', ', $keys))
+                            ->setDescription(implode(', ', $displayKeys))
                     )
                 );
             }
@@ -129,30 +133,34 @@ class CacheIntegration extends Feature
                         : $event->keys
                 );
 
+                $displayKeys = $this->replaceSessionKeys($keys);
+
                 $this->pushSpan(
                     $parentSpan->startChild(
                         SpanContext::make()
                             ->setOp('cache.put')
                             ->setData([
-                                'cache.key' => $keys,
+                                'cache.key' => $displayKeys,
                                 'cache.ttl' => $event->seconds,
                             ])
                             ->setOrigin('auto.cache')
-                            ->setDescription(implode(', ', $keys))
+                            ->setDescription(implode(', ', $displayKeys))
                     )
                 );
             }
 
             if ($event instanceof Events\ForgettingKey) {
+                $displayKey = $this->replaceSessionKey($event->key);
+
                 $this->pushSpan(
                     $parentSpan->startChild(
                         SpanContext::make()
                             ->setOp('cache.remove')
                             ->setData([
-                                'cache.key' => [$event->key],
+                                'cache.key' => [$displayKey],
                             ])
                             ->setOrigin('auto.cache')
-                            ->setDescription($event->key)
+                            ->setDescription($displayKey)
                     )
                 );
             }
@@ -177,7 +185,7 @@ class CacheIntegration extends Feature
         // If the first parameter is a string and does not contain a newline we use it as the description since it's most likely a key
         // This is not a perfect solution but it's the best we can do without understanding the command that was executed
         if (!empty($event->parameters[0]) && is_string($event->parameters[0]) && !Str::contains($event->parameters[0], "\n")) {
-            $keyForDescription = $event->parameters[0];
+            $keyForDescription = $this->replaceSessionKey($event->parameters[0]);
         }
 
         $context->setDescription(rtrim(strtoupper($event->command) . ' ' . $keyForDescription));
@@ -189,7 +197,12 @@ class CacheIntegration extends Feature
         ];
 
         if ($this->shouldSendDefaultPii()) {
-            $data['db.redis.parameters'] = $event->parameters;
+            // Replace session keys in parameters if present
+            $parameters = $event->parameters;
+            if (!empty($parameters[0]) && is_string($parameters[0])) {
+                $parameters[0] = $this->replaceSessionKey($parameters[0]);
+            }
+            $data['db.redis.parameters'] = $parameters;
         }
 
         if ($this->isTracingFeatureEnabled('redis_origin')) {
@@ -243,6 +256,73 @@ class CacheIntegration extends Feature
         }
 
         return false;
+    }
+
+    /**
+     * Check if a cache key is the current session key.
+     *
+     * @param string $key
+     *
+     * @return bool
+     */
+    private function isSessionKey(string $key): bool
+    {
+        // Check if the container has a bound request and session
+        if (!$this->container()->bound('request')) {
+            return false;
+        }
+
+        try {
+            $request = $this->container()->make('request');
+
+            // Check if the request has a session
+            if (!$request->hasSession()) {
+                return false;
+            }
+
+            $session = $request->session();
+
+            // Don't start the session if it hasn't been started yet
+            if (!$session->isStarted()) {
+                return false;
+            }
+
+            // Get the session ID and check if the cache key matches
+            $sessionId = $session->getId();
+
+            // Check if the key equals the session ID or contains it
+            // This handles cases where the cache key might be prefixed
+            return $key === $sessionId || Str::endsWith($key, $sessionId);
+        } catch (\Exception $e) {
+            // If anything goes wrong, we assume it's not a session key
+            return false;
+        }
+    }
+
+    /**
+     * Replace a session key with a placeholder.
+     *
+     * @param string $key
+     *
+     * @return string
+     */
+    private function replaceSessionKey(string $key): string
+    {
+        return $this->isSessionKey($key) ? '{sessionKey}' : $key;
+    }
+
+    /**
+     * Replace session keys in an array of keys with placeholders.
+     *
+     * @param array $keys
+     *
+     * @return array
+     */
+    private function replaceSessionKeys(array $keys): array
+    {
+        return array_map(function ($key) {
+            return $this->replaceSessionKey($key);
+        }, $keys);
     }
 
     /**

@@ -51,6 +51,33 @@ class CacheIntegrationTest extends TestCase
         $this->assertEmpty($this->getCurrentSentryBreadcrumbs());
     }
 
+    public function testCacheBreadcrumbReplacesSessionKeyWithPlaceholder(): void
+    {
+        // Start a session
+        $this->app['request']->setLaravelSession($session = $this->app['session.store']);
+        $session->start();
+        $sessionId = $session->getId();
+
+        // Use the session ID as a cache key
+        Cache::put($sessionId, 'session-data');
+
+        $breadcrumb = $this->getLastSentryBreadcrumb();
+        $this->assertEquals("Written: {sessionKey}", $breadcrumb->getMessage());
+
+        Cache::get($sessionId);
+
+        $breadcrumb = $this->getLastSentryBreadcrumb();
+        $this->assertEquals("Read: {sessionKey}", $breadcrumb->getMessage());
+    }
+
+    public function testCacheBreadcrumbDoesNotReplaceNonSessionKeys(): void
+    {
+        Cache::put('regular-key', 'value');
+
+        $breadcrumb = $this->getLastSentryBreadcrumb();
+        $this->assertEquals("Written: regular-key", $breadcrumb->getMessage());
+    }
+
     public function testCacheGetSpanIsRecorded(): void
     {
         $this->markSkippedIfTracingEventsNotAvailable();
@@ -145,6 +172,60 @@ class CacheIntegrationTest extends TestCase
         $this->assertEquals('cache.remove', $span->getOp());
         $this->assertEquals('foo', $span->getDescription());
         $this->assertEquals(['foo'], $span->getData()['cache.key']);
+    }
+
+    public function testCacheSpanReplacesSessionKeyWithPlaceholder(): void
+    {
+        $this->markSkippedIfTracingEventsNotAvailable();
+
+        // Start a session
+        $this->app['request']->setLaravelSession($session = $this->app['session.store']);
+        $session->start();
+        $sessionId = $session->getId();
+
+        $span = $this->executeAndReturnMostRecentSpan(function () use ($sessionId) {
+            Cache::get($sessionId);
+        });
+
+        $this->assertEquals('cache.get', $span->getOp());
+        $this->assertEquals('{sessionKey}', $span->getDescription());
+        $this->assertEquals(['{sessionKey}'], $span->getData()['cache.key']);
+    }
+
+    public function testCacheSpanReplacesMultipleSessionKeysWithPlaceholder(): void
+    {
+        $this->markSkippedIfTracingEventsNotAvailable();
+
+        // Start a session
+        $this->app['request']->setLaravelSession($session = $this->app['session.store']);
+        $session->start();
+        $sessionId = $session->getId();
+
+        $span = $this->executeAndReturnMostRecentSpan(function () use ($sessionId) {
+            Cache::get([$sessionId, 'regular-key', $sessionId . '_another']);
+        });
+
+        $this->assertEquals('cache.get', $span->getOp());
+        $this->assertEquals('{sessionKey}, regular-key, {sessionKey}', $span->getDescription());
+        $this->assertEquals(['{sessionKey}', 'regular-key', '{sessionKey}'], $span->getData()['cache.key']);
+    }
+
+    public function testCacheOperationDoesNotStartSessionPrematurely(): void
+    {
+        $this->markSkippedIfTracingEventsNotAvailable();
+
+        // Make sure session is not started
+        $this->assertFalse($this->app['session.store']->isStarted());
+
+        $span = $this->executeAndReturnMostRecentSpan(function () {
+            Cache::get('some-key');
+        });
+
+        // Session should still not be started
+        $this->assertFalse($this->app['session.store']->isStarted());
+        
+        // And the key should not be replaced
+        $this->assertEquals('some-key', $span->getDescription());
     }
 
     private function markSkippedIfTracingEventsNotAvailable(): void
