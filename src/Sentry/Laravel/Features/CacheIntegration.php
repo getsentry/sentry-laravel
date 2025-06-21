@@ -221,10 +221,9 @@ class CacheIntegration extends Feature
             $finishedSpan = $this->maybeFinishSpan(SpanStatus::ok());
 
             if ($finishedSpan !== null && count($finishedSpan->getData()['cache.key'] ?? []) === 1) {
-                $finishedSpan->setData(array_merge(
-                    $finishedSpan->getData(),
-                    ['cache.hit' => $event instanceof Events\CacheHit]
-                ));
+                $finishedSpan->setData([
+                    'cache.hit' => $event instanceof Events\CacheHit
+                ]);
             }
 
             return true;
@@ -237,10 +236,9 @@ class CacheIntegration extends Feature
             );
 
             if ($finishedSpan !== null) {
-                $finishedSpan->setData(array_merge(
-                    $finishedSpan->getData(),
-                    ['cache.success' => $event instanceof Events\KeyWritten]
-                ));
+                $finishedSpan->setData([
+                    'cache.success' => $event instanceof Events\KeyWritten
+                ]);
             }
 
             return true;
