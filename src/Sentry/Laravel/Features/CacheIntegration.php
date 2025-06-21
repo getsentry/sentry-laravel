@@ -4,7 +4,7 @@ namespace Sentry\Laravel\Features;
 
 use Illuminate\Cache\Events;
 use Illuminate\Contracts\Events\Dispatcher;
-use Illuminate\Http\Request;
+use Illuminate\Contracts\Session\Session;
 use Illuminate\Redis\Events as RedisEvents;
 use Illuminate\Redis\RedisManager;
 use Illuminate\Support\Str;
@@ -262,23 +262,13 @@ class CacheIntegration extends Feature
     private function getSessionKey(): ?string
     {
         try {
-            /** @var Request $request */
-            $request = $this->container()->make('request');
+            /** @var Session $request */
+            $request = $this->container()->make('session.store');
 
-            if (!$request->hasSession()) {
-                return false;
-            }
-
-            $session = $request->session();
-
-            if (!$session->isStarted()) {
-                return false;
-            }
-
-            return $session->getId();
+            return $request->getId();
         } catch (\Exception $e) {
-            // If anything goes wrong, we assume it's not a session key
-            return false;
+            // We can assume the session store is not available here so there is no session key to retrieve
+            return null;
         }
     }
 

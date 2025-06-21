@@ -58,7 +58,6 @@ class CacheIntegrationTest extends TestCase
     public function testCacheBreadcrumbReplacesSessionKeyWithPlaceholder(): void
     {
         // Start a session properly in the test environment
-        $this->ensureRequestIsBoundWithSession();
         $this->startSession();
         $sessionId = $this->app['session']->getId();
 
@@ -182,8 +181,6 @@ class CacheIntegrationTest extends TestCase
     {
         $this->markSkippedIfTracingEventsNotAvailable();
 
-        // Start a session properly in the test environment
-        $this->ensureRequestIsBoundWithSession();
         $this->startSession();
         $sessionId = $this->app['session']->getId();
 
@@ -201,7 +198,6 @@ class CacheIntegrationTest extends TestCase
         $this->markSkippedIfTracingEventsNotAvailable();
 
         // Start a session properly in the test environment
-        $this->ensureRequestIsBoundWithSession();
         $this->startSession();
         $sessionId = $this->app['session']->getId();
 
@@ -251,18 +247,5 @@ class CacheIntegrationTest extends TestCase
         $this->assertTrue(count($spans) >= 2);
 
         return array_pop($spans);
-    }
-
-    private function ensureRequestIsBoundWithSession(): void
-    {
-        if ($this->app->bound('request')) {
-            $request = $this->app['request'];
-        } else {
-            $request = $this->app->make(\Illuminate\Http\Request::class);
-
-            $this->app->instance('request', $request);
-        }
-
-        $request->setLaravelSession($this->app['session']->driver());
     }
 }
