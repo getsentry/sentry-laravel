@@ -265,17 +265,7 @@ class CacheIntegration extends Feature
             /** @var Request $request */
             $request = $this->container()->make('request');
 
-            if (!$request->hasSession()) {
-                return false;
-            }
-
-            $session = $request->session();
-
-            if (!$session->isStarted()) {
-                return false;
-            }
-
-            return $session->getId();
+            return $request->session()->getId();
         } catch (\Exception $e) {
             // If anything goes wrong, we assume it's not a session key
             return false;

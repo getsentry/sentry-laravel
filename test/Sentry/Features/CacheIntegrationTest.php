@@ -58,8 +58,8 @@ class CacheIntegrationTest extends TestCase
     public function testCacheBreadcrumbReplacesSessionKeyWithPlaceholder(): void
     {
         // Start a session properly in the test environment
-        $this->ensureRequestIsBoundWithSession();
         $this->startSession();
+        $this->ensureRequestIsBoundWithSession();
         $sessionId = $this->app['session']->getId();
 
         // Use the session ID as a cache key
@@ -182,9 +182,8 @@ class CacheIntegrationTest extends TestCase
     {
         $this->markSkippedIfTracingEventsNotAvailable();
 
-        // Start a session properly in the test environment
-        $this->ensureRequestIsBoundWithSession();
         $this->startSession();
+        $this->ensureRequestIsBoundWithSession();
         $sessionId = $this->app['session']->getId();
 
         $span = $this->executeAndReturnMostRecentSpan(function () use ($sessionId) {
@@ -201,8 +200,8 @@ class CacheIntegrationTest extends TestCase
         $this->markSkippedIfTracingEventsNotAvailable();
 
         // Start a session properly in the test environment
-        $this->ensureRequestIsBoundWithSession();
         $this->startSession();
+        $this->ensureRequestIsBoundWithSession();
         $sessionId = $this->app['session']->getId();
 
         $span = $this->executeAndReturnMostRecentSpan(function () use ($sessionId) {
