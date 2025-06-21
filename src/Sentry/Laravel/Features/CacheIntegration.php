@@ -4,6 +4,7 @@ namespace Sentry\Laravel\Features;
 
 use Illuminate\Cache\Events;
 use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Http\Request;
 use Illuminate\Redis\Events as RedisEvents;
 use Illuminate\Redis\RedisManager;
 use Illuminate\Support\Str;
@@ -197,12 +198,7 @@ class CacheIntegration extends Feature
         ];
 
         if ($this->shouldSendDefaultPii()) {
-            // Replace session keys in parameters if present
-            $parameters = $event->parameters;
-            if (!empty($parameters[0]) && is_string($parameters[0])) {
-                $parameters[0] = $this->replaceSessionKey($parameters[0]);
-            }
-            $data['db.redis.parameters'] = $parameters;
+            $data['db.redis.parameters'] = $this->replaceSessionKeys($event->parameters);
         }
 
         if ($this->isTracingFeatureEnabled('redis_origin')) {
@@ -261,44 +257,25 @@ class CacheIntegration extends Feature
     }
 
     /**
-     * Check if a cache key is the current session key.
-     *
-     * @param string $key
-     *
-     * @return bool
+     * Retrieve the current session key if available.
      */
-    private function isSessionKey(string $key): bool
+    private function getSessionKey(): ?string
     {
-        // Check if the container has a bound request and session
-        if (!$this->container()->bound('request')) {
-            return false;
-        }
-
         try {
+            /** @var Request $request */
             $request = $this->container()->make('request');
 
-            // Check if the request has a session
-            if (!method_exists($request, 'hasSession') || !$request->hasSession()) {
+            if (!$request->hasSession()) {
                 return false;
             }
 
             $session = $request->session();
 
-            // Don't start the session if it hasn't been started yet
-            if (!method_exists($session, 'isStarted') || !$session->isStarted()) {
+            if (!$session->isStarted()) {
                 return false;
             }
 
-            // Get the session ID and check if the cache key matches exactly
-            $sessionId = $session->getId();
-            
-            // Check for empty session ID
-            if (empty($sessionId)) {
-                return false;
-            }
-
-            // Check if the key equals the session ID exactly
-            return $key === $sessionId;
+            return $session->getId();
         } catch (\Exception $e) {
             // If anything goes wrong, we assume it's not a session key
             return false;
@@ -307,28 +284,26 @@ class CacheIntegration extends Feature
 
     /**
      * Replace a session key with a placeholder.
-     *
-     * @param string $key
-     *
-     * @return string
      */
-    private function replaceSessionKey(string $key): string
+    private function replaceSessionKey(string $value): string
     {
-        return $this->isSessionKey($key) ? '{sessionKey}' : $key;
+        return $value === $this->getSessionKey() ? '{sessionKey}' : $value;
     }
 
     /**
      * Replace session keys in an array of keys with placeholders.
      *
-     * @param string[] $keys
+     * @param string[] $values
      *
      * @return string[]
      */
-    private function replaceSessionKeys(array $keys): array
+    private function replaceSessionKeys(array $values): array
     {
-        return array_map(function ($key) {
-            return $this->replaceSessionKey($key);
-        }, $keys);
+        $sessionKey = $this->getSessionKey();
+
+        return array_map(static function ($value) use ($sessionKey) {
+            return $value === $sessionKey ? '{sessionKey}' : $value;
+        }, $values);
     }
 
     /**
