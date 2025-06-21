@@ -251,17 +251,4 @@ class CacheIntegrationTest extends TestCase
 
         return array_pop($spans);
     }
-
-    private function ensureRequestIsBoundWithSession(): void
-    {
-        if ($this->app->bound('request')) {
-            $request = $this->app['request'];
-        } else {
-            $request = $this->app->make(\Illuminate\Http\Request::class);
-
-            $this->app->instance('request', $request);
-        }
-
-        $request->setLaravelSession($this->app['session']->driver());
-    }
 }
