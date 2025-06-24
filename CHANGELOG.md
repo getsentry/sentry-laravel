@@ -6,7 +6,7 @@ The Sentry SDK team is happy to announce the immediate availability of Sentry La
 
 ### Misc
 
-- Bum the PHP SDK to version `4.14.1` [(#1013)](https://github.com/getsentry/sentry-laravel/pull/1013)
+- Bump the PHP SDK to version `4.14.1` [(#1013)](https://github.com/getsentry/sentry-laravel/pull/1013)
 
 ## 4.15.0
 
