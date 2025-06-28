@@ -260,12 +260,19 @@ class CacheIntegration extends Feature
     private function getSessionKey(): ?string
     {
         try {
-            /** @var Session $request */
-            $request = $this->container()->make('session.store');
+            /** @var Session $sessionStore */
+            $sessionStore = $this->container()->make('session.store');
 
-            return $request->getId();
+            // It is safe for us to get the session ID here without checking if the session is started
+            // because getting the session ID does not start the session. In addition we need the ID before
+            // the session is started because the cache will retrieve the session ID from the cache before the session
+            // is considered started. So if we wait for the session to be started, we will not be able to replace the
+            // session key in the cache operation that is being executed to retrieve the session data from the cache.
+            return $sessionStore->getId();
         } catch (\Exception $e) {
             // We can assume the session store is not available here so there is no session key to retrieve
+            // We capture a generic exception to avoid breaking the application because some code paths can
+            // result in an exception other than the expected `Illuminate\Contracts\Container\BindingResolutionException`
             return null;
         }
     }
@@ -283,14 +290,14 @@ class CacheIntegration extends Feature
      *
      * @param string[] $values
      *
-     * @return string[]
+     * @return mixed[]
      */
     private function replaceSessionKeys(array $values): array
     {
         $sessionKey = $this->getSessionKey();
 
         return array_map(static function ($value) use ($sessionKey) {
-            return $value === $sessionKey ? '{sessionKey}' : $value;
+            return is_string($value) && $value === $sessionKey ? '{sessionKey}' : $value;
         }, $values);
     }
 
