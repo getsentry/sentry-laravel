@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.15.3
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.15.3.
+
+### Bug Fixes
+
+- Guard against empty cache event keys [(#1031)](https://github.com/getsentry/sentry-laravel/pull/1031)
+
 ## 4.15.2
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.15.2.
