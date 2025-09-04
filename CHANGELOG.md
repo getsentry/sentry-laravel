@@ -1,5 +1,17 @@
 # Changelog
 
+## 4.15.2
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.15.2.
+
+### Bug Fixes
+
+- Replace the session key in cache span names by a placeholder [(#1009)](https://github.com/getsentry/sentry-laravel/pull/1009)
+
+### Misc
+
+- Bump the PHP SDK to version `4.15.2` [(#1028)](https://github.com/getsentry/sentry-laravel/pull/1028)
+
 ## 4.15.1
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.15.1.
