@@ -280,8 +280,12 @@ class CacheIntegration extends Feature
     /**
      * Replace a session key with a placeholder.
      */
-    private function replaceSessionKey(string $value): string
+    private function replaceSessionKey(?string $value): string
     {
+        if (!is_string($value)) {
+            return '{empty key}';
+        }
+
         return $value === $this->getSessionKey() ? '{sessionKey}' : $value;
     }
 
