@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.16.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.16.0.
+
+### Features
+
+- Allow logging exceptions [(#1035)](https://github.com/getsentry/sentry-laravel/pull/1035)
+
 ## 4.15.3
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.15.3.
