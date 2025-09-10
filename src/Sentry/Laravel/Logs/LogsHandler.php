@@ -98,7 +98,7 @@ class LogsHandler extends AbstractProcessingHandler
     protected function doWrite($record): void
     {
         $context = $record['context'];
-        $exception = $record['context']['exception'] ?? null;
+        $exception = $context['exception'] ?? null;
 
         if ($exception instanceof Throwable) {
             // Unset the exception object from the log context
