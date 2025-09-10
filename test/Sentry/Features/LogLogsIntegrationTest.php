@@ -77,7 +77,7 @@ class LogLogsIntegrationTest extends TestCase
         $this->assertEquals('Sentry Laravel error log message', $log->getBody());
     }
 
-    public function testLogChannelDoesntCaptureExceptions(): void
+    public function testLogChannelCapturesExceptions(): void
     {
         $logger = Log::channel('sentry_logs');
 
@@ -85,7 +85,13 @@ class LogLogsIntegrationTest extends TestCase
 
         $logs = $this->getAndFlushCapturedLogs();
 
-        $this->assertCount(0, $logs);
+        $this->assertCount(1, $logs);
+
+        $log = $logs[0];
+
+        $this->assertEquals(LogLevel::error(), $log->getLevel());
+        $this->assertEquals('Sentry Laravel error log message', $log->getBody());
+        $this->assertNull($log->attributes()->get('exception'));
     }
 
     public function testLogChannelAddsContextAsAttributes(): void

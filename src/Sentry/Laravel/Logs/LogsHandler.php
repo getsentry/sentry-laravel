@@ -10,6 +10,8 @@ use Sentry\Monolog\CompatibilityProcessingHandlerTrait;
 use Sentry\Severity;
 use Throwable;
 
+use function Sentry\logger;
+
 class LogsHandler extends AbstractProcessingHandler
 {
     use CompatibilityProcessingHandlerTrait;
@@ -95,20 +97,22 @@ class LogsHandler extends AbstractProcessingHandler
      */
     protected function doWrite($record): void
     {
-        $exception = $record['context']['exception'] ?? null;
+        $context = $record['context'];
+        $exception = $context['exception'] ?? null;
 
         if ($exception instanceof Throwable) {
-            return;
+            // Unset the exception object from the log context
+            unset($context['exception']);
         }
 
-        \Sentry\logger()->aggregator()->add(
+        logger()->aggregator()->add(
             // This seems a little bit of a roundabout way to get the log level, but this is done for compatibility
             self::getLogLevelFromSeverity(
                 self::getSeverityFromLevel($record['level'])
             ),
             $record['message'],
             [],
-            array_merge($record['context'], $record['extra'])
+            array_merge($context, $record['extra'])
         );
     }
 
