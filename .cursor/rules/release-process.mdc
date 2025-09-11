@@ -29,7 +29,7 @@ To prepare a new release (e.g., version 4.14.0):
    - Features section for new features
    - Bug Fixes section for bug fixes
    - Misc section for documentation/readme updates
-   - Use format: `- Description [(#PR)](mdc:https:/github.com/getsentry/sentry-php/pull/PR)`
+   - Use format: `- Description [(#PR)](mdc:https:/github.com/getsentry/sentry-laravel/pull/PR)`
 
 ## CHANGELOG.md Format
 
