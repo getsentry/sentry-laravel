@@ -1,5 +1,17 @@
 # Changelog
 
+### 4.17.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.17.0.
+
+### Features
+
+- Auto configure Sentry log channels. [(#1042)](https://github.com/getsentry/sentry-laravel/pull/1042)
+
+### Misc
+
+- Add `sentry.origin` attribute to `LogsHandler`. [(#1041)](https://github.com/getsentry/sentry-laravel/pull/1041) 
+
 ## 4.16.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.16.0.
