@@ -2,6 +2,7 @@
 
 namespace Sentry\Laravel;
 
+use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
@@ -44,6 +45,8 @@ class ServiceProvider extends BaseServiceProvider
         'breadcrumbs',
         // We resolve the integrations through the container later, so we initially do not pass it to the SDK yet
         'integrations',
+        // We have this setting to allow us to capture the .env LOG_LEVEL for the sentry_logs channel
+        'logs_channel_level',
         // This is kept for backwards compatibility and can be dropped in a future breaking release
         'breadcrumbs.sql_bindings',
 
@@ -134,6 +137,8 @@ class ServiceProvider extends BaseServiceProvider
         $this->configureAndRegisterClient();
 
         $this->registerFeatures();
+
+        $this->registerLogChannels();
     }
 
     /**
@@ -182,6 +187,29 @@ class ServiceProvider extends BaseServiceProvider
             } catch (Throwable $e) {
                 // Ensure that features do not break the whole application
             }
+        }
+    }
+
+    /**
+     * Register the log channels.
+     */
+    protected function registerLogChannels(): void
+    {
+        $config = $this->app->make(Repository::class);
+
+        $logChannels = $config->get('logging.channels', []);
+
+        if (!array_key_exists('sentry', $logChannels)) {
+            $config->set('logging.channels.sentry', [
+                'driver' => 'sentry',
+            ]);
+        }
+
+        if (!array_key_exists('sentry_logs', $logChannels)) {
+            $config->set('logging.channels.sentry_logs', [
+                'driver' => 'sentry_logs',
+                'level' => $config->get('sentry.logs_channel_level', 'debug'),
+            ]);
         }
     }
 

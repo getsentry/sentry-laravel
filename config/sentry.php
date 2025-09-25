@@ -35,6 +35,9 @@ return [
     // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#enable_logs
     'enable_logs' => env('SENTRY_ENABLE_LOGS', false),
 
+    // The minimum log level that will be sent to Sentry as logs using the `sentry_logs` logging channel
+    'logs_channel_level' => env('SENTRY_LOGS_LEVEL', env('LOG_LEVEL', 'debug')),
+
     // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#send_default_pii
     'send_default_pii' => env('SENTRY_SEND_DEFAULT_PII', false),
 
