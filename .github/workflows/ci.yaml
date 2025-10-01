@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: [ "8.4", "8.3", "8.2", "8.1" ]
+        php: [ "8.5", "8.4", "8.3", "8.2", "8.1" ]
         packages:
           # All versions below only support PHP ^8.1 (Laravel requirement)
           - { laravel: ^10.0,  testbench: ^8.0, phpunit: 9.6.* }
@@ -84,7 +84,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: [ "8.4", "8.3", "8.2", "8.1", "8.0", "7.4", "7.3", "7.2" ]
+        php: [ "8.5", "8.4", "8.3", "8.2", "8.1", "8.0", "7.4", "7.3", "7.2" ]
         packages:
           # All versions below should be test on PHP ^7.1 (Sentry SDK requirement) and PHP < 8.0 (PHPUnit requirement)
           - { laravel: ^6.0,  testbench: 4.7.*, phpunit: 8.4.* }
@@ -134,6 +134,13 @@ jobs:
           - php: "8.4"
             packages: { laravel: ^7.0,  testbench: 5.1.*, phpunit: 8.4.* }
           - php: "8.4"
+            packages: { laravel: ^8.0,  testbench: ^6.0, phpunit: 9.3.* }
+
+          - php: "8.5"
+            packages: { laravel: ^6.0,  testbench: 4.7.*, phpunit: 8.4.* }
+          - php: "8.5"
+            packages: { laravel: ^7.0,  testbench: 5.1.*, phpunit: 8.4.* }
+          - php: "8.5"
             packages: { laravel: ^8.0,  testbench: ^6.0, phpunit: 9.3.* }
 
     name: phpunit (PHP:${{ matrix.php }}, Laravel:${{ matrix.packages.laravel }})
