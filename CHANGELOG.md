@@ -8,6 +8,22 @@ The Sentry SDK team is happy to announce the immediate availability of Sentry La
 
 - Auto configure Sentry log channels. [(#1042)](https://github.com/getsentry/sentry-laravel/pull/1042)
 
+Configuring the channel is no longer required. To enable logs for Sentry, the following environment variables
+need to be configured:
+```bash
+LOG_CHANNEL=stack
+LOG_STACK=single,sentry_logs
+SENTRY_ENABLE_LOGS=true
+```
+
+Sentry will use `LOG_LEVEL` to determine the minimum log level, but it's possible to overwrite it just for Sentry
+using `SENTRY_LOG_LEVEL`.
+
+```bash
+LOG_LEVEL=info
+SENTRY_LOG_LEVEL=warning
+```
+
 ### Misc
 
 - Add `sentry.origin` attribute to `LogsHandler`. [(#1041)](https://github.com/getsentry/sentry-laravel/pull/1041) 
