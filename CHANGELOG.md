@@ -1,6 +1,6 @@
 # Changelog
 
-### 4.17.0
+## 4.17.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.17.0.
 
