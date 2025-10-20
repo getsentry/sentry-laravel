@@ -1,5 +1,18 @@
 # Changelog
 
+## 4.18.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.18.0.
+
+### Bug Fixes
+
+- Ensure we flush logs when the application unexpectedly terminates [(#1052)](https://github.com/getsentry/sentry-laravel/pull/1052)
+
+### Misc
+
+- Use `SENTRY_LOG_LEVEL` environment variable instead of `SENTRY_LOGS_LEVEL` to be more consistent (`SENTRY_LOGS_LEVEL` will keep working as an alias for backward compatibility). [(#1051)](https://github.com/getsentry/sentry-laravel/pull/1051)
+- Bump the PHP SDK to version `4.16.0` [(#1053)](https://github.com/getsentry/sentry-laravel/pull/1053)
+
 ## 4.17.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.17.0.
