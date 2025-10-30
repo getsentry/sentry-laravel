@@ -6,12 +6,21 @@ use Illuminate\Cache\Events\RetrievingKey;
 use Illuminate\Support\Facades\Cache;
 use Sentry\Laravel\Tests\TestCase;
 use Sentry\Tracing\Span;
+use Sentry\Laravel\Features\CacheIntegration;
 
 class CacheIntegrationTest extends TestCase
 {
     protected $defaultSetupConfig = [
         'session.driver' => 'array',
     ];
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Ensure that session keys can be detected in the tests that are running from the console
+        CacheIntegration::$detectSessionKeyOnConsole = true;
+    }
 
     public function testCacheBreadcrumbForWriteAndHitIsRecorded(): void
     {

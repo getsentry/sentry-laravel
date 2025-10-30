@@ -3,6 +3,7 @@
 namespace Sentry\Laravel\Features;
 
 use Illuminate\Cache\Events;
+use Illuminate\Foundation\Application;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Session\Session;
 use Illuminate\Redis\Events as RedisEvents;
@@ -21,6 +22,15 @@ use Sentry\Tracing\SpanStatus;
 class CacheIntegration extends Feature
 {
     use WorksWithSpans, TracksPushedScopesAndSpans, ResolvesEventOrigin;
+
+    /**
+     * Indicates whether to attempt to detect the session key when running in the console.
+     *
+     * @internal this is mainly intended for testing purposes.
+     *
+     * @var bool
+     */
+    public static $detectSessionKeyOnConsole = false;
 
     public function isApplicable(): bool
     {
@@ -259,7 +269,17 @@ class CacheIntegration extends Feature
      */
     private function getSessionKey(): ?string
     {
+        $container = $this->container();
+
         try {
+            // A session key is highly unusal to be available when running in the console
+            // So we skip trying to get the session key in that case to prevent booting up the session store unnecessarily
+            // Doing this anyway can result in unnecessary database connections for example
+            // See: https://github.com/getsentry/sentry-laravel/issues/1057
+            if (!self::$detectSessionKeyOnConsole && $container instanceof Application && $container->runningInConsole()) {
+                return null;
+            }
+
             /** @var Session $sessionStore */
             $sessionStore = $this->container()->make('session.store');
 
