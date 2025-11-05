@@ -25,10 +25,6 @@ class PennantPackageIntegration extends Feature
 
     public function handleFeatureRetrieved($feature): void
     {
-        if (!is_bool($feature->value)) {
-            return; // rich features are not supported yet
-        }
-
         SentrySdk::getCurrentHub()->configureScope(function (Scope $scope) use ($feature) {
             // The value of the feature is not always a bool (Rich Feature Values) but only bools are supported.
             // The feature is considered "active" if its value is not explicitly false following Pennant's logic.
