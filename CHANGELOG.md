@@ -1,5 +1,19 @@
 # Changelog
 
+## 4.19.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.19.0.
+
+### Features
+
+- Add Laravel Pennant feature flags [(#1061)](https://github.com/getsentry/sentry-laravel/pull/1061)
+
+  The SDK will now automatically capture feature flags resolved using [Laravel Pennant](https://laravel.com/docs/12.x/pennant) and attach them to events and spans.
+
+### Bug Fixes
+
+- Do not try to detect the session key on the CLI [(#1058)](https://github.com/getsentry/sentry-laravel/pull/1058)
+
 ## 4.18.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.18.0.
