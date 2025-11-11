@@ -1,5 +1,60 @@
 # Changelog
 
+## 4.19.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.19.0.
+
+### Features
+
+- Add Laravel Pennant feature flags [(#1061)](https://github.com/getsentry/sentry-laravel/pull/1061)
+
+  The SDK will now automatically capture feature flags resolved using [Laravel Pennant](https://laravel.com/docs/12.x/pennant) and attach them to events and spans.
+
+### Bug Fixes
+
+- Do not try to detect the session key on the CLI [(#1058)](https://github.com/getsentry/sentry-laravel/pull/1058)
+
+## 4.18.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.18.0.
+
+### Bug Fixes
+
+- Ensure we flush logs when the application unexpectedly terminates [(#1052)](https://github.com/getsentry/sentry-laravel/pull/1052)
+
+### Misc
+
+- Use `SENTRY_LOG_LEVEL` environment variable instead of `SENTRY_LOGS_LEVEL` to be more consistent (`SENTRY_LOGS_LEVEL` will keep working as an alias for backward compatibility). [(#1051)](https://github.com/getsentry/sentry-laravel/pull/1051)
+- Bump the PHP SDK to version `4.16.0` [(#1053)](https://github.com/getsentry/sentry-laravel/pull/1053)
+
+## 4.17.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.17.0.
+
+### Features
+
+- Auto configure Sentry log channels. [(#1042)](https://github.com/getsentry/sentry-laravel/pull/1042)
+
+Configuring the channel is no longer required. To enable logs for Sentry, the following environment variables
+need to be configured:
+```bash
+LOG_CHANNEL=stack
+LOG_STACK=single,sentry_logs
+SENTRY_ENABLE_LOGS=true
+```
+
+Sentry will use `LOG_LEVEL` to determine the minimum log level, but it's possible to overwrite it just for Sentry
+using `SENTRY_LOG_LEVEL`.
+
+```bash
+LOG_LEVEL=info
+SENTRY_LOG_LEVEL=warning
+```
+
+### Misc
+
+- Add `sentry.origin` attribute to `LogsHandler`. [(#1041)](https://github.com/getsentry/sentry-laravel/pull/1041) 
+
 ## 4.16.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.16.0.

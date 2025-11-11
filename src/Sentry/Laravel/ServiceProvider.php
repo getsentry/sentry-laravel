@@ -2,6 +2,7 @@
 
 namespace Sentry\Laravel;
 
+use Sentry\Logs\Logs;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Contracts\Events\Dispatcher;
@@ -73,6 +74,7 @@ class ServiceProvider extends BaseServiceProvider
         Features\HttpClientIntegration::class,
         Features\FolioPackageIntegration::class,
         Features\NotificationsIntegration::class,
+        Features\PennantPackageIntegration::class,
         Features\LivewirePackageIntegration::class,
         Features\ConsoleSchedulingIntegration::class,
     ];
@@ -162,6 +164,15 @@ class ServiceProvider extends BaseServiceProvider
 
             if (isset($userConfig['send_default_pii']) && $userConfig['send_default_pii'] !== false) {
                 $handler->subscribeAuthEvents($dispatcher);
+            }
+
+            if (isset($userConfig['enable_logs']) && $userConfig['enable_logs'] === true && method_exists($this->app, 'terminating')) {
+                // Listen to the terminating event to flush the logs before the application ends
+                // This ensures that all logs are sent to Sentry even if the application ends unexpectedly
+                // We need to check for method existence here for Lumen since this method was only introduced in Lumen 9.1.4
+                $this->app->terminating(static function () {
+                    Logs::getInstance()->flush();
+                });
             }
         } catch (BindingResolutionException $e) {
             // If we cannot resolve the event dispatcher we also cannot listen to events
