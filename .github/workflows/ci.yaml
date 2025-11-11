@@ -142,6 +142,8 @@ jobs:
             packages: { laravel: ^7.0,  testbench: 5.1.*, phpunit: 8.4.* }
           - php: "8.5"
             packages: { laravel: ^8.0,  testbench: ^6.0, phpunit: 9.3.* }
+          - php: "8.5"
+            packages: { laravel: ^9.0,  testbench: ^7.0, phpunit: 9.5.* }
 
     name: phpunit (PHP:${{ matrix.php }}, Laravel:${{ matrix.packages.laravel }})
 
