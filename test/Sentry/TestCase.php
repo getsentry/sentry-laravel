@@ -125,7 +125,11 @@ abstract class TestCase extends LaravelTestCase
         $hub = $this->getSentryHubFromContainer();
 
         $method = new ReflectionMethod($hub, 'getScope');
-        $method->setAccessible(true);
+        if (\PHP_VERSION_ID < 80100)
+        {
+            // This method is no-op starting from PHP 8.1; see also https://wiki.php.net/rfc/deprecations_php_8_5#deprecate_reflectionsetaccessible
+            $method->setAccessible(true);
+        }
 
         return $method->invoke($hub);
     }
@@ -136,7 +140,11 @@ abstract class TestCase extends LaravelTestCase
         $scope = $this->getCurrentSentryScope();
 
         $property = new ReflectionProperty($scope, 'breadcrumbs');
-        $property->setAccessible(true);
+        if (\PHP_VERSION_ID < 80100)
+        {
+            // This method is no-op starting from PHP 8.1; see also https://wiki.php.net/rfc/deprecations_php_8_5#deprecate_reflectionsetaccessible
+            $property->setAccessible(true);
+        }
 
         return $property->getValue($scope);
     }
