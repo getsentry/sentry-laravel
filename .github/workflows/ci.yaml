@@ -21,6 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       COMPOSER_NO_INTERACTION: 1
+      COMPOSER_NO_SECURITY_BLOCKING: 1
 
     strategy:
       fail-fast: false
@@ -66,7 +67,7 @@ jobs:
             --no-interaction --no-update
 
           # Actually run the composer installation
-          composer install --no-interaction --prefer-dist --no-progress --no-security-blocking
+          composer install --no-interaction --prefer-dist --no-progress
 
       - name: Run phpunit
         run: vendor/bin/phpunit --coverage-clover=coverage.xml --coverage-filter=src/Sentry
@@ -80,6 +81,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       COMPOSER_NO_INTERACTION: 1
+      COMPOSER_NO_SECURITY_BLOCKING: 1
 
     strategy:
       fail-fast: false
@@ -175,7 +177,7 @@ jobs:
             --no-interaction --no-update
 
           # Actually run the composer installation
-          composer install --no-interaction --prefer-dist --no-progress --no-security-blocking
+          composer install --no-interaction --prefer-dist --no-progress
 
       - name: Run phpunit
         run: vendor/bin/phpunit --coverage-clover=coverage.xml --whitelist=src/Sentry
