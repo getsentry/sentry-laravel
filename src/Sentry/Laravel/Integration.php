@@ -9,7 +9,6 @@ use Sentry\EventId;
 use Sentry\ExceptionMechanism;
 use Sentry\Laravel\Integration\ModelViolations as ModelViolationReports;
 use Sentry\Logs\Logs;
-use Sentry\Metrics\TraceMetrics;
 use Sentry\SentrySdk;
 use Sentry\Tracing\TransactionSource;
 use Throwable;
@@ -124,7 +123,6 @@ class Integration implements IntegrationInterface
             $client->flush();
 
             Logs::getInstance()->flush();
-            TraceMetrics::getInstance()->flush();
         }
     }
 
@@ -199,8 +197,8 @@ class Integration implements IntegrationInterface
     /**
      * Retrieve the `traceparent` meta tag with tracing information to link this request to front-end requests.
      *
-     * @return string
      * @deprecated since version 4.14. To be removed in version 5.0.
+     * @return string
      */
     public static function sentryW3CTracingMeta(): string
     {
@@ -244,9 +242,9 @@ class Integration implements IntegrationInterface
     /**
      * Returns a callback that can be passed to `Model::handleMissingAttributeViolationUsing` to report missing attribute violations to Sentry.
      *
-     * @param callable|null $callback Optional callback to be called after the violation is reported to Sentry.
-     * @param bool $suppressDuplicateReports Whether to suppress duplicate reports of the same violation.
-     * @param bool $reportAfterResponse Whether to delay sending the report to after the response has been sent.
+     * @param callable|null $callback                 Optional callback to be called after the violation is reported to Sentry.
+     * @param bool          $suppressDuplicateReports Whether to suppress duplicate reports of the same violation.
+     * @param bool          $reportAfterResponse      Whether to delay sending the report to after the response has been sent.
      *
      * @return callable
      */
@@ -258,9 +256,9 @@ class Integration implements IntegrationInterface
     /**
      * Returns a callback that can be passed to `Model::handleLazyLoadingViolationUsing` to report lazy loading violations to Sentry.
      *
-     * @param callable|null $callback Optional callback to be called after the violation is reported to Sentry.
-     * @param bool $suppressDuplicateReports Whether to suppress duplicate reports of the same violation.
-     * @param bool $reportAfterResponse Whether to delay sending the report to after the response has been sent.
+     * @param callable|null $callback                 Optional callback to be called after the violation is reported to Sentry.
+     * @param bool          $suppressDuplicateReports Whether to suppress duplicate reports of the same violation.
+     * @param bool          $reportAfterResponse      Whether to delay sending the report to after the response has been sent.
      *
      * @return callable
      */
@@ -272,9 +270,9 @@ class Integration implements IntegrationInterface
     /**
      * Returns a callback that can be passed to `Model::handleDiscardedAttributeViolationUsing` to report discarded attribute violations to Sentry.
      *
-     * @param callable|null $callback Optional callback to be called after the violation is reported to Sentry.
-     * @param bool $suppressDuplicateReports Whether to suppress duplicate reports of the same violation.
-     * @param bool $reportAfterResponse Whether to delay sending the report to after the response has been sent.
+     * @param callable|null $callback                 Optional callback to be called after the violation is reported to Sentry.
+     * @param bool          $suppressDuplicateReports Whether to suppress duplicate reports of the same violation.
+     * @param bool          $reportAfterResponse      Whether to delay sending the report to after the response has been sent.
      *
      * @return callable
      */
