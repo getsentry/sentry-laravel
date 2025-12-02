@@ -6,12 +6,22 @@ use DateTimeZone;
 use Illuminate\Bus\Queueable;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Application;
 use RuntimeException;
 use Sentry\Laravel\Tests\TestCase;
 use Illuminate\Console\Scheduling\Event;
 
 class ConsoleSchedulingIntegrationTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        if (\PHP_VERSION_ID >= 70300 && \PHP_VERSION_ID < 70400 && version_compare(Application::VERSION, '8', '>=') && version_compare(Application::VERSION, '9', '<')) {
+            $this->markTestSkipped('These tests don\'t run on Laravel 8 with PHP 7.3.');
+        }
+
+        parent::setUp();
+    }
+
     public function testScheduleMacro(): void
     {
         /** @var Event $scheduledEvent */
