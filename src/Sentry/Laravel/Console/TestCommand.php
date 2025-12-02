@@ -42,11 +42,7 @@ class TestCommand extends Command
             return 1;
         }
 
-        /**
-         * Maximize error reporting.
-         * 2048 is \E_STRICT which has been deprecated in PHP 8.4
-         */
-        $old_error_reporting = error_reporting(E_ALL | 2048);
+        $old_error_reporting = error_reporting(E_ALL);
 
         $dsn = $this->option('dsn');
 
