@@ -12,6 +12,15 @@ use Illuminate\Console\Scheduling\Event;
 
 class ConsoleSchedulingIntegrationTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        if (\PHP_VERSION_ID >= 70300 && \PHP_VERSION_ID < 70400 && version_compare($this->app->version(), '8', '>=') && version_compare($this->app->version(), '9', '<')) {
+            $this->markTestSkipped('These tests don\'t run on Laravel 8 with PHP 7.3.');
+        }
+
+        parent::setUp();
+    }
+
     public function testScheduleMacro(): void
     {
         /** @var Event $scheduledEvent */
