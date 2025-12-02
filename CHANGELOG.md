@@ -1,5 +1,27 @@
 # Changelog
 
+## 4.20.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.20.0.
+
+### Features
+
+- Add support for Sentry metrics. [(#1072)](https://github.com/getsentry/sentry-laravel/pull/1072)
+```php
+// Counter metric
+\Sentry\trace_metrics()->count('test-counter', 10, ['my-attribute' => 'foo']);
+
+// Gauge metric
+\Sentry\trace_metrics()->gauge('test-gauge', 50.0, ['my-attribute' => 'foo'], \Sentry\Unit::millisecond());
+
+// Distribution metric
+\Sentry\trace_metrics()->distribution('test-distribution', 20.0, ['my-attribute' => 'foo'], \Sentry\Unit::kilobyte());
+```
+
+### Misc
+
+- Simplify usage of E_ALL [(#1067)](https://github.com/getsentry/sentry-laravel/pull/1067)
+
 ## 4.19.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.19.0.
