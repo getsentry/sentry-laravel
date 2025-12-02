@@ -103,9 +103,6 @@ jobs:
           - php: "7.2"
             packages: { laravel: ^9.0,  testbench: ^7.0, phpunit: 9.5.* }
 
-          # Technically Laravel 8 should work on PHP 7.3 but some Laravel Cloud code seems to break this, so we exclude it from the matrix.
-          - php: "7.3"
-            packages: { laravel: ^8.0,  testbench: ^6.0, phpunit: 9.3.* }
           - php: "7.3"
             packages: { laravel: ^9.0,  testbench: ^7.0, phpunit: 9.5.* }
 
