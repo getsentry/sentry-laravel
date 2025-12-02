@@ -9,6 +9,7 @@ use Sentry\EventId;
 use Sentry\ExceptionMechanism;
 use Sentry\Laravel\Integration\ModelViolations as ModelViolationReports;
 use Sentry\Logs\Logs;
+use Sentry\Metrics\TraceMetrics;
 use Sentry\SentrySdk;
 use Sentry\Tracing\TransactionSource;
 use Throwable;
@@ -123,6 +124,7 @@ class Integration implements IntegrationInterface
             $client->flush();
 
             Logs::getInstance()->flush();
+            TraceMetrics::getInstance()->flush();
         }
     }
 
