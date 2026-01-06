@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.20.1
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.20.1.
+
+### Misc
+
+- Allow newer versions of `symfony/psr-http-message-bridge` dependency [(#1076)](https://github.com/getsentry/sentry-laravel/pull/1076)
+
 ## 4.20.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.20.0.
