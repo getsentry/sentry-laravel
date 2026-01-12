@@ -22,11 +22,11 @@ jobs:
     steps:
     - name: Get auth token
       id: token
-      uses: actions/create-github-app-token@v1
+      uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1
       with:
         app-id: ${{ vars.SENTRY_RELEASE_BOT_CLIENT_ID }}
         private-key: ${{ secrets.SENTRY_RELEASE_BOT_PRIVATE_KEY }}
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v3 # v3
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v3
       with:
         token: ${{ steps.token.outputs.token }}
         fetch-depth: 0
