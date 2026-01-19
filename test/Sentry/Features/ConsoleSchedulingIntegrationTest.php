@@ -186,8 +186,8 @@ class ConsoleSchedulingIntegrationTest extends TestCase
 
     public function testBackgroundScheduledTaskUsesContextForCheckInId(): void
     {
-        if (!class_exists(ContextRepository::class)) {
-            $this->markTestSkipped('Laravel Context is not available in this Laravel version.');
+        if (!class_exists(ContextRepository::class) || version_compare(app()->version(), '12.40.2', '<')) {
+            $this->markTestSkipped('Laravel Context with hidden context passing to child processes requires Laravel 12.40.2+.');
         }
 
         /** @var Event $scheduledEvent */
@@ -248,8 +248,8 @@ class ConsoleSchedulingIntegrationTest extends TestCase
 
     public function testBackgroundScheduledTaskOverlappingExecutionsHaveDistinctCheckInIds(): void
     {
-        if (!class_exists(ContextRepository::class)) {
-            $this->markTestSkipped('Laravel Context is not available in this Laravel version.');
+        if (!class_exists(ContextRepository::class) || version_compare(app()->version(), '12.40.2', '<')) {
+            $this->markTestSkipped('Laravel Context with hidden context passing to child processes requires Laravel 12.40.2+.');
         }
 
         /** @var Event $scheduledEvent */

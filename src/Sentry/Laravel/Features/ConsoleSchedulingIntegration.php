@@ -322,7 +322,10 @@ class ConsoleSchedulingIntegration extends Feature
     /** @return CacheRepository|ContextRepository */
     private function resolveCache()
     {
-        if (class_exists(ContextRepository::class)) {
+        // Context is available since Laravel 11 but the hidden context is only
+        // passed to child processes since Laravel 12.40.2 which is required
+        // for this feature to work correctly for background scheduled tasks.
+        if (class_exists(ContextRepository::class) && version_compare(app()->version(), '12.40.2', '>=')) {
             return $this->container()->make(ContextRepository::class);
         }
 
