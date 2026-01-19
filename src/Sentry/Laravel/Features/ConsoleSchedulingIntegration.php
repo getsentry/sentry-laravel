@@ -9,8 +9,9 @@ use Illuminate\Console\Events\ScheduledTaskFinished;
 use Illuminate\Console\Events\ScheduledTaskStarting;
 use Illuminate\Console\Scheduling\Event as SchedulingEvent;
 use Illuminate\Contracts\Cache\Factory as Cache;
-use Illuminate\Contracts\Cache\Repository;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Log\Context\Repository as ContextRepository;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Sentry\CheckIn;
@@ -208,7 +209,7 @@ class ConsoleSchedulingIntegration extends Feature
         $this->checkInStore[$cacheKey] = $checkIn;
 
         if ($scheduled->runInBackground) {
-            $this->resolveCache()->put($cacheKey, $checkIn->getId(), $scheduled->expiresAt * 60);
+            $this->storeCheckInIdInCache($cacheKey, $checkIn->getId(), $scheduled->expiresAt * 60);
         }
 
         $this->sendCheckIn($checkIn);
@@ -220,16 +221,14 @@ class ConsoleSchedulingIntegration extends Feature
             return;
         }
 
-        $mutex = $scheduled->mutexName();
-
         $checkInSlug = $slug ?? $this->makeSlugForScheduled($scheduled);
 
-        $cacheKey = $this->buildCacheKey($mutex, $checkInSlug);
+        $cacheKey = $this->buildCacheKey($scheduled->mutexName(), $checkInSlug);
 
         $checkIn = $this->checkInStore[$cacheKey] ?? null;
 
         if ($checkIn === null && $scheduled->runInBackground) {
-            $checkInId = $this->resolveCache()->get($cacheKey);
+            $checkInId = $this->getCheckInIdFromCache($cacheKey);
 
             if ($checkInId !== null) {
                 $checkIn = $this->createCheckIn($checkInSlug, $status, $checkInId);
@@ -242,10 +241,10 @@ class ConsoleSchedulingIntegration extends Feature
         }
 
         // We don't need to keep the checkIn ID stored since we finished executing the command
-        unset($this->checkInStore[$mutex]);
+        unset($this->checkInStore[$cacheKey]);
 
         if ($scheduled->runInBackground) {
-            $this->resolveCache()->forget($cacheKey);
+            $this->forgetCheckInIdFromCache($cacheKey);
         }
 
         $checkIn->setStatus($status);
@@ -320,8 +319,46 @@ class ConsoleSchedulingIntegration extends Feature
         );
     }
 
-    private function resolveCache(): Repository
+    /** @return CacheRepository|ContextRepository */
+    private function resolveCache()
     {
+        if (class_exists(ContextRepository::class)) {
+            return $this->container()->make(ContextRepository::class);
+        }
+
         return $this->container()->make(Cache::class)->store($this->cacheStore);
+    }
+
+    private function getCheckInIdFromCache(string $cacheKey): ?string
+    {
+        $cache = $this->resolveCache();
+
+        if ($cache instanceof CacheRepository) {
+            return $cache->get($cacheKey);
+        }
+
+        return $cache->getHidden($cacheKey);
+    }
+
+    private function storeCheckInIdInCache(string $cacheKey, string $checkInId, int $expiration): void
+    {
+        $cache = $this->resolveCache();
+
+        if ($cache instanceof CacheRepository) {
+            $cache->put($cacheKey, $checkInId, $expiration);
+        } else {
+            $cache->addHidden($cacheKey, $checkInId);
+        }
+    }
+
+    private function forgetCheckInIdFromCache(string $cacheKey): void
+    {
+        $cache = $this->resolveCache();
+
+        if ($cache instanceof CacheRepository) {
+            $cache->forget($cacheKey);
+        } else {
+            $cache->forgetHidden($cacheKey);
+        }
     }
 }
