@@ -21,6 +21,11 @@ class LogLogsIntegrationTest extends TestCase
                 'driver' => 'sentry_logs',
             ]);
 
+            $config->set('logging.channels.sentry_logs_named', [
+                'driver' => 'sentry_logs',
+                'name' => 'sentry_logs_name',
+            ]);
+
             $config->set('logging.channels.sentry_logs_error_level', [
                 'driver' => 'sentry_logs',
                 'level' => 'error',
@@ -57,6 +62,7 @@ class LogLogsIntegrationTest extends TestCase
 
         $this->assertEquals(LogLevel::info(), $log->getLevel());
         $this->assertEquals('Sentry Laravel info log message', $log->getBody());
+        $this->assertNull($log->attributes()->get('log.channel'));
     }
 
     public function testLogChannelGeneratesLogsOnlyForConfiguredLevel(): void
@@ -109,6 +115,21 @@ class LogLogsIntegrationTest extends TestCase
         $log = $logs[0];
 
         $this->assertEquals('bar', $log->attributes()->get('foo')->getValue());
+    }
+
+    public function testChannelNameIsPropagated(): void
+    {
+        $logger = Log::channel('sentry_logs_named');
+
+        $logger->info('Sentry Laravel info log message');
+
+        $logs = $this->getAndFlushCapturedLogs();
+
+        $this->assertCount(1, $logs);
+
+        $log = $logs[0];
+
+        $this->assertSame('sentry_logs_name', $log->attributes()->get('log.channel')->getValue());
     }
 
     /** @return \Sentry\Logs\Log[] */

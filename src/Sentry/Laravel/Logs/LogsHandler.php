@@ -105,6 +105,14 @@ class LogsHandler extends AbstractProcessingHandler
             unset($context['exception']);
         }
 
+        // The default name of a channel for unnamed channels
+        // is the app environment. Since this is not helpful, because
+        // we have the environment already logged, we do only
+        // log the channel, if a name is explicit set.
+        if ($record['channel'] !== app()->environment()) {
+            $context['log.channel'] = $record['channel'];
+        }
+
         logger()->aggregator()->add(
             // This seems a little bit of a roundabout way to get the log level, but this is done for compatibility
             self::getLogLevelFromSeverity(
@@ -112,7 +120,11 @@ class LogsHandler extends AbstractProcessingHandler
             ),
             $record['message'],
             [],
-            array_merge($context, $record['extra'], ['sentry.origin' => 'auto.logger.monolog'])
+            array_merge(
+                $context,
+                $record['extra'],
+                ['sentry.origin' => 'auto.logger.monolog']
+            )
         );
     }
 
