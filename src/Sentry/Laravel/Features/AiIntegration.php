@@ -97,9 +97,9 @@ class AiIntegration extends Feature
             $data['gen_ai.request.model'] = $model;
         }
 
-        $system = $this->resolveProviderSystem($event->prompt->provider);
-        if ($system !== null) {
-            $data['gen_ai.system'] = $system;
+        $providerName = $event->prompt->provider->name();
+        if ($providerName !== null) {
+            $data['gen_ai.system'] = $providerName;
         }
 
         $toolDefinitions = $this->resolveToolDefinitions($event->prompt->agent);
@@ -139,7 +139,7 @@ class AiIntegration extends Feature
             'parentSpan' => $parentSpan,
             'meta' => [
                 'agent_name' => $agentName,
-                'system' => $system,
+                'system' => $providerName,
                 'model' => $model,
                 'prompt' => $event->prompt->prompt ?? null,
             ],
@@ -681,23 +681,6 @@ class AiIntegration extends Feature
         }
 
         return null;
-    }
-
-    private function resolveProviderSystem(object $provider): ?string
-    {
-        $className = get_class($provider);
-
-        if (isset(self::PROVIDER_SYSTEM_MAP[$className])) {
-            return self::PROVIDER_SYSTEM_MAP[$className];
-        }
-
-        foreach (self::PROVIDER_SYSTEM_MAP as $providerClass => $system) {
-            if (is_a($className, $providerClass, true)) {
-                return $system;
-            }
-        }
-
-        return strtolower($this->shortClassName($provider));
     }
 
     private function resolveAgentInstructions(object $agent): ?string
