@@ -177,14 +177,15 @@ class McpPackageIntegration extends Feature
             $result = $inner->handle($request, $context);
 
             if ($result instanceof Generator) {
-                // Pop the span from the stack before returning the generator. The generator
-                // body will re-push it when iteration starts. This ensures that if the
-                // generator is never consumed (GEN_CREATED state), the span stack doesn't
-                // grow — PHP won't execute the generator body (including any finally block)
-                // for generators that were never started.
-                $this->maybePopSpan();
+                // Create a guard that manages the span lifecycle for the generator.
+                // The guard pops the span from the stack immediately (restoring the
+                // hub to the parent span), and if the generator is never iterated,
+                // finishes the span in its destructor. When the generator IS iterated,
+                // disarm() re-pushes the span and hands lifecycle management over to
+                // the generator's finally block.
+                $spanFinishGuard = $this->createSpanFinishGuard($span);
 
-                return $this->wrapGeneratorResult($result, $request, $span);
+                return $this->wrapGeneratorResult($result, $request, $spanFinishGuard);
             }
 
             $this->addResultDataToCurrentSpan($request, $result);
@@ -197,13 +198,14 @@ class McpPackageIntegration extends Feature
         }
     }
 
-    private function wrapGeneratorResult(Generator $generator, object $request, Span $span): Generator
+    private function wrapGeneratorResult(Generator $generator, object $request, object $spanFinishGuard): Generator
     {
-        // Re-push the span onto the stack now that the generator has actually started.
-        // This only executes when the generator is iterated (GEN_SUSPENDED state),
-        // which guarantees that the finally block below will run during GC if the
-        // generator is later abandoned.
-        $this->pushSpan($span);
+        // Disarm the guard and re-push the span onto the stack now that the
+        // generator has actually started. This only executes when the generator
+        // is iterated (GEN_SUSPENDED state), which guarantees that the finally
+        // block below will run during GC if the generator is later abandoned.
+        // From this point on, the finally block below handles span cleanup.
+        $spanFinishGuard->disarm();
 
         $lastItem = null;
         $spanFinished = false;
@@ -232,6 +234,63 @@ class McpPackageIntegration extends Feature
                 $this->maybeFinishSpan(SpanStatus::deadlineExceeded());
             }
         }
+    }
+
+    /**
+     * Create a guard that manages the span lifecycle for generator results.
+     *
+     * The guard immediately pops the span from the stack (restoring the hub to
+     * the parent span). It is passed as a generator parameter so PHP releases
+     * it (firing __destruct) when the generator object is GC'd.
+     *
+     * - If the generator is never iterated (GEN_CREATED): __destruct finishes
+     *   the span with deadline_exceeded.
+     * - If the generator is iterated: disarm() re-pushes the span onto the
+     *   stack and disables the destructor, handing lifecycle management over
+     *   to the generator's finally block.
+     */
+    private function createSpanFinishGuard(Span $span): object
+    {
+        // Pop the span from the stack immediately so the hub shows the parent
+        // span while the generator is not yet being iterated.
+        $this->maybePopSpan();
+
+        $pushSpan = function () use ($span) {
+            $this->pushSpan($span);
+        };
+
+        return new class($span, $pushSpan) {
+            private ?Span $span;
+
+            /** @var \Closure|null */
+            private ?\Closure $pushSpan;
+
+            public function __construct(Span $span, \Closure $pushSpan)
+            {
+                $this->span = $span;
+                $this->pushSpan = $pushSpan;
+            }
+
+            /**
+             * Re-push the span onto the stack.
+             * Called when the generator body starts executing.
+             */
+            public function disarm(): void
+            {
+                if ($this->pushSpan !== null) {
+                    ($this->pushSpan)();
+                    $this->pushSpan = null;
+                }
+            }
+
+            public function __destruct()
+            {
+                if ($this->span !== null && $this->span->getEndTimestamp() === null) {
+                    $this->span->setStatus(SpanStatus::deadlineExceeded());
+                    $this->span->finish();
+                }
+            }
+        };
     }
 
     /**

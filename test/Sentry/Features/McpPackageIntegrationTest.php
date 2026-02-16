@@ -381,6 +381,13 @@ class McpPackageIntegrationTest extends TestCase
 
         // Hub should be back to the transaction
         $this->assertSame($transaction, SentrySdk::getCurrentHub()->getSpan());
+
+        // The MCP span should still be finished even though the generator was never consumed
+        $spans = $transaction->getSpanRecorder()->getSpans();
+        $mcpSpan = $this->findSpanByOp($spans, 'mcp.server');
+        $this->assertNotNull($mcpSpan, 'MCP span should be recorded');
+        $this->assertNotNull($mcpSpan->getEndTimestamp(), 'Span should be finished even when generator is never consumed');
+        $this->assertEquals(SpanStatus::deadlineExceeded(), $mcpSpan->getStatus());
     }
 
     public function testGeneratorPartiallyConsumedCleansUpSpanOnDestruction(): void
@@ -451,6 +458,16 @@ class McpPackageIntegrationTest extends TestCase
 
         // Hub should be back to the transaction
         $this->assertSame($transaction, SentrySdk::getCurrentHub()->getSpan());
+
+        // All 10 MCP spans should have been finished by the guard
+        $spans = $transaction->getSpanRecorder()->getSpans();
+        $mcpSpans = $this->findAllSpansByOp($spans, 'mcp.server');
+        $this->assertCount(10, $mcpSpans);
+
+        foreach ($mcpSpans as $mcpSpan) {
+            $this->assertNotNull($mcpSpan->getEndTimestamp(), 'Every span should be finished');
+            $this->assertEquals(SpanStatus::deadlineExceeded(), $mcpSpan->getStatus());
+        }
     }
 
     public function testOldSessionsAreEvictedWhenCapIsExceeded(): void
