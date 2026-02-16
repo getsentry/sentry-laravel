@@ -11,6 +11,7 @@ use Laravel\Mcp\Server\Methods\GetPrompt;
 use Laravel\Mcp\Server\Methods\ReadResource;
 use Sentry\Laravel\Features\Concerns\TracksPushedScopesAndSpans;
 use Sentry\SentrySdk;
+use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\SpanStatus;
 
@@ -163,7 +164,14 @@ class McpPackageIntegration extends Feature
             $result = $inner->handle($request, $context);
 
             if ($result instanceof Generator) {
-                return $this->wrapGeneratorResult($result, $request);
+                // Pop the span from the stack before returning the generator. The generator
+                // body will re-push it when iteration starts. This ensures that if the
+                // generator is never consumed (GEN_CREATED state), the span stack doesn't
+                // grow — PHP won't execute the generator body (including any finally block)
+                // for generators that were never started.
+                $this->maybePopSpan();
+
+                return $this->wrapGeneratorResult($result, $request, $span);
             }
 
             $this->addResultDataToCurrentSpan($request, $result);
@@ -176,25 +184,41 @@ class McpPackageIntegration extends Feature
         }
     }
 
-    private function wrapGeneratorResult(Generator $generator, object $request): Generator
+    private function wrapGeneratorResult(Generator $generator, object $request, Span $span): Generator
     {
+        // Re-push the span onto the stack now that the generator has actually started.
+        // This only executes when the generator is iterated (GEN_SUSPENDED state),
+        // which guarantees that the finally block below will run during GC if the
+        // generator is later abandoned.
+        $this->pushSpan($span);
+
         $lastItem = null;
+        $spanFinished = false;
 
         try {
             foreach ($generator as $item) {
                 $lastItem = $item;
                 yield $item;
             }
+
+            if ($lastItem !== null) {
+                $this->addResultDataToCurrentSpan($request, $lastItem);
+            }
+
+            $this->maybeFinishSpan();
+            $spanFinished = true;
         } catch (\Throwable $e) {
             $this->maybeFinishSpan(SpanStatus::internalError());
+            $spanFinished = true;
             throw $e;
+        } finally {
+            // If the generator is destroyed without being fully consumed (e.g. the client
+            // stops iterating midway), we still need to pop the span from the stack to
+            // prevent a memory leak in long-lived server processes.
+            if (!$spanFinished) {
+                $this->maybeFinishSpan(SpanStatus::deadlineExceeded());
+            }
         }
-
-        if ($lastItem !== null) {
-            $this->addResultDataToCurrentSpan($request, $lastItem);
-        }
-
-        $this->maybeFinishSpan();
     }
 
     /**

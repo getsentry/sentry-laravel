@@ -9,7 +9,9 @@ use Laravel\Mcp\Server\Methods\GetPrompt;
 use Laravel\Mcp\Server\Methods\ReadResource;
 use Laravel\Mcp\Server\ServerContext;
 use Laravel\Mcp\Server\Transport\JsonRpcRequest;
+use Sentry\Laravel\Features\McpPackageIntegration;
 use Sentry\Laravel\Tests\TestCase;
+use Sentry\SentrySdk;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanStatus;
 
@@ -308,6 +310,161 @@ class McpPackageIntegrationTest extends TestCase
         }
 
         return null;
+    }
+
+    public function testGeneratorFullyConsumedFinishesSpanAndCleansUpStack(): void
+    {
+        $transaction = $this->startTransaction();
+        $integration = $this->app->make(McpPackageIntegration::class);
+
+        $inner = new class {
+            public function handle($request, $context): \Generator
+            {
+                yield (object)['value' => 'item1'];
+                yield (object)['value' => 'item2'];
+            }
+        };
+
+        $request = new JsonRpcRequest(1, 'tools/call', ['name' => 'test']);
+        $context = $this->createServerContext();
+
+        $result = $integration->instrumentMethodHandle($inner, $request, $context);
+
+        $this->assertInstanceOf(\Generator::class, $result);
+
+        // Fully consume the generator
+        $items = [];
+        foreach ($result as $item) {
+            $items[] = $item;
+        }
+
+        $this->assertCount(2, $items);
+
+        // Span should be finished and stack should be clean
+        $this->assertSpanStackIsEmpty($integration);
+
+        // Hub should be back to the transaction
+        $this->assertSame($transaction, SentrySdk::getCurrentHub()->getSpan());
+
+        // The MCP span should be recorded and finished
+        $spans = $transaction->getSpanRecorder()->getSpans();
+        $mcpSpan = $this->findSpanByOp($spans, 'mcp.server');
+        $this->assertNotNull($mcpSpan, 'MCP span should be recorded');
+        $this->assertNotNull($mcpSpan->getEndTimestamp(), 'Span should be finished');
+    }
+
+    public function testGeneratorNeverConsumedDoesNotLeakSpanStack(): void
+    {
+        $transaction = $this->startTransaction();
+        $integration = $this->app->make(McpPackageIntegration::class);
+
+        $inner = new class {
+            public function handle($request, $context): \Generator
+            {
+                yield (object)['value' => 'item1'];
+                yield (object)['value' => 'item2'];
+            }
+        };
+
+        $request = new JsonRpcRequest(1, 'tools/call', ['name' => 'test']);
+        $context = $this->createServerContext();
+
+        $result = $integration->instrumentMethodHandle($inner, $request, $context);
+
+        $this->assertInstanceOf(\Generator::class, $result);
+
+        // Never consume the generator, just destroy it
+        unset($result);
+
+        // Stack should be clean — no memory leak
+        $this->assertSpanStackIsEmpty($integration);
+
+        // Hub should be back to the transaction
+        $this->assertSame($transaction, SentrySdk::getCurrentHub()->getSpan());
+    }
+
+    public function testGeneratorPartiallyConsumedCleansUpSpanOnDestruction(): void
+    {
+        $transaction = $this->startTransaction();
+        $integration = $this->app->make(McpPackageIntegration::class);
+
+        $inner = new class {
+            public function handle($request, $context): \Generator
+            {
+                yield (object)['value' => 'item1'];
+                yield (object)['value' => 'item2'];
+                yield (object)['value' => 'item3'];
+            }
+        };
+
+        $request = new JsonRpcRequest(1, 'tools/call', ['name' => 'test']);
+        $context = $this->createServerContext();
+
+        $result = $integration->instrumentMethodHandle($inner, $request, $context);
+
+        $this->assertInstanceOf(\Generator::class, $result);
+
+        // Partially consume the generator (only the first item)
+        $result->current();
+
+        // Destroy the generator while partially consumed — PHP's GC will
+        // trigger the finally block because the generator is in GEN_SUSPENDED state
+        unset($result);
+
+        // Stack should be clean after GC
+        $this->assertSpanStackIsEmpty($integration);
+
+        // Hub should be back to the transaction
+        $this->assertSame($transaction, SentrySdk::getCurrentHub()->getSpan());
+
+        // The MCP span should have been finished with deadline_exceeded status
+        $spans = $transaction->getSpanRecorder()->getSpans();
+        $mcpSpan = $this->findSpanByOp($spans, 'mcp.server');
+        $this->assertNotNull($mcpSpan, 'MCP span should be recorded');
+        $this->assertEquals(SpanStatus::deadlineExceeded(), $mcpSpan->getStatus());
+    }
+
+    public function testMultipleUnconsumedGeneratorsDoNotAccumulateOnStack(): void
+    {
+        $transaction = $this->startTransaction();
+        $integration = $this->app->make(McpPackageIntegration::class);
+
+        $inner = new class {
+            public function handle($request, $context): \Generator
+            {
+                yield (object)['value' => 'item'];
+            }
+        };
+
+        $request = new JsonRpcRequest(1, 'tools/call', ['name' => 'test']);
+        $context = $this->createServerContext();
+
+        // Simulate many calls where generators are never consumed —
+        // this is the exact memory leak scenario from the bug report
+        for ($i = 0; $i < 10; $i++) {
+            $result = $integration->instrumentMethodHandle($inner, $request, $context);
+            unset($result);
+        }
+
+        // Stack should still be empty after all iterations
+        $this->assertSpanStackIsEmpty($integration);
+
+        // Hub should be back to the transaction
+        $this->assertSame($transaction, SentrySdk::getCurrentHub()->getSpan());
+    }
+
+    /**
+     * Assert that the integration's internal span stacks are empty.
+     */
+    private function assertSpanStackIsEmpty(McpPackageIntegration $integration): void
+    {
+        $currentStack = new \ReflectionProperty($integration, 'currentSpanStack');
+        $currentStack->setAccessible(true);
+        $this->assertEmpty($currentStack->getValue($integration), 'currentSpanStack should be empty');
+
+        $parentStack = new \ReflectionProperty($integration, 'parentSpanStack');
+        $parentStack->setAccessible(true);
+        $this->assertEmpty($parentStack->getValue($integration), 'parentSpanStack should be empty');
     }
 
     /**
