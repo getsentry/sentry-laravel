@@ -133,7 +133,7 @@ class McpPackageIntegration extends Feature
                 $this->integration = $integration;
             }
 
-            public function handle(Server\Transport\JsonRpcRequest $request, Server\ServerContext $context): Server\Transport\JsonRpcResponse
+            public function handle(Server\Transport\JsonRpcRequest $request, Server\ServerContext $context): Generator|Server\Transport\JsonRpcResponse
             {
                 return $this->integration->instrumentMethodHandle($this->inner, $request, $context);
             }
