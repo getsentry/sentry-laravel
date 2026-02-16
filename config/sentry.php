@@ -128,6 +128,9 @@ return [
         // This is required to capture any spans that are created after the response has been sent like queue jobs dispatched using `dispatch(...)->afterResponse()` for example
         'continue_after_response' => env('SENTRY_TRACE_CONTINUE_AFTER_RESPONSE', true),
 
+        // Capture AI agent interactions as spans (requires laravel/ai)
+        'ai' => env('SENTRY_TRACE_AI_ENABLED', true),
+
         // Enable the tracing integrations supplied by Sentry (recommended)
         'default_integrations' => env('SENTRY_TRACE_DEFAULT_INTEGRATIONS_ENABLED', true),
     ],
