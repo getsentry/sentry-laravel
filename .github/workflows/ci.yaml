@@ -166,7 +166,8 @@ jobs:
           # livewire/livewire: Only supported on Laravel 7.0 and above
           # laravel/folio: Only supported on PHP 8.1 + Laravel 10.0 and above
           # laravel/pennant: Only supported on PHP 8.1 + Laravel 10.0 and above
-          composer remove friendsofphp/php-cs-fixer livewire/livewire laravel/folio laravel/pennant --dev --no-interaction --no-update
+          # laravel/mcp: Only supported on PHP 8.1 + Laravel 10.0 and above
+          composer remove friendsofphp/php-cs-fixer livewire/livewire laravel/folio laravel/pennant laravel/mcp --dev --no-interaction --no-update
 
           # Require the correct versions we want to run phpunit for
           composer require \
