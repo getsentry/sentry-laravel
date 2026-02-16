@@ -22,6 +22,13 @@ class McpPackageIntegration extends Feature
     private const FEATURE_KEY = 'mcp';
 
     /**
+     * Maximum number of sessions to keep in memory. When this limit is exceeded,
+     * the oldest entries are evicted to prevent unbounded memory growth in
+     * long-lived MCP server processes.
+     */
+    private const MAX_SESSIONS = 100;
+
+    /**
      * Session metadata stored from SessionInitialized events.
      *
      * @var array<string, array<string, mixed>>
@@ -62,6 +69,12 @@ class McpPackageIntegration extends Feature
         }
 
         $this->sessions[$event->sessionId] = $sessionData;
+
+        // Evict oldest sessions when the cap is exceeded to prevent unbounded
+        // memory growth in long-lived server processes.
+        while (count($this->sessions) > self::MAX_SESSIONS) {
+            array_shift($this->sessions);
+        }
 
         $parentSpan = SentrySdk::getCurrentHub()->getSpan();
 

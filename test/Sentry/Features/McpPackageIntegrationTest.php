@@ -453,6 +453,47 @@ class McpPackageIntegrationTest extends TestCase
         $this->assertSame($transaction, SentrySdk::getCurrentHub()->getSpan());
     }
 
+    public function testOldSessionsAreEvictedWhenCapIsExceeded(): void
+    {
+        if (!class_exists(SessionInitialized::class)) {
+            $this->markTestSkipped(
+                'The SessionInitialized event is not available in laravel/mcp'.
+                ' package version below 0.5.7.'
+            );
+        }
+
+        $this->startTransaction();
+
+        $integration = $this->app->make(McpPackageIntegration::class);
+
+        $maxSessions = (new \ReflectionClassConstant($integration, 'MAX_SESSIONS'))->getValue();
+
+        // Fill sessions up to the cap + 10 extra
+        for ($i = 0; $i < $maxSessions + 10; $i++) {
+            $this->dispatchLaravelEvent(new SessionInitialized(
+                "session-{$i}",
+                ['name' => "client-{$i}", 'version' => '1.0.0'],
+                '2024-11-05',
+                []
+            ));
+        }
+
+        $sessionsProperty = new \ReflectionProperty($integration, 'sessions');
+        $sessionsProperty->setAccessible(true);
+        $sessions = $sessionsProperty->getValue($integration);
+
+        // Should be capped at the maximum
+        $this->assertCount($maxSessions, $sessions);
+
+        // The oldest 10 sessions should have been evicted
+        for ($i = 0; $i < 10; $i++) {
+            $this->assertArrayNotHasKey("session-{$i}", $sessions, "Session session-{$i} should have been evicted");
+        }
+
+        // The newest sessions should still be present
+        $this->assertArrayHasKey("session-" . ($maxSessions + 9), $sessions);
+    }
+
     /**
      * Assert that the integration's internal span stacks are empty.
      */
