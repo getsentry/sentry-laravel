@@ -118,6 +118,9 @@ return [
         // Capture where the Redis command originated from on the Redis command spans
         'redis_origin' => env('SENTRY_TRACE_REDIS_ORIGIN_ENABLED', true),
 
+        // Capture MCP (Model Context Protocol) server method calls as spans
+        'mcp' => env('SENTRY_TRACE_MCP_ENABLED', true),
+
         // Capture send notifications as spans
         'notifications' => env('SENTRY_TRACE_NOTIFICATIONS_ENABLED', true),
 
