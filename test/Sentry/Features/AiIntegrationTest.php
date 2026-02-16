@@ -1054,6 +1054,111 @@ class AiIntegrationTest extends TestCase
         $this->assertArrayNotHasKey('gen_ai.conversation.id', $toolSpan->getData());
     }
 
+    // ---- Chat input messages tests ----
+
+    public function testChatSpanCapturesInputMessagesFromUserPrompt(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createPromptAndResponse();
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-chatinput1', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-chatinput1', $prompt, $response));
+
+        $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
+        $this->assertCount(1, $chatSpans);
+
+        $chatData = $chatSpans[0]->getData();
+        $this->assertArrayHasKey('gen_ai.input.messages', $chatData);
+
+        $inputMessages = json_decode($chatData['gen_ai.input.messages'], true);
+        $this->assertCount(1, $inputMessages);
+        $this->assertEquals('user', $inputMessages[0]['role']);
+        $this->assertEquals('text', $inputMessages[0]['parts'][0]['type']);
+        $this->assertEquals('Analyze this transcript', $inputMessages[0]['parts'][0]['content']);
+    }
+
+    public function testMultiStepChatSpansHaveCorrectInputMessages(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createPromptAndResponseWithMultipleSteps();
+        $agent = new TestAgent();
+        $tool = new WeatherLookup();
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-chatinput2', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new InvokingTool('inv-chatinput2', 'tool-ci1', $agent, $tool, ['city' => 'Paris']));
+        $this->dispatchLaravelEvent(new ToolInvoked('inv-chatinput2', 'tool-ci1', $agent, $tool, ['city' => 'Paris'], 'Sunny, 22C'));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-chatinput2', $prompt, $response));
+
+        $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
+        $this->assertCount(2, $chatSpans);
+
+        // First chat span: input is the user prompt
+        $chat0Data = $chatSpans[0]->getData();
+        $this->assertArrayHasKey('gen_ai.input.messages', $chat0Data);
+        $input0 = json_decode($chat0Data['gen_ai.input.messages'], true);
+        $this->assertCount(1, $input0);
+        $this->assertEquals('user', $input0[0]['role']);
+        $this->assertEquals('What is the weather in Paris?', $input0[0]['parts'][0]['content']);
+
+        // Second chat span: input is the previous step's output (assistant tool call + tool result)
+        $chat1Data = $chatSpans[1]->getData();
+        $this->assertArrayHasKey('gen_ai.input.messages', $chat1Data);
+        $input1 = json_decode($chat1Data['gen_ai.input.messages'], true);
+
+        // Should have assistant message with tool_call and tool message with tool_result
+        $this->assertEquals('assistant', $input1[0]['role']);
+        $foundToolCall = false;
+        foreach ($input1[0]['parts'] as $part) {
+            if ($part['type'] === 'tool_call') {
+                $foundToolCall = true;
+                $this->assertEquals('WeatherLookup', $part['name']);
+            }
+        }
+        $this->assertTrue($foundToolCall, 'Expected tool_call part in second chat input');
+
+        $this->assertEquals('tool', $input1[1]['role']);
+        $this->assertEquals('tool_result', $input1[1]['parts'][0]['type']);
+        $this->assertEquals('WeatherLookup', $input1[1]['parts'][0]['name']);
+        $this->assertEquals('Sunny, 22C', $input1[1]['parts'][0]['content']);
+    }
+
+    public function testChatSpanDoesNotCaptureInputMessagesWhenPiiDisabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => false,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createPromptAndResponse();
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-chatinput3', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-chatinput3', $prompt, $response));
+
+        $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
+        $this->assertCount(1, $chatSpans);
+
+        $chatData = $chatSpans[0]->getData();
+        $this->assertArrayNotHasKey('gen_ai.input.messages', $chatData);
+    }
+
     // ---- Helper methods ----
 
     /**

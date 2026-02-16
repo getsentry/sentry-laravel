@@ -141,6 +141,7 @@ class AiIntegration extends Feature
                 'agent_name' => $agentName,
                 'system' => $system,
                 'model' => $model,
+                'prompt' => $event->prompt->prompt ?? null,
             ],
             'urlPrefix' => $this->resolveProviderUrlPrefix($event->prompt->provider),
             'activeChatSpan' => null,
@@ -461,6 +462,11 @@ class AiIntegration extends Feature
             }
 
             if ($this->shouldSendDefaultPii()) {
+                $inputMessages = $this->buildChatInputMessages($invocationId, $stepsArray, $index);
+                if (!empty($inputMessages)) {
+                    $data['gen_ai.input.messages'] = $this->truncateString(json_encode($inputMessages));
+                }
+
                 $outputMessages = $this->buildOutputMessages($step);
                 if (!empty($outputMessages)) {
                     $data['gen_ai.output.messages'] = $this->truncateString(json_encode($outputMessages));
@@ -501,6 +507,42 @@ class AiIntegration extends Feature
     }
 
     // ---- Message building ----
+
+    /**
+     * Build input messages for a chat span based on its position in the step sequence.
+     *
+     * For the first chat span (index 0), the input is the original user prompt.
+     * For subsequent chat spans, the input is the previous step's output
+     * (assistant tool calls + tool results sent back to the LLM).
+     *
+     * @param array<int, object|array> $stepsArray
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildChatInputMessages(string $invocationId, array $stepsArray, int $index): array
+    {
+        if ($index === 0) {
+            $promptText = $this->invocations[$invocationId]['meta']['prompt'] ?? null;
+
+            if ($promptText === null || $promptText === '') {
+                return [];
+            }
+
+            return [
+                [
+                    'role' => 'user',
+                    'parts' => [['type' => 'text', 'content' => $promptText]],
+                ],
+            ];
+        }
+
+        $previousStep = $stepsArray[$index - 1] ?? null;
+
+        if ($previousStep === null) {
+            return [];
+        }
+
+        return $this->buildOutputMessages($previousStep);
+    }
 
     /**
      * Build output messages from a response or step object.
