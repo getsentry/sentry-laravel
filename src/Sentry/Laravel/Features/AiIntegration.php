@@ -1197,7 +1197,7 @@ class AiIntegration extends Feature
             return $description;
         }
 
-        if ($description instanceof \Stringable) {
+        if (is_object($description) && method_exists($description, '__toString')) {
             return (string)$description;
         }
 
