@@ -418,11 +418,13 @@ class AiIntegration extends Feature
     /**
      * Enrich completed chat spans with data from response steps.
      *
-     * The response steps array matches 1:1 with chat spans in order:
-     * step[0] → chatSpan[0], step[1] → chatSpan[1], etc.
+     * When steps are available (non-streaming), each step maps 1:1 to a chat span
+     * and provides per-step model, usage, finish reason, and messages.
      *
-     * When steps are empty (e.g. streaming responses), falls back to
-     * enriching chat spans from response-level data.
+     * When steps are empty (streaming responses), the aggregate response-level data
+     * is used instead: the response model is set on all chat spans, usage is only
+     * attributed when there is a single chat span, the first chat span gets the
+     * user prompt as input, and the last gets the response text as output.
      */
     private function enrichChatSpansWithStepData(string $invocationId, object $response, ?string $conversationId = null): void
     {
@@ -442,14 +444,8 @@ class AiIntegration extends Feature
         }
 
         $stepsArray = is_array($steps) ? array_values($steps) : [];
-
-        // When steps are empty (e.g. streaming responses), fall back to
-        // enriching chat spans from the aggregate response-level data.
-        if (empty($stepsArray)) {
-            $this->enrichChatSpansFromResponse($invocationId, $response, $conversationId);
-
-            return;
-        }
+        $hasSteps = !empty($stepsArray);
+        $lastIndex = count($chatSpans) - 1;
 
         foreach ($chatSpans as $index => $chatSpan) {
             $data = $chatSpan->getData();
@@ -458,14 +454,13 @@ class AiIntegration extends Feature
                 $data['gen_ai.conversation.id'] = $conversationId;
             }
 
-            if (!isset($stepsArray[$index])) {
-                $chatSpan->setData($data);
-                continue;
-            }
+            // Resolve per-step data source, falling back to response-level data
+            $step = $stepsArray[$index] ?? null;
 
-            $step = $stepsArray[$index];
-
-            $model = $this->flexGet($this->flexGet($step, 'meta'), 'model');
+            // Model: from step meta when available, otherwise from response meta
+            $model = $step !== null
+                ? $this->flexGet($this->flexGet($step, 'meta'), 'model')
+                : $this->flexGet($this->flexGet($response, 'meta'), 'model');
 
             if ($model !== null) {
                 $data['gen_ai.request.model'] = $model;
@@ -473,89 +468,46 @@ class AiIntegration extends Feature
                 $chatSpan->setDescription("chat {$model}");
             }
 
-            $stepUsage = $this->flexGet($step, 'usage');
-            if ($stepUsage !== null) {
-                $this->setTokenUsage($data, $stepUsage);
+            // Usage: from step when available; from response only for single chat spans
+            $usage = $step !== null
+                ? $this->flexGet($step, 'usage')
+                : (count($chatSpans) === 1 ? $this->flexGet($response, 'usage') : null);
+
+            if ($usage !== null) {
+                $this->setTokenUsage($data, $usage);
             }
 
-            $finishReason = $this->flexGet($step, 'finishReason');
-            if ($finishReason !== null) {
-                $data['gen_ai.response.finish_reasons'] = is_object($finishReason) && property_exists($finishReason, 'value')
-                    ? $finishReason->value
-                    : (string)$finishReason;
+            // Finish reason: only available from steps
+            if ($step !== null) {
+                $finishReason = $this->flexGet($step, 'finishReason');
+                if ($finishReason !== null) {
+                    $data['gen_ai.response.finish_reasons'] = is_object($finishReason) && property_exists($finishReason, 'value')
+                        ? $finishReason->value
+                        : (string)$finishReason;
+                }
             }
 
             if ($this->shouldSendDefaultPii()) {
-                $inputMessages = $this->buildChatInputMessages($invocationId, $stepsArray, $index);
+                // Input: with steps, buildChatInputMessages resolves per-step context;
+                // without steps, only the first chat span gets the user prompt.
+                if ($hasSteps) {
+                    $inputMessages = $this->buildChatInputMessages($invocationId, $stepsArray, $index);
+                } elseif ($index === 0) {
+                    $inputMessages = $this->buildChatInputMessages($invocationId, [], 0);
+                } else {
+                    $inputMessages = [];
+                }
+
                 if (!empty($inputMessages)) {
                     $data['gen_ai.input.messages'] = $this->truncateString(json_encode($inputMessages));
                 }
 
-                $outputMessages = $this->buildOutputMessages($step);
-                if (!empty($outputMessages)) {
-                    $data['gen_ai.output.messages'] = $this->truncateString(json_encode($outputMessages));
-                }
-            }
+                // Output: from step when available; without steps only the last
+                // chat span gets the aggregate response output.
+                $outputSource = $step ?? ($index === $lastIndex ? $response : null);
 
-            $chatSpan->setData($data);
-        }
-    }
-
-    /**
-     * Enrich chat spans from response-level data when per-step data is unavailable.
-     *
-     * This is the case for streaming responses (StreamedAgentResponse) where the
-     * steps collection is empty. We use the aggregate response data instead:
-     *
-     * - Model and token usage are set from the response metadata.
-     * - The first chat span gets the user prompt as input messages.
-     * - The last chat span gets the response text as output messages.
-     * - For single chat spans, all data is attributed to that span.
-     */
-    private function enrichChatSpansFromResponse(string $invocationId, object $response, ?string $conversationId): void
-    {
-        $chatSpans = $this->invocations[$invocationId]['chatSpans'] ?? [];
-        $lastIndex = count($chatSpans) - 1;
-
-        $model = $this->flexGet($this->flexGet($response, 'meta'), 'model');
-        $usage = $this->flexGet($response, 'usage');
-
-        foreach ($chatSpans as $index => $chatSpan) {
-            $data = $chatSpan->getData();
-
-            if ($conversationId !== null) {
-                $data['gen_ai.conversation.id'] = $conversationId;
-            }
-
-            if ($model !== null) {
-                $data['gen_ai.request.model'] = $model;
-                $data['gen_ai.response.model'] = $model;
-                $chatSpan->setDescription("chat {$model}");
-            }
-
-            // For a single chat span, attribute the full usage to it.
-            // For multiple chat spans, we cannot split usage per-step.
-            if ($usage !== null && count($chatSpans) === 1) {
-                $this->setTokenUsage($data, $usage);
-            }
-
-            if ($this->shouldSendDefaultPii()) {
-                // First chat span: input is the original user prompt
-                if ($index === 0) {
-                    $promptText = $this->invocations[$invocationId]['meta']['prompt'] ?? null;
-                    if ($promptText !== null && $promptText !== '') {
-                        $data['gen_ai.input.messages'] = $this->truncateString(json_encode([
-                            [
-                                'role' => 'user',
-                                'parts' => [['type' => 'text', 'content' => $promptText]],
-                            ],
-                        ]));
-                    }
-                }
-
-                // Last chat span: output is the final response
-                if ($index === $lastIndex) {
-                    $outputMessages = $this->buildOutputMessages($response);
+                if ($outputSource !== null) {
+                    $outputMessages = $this->buildOutputMessages($outputSource);
                     if (!empty($outputMessages)) {
                         $data['gen_ai.output.messages'] = $this->truncateString(json_encode($outputMessages));
                     }
