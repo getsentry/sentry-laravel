@@ -15,68 +15,31 @@ class AiIntegration extends Feature
 {
     private const FEATURE_KEY = 'gen_ai';
 
-    /**
-     * Maximum total byte size for serialized message data (20KB).
-     * Matches Python SDK's MAX_GEN_AI_MESSAGE_BYTES.
-     */
+    /** Maximum total byte size for serialized message data (matches Python SDK). */
     private const MAX_MESSAGE_BYTES = 20000;
 
-    /**
-     * Maximum character length for a single message's content string (10K chars).
-     * Matches Python SDK's MAX_SINGLE_MESSAGE_CONTENT_CHARS.
-     */
+    /** Maximum character length for a single message's content string (matches Python SDK). */
     private const MAX_SINGLE_MESSAGE_CONTENT_CHARS = 10000;
 
-    /**
-     * Placeholder used to replace binary/blob content that should not be sent to Sentry.
-     * Matches Python SDK's BLOB_DATA_SUBSTITUTE.
-     */
+    /** Placeholder for binary content that should not be sent to Sentry. */
     private const BLOB_SUBSTITUTE = '[Blob substitute]';
 
-    /**
-     * Regex pattern to detect data URIs with base64-encoded content.
-     * Matches patterns like: data:image/png;base64,iVBORw0KGgo...
-     */
+    /** Regex pattern to detect data URIs (e.g. data:image/png;base64,...). */
     private const DATA_URI_PATTERN = '/^data:([^;,]+)?(?:;([^,]*))?,(.*)/s';
 
-    /**
-     * Regex pattern to detect standalone base64-encoded strings.
-     * Matches strings that are at least 100 chars of valid base64 (likely binary data, not text).
-     */
+    /** Regex pattern to detect standalone base64-encoded strings (100+ chars). */
     private const BASE64_PATTERN = '/^[A-Za-z0-9+\/]{100,}={0,2}$/';
 
-    /**
-     * Maximum number of tracked invocations per map before the oldest entries
-     * are evicted. Prevents unbounded memory growth in long-running processes
-     * (queue workers, Octane) when completion events are lost.
-     */
+    /** Maximum tracked invocations before evicting oldest (prevents memory leaks in long-running processes). */
     private const MAX_TRACKED_INVOCATIONS = 100;
 
-    /**
-     * Per-agent-invocation state keyed by invocation ID.
-     *
-     * Each entry holds: span, parentSpan, meta, urlPrefix, activeChatSpan, chatSpans, toolSpans.
-     *
-     * @var array<string, array<string, mixed>>
-     */
+    /** @var array<string, array<string, mixed>> Per-agent-invocation state keyed by invocation ID. */
     private $invocations = [];
 
-    /**
-     * Per-tool-invocation state keyed by tool invocation ID.
-     *
-     * Each entry holds: span, parentSpan.
-     *
-     * @var array<string, array{span: Span, parentSpan: Span|null}>
-     */
+    /** @var array<string, array{span: Span, parentSpan: Span|null}> Per-tool-invocation state keyed by tool invocation ID. */
     private $toolInvocations = [];
 
-    /**
-     * Per-embeddings-invocation state keyed by invocation ID.
-     *
-     * Each entry holds: span, parentSpan.
-     *
-     * @var array<string, array{span: Span, parentSpan: Span|null}>
-     */
+    /** @var array<string, array{span: Span, parentSpan: Span|null}> Per-embeddings-invocation state keyed by invocation ID. */
     private $embeddingsInvocations = [];
 
     public function isApplicable(): bool
@@ -205,10 +168,6 @@ class AiIntegration extends Feature
         SentrySdk::getCurrentHub()->setSpan($agentSpan);
     }
 
-    /**
-     * Handle the AgentPrompted event: finish any open chat span, enrich chat spans
-     * with step data, and finish the invoke_agent span.
-     */
     public function handleAgentPromptedForTracing(object $event): void
     {
         $invocationId = $event->invocationId;
@@ -217,7 +176,6 @@ class AiIntegration extends Feature
             return;
         }
 
-        // Finish any still-open chat span (safety net)
         $this->finishActiveChatSpan($invocationId);
 
         $inv = $this->invocations[$invocationId];
@@ -268,9 +226,6 @@ class AiIntegration extends Feature
         }
     }
 
-    /**
-     * Handle the InvokingTool event: start an execute_tool child span.
-     */
     public function handleInvokingToolForTracing(object $event): void
     {
         if (!$this->isTracingFeatureEnabled('gen_ai_execute_tool')) {
@@ -320,7 +275,6 @@ class AiIntegration extends Feature
             'parentSpan' => $parentSpan,
         ];
 
-        // Track tool span in the parent invocation for retroactive enrichment
         if (isset($this->invocations[$event->invocationId])) {
             $this->invocations[$event->invocationId]['toolSpans'][] = $span;
         }
@@ -328,9 +282,6 @@ class AiIntegration extends Feature
         SentrySdk::getCurrentHub()->setSpan($span);
     }
 
-    /**
-     * Handle the ToolInvoked event: finish the execute_tool span.
-     */
     public function handleToolInvokedForTracing(object $event): void
     {
         $toolInvocationId = $event->toolInvocationId;
@@ -361,11 +312,6 @@ class AiIntegration extends Feature
         }
     }
 
-    // ---- Embeddings event handlers ----
-
-    /**
-     * Handle the GeneratingEmbeddings event: start a gen_ai.embeddings span.
-     */
     public function handleGeneratingEmbeddingsForTracing(object $event): void
     {
         $parentSpan = SentrySdk::getCurrentHub()->getSpan();
@@ -414,10 +360,6 @@ class AiIntegration extends Feature
         SentrySdk::getCurrentHub()->setSpan($span);
     }
 
-    /**
-     * Handle the EmbeddingsGenerated event: finish the gen_ai.embeddings span
-     * and enrich with response data.
-     */
     public function handleEmbeddingsGeneratedForTracing(object $event): void
     {
         $invocationId = $event->invocationId;
@@ -456,12 +398,6 @@ class AiIntegration extends Feature
         }
     }
 
-    // ---- HTTP client event handlers ----
-
-    /**
-     * Handle HTTP RequestSending: if the URL matches an active agent invocation's
-     * provider, start a gen_ai.chat span.
-     */
     public function handleHttpRequestSending(RequestSending $event): void
     {
         if (!$this->isTracingFeatureEnabled('gen_ai_chat')) {
@@ -534,11 +470,6 @@ class AiIntegration extends Feature
         }
     }
 
-    // ---- Chat span helpers ----
-
-    /**
-     * Find which active invocation matches the given URL by provider URL prefix.
-     */
     private function findMatchingInvocation(string $url): ?string
     {
         foreach (array_reverse($this->invocations, true) as $invocationId => $inv) {
@@ -572,15 +503,8 @@ class AiIntegration extends Feature
     }
 
     /**
-     * Enrich completed chat spans with data from response steps.
-     *
-     * When steps are available (non-streaming), each step maps 1:1 to a chat span
-     * and provides per-step model, usage, finish reason, and messages.
-     *
-     * When steps are empty (streaming responses), the aggregate response-level data
-     * is used instead: the response model is set on all chat spans, usage is only
-     * attributed when there is a single chat span, the first chat span gets the
-     * user prompt as input, and the last gets the response text as output.
+     * Enrich chat spans with step data. With steps (non-streaming), each step maps 1:1 to a chat span.
+     * Without steps (streaming), response-level data is used instead.
      */
     private function enrichChatSpansWithStepData(string $invocationId, object $response, ?string $conversationId = null): void
     {
@@ -592,7 +516,6 @@ class AiIntegration extends Feature
 
         $steps = $response->steps ?? null;
 
-        // Use all() to preserve Step objects; toArray() would recursively convert them to arrays
         if (is_object($steps) && method_exists($steps, 'all')) {
             $steps = $steps->all();
         } elseif (is_object($steps) && method_exists($steps, 'toArray')) {
@@ -610,10 +533,8 @@ class AiIntegration extends Feature
                 $data['gen_ai.conversation.id'] = $conversationId;
             }
 
-            // Resolve per-step data source, falling back to response-level data
             $step = $stepsArray[$index] ?? null;
 
-            // Model: from step meta when available, otherwise from response meta
             $model = $step !== null
                 ? $this->flexGet($this->flexGet($step, 'meta'), 'model')
                 : $this->flexGet($this->flexGet($response, 'meta'), 'model');
@@ -624,7 +545,6 @@ class AiIntegration extends Feature
                 $chatSpan->setDescription("chat {$model}");
             }
 
-            // Usage: from step when available; from response only for single chat spans
             $usage = $step !== null
                 ? $this->flexGet($step, 'usage')
                 : (count($chatSpans) === 1 ? $this->flexGet($response, 'usage') : null);
@@ -633,7 +553,6 @@ class AiIntegration extends Feature
                 $this->setTokenUsage($data, $usage);
             }
 
-            // Finish reason: only available from steps
             if ($step !== null) {
                 $finishReason = $this->flexGet($step, 'finishReason');
                 if ($finishReason !== null) {
@@ -643,9 +562,7 @@ class AiIntegration extends Feature
                 }
             }
 
-            if ($this->shouldSendDefaultPii()) {
-                // Input: with steps, buildChatInputMessages resolves per-step context;
-                // without steps, only the first chat span gets the user prompt.
+                if ($this->shouldSendDefaultPii()) {
                 if ($hasSteps) {
                     $inputMessages = $this->buildChatInputMessages($invocationId, $stepsArray, $index);
                 } elseif ($index === 0) {
@@ -658,8 +575,6 @@ class AiIntegration extends Feature
                     $data['gen_ai.input.messages'] = $this->truncateMessages($inputMessages);
                 }
 
-                // Output: from step when available; without steps only the last
-                // chat span gets the aggregate response output.
                 $outputSource = $step ?? ($index === $lastIndex ? $response : null);
 
                 if ($outputSource !== null) {
@@ -674,9 +589,6 @@ class AiIntegration extends Feature
         }
     }
 
-    /**
-     * Set conversation ID on all tool spans for a given invocation.
-     */
     private function setConversationIdOnToolSpans(string $invocationId, ?string $conversationId): void
     {
         if ($conversationId === null) {
@@ -692,9 +604,6 @@ class AiIntegration extends Feature
         }
     }
 
-    /**
-     * Resolve the base URL for a provider to match HTTP events against.
-     */
     private function resolveProviderUrlPrefix(object $provider): ?string
     {
         if (!method_exists($provider, 'driver')) {
@@ -706,16 +615,7 @@ class AiIntegration extends Feature
         return is_string($url) && $url !== '' ? $url : null;
     }
 
-    // ---- Attachment handling ----
-
     /**
-     * Resolve attachments from a prompt object into an array of redacted content parts.
-     *
-     * The Laravel AI SDK's AgentPrompt has an `attachments` Collection containing
-     * File subclass instances (Image, Document, Audio). We transform each into a
-     * content part suitable for inclusion in gen_ai.input.messages, redacting any
-     * binary data.
-     *
      * @return array<int, array<string, mixed>>
      */
     private function resolveAttachments(object $prompt): array
@@ -730,7 +630,6 @@ class AiIntegration extends Feature
             return [];
         }
 
-        // Handle both Collection and array
         if (is_object($attachments) && method_exists($attachments, 'all')) {
             $attachments = $attachments->all();
         } elseif (is_object($attachments) && method_exists($attachments, 'toArray')) {
@@ -753,7 +652,6 @@ class AiIntegration extends Feature
                     $parts[] = $part;
                 }
             } catch (\Throwable $e) {
-                // Skip individual attachments that fail to transform
                 continue;
             }
         }
@@ -762,34 +660,20 @@ class AiIntegration extends Feature
     }
 
     /**
-     * Transform a single attachment (File subclass) into a content part.
-     *
-     * File types and their transformations:
-     * - LocalImage/StoredImage/Base64Image/LocalDocument/StoredDocument/Base64Document/LocalAudio/StoredAudio/Base64Audio
-     *   → blob type with [Blob substitute], preserving mime_type and name metadata
-     * - RemoteImage/RemoteDocument/RemoteAudio
-     *   → uri type with the URL, preserving name metadata
-     * - ProviderImage/ProviderDocument
-     *   → file_id type with the provider ID, preserving name metadata
-     *
      * @return array<string, mixed>|null
      */
     private function transformAttachment(object $attachment): ?array
     {
-        // Determine the modality based on the class hierarchy
         $modality = $this->resolveAttachmentModality($attachment);
 
-        // Check for Arrayable/toArray to inspect the type field
-        $arrayForm = null;
-        if (method_exists($attachment, 'toArray')) {
-            $arrayForm = $attachment->toArray();
-        }
+        $arrayForm = method_exists($attachment, 'toArray') ? $attachment->toArray() : null;
 
         $type = $arrayForm['type'] ?? null;
         $name = method_exists($attachment, 'name') ? $attachment->name() : ($attachment->name ?? null);
-        $mimeType = method_exists($attachment, 'mimeType') ? $this->safeCall(function () use ($attachment) { return $attachment->mimeType(); }) : null;
+        $mimeType = method_exists($attachment, 'mimeType')
+            ? $this->safeCall(function () use ($attachment) { return $attachment->mimeType(); })
+            : null;
 
-        // Remote files (have a URL, no binary data to redact)
         if ($type === 'remote-image' || $type === 'remote-document' || $type === 'remote-audio') {
             $url = $attachment->url ?? ($arrayForm['url'] ?? null);
             $part = [
@@ -806,7 +690,6 @@ class AiIntegration extends Feature
             return $part;
         }
 
-        // Provider files (referenced by ID, no binary data)
         if ($type === 'provider-image' || $type === 'provider-document') {
             $id = $attachment->id ?? ($arrayForm['id'] ?? null);
             $part = [
@@ -820,7 +703,6 @@ class AiIntegration extends Feature
             return $part;
         }
 
-        // All other types (local, base64, stored) contain binary data → redact
         $part = [
             'type' => 'blob',
             'modality' => $modality,
@@ -835,9 +717,6 @@ class AiIntegration extends Feature
         return $part;
     }
 
-    /**
-     * Determine the modality of an attachment based on its class name.
-     */
     private function resolveAttachmentModality(object $attachment): string
     {
         $class = get_class($attachment);
@@ -861,8 +740,6 @@ class AiIntegration extends Feature
     }
 
     /**
-     * Build user input messages from a prompt, including text and attachments.
-     *
      * @return array<int, array<string, mixed>>
      */
     private function buildUserInputMessages(object $prompt): array
@@ -890,8 +767,6 @@ class AiIntegration extends Feature
     }
 
     /**
-     * Build user input messages from stored meta data (for chat span enrichment).
-     *
      * @param array<string, mixed> $meta
      * @return array<int, array<string, mixed>>
      */
@@ -920,8 +795,6 @@ class AiIntegration extends Feature
     }
 
     /**
-     * Safely call a closure, returning null on any exception.
-     *
      * @return mixed
      */
     private function safeCall(callable $fn)
@@ -933,15 +806,7 @@ class AiIntegration extends Feature
         }
     }
 
-    // ---- Message building ----
-
     /**
-     * Build input messages for a chat span based on its position in the step sequence.
-     *
-     * For the first chat span (index 0), the input is the original user prompt.
-     * For subsequent chat spans, the input is the previous step's output
-     * (assistant tool calls + tool results sent back to the LLM).
-     *
      * @param array<int, object|array> $stepsArray
      * @return array<int, array<string, mixed>>
      */
@@ -961,15 +826,8 @@ class AiIntegration extends Feature
     }
 
     /**
-     * Build output messages from a response or step object.
-     *
-     * Handles both top-level response objects and per-step objects, since they
-     * share the same structural properties (text, toolCalls, toolResults).
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    /**
      * @param object|array $source
+     * @return array<int, array<string, mixed>>
      */
     private function buildOutputMessages($source): array
     {
@@ -1056,24 +914,12 @@ class AiIntegration extends Feature
         return $part;
     }
 
-    // ---- Resolution helpers ----
-
     /**
-     * Read a PHP attribute value from the agent class.
-     *
-     * Laravel AI SDK uses PHP 8 attributes like #[Temperature(0.7)], #[MaxTokens(4096)],
-     * etc. to configure agents. Each attribute has a public $value property.
-     *
-     * @return int|float|string|null The attribute's value, or null if not present
+     * @return int|float|string|null
      */
     private function resolveAgentAttribute(object $agent, string $attributeClass)
     {
-        if (!class_exists($attributeClass)) {
-            return null;
-        }
-
-        // PHP Attributes require PHP 8.0+
-        if (PHP_VERSION_ID < 80000) {
+        if (!class_exists($attributeClass) || PHP_VERSION_ID < 80000) {
             return null;
         }
 
@@ -1134,21 +980,11 @@ class AiIntegration extends Feature
     }
 
     /**
-     * Resolve a tool's parameter schema by calling its schema() method.
-     *
-     * Uses Laravel's JsonSchema type system to serialize the tool's parameter
-     * definitions into a standard JSON Schema object with type, properties,
-     * required, etc.
-     *
-     * @return array<string, mixed>|null The JSON Schema array, or null if unavailable
+     * @return array<string, mixed>|null
      */
     private function resolveToolParameters(object $tool): ?array
     {
-        if (!method_exists($tool, 'schema')) {
-            return null;
-        }
-
-        if (!class_exists('Illuminate\JsonSchema\JsonSchemaTypeFactory')) {
+        if (!method_exists($tool, 'schema') || !class_exists('Illuminate\JsonSchema\JsonSchemaTypeFactory')) {
             return null;
         }
 
@@ -1219,13 +1055,9 @@ class AiIntegration extends Feature
         return is_string($instructions) ? $instructions : (string)$instructions;
     }
 
-    // ---- Data helpers ----
-
     /**
-     * Set token usage data attributes on the span data array.
-     *
      * @param array<string, mixed> $data
-     * @param object|array $usage The Usage object (or array) from the Laravel AI SDK
+     * @param object|array $usage
      */
     private function setTokenUsage(array &$data, $usage): void
     {
@@ -1264,8 +1096,6 @@ class AiIntegration extends Feature
     }
 
     /**
-     * Access a property from a value that may be an object, array, or null.
-     *
      * @param object|array|null $source
      * @return mixed
      */
@@ -1290,8 +1120,6 @@ class AiIntegration extends Feature
     }
 
     /**
-     * Evict the oldest entries from an invocation map when it exceeds the cap.
-     *
      * @param array<string, mixed> $map
      */
     private function evictOldestIfNeeded(array &$map): void
@@ -1313,14 +1141,6 @@ class AiIntegration extends Feature
         }
     }
 
-    // ---- Truncation and redaction ----
-
-    /**
-     * Truncate a string to fit within the byte limit.
-     *
-     * @param string $value The string to truncate
-     * @param int $maxBytes Maximum byte size (defaults to MAX_MESSAGE_BYTES)
-     */
     private function truncateString(string $value, int $maxBytes = self::MAX_MESSAGE_BYTES): string
     {
         if (strlen($value) <= $maxBytes) {
@@ -1330,11 +1150,6 @@ class AiIntegration extends Feature
         return substr($value, 0, $maxBytes) . '...(truncated)';
     }
 
-    /**
-     * Truncate a content string to the single-message character limit.
-     *
-     * Used when capping individual message content within the message truncation pipeline.
-     */
     private function truncateContentString(string $value): string
     {
         if (mb_strlen($value) <= self::MAX_SINGLE_MESSAGE_CONTENT_CHARS) {
@@ -1345,11 +1160,6 @@ class AiIntegration extends Feature
     }
 
     /**
-     * Truncate and annotate a messages array following the Python SDK strategy:
-     * - Keep only the last message
-     * - Cap the last message's content at MAX_SINGLE_MESSAGE_CONTENT_CHARS
-     * - If the final JSON still exceeds MAX_MESSAGE_BYTES, truncate the raw string
-     *
      * @param array<int, array<string, mixed>> $messages
      */
     private function truncateMessages(array $messages): string
@@ -1358,16 +1168,13 @@ class AiIntegration extends Feature
             return '[]';
         }
 
-        // First, redact binary content in all messages
         $messages = $this->redactBinaryInMessages($messages);
 
-        // Always apply per-message content truncation (10K char limit)
         foreach ($messages as &$message) {
             $message = $this->truncateMessageContent($message);
         }
         unset($message);
 
-        // For a single message, skip the "try all then fall back to last" dance
         if (count($messages) === 1) {
             $encoded = json_encode($messages);
 
@@ -1380,14 +1187,12 @@ class AiIntegration extends Feature
                 : $this->truncateString($encoded);
         }
 
-        // Try encoding all messages first (fast path for small payloads)
         $encoded = json_encode($messages);
 
         if ($encoded !== false && strlen($encoded) <= self::MAX_MESSAGE_BYTES) {
             return $encoded;
         }
 
-        // Keep only the last message (matches Python SDK behavior)
         $lastMessage = end($messages);
 
         $encoded = json_encode([$lastMessage]);
@@ -1396,13 +1201,10 @@ class AiIntegration extends Feature
             return '[]';
         }
 
-        // Final safety net: truncate the raw JSON string if still over budget
         return $this->truncateString($encoded);
     }
 
     /**
-     * Truncate content strings within a single message's parts.
-     *
      * @param array<string, mixed> $message
      * @return array<string, mixed>
      */
@@ -1425,10 +1227,6 @@ class AiIntegration extends Feature
     }
 
     /**
-     * Truncate embedding inputs following the Python SDK strategy:
-     * - Keep as many inputs as fit within MAX_MESSAGE_BYTES, working backward from the end
-     * - If a single remaining input exceeds the limit, truncate its content
-     *
      * @param array<int, mixed> $inputs
      */
     private function truncateEmbeddingInputs(array $inputs): string
@@ -1438,9 +1236,8 @@ class AiIntegration extends Feature
         }
 
         $kept = [];
-        $totalBytes = 2; // Account for the JSON array brackets "[]"
+        $totalBytes = 2;
 
-        // Work backward from the end, keeping as many as fit
         for ($i = count($inputs) - 1; $i >= 0; $i--) {
             $inputJson = json_encode($inputs[$i]);
             $entryBytes = strlen($inputJson) + (empty($kept) ? 0 : 1); // +1 for comma separator
@@ -1453,7 +1250,6 @@ class AiIntegration extends Feature
             $totalBytes += $entryBytes;
         }
 
-        // If we couldn't keep any, take just the last one and truncate it
         if (empty($kept)) {
             $lastInput = end($inputs);
             if (is_string($lastInput)) {
@@ -1464,18 +1260,10 @@ class AiIntegration extends Feature
 
         $encoded = json_encode($kept);
 
-        // Final safety net
         return $this->truncateString($encoded !== false ? $encoded : '[]');
     }
 
-    // ---- Binary content redaction ----
-
     /**
-     * Redact binary content in all messages.
-     *
-     * Scans message parts for base64 data, data URIs, and binary content,
-     * replacing them with the blob substitute while preserving metadata.
-     *
      * @param array<int, array<string, mixed>> $messages
      * @return array<int, array<string, mixed>>
      */
@@ -1497,14 +1285,6 @@ class AiIntegration extends Feature
     }
 
     /**
-     * Redact binary content in a single content part.
-     *
-     * Handles:
-     * - Parts with type 'blob' → replace content with blob substitute
-     * - Parts with type 'image' or 'image_url' → transform and redact
-     * - Text content containing data URIs → replace with blob substitute
-     * - Text content that is pure base64 → replace with blob substitute
-     *
      * @param array<string, mixed> $part
      * @return array<string, mixed>
      */
@@ -1512,30 +1292,25 @@ class AiIntegration extends Feature
     {
         $type = $part['type'] ?? null;
 
-        // Explicit blob type — always redact
         if ($type === 'blob') {
             $part['content'] = self::BLOB_SUBSTITUTE;
             return $part;
         }
 
-        // Image or image_url types — redact binary data, keep metadata
         if ($type === 'image' || $type === 'image_url') {
             return $this->transformImagePart($part);
         }
 
-        // For text and other types, check if content contains binary data
         if (isset($part['content']) && is_string($part['content'])) {
             $part['content'] = $this->redactBinaryInString($part['content']);
         }
 
-        // Check data field (used by some providers for base64 content)
         if (isset($part['data']) && is_string($part['data'])) {
             if ($this->isBinaryString($part['data'])) {
                 $part['data'] = self::BLOB_SUBSTITUTE;
             }
         }
 
-        // Check source field (used by Anthropic-style content)
         if (isset($part['source']) && is_array($part['source'])) {
             $part['source'] = $this->redactSourceField($part['source']);
         }
@@ -1544,14 +1319,11 @@ class AiIntegration extends Feature
     }
 
     /**
-     * Transform an image/image_url content part: redact binary data, keep metadata.
-     *
      * @param array<string, mixed> $part
      * @return array<string, mixed>
      */
     private function transformImagePart(array $part): array
     {
-        // Handle image_url with nested url field (OpenAI style)
         if (isset($part['image_url']) && is_array($part['image_url'])) {
             $url = $part['image_url']['url'] ?? '';
             if ($this->isDataUri($url)) {
@@ -1563,7 +1335,6 @@ class AiIntegration extends Feature
                 }
                 unset($part['image_url']);
             } else {
-                // Regular URL — transform to uri type
                 $part['type'] = 'uri';
                 $part['content'] = $url;
                 unset($part['image_url']);
@@ -1571,7 +1342,6 @@ class AiIntegration extends Feature
             return $part;
         }
 
-        // Handle inline content/data (Google/generic style)
         if (isset($part['content']) && is_string($part['content'])) {
             if ($this->isBinaryString($part['content'])) {
                 $part['content'] = self::BLOB_SUBSTITUTE;
@@ -1586,7 +1356,6 @@ class AiIntegration extends Feature
             }
         }
 
-        // Handle URL field directly
         if (isset($part['url']) && is_string($part['url'])) {
             if ($this->isDataUri($part['url'])) {
                 $metadata = $this->extractDataUriMetadata($part['url']);
@@ -1607,8 +1376,6 @@ class AiIntegration extends Feature
     }
 
     /**
-     * Redact binary content in source fields (Anthropic style).
-     *
      * @param array<string, mixed> $source
      * @return array<string, mixed>
      */
@@ -1627,53 +1394,31 @@ class AiIntegration extends Feature
         return $source;
     }
 
-    /**
-     * Redact binary data in a string value.
-     *
-     * Replaces data URIs and standalone base64 strings with the blob substitute.
-     */
     private function redactBinaryInString(string $value): string
     {
-        // Check for data URI
-        if ($this->isDataUri($value)) {
-            return self::BLOB_SUBSTITUTE;
-        }
-
-        // Check for standalone base64
-        if ($this->isBase64String($value)) {
+        if ($this->isDataUri($value) || $this->isBase64String($value)) {
             return self::BLOB_SUBSTITUTE;
         }
 
         return $value;
     }
 
-    /**
-     * Check if a string looks like binary data (data URI or base64).
-     */
     private function isBinaryString(string $value): bool
     {
         return $this->isDataUri($value) || $this->isBase64String($value);
     }
 
-    /**
-     * Check if a string is a data URI.
-     */
     private function isDataUri(string $value): bool
     {
         return (bool)preg_match(self::DATA_URI_PATTERN, $value);
     }
 
-    /**
-     * Check if a string looks like a standalone base64-encoded binary payload.
-     */
     private function isBase64String(string $value): bool
     {
         return (bool)preg_match(self::BASE64_PATTERN, $value);
     }
 
     /**
-     * Extract metadata from a data URI.
-     *
      * @return array{mime_type: string|null, encoding: string|null}
      */
     private function extractDataUriMetadata(string $dataUri): array

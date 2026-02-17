@@ -494,8 +494,6 @@ class AiIntegrationTest extends TestCase
     private const PROVIDER_URL = 'https://api.openai.com/v1';
 
     protected $defaultSetupConfig = [
-        // Disable the HTTP client integration to avoid extra http.client spans
-        // that would interfere with our span count assertions
         'sentry.tracing.http_client_requests' => false,
     ];
 
@@ -503,7 +501,6 @@ class AiIntegrationTest extends TestCase
     {
         parent::setUp();
 
-        // Set up the Prism provider config so the integration can resolve the URL
         config(['prism.providers.openai.url' => self::PROVIDER_URL]);
     }
 
@@ -521,7 +518,6 @@ class AiIntegrationTest extends TestCase
 
         $spans = $transaction->getSpanRecorder()->getSpans();
 
-        // Transaction + agent span + 1 chat span = 3
         $this->assertCount(3, $spans);
 
         /** @var Span $agentSpan */
@@ -781,7 +777,6 @@ class AiIntegrationTest extends TestCase
 
         $spans = $transaction->getSpanRecorder()->getSpans();
 
-        // Only the transaction span, no agent or chat spans
         $this->assertCount(1, $spans);
     }
 
@@ -1631,7 +1626,6 @@ class AiIntegrationTest extends TestCase
 
         $spans = $transaction->getSpanRecorder()->getSpans();
 
-        // Only the transaction span
         $this->assertCount(1, $spans);
     }
 
@@ -1665,7 +1659,6 @@ class AiIntegrationTest extends TestCase
 
         $spans = $transaction->getSpanRecorder()->getSpans();
 
-        // Transaction + agent span + 1 chat span = 3
         $this->assertCount(3, $spans);
 
         /** @var Span $agentSpan */
@@ -2016,11 +2009,8 @@ class AiIntegrationTest extends TestCase
 
         $spans = $transaction->getSpanRecorder()->getSpans();
 
-        // Only the transaction span, no agent or chat spans
         $this->assertCount(1, $spans);
     }
-
-    // ---- Truncation and redaction tests ----
 
     public function testMessageTruncationKeepsOnlyLastMessageWhenOverBudget(): void
     {
