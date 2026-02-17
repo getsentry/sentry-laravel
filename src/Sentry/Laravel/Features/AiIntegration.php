@@ -15,7 +15,35 @@ class AiIntegration extends Feature
 {
     private const FEATURE_KEY = 'ai';
 
-    private const MAX_MESSAGE_SIZE = 20480; // 20KB
+    /**
+     * Maximum total byte size for serialized message data (20KB).
+     * Matches Python SDK's MAX_GEN_AI_MESSAGE_BYTES.
+     */
+    private const MAX_MESSAGE_BYTES = 20_000;
+
+    /**
+     * Maximum character length for a single message's content string (10K chars).
+     * Matches Python SDK's MAX_SINGLE_MESSAGE_CONTENT_CHARS.
+     */
+    private const MAX_SINGLE_MESSAGE_CONTENT_CHARS = 10_000;
+
+    /**
+     * Placeholder used to replace binary/blob content that should not be sent to Sentry.
+     * Matches Python SDK's BLOB_DATA_SUBSTITUTE.
+     */
+    private const BLOB_SUBSTITUTE = '[Blob substitute]';
+
+    /**
+     * Regex pattern to detect data URIs with base64-encoded content.
+     * Matches patterns like: data:image/png;base64,iVBORw0KGgo...
+     */
+    private const DATA_URI_PATTERN = '/^data:([^;,]+)?(?:;([^,]*))?,(.*)/s';
+
+    /**
+     * Regex pattern to detect standalone base64-encoded strings.
+     * Matches strings that are at least 100 chars of valid base64 (likely binary data, not text).
+     */
+    private const BASE64_PATTERN = '/^[A-Za-z0-9+\/]{100,}={0,2}$/';
 
     /** @var array<string, string> Known provider class → gen_ai.system identifier */
     private const PROVIDER_SYSTEM_MAP = [
@@ -137,16 +165,9 @@ class AiIntegration extends Feature
         }
 
         if ($this->shouldSendDefaultPii()) {
-            $promptText = $event->prompt->prompt ?? null;
-            if ($promptText !== null) {
-                $data['gen_ai.input.messages'] = $this->truncateString(
-                    json_encode([
-                        [
-                            'role' => 'user',
-                            'parts' => [['type' => 'text', 'content' => $promptText]],
-                        ],
-                    ])
-                );
+            $inputMessages = $this->buildUserInputMessages($event->prompt);
+            if (!empty($inputMessages)) {
+                $data['gen_ai.input.messages'] = $this->truncateMessages($inputMessages);
             }
 
             $instructions = $this->resolveAgentInstructions($event->prompt->agent);
@@ -171,6 +192,7 @@ class AiIntegration extends Feature
                 'system' => $providerName,
                 'model' => $model,
                 'prompt' => $event->prompt->prompt ?? null,
+                'attachments' => $this->resolveAttachments($event->prompt),
                 'toolDefinitions' => $toolDefinitions,
             ],
             'urlPrefix' => $this->resolveProviderUrlPrefix($event->prompt->provider),
@@ -231,7 +253,7 @@ class AiIntegration extends Feature
         if ($this->shouldSendDefaultPii()) {
             $outputMessages = $this->buildOutputMessages($event->response);
             if (!empty($outputMessages)) {
-                $data['gen_ai.output.messages'] = $this->truncateString(json_encode($outputMessages));
+                $data['gen_ai.output.messages'] = $this->truncateMessages($outputMessages);
             }
         }
 
@@ -361,7 +383,7 @@ class AiIntegration extends Feature
         if ($this->shouldSendDefaultPii()) {
             $inputs = $event->prompt->inputs ?? null;
             if (is_array($inputs) && !empty($inputs)) {
-                $data['gen_ai.embeddings.input'] = $this->truncateString(json_encode($inputs));
+                $data['gen_ai.embeddings.input'] = $this->truncateEmbeddingInputs($inputs);
             }
         }
 
@@ -618,7 +640,7 @@ class AiIntegration extends Feature
                 }
 
                 if (!empty($inputMessages)) {
-                    $data['gen_ai.input.messages'] = $this->truncateString(json_encode($inputMessages));
+                    $data['gen_ai.input.messages'] = $this->truncateMessages($inputMessages);
                 }
 
                 // Output: from step when available; without steps only the last
@@ -628,7 +650,7 @@ class AiIntegration extends Feature
                 if ($outputSource !== null) {
                     $outputMessages = $this->buildOutputMessages($outputSource);
                     if (!empty($outputMessages)) {
-                        $data['gen_ai.output.messages'] = $this->truncateString(json_encode($outputMessages));
+                        $data['gen_ai.output.messages'] = $this->truncateMessages($outputMessages);
                     }
                 }
             }
@@ -666,6 +688,231 @@ class AiIntegration extends Feature
         return is_string($url) && $url !== '' ? $url : null;
     }
 
+    // ---- Attachment handling ----
+
+    /**
+     * Resolve attachments from a prompt object into an array of redacted content parts.
+     *
+     * The Laravel AI SDK's AgentPrompt has an `attachments` Collection containing
+     * File subclass instances (Image, Document, Audio). We transform each into a
+     * content part suitable for inclusion in gen_ai.input.messages, redacting any
+     * binary data.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function resolveAttachments(object $prompt): array
+    {
+        try {
+            $attachments = $prompt->attachments ?? null;
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        if ($attachments === null) {
+            return [];
+        }
+
+        // Handle both Collection and array
+        if (is_object($attachments) && method_exists($attachments, 'all')) {
+            $attachments = $attachments->all();
+        } elseif (is_object($attachments) && method_exists($attachments, 'toArray')) {
+            $attachments = $attachments->toArray();
+        }
+
+        if (!is_array($attachments) || empty($attachments)) {
+            return [];
+        }
+
+        $parts = [];
+        foreach ($attachments as $attachment) {
+            if (!is_object($attachment)) {
+                continue;
+            }
+
+            try {
+                $part = $this->transformAttachment($attachment);
+                if ($part !== null) {
+                    $parts[] = $part;
+                }
+            } catch (\Throwable $e) {
+                // Skip individual attachments that fail to transform
+                continue;
+            }
+        }
+
+        return $parts;
+    }
+
+    /**
+     * Transform a single attachment (File subclass) into a content part.
+     *
+     * File types and their transformations:
+     * - LocalImage/StoredImage/Base64Image/LocalDocument/StoredDocument/Base64Document/LocalAudio/StoredAudio/Base64Audio
+     *   → blob type with [Blob substitute], preserving mime_type and name metadata
+     * - RemoteImage/RemoteDocument/RemoteAudio
+     *   → uri type with the URL, preserving name metadata
+     * - ProviderImage/ProviderDocument
+     *   → file_id type with the provider ID, preserving name metadata
+     *
+     * @return array<string, mixed>|null
+     */
+    private function transformAttachment(object $attachment): ?array
+    {
+        // Determine the modality based on the class hierarchy
+        $modality = $this->resolveAttachmentModality($attachment);
+
+        // Check for Arrayable/toArray to inspect the type field
+        $arrayForm = null;
+        if (method_exists($attachment, 'toArray')) {
+            $arrayForm = $attachment->toArray();
+        }
+
+        $type = $arrayForm['type'] ?? null;
+        $name = method_exists($attachment, 'name') ? $attachment->name() : ($attachment->name ?? null);
+        $mimeType = method_exists($attachment, 'mimeType') ? $this->safeCall(fn() => $attachment->mimeType()) : null;
+
+        // Remote files (have a URL, no binary data to redact)
+        if ($type === 'remote-image' || $type === 'remote-document' || $type === 'remote-audio') {
+            $url = $attachment->url ?? ($arrayForm['url'] ?? null);
+            $part = [
+                'type' => 'uri',
+                'modality' => $modality,
+                'content' => $url,
+            ];
+            if ($name !== null) {
+                $part['name'] = $name;
+            }
+            if ($mimeType !== null) {
+                $part['mime_type'] = $mimeType;
+            }
+            return $part;
+        }
+
+        // Provider files (referenced by ID, no binary data)
+        if ($type === 'provider-image' || $type === 'provider-document') {
+            $id = $attachment->id ?? ($arrayForm['id'] ?? null);
+            $part = [
+                'type' => 'file_id',
+                'modality' => $modality,
+                'content' => $id,
+            ];
+            if ($name !== null) {
+                $part['name'] = $name;
+            }
+            return $part;
+        }
+
+        // All other types (local, base64, stored) contain binary data → redact
+        $part = [
+            'type' => 'blob',
+            'modality' => $modality,
+            'content' => self::BLOB_SUBSTITUTE,
+        ];
+        if ($name !== null) {
+            $part['name'] = $name;
+        }
+        if ($mimeType !== null) {
+            $part['mime_type'] = $mimeType;
+        }
+        return $part;
+    }
+
+    /**
+     * Determine the modality of an attachment based on its class name.
+     */
+    private function resolveAttachmentModality(object $attachment): string
+    {
+        $class = get_class($attachment);
+
+        if (is_a($attachment, 'Laravel\Ai\Files\Image', true)
+            || str_contains($class, 'Image')) {
+            return 'image';
+        }
+
+        if (is_a($attachment, 'Laravel\Ai\Files\Document', true)
+            || str_contains($class, 'Document')) {
+            return 'document';
+        }
+
+        if (is_a($attachment, 'Laravel\Ai\Files\Audio', true)
+            || str_contains($class, 'Audio')) {
+            return 'audio';
+        }
+
+        return 'file';
+    }
+
+    /**
+     * Build user input messages from a prompt, including text and attachments.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildUserInputMessages(object $prompt): array
+    {
+        $promptText = $prompt->prompt ?? null;
+        $attachmentParts = $this->resolveAttachments($prompt);
+
+        $parts = [];
+
+        if ($promptText !== null && $promptText !== '') {
+            $parts[] = ['type' => 'text', 'content' => $promptText];
+        }
+
+        foreach ($attachmentParts as $attachmentPart) {
+            $parts[] = $attachmentPart;
+        }
+
+        if (empty($parts)) {
+            return [];
+        }
+
+        return [
+            ['role' => 'user', 'parts' => $parts],
+        ];
+    }
+
+    /**
+     * Build user input messages from stored meta data (for chat span enrichment).
+     *
+     * @param array<string, mixed> $meta
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildUserInputMessagesFromMeta(array $meta): array
+    {
+        $promptText = $meta['prompt'] ?? null;
+        $attachmentParts = $meta['attachments'] ?? [];
+
+        $parts = [];
+
+        if ($promptText !== null && $promptText !== '') {
+            $parts[] = ['type' => 'text', 'content' => $promptText];
+        }
+
+        foreach ($attachmentParts as $attachmentPart) {
+            $parts[] = $attachmentPart;
+        }
+
+        if (empty($parts)) {
+            return [];
+        }
+
+        return [
+            ['role' => 'user', 'parts' => $parts],
+        ];
+    }
+
+    /**
+     * Safely call a closure, returning null on any exception.
+     */
+    private function safeCall(callable $fn): mixed
+    {
+        try {
+            return $fn();
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
     // ---- Message building ----
 
     /**
@@ -681,18 +928,7 @@ class AiIntegration extends Feature
     private function buildChatInputMessages(string $invocationId, array $stepsArray, int $index): array
     {
         if ($index === 0) {
-            $promptText = $this->invocations[$invocationId]['meta']['prompt'] ?? null;
-
-            if ($promptText === null || $promptText === '') {
-                return [];
-            }
-
-            return [
-                [
-                    'role' => 'user',
-                    'parts' => [['type' => 'text', 'content' => $promptText]],
-                ],
-            ];
+            return $this->buildUserInputMessagesFromMeta($this->invocations[$invocationId]['meta'] ?? []);
         }
 
         $previousStep = $stepsArray[$index - 1] ?? null;
@@ -994,12 +1230,363 @@ class AiIntegration extends Feature
         return end($parts);
     }
 
-    private function truncateString(string $value): string
+    // ---- Truncation and redaction ----
+
+    /**
+     * Truncate a string to fit within the byte limit.
+     *
+     * @param string $value The string to truncate
+     * @param int $maxBytes Maximum byte size (defaults to MAX_MESSAGE_BYTES)
+     */
+    private function truncateString(string $value, int $maxBytes = self::MAX_MESSAGE_BYTES): string
     {
-        if (strlen($value) <= self::MAX_MESSAGE_SIZE) {
+        if (strlen($value) <= $maxBytes) {
             return $value;
         }
 
-        return substr($value, 0, self::MAX_MESSAGE_SIZE) . '...(truncated)';
+        return substr($value, 0, $maxBytes) . '...(truncated)';
+    }
+
+    /**
+     * Truncate a content string to the single-message character limit.
+     *
+     * Used when capping individual message content within the message truncation pipeline.
+     */
+    private function truncateContentString(string $value): string
+    {
+        if (mb_strlen($value) <= self::MAX_SINGLE_MESSAGE_CONTENT_CHARS) {
+            return $value;
+        }
+
+        return mb_substr($value, 0, self::MAX_SINGLE_MESSAGE_CONTENT_CHARS) . '...';
+    }
+
+    /**
+     * Truncate and annotate a messages array following the Python SDK strategy:
+     * - Keep only the last message
+     * - Cap the last message's content at MAX_SINGLE_MESSAGE_CONTENT_CHARS
+     * - If the final JSON still exceeds MAX_MESSAGE_BYTES, truncate the raw string
+     *
+     * @param array<int, array<string, mixed>> $messages
+     */
+    private function truncateMessages(array $messages): string
+    {
+        if (empty($messages)) {
+            return '[]';
+        }
+
+        // First, redact binary content in all messages
+        $messages = $this->redactBinaryInMessages($messages);
+
+        // Always apply per-message content truncation (10K char limit)
+        foreach ($messages as &$message) {
+            $message = $this->truncateMessageContent($message);
+        }
+        unset($message);
+
+        // Try encoding all messages first
+        $encoded = json_encode($messages);
+
+        if ($encoded !== false && strlen($encoded) <= self::MAX_MESSAGE_BYTES) {
+            return $encoded;
+        }
+
+        // Keep only the last message (matches Python SDK behavior)
+        $lastMessage = end($messages);
+
+        $encoded = json_encode([$lastMessage]);
+
+        if ($encoded === false) {
+            return '[]';
+        }
+
+        // Final safety net: truncate the raw JSON string if still over budget
+        return $this->truncateString($encoded);
+    }
+
+    /**
+     * Truncate content strings within a single message's parts.
+     *
+     * @param array<string, mixed> $message
+     * @return array<string, mixed>
+     */
+    private function truncateMessageContent(array $message): array
+    {
+        if (!isset($message['parts']) || !is_array($message['parts'])) {
+            return $message;
+        }
+
+        foreach ($message['parts'] as &$part) {
+            if (isset($part['content']) && is_string($part['content'])) {
+                $part['content'] = $this->truncateContentString($part['content']);
+            }
+            if (isset($part['arguments']) && is_string($part['arguments'])) {
+                $part['arguments'] = $this->truncateContentString($part['arguments']);
+            }
+        }
+
+        return $message;
+    }
+
+    /**
+     * Truncate embedding inputs following the Python SDK strategy:
+     * - Keep as many inputs as fit within MAX_MESSAGE_BYTES, working backward from the end
+     * - If a single remaining input exceeds the limit, truncate its content
+     *
+     * @param array<int, mixed> $inputs
+     */
+    private function truncateEmbeddingInputs(array $inputs): string
+    {
+        if (empty($inputs)) {
+            return '[]';
+        }
+
+        $kept = [];
+        $totalBytes = 2; // Account for the JSON array brackets "[]"
+
+        // Work backward from the end, keeping as many as fit
+        for ($i = count($inputs) - 1; $i >= 0; $i--) {
+            $inputJson = json_encode($inputs[$i]);
+            $entryBytes = strlen($inputJson) + (empty($kept) ? 0 : 1); // +1 for comma separator
+
+            if ($totalBytes + $entryBytes > self::MAX_MESSAGE_BYTES) {
+                break;
+            }
+
+            array_unshift($kept, $inputs[$i]);
+            $totalBytes += $entryBytes;
+        }
+
+        // If we couldn't keep any, take just the last one and truncate it
+        if (empty($kept)) {
+            $lastInput = end($inputs);
+            if (is_string($lastInput)) {
+                $lastInput = $this->truncateContentString($lastInput);
+            }
+            $kept = [$lastInput];
+        }
+
+        $encoded = json_encode($kept);
+
+        // Final safety net
+        return $this->truncateString($encoded !== false ? $encoded : '[]');
+    }
+
+    // ---- Binary content redaction ----
+
+    /**
+     * Redact binary content in all messages.
+     *
+     * Scans message parts for base64 data, data URIs, and binary content,
+     * replacing them with the blob substitute while preserving metadata.
+     *
+     * @param array<int, array<string, mixed>> $messages
+     * @return array<int, array<string, mixed>>
+     */
+    private function redactBinaryInMessages(array $messages): array
+    {
+        foreach ($messages as &$message) {
+            if (!isset($message['parts']) || !is_array($message['parts'])) {
+                continue;
+            }
+
+            foreach ($message['parts'] as &$part) {
+                $part = $this->redactContentPart($part);
+            }
+        }
+
+        return $messages;
+    }
+
+    /**
+     * Redact binary content in a single content part.
+     *
+     * Handles:
+     * - Parts with type 'blob' → replace content with blob substitute
+     * - Parts with type 'image' or 'image_url' → transform and redact
+     * - Text content containing data URIs → replace with blob substitute
+     * - Text content that is pure base64 → replace with blob substitute
+     *
+     * @param array<string, mixed> $part
+     * @return array<string, mixed>
+     */
+    private function redactContentPart(array $part): array
+    {
+        $type = $part['type'] ?? null;
+
+        // Explicit blob type — always redact
+        if ($type === 'blob') {
+            $part['content'] = self::BLOB_SUBSTITUTE;
+            return $part;
+        }
+
+        // Image or image_url types — redact binary data, keep metadata
+        if ($type === 'image' || $type === 'image_url') {
+            return $this->transformImagePart($part);
+        }
+
+        // For text and other types, check if content contains binary data
+        if (isset($part['content']) && is_string($part['content'])) {
+            $part['content'] = $this->redactBinaryInString($part['content']);
+        }
+
+        // Check data field (used by some providers for base64 content)
+        if (isset($part['data']) && is_string($part['data'])) {
+            if ($this->isBinaryString($part['data'])) {
+                $part['data'] = self::BLOB_SUBSTITUTE;
+            }
+        }
+
+        // Check source field (used by Anthropic-style content)
+        if (isset($part['source']) && is_array($part['source'])) {
+            $part['source'] = $this->redactSourceField($part['source']);
+        }
+
+        return $part;
+    }
+
+    /**
+     * Transform an image/image_url content part: redact binary data, keep metadata.
+     *
+     * @param array<string, mixed> $part
+     * @return array<string, mixed>
+     */
+    private function transformImagePart(array $part): array
+    {
+        // Handle image_url with nested url field (OpenAI style)
+        if (isset($part['image_url']) && is_array($part['image_url'])) {
+            $url = $part['image_url']['url'] ?? '';
+            if ($this->isDataUri($url)) {
+                $metadata = $this->extractDataUriMetadata($url);
+                $part['type'] = 'blob';
+                $part['content'] = self::BLOB_SUBSTITUTE;
+                if ($metadata['mime_type'] !== null) {
+                    $part['mime_type'] = $metadata['mime_type'];
+                }
+                unset($part['image_url']);
+            } else {
+                // Regular URL — transform to uri type
+                $part['type'] = 'uri';
+                $part['content'] = $url;
+                unset($part['image_url']);
+            }
+            return $part;
+        }
+
+        // Handle inline content/data (Google/generic style)
+        if (isset($part['content']) && is_string($part['content'])) {
+            if ($this->isBinaryString($part['content'])) {
+                $part['content'] = self::BLOB_SUBSTITUTE;
+                $part['type'] = 'blob';
+            }
+        }
+
+        if (isset($part['data']) && is_string($part['data'])) {
+            if ($this->isBinaryString($part['data'])) {
+                $part['data'] = self::BLOB_SUBSTITUTE;
+                $part['type'] = 'blob';
+            }
+        }
+
+        // Handle URL field directly
+        if (isset($part['url']) && is_string($part['url'])) {
+            if ($this->isDataUri($part['url'])) {
+                $metadata = $this->extractDataUriMetadata($part['url']);
+                $part['type'] = 'blob';
+                $part['content'] = self::BLOB_SUBSTITUTE;
+                if ($metadata['mime_type'] !== null) {
+                    $part['mime_type'] = $metadata['mime_type'];
+                }
+                unset($part['url']);
+            } else {
+                $part['type'] = 'uri';
+                $part['content'] = $part['url'];
+                unset($part['url']);
+            }
+        }
+
+        return $part;
+    }
+
+    /**
+     * Redact binary content in source fields (Anthropic style).
+     *
+     * @param array<string, mixed> $source
+     * @return array<string, mixed>
+     */
+    private function redactSourceField(array $source): array
+    {
+        $sourceType = $source['type'] ?? null;
+
+        if ($sourceType === 'base64') {
+            $source['data'] = self::BLOB_SUBSTITUTE;
+        }
+
+        if (isset($source['data']) && is_string($source['data']) && $this->isBinaryString($source['data'])) {
+            $source['data'] = self::BLOB_SUBSTITUTE;
+        }
+
+        return $source;
+    }
+
+    /**
+     * Redact binary data in a string value.
+     *
+     * Replaces data URIs and standalone base64 strings with the blob substitute.
+     */
+    private function redactBinaryInString(string $value): string
+    {
+        // Check for data URI
+        if ($this->isDataUri($value)) {
+            return self::BLOB_SUBSTITUTE;
+        }
+
+        // Check for standalone base64
+        if ($this->isBase64String($value)) {
+            return self::BLOB_SUBSTITUTE;
+        }
+
+        return $value;
+    }
+
+    /**
+     * Check if a string looks like binary data (data URI or base64).
+     */
+    private function isBinaryString(string $value): bool
+    {
+        return $this->isDataUri($value) || $this->isBase64String($value);
+    }
+
+    /**
+     * Check if a string is a data URI.
+     */
+    private function isDataUri(string $value): bool
+    {
+        return (bool)preg_match(self::DATA_URI_PATTERN, $value);
+    }
+
+    /**
+     * Check if a string looks like a standalone base64-encoded binary payload.
+     */
+    private function isBase64String(string $value): bool
+    {
+        return (bool)preg_match(self::BASE64_PATTERN, $value);
+    }
+
+    /**
+     * Extract metadata from a data URI.
+     *
+     * @return array{mime_type: string|null, encoding: string|null}
+     */
+    private function extractDataUriMetadata(string $dataUri): array
+    {
+        if (!preg_match(self::DATA_URI_PATTERN, $dataUri, $matches)) {
+            return ['mime_type' => null, 'encoding' => null];
+        }
+
+        return [
+            'mime_type' => !empty($matches[1]) ? $matches[1] : null,
+            'encoding' => !empty($matches[2]) ? $matches[2] : null,
+        ];
     }
 }

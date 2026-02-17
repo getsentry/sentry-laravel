@@ -154,6 +154,40 @@ if (!class_exists(\Laravel\Ai\Attributes\MaxTokens::class)) {
     }
 }
 
+// Stub File classes in the Laravel\Ai\Files namespace so is_a() checks work
+namespace Laravel\Ai\Files;
+
+if (!class_exists(\Laravel\Ai\Files\File::class)) {
+    abstract class File
+    {
+        public ?string $name = null;
+
+        public function name(): ?string
+        {
+            return $this->name;
+        }
+
+        public function as(?string $name): static
+        {
+            $this->name = $name;
+
+            return $this;
+        }
+    }
+}
+
+if (!class_exists(\Laravel\Ai\Files\Image::class)) {
+    abstract class Image extends File {}
+}
+
+if (!class_exists(\Laravel\Ai\Files\Document::class)) {
+    abstract class Document extends File {}
+}
+
+if (!class_exists(\Laravel\Ai\Files\Audio::class)) {
+    abstract class Audio extends File {}
+}
+
 // Stub agent, tool, and data classes with predictable class names
 namespace Sentry\Laravel\Tests\Features\AiStubs;
 
@@ -294,6 +328,132 @@ class TestToolResult
     }
 }
 
+// Stub file classes that extend the Laravel AI SDK abstract classes
+
+class TestLocalImage extends \Laravel\Ai\Files\Image
+{
+    public function __construct(public string $path, public ?string $mime = null) {}
+
+    public function mimeType(): ?string
+    {
+        return $this->mime;
+    }
+
+    public function name(): ?string
+    {
+        return $this->name ?? basename($this->path);
+    }
+
+    public function toArray(): array
+    {
+        return [
+            'type' => 'local-image',
+            'name' => $this->name(),
+            'path' => $this->path,
+            'mime' => $this->mime,
+        ];
+    }
+}
+
+class TestBase64Image extends \Laravel\Ai\Files\Image
+{
+    public function __construct(public string $base64, public ?string $mime = null) {}
+
+    public function mimeType(): ?string
+    {
+        return $this->mime;
+    }
+
+    public function toArray(): array
+    {
+        return [
+            'type' => 'base64-image',
+            'name' => $this->name,
+            'base64' => $this->base64,
+            'mime' => $this->mime,
+        ];
+    }
+}
+
+class TestRemoteImage extends \Laravel\Ai\Files\Image
+{
+    public function __construct(public string $url, public ?string $mime = null) {}
+
+    public function mimeType(): ?string
+    {
+        return $this->mime;
+    }
+
+    public function toArray(): array
+    {
+        return [
+            'type' => 'remote-image',
+            'name' => $this->name,
+            'url' => $this->url,
+            'mime' => $this->mime,
+        ];
+    }
+}
+
+class TestProviderImage extends \Laravel\Ai\Files\Image
+{
+    public function __construct(public string $id) {}
+
+    public function toArray(): array
+    {
+        return [
+            'type' => 'provider-image',
+            'id' => $this->id,
+            'name' => $this->name,
+        ];
+    }
+}
+
+class TestLocalDocument extends \Laravel\Ai\Files\Document
+{
+    public function __construct(public string $path, public ?string $mime = null) {}
+
+    public function mimeType(): ?string
+    {
+        return $this->mime;
+    }
+
+    public function name(): ?string
+    {
+        return $this->name ?? basename($this->path);
+    }
+
+    public function toArray(): array
+    {
+        return [
+            'type' => 'local-document',
+            'name' => $this->name(),
+            'path' => $this->path,
+            'mime' => $this->mime,
+        ];
+    }
+}
+
+class TestRemoteDocument extends \Laravel\Ai\Files\Document
+{
+    public function __construct(public string $url, public ?string $mime = null) {}
+
+    public function mimeType(): ?string
+    {
+        return $this->mime;
+    }
+
+    public function toArray(): array
+    {
+        return [
+            'type' => 'remote-document',
+            'name' => $this->name,
+            'url' => $this->url,
+            'mime' => $this->mime,
+        ];
+    }
+}
+
 // Now the actual test class
 namespace Sentry\Laravel\Tests\Features;
 
@@ -318,6 +478,12 @@ use Sentry\Laravel\Tests\Features\AiStubs\TestProvider;
 use Sentry\Laravel\Tests\Features\AiStubs\TestToolCall;
 use Sentry\Laravel\Tests\Features\AiStubs\TestToolResult;
 use Sentry\Laravel\Tests\Features\AiStubs\TestUsage;
+use Sentry\Laravel\Tests\Features\AiStubs\TestLocalImage;
+use Sentry\Laravel\Tests\Features\AiStubs\TestBase64Image;
+use Sentry\Laravel\Tests\Features\AiStubs\TestRemoteImage;
+use Sentry\Laravel\Tests\Features\AiStubs\TestProviderImage;
+use Sentry\Laravel\Tests\Features\AiStubs\TestLocalDocument;
+use Sentry\Laravel\Tests\Features\AiStubs\TestRemoteDocument;
 use Sentry\Laravel\Tests\Features\AiStubs\WeatherLookup;
 use Sentry\Laravel\Tests\TestCase;
 use Sentry\Tracing\Span;
@@ -1852,6 +2018,1176 @@ class AiIntegrationTest extends TestCase
 
         // Only the transaction span, no agent or chat spans
         $this->assertCount(1, $spans);
+    }
+
+    // ---- Truncation and redaction tests ----
+
+    public function testMessageTruncationKeepsOnlyLastMessageWhenOverBudget(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        $agent = new TestAgent();
+        $provider = new TestProvider();
+
+        // Create a prompt with very long text that will exceed 20KB when combined as messages
+        // Uses spaces to avoid matching the base64 detection pattern
+        $longText = str_repeat('Long input text. ', 1000);
+
+        $prompt = (object)[
+            'agent' => $agent,
+            'provider' => $provider,
+            'model' => 'gpt-4o',
+            'prompt' => $longText,
+        ];
+
+        // Create response with multiple steps, each with substantial text
+        $step1 = (object)[
+            'text' => str_repeat('Step one output. ', 1000),
+            'toolCalls' => [new TestToolCall('WeatherLookup', ['city' => 'Paris'])],
+            'toolResults' => [new TestToolResult('WeatherLookup', 'Sunny')],
+            'finishReason' => (object)['value' => 'tool_calls'],
+            'usage' => new TestUsage(60, 20),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+        ];
+
+        $step2 = (object)[
+            'text' => str_repeat('Step two output. ', 1000),
+            'toolCalls' => [],
+            'toolResults' => [],
+            'finishReason' => (object)['value' => 'stop'],
+            'usage' => new TestUsage(80, 30),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+        ];
+
+        $response = (object)[
+            'text' => str_repeat('Step two output. ', 1000),
+            'toolCalls' => [],
+            'toolResults' => [],
+            'steps' => [$step1, $step2],
+            'usage' => new TestUsage(140, 50),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+            'conversationId' => 'conv-trunc-1',
+        ];
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-trunc1', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-trunc1', $prompt, $response));
+
+        $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
+        $this->assertCount(2, $chatSpans);
+
+        // First chat span output: should have only 1 message (the last one) since
+        // the step output (15K text + tool calls + tool results) exceeds 20KB
+        $chat0Data = $chatSpans[0]->getData();
+        if (isset($chat0Data['gen_ai.output.messages'])) {
+            $outputMessages = json_decode($chat0Data['gen_ai.output.messages'], true);
+            // When messages are truncated, only the last message is kept
+            // The content should be capped at 10K chars
+            foreach ($outputMessages as $msg) {
+                if (isset($msg['parts'])) {
+                    foreach ($msg['parts'] as $part) {
+                        if (isset($part['content'])) {
+                            $this->assertLessThanOrEqual(10_003, mb_strlen($part['content']),
+                                'Content should be capped at 10K chars (+ "..." suffix)');
+                        }
+                    }
+                }
+            }
+        }
+
+        // Verify the total serialized size is within budget
+        $chat1Data = $chatSpans[1]->getData();
+        if (isset($chat1Data['gen_ai.output.messages'])) {
+            $this->assertLessThanOrEqual(20_014, strlen($chat1Data['gen_ai.output.messages']),
+                'Serialized output messages should be within 20KB budget (+ truncation suffix)');
+        }
+    }
+
+    public function testSingleMessageContentCappedAt10KChars(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        $agent = new TestAgent();
+        $provider = new TestProvider();
+
+        // Create a prompt with text that's over 10K but under 20K
+        // Uses spaces to avoid matching the base64 detection pattern
+        $longText = str_repeat('Hello world! This is a test. ', 500); // ~14.5K chars
+
+        $prompt = (object)[
+            'agent' => $agent,
+            'provider' => $provider,
+            'model' => 'gpt-4o',
+            'prompt' => $longText,
+        ];
+
+        $step = (object)[
+            'text' => 'Short response.',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'finishReason' => (object)['value' => 'stop'],
+            'usage' => new TestUsage(100, 10),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+        ];
+
+        $response = (object)[
+            'text' => 'Short response.',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'steps' => [$step],
+            'usage' => new TestUsage(100, 10),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+            'conversationId' => 'conv-trunc-2',
+        ];
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-trunc2', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-trunc2', $prompt, $response));
+
+        $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
+        $this->assertCount(1, $chatSpans);
+
+        $chatData = $chatSpans[0]->getData();
+        $this->assertArrayHasKey('gen_ai.input.messages', $chatData);
+
+        $inputMessages = json_decode($chatData['gen_ai.input.messages'], true);
+        $this->assertCount(1, $inputMessages);
+
+        // The 12K content should be capped at 10K chars + "..." suffix
+        $content = $inputMessages[0]['parts'][0]['content'];
+        $this->assertEquals(10_003, mb_strlen($content), 'Content should be 10K chars + "..." suffix');
+        $this->assertStringEndsWith('...', $content);
+    }
+
+    public function testBinaryContentInDataUriIsRedacted(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        $agent = new TestAgent();
+        $provider = new TestProvider();
+
+        // Create a prompt with a data URI in the text (simulating a user pasting image data)
+        $dataUri = 'data:image/png;base64,' . str_repeat('iVBORw0KGgoAAAANSUhEUgAA', 100);
+
+        $prompt = (object)[
+            'agent' => $agent,
+            'provider' => $provider,
+            'model' => 'gpt-4o',
+            'prompt' => $dataUri,
+        ];
+
+        $step = (object)[
+            'text' => 'I see an image.',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'finishReason' => (object)['value' => 'stop'],
+            'usage' => new TestUsage(100, 10),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+        ];
+
+        $response = (object)[
+            'text' => 'I see an image.',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'steps' => [$step],
+            'usage' => new TestUsage(100, 10),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+            'conversationId' => 'conv-binary-1',
+        ];
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-binary1', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-binary1', $prompt, $response));
+
+        // Check agent span input messages
+        $agentSpan = $this->findSpanByOp($transaction, 'gen_ai.invoke_agent');
+        $agentData = $agentSpan->getData();
+        $this->assertArrayHasKey('gen_ai.input.messages', $agentData);
+
+        $inputMessages = json_decode($agentData['gen_ai.input.messages'], true);
+        $content = $inputMessages[0]['parts'][0]['content'];
+
+        // The data URI should be replaced with blob substitute
+        $this->assertEquals('[Blob substitute]', $content);
+    }
+
+    public function testBase64StringContentIsRedacted(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        $agent = new TestAgent();
+        $provider = new TestProvider();
+
+        // Create a prompt with pure base64 content (>100 chars)
+        $base64Content = str_repeat('QUFBQUFBQUFBQUFBQUFBQUFBQUFB', 10); // Valid base64 pattern
+
+        $prompt = (object)[
+            'agent' => $agent,
+            'provider' => $provider,
+            'model' => 'gpt-4o',
+            'prompt' => $base64Content,
+        ];
+
+        $step = (object)[
+            'text' => 'I processed the binary data.',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'finishReason' => (object)['value' => 'stop'],
+            'usage' => new TestUsage(100, 10),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+        ];
+
+        $response = (object)[
+            'text' => 'I processed the binary data.',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'steps' => [$step],
+            'usage' => new TestUsage(100, 10),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+            'conversationId' => 'conv-binary-2',
+        ];
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-binary2', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-binary2', $prompt, $response));
+
+        $agentSpan = $this->findSpanByOp($transaction, 'gen_ai.invoke_agent');
+        $agentData = $agentSpan->getData();
+        $this->assertArrayHasKey('gen_ai.input.messages', $agentData);
+
+        $inputMessages = json_decode($agentData['gen_ai.input.messages'], true);
+        $content = $inputMessages[0]['parts'][0]['content'];
+
+        // The base64 string should be replaced with blob substitute
+        $this->assertEquals('[Blob substitute]', $content);
+    }
+
+    public function testNormalTextIsNotRedacted(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createPromptAndResponse();
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-noredact', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-noredact', $prompt, $response));
+
+        $agentSpan = $this->findSpanByOp($transaction, 'gen_ai.invoke_agent');
+        $agentData = $agentSpan->getData();
+        $this->assertArrayHasKey('gen_ai.input.messages', $agentData);
+
+        $inputMessages = json_decode($agentData['gen_ai.input.messages'], true);
+        $content = $inputMessages[0]['parts'][0]['content'];
+
+        // Normal text should be preserved as-is
+        $this->assertEquals('Analyze this transcript', $content);
+    }
+
+    public function testShortBase64StringIsNotRedacted(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        $agent = new TestAgent();
+        $provider = new TestProvider();
+
+        // Short base64-like string (under 100 chars) should not be redacted
+        $shortBase64 = 'SGVsbG8gV29ybGQ='; // "Hello World" in base64
+
+        $prompt = (object)[
+            'agent' => $agent,
+            'provider' => $provider,
+            'model' => 'gpt-4o',
+            'prompt' => $shortBase64,
+        ];
+
+        $step = (object)[
+            'text' => 'Got it.',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'finishReason' => (object)['value' => 'stop'],
+            'usage' => new TestUsage(10, 5),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+        ];
+
+        $response = (object)[
+            'text' => 'Got it.',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'steps' => [$step],
+            'usage' => new TestUsage(10, 5),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+            'conversationId' => 'conv-binary-3',
+        ];
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-binary3', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-binary3', $prompt, $response));
+
+        $agentSpan = $this->findSpanByOp($transaction, 'gen_ai.invoke_agent');
+        $agentData = $agentSpan->getData();
+
+        $inputMessages = json_decode($agentData['gen_ai.input.messages'], true);
+        $content = $inputMessages[0]['parts'][0]['content'];
+
+        // Short base64-like string should NOT be redacted
+        $this->assertEquals($shortBase64, $content);
+    }
+
+    public function testOutputMessagesAreAlsoTruncated(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        $agent = new TestAgent();
+        $provider = new TestProvider();
+
+        // Create a response with very long output text
+        // Uses spaces to avoid matching the base64 detection pattern
+        $longResponse = str_repeat('This is a very long output. ', 1000);
+
+        $prompt = (object)[
+            'agent' => $agent,
+            'provider' => $provider,
+            'model' => 'gpt-4o',
+            'prompt' => 'Summarize everything.',
+        ];
+
+        $step = (object)[
+            'text' => $longResponse,
+            'toolCalls' => [],
+            'toolResults' => [],
+            'finishReason' => (object)['value' => 'stop'],
+            'usage' => new TestUsage(50, 500),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+        ];
+
+        $response = (object)[
+            'text' => $longResponse,
+            'toolCalls' => [],
+            'toolResults' => [],
+            'steps' => [$step],
+            'usage' => new TestUsage(50, 500),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+            'conversationId' => 'conv-trunc-out',
+        ];
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-trunc-out', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-trunc-out', $prompt, $response));
+
+        $agentSpan = $this->findSpanByOp($transaction, 'gen_ai.invoke_agent');
+        $agentData = $agentSpan->getData();
+        $this->assertArrayHasKey('gen_ai.output.messages', $agentData);
+
+        // The serialized output should be within budget
+        $serialized = $agentData['gen_ai.output.messages'];
+        $this->assertLessThanOrEqual(20_014, strlen($serialized),
+            'Serialized output messages should be within 20KB budget (+ truncation suffix)');
+
+        // The output text content should be capped at 10K chars
+        $outputMessages = json_decode($serialized, true);
+        $this->assertNotNull($outputMessages, 'Output messages should be valid JSON');
+        $content = $outputMessages[0]['parts'][0]['content'] ?? '';
+        $this->assertLessThanOrEqual(10_003, mb_strlen($content),
+            'Output content should be capped at 10K chars (+ "..." suffix)');
+    }
+
+    public function testToolResultIsStillTruncated(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createPromptAndResponse();
+        $agent = new TestAgent();
+        $tool = new WeatherLookup();
+
+        // Very large tool result (uses spaces to avoid base64 detection)
+        $largeResult = str_repeat('Result data item. ', 1500);
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-tool-trunc', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new InvokingTool('inv-tool-trunc', 'tool-tr1', $agent, $tool, ['q' => 'test']));
+        $this->dispatchLaravelEvent(new ToolInvoked('inv-tool-trunc', 'tool-tr1', $agent, $tool, ['q' => 'test'], $largeResult));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-tool-trunc', $prompt, $response));
+
+        $toolSpan = $this->findSpanByOp($transaction, 'gen_ai.execute_tool');
+        $this->assertNotNull($toolSpan);
+
+        $toolData = $toolSpan->getData();
+        $this->assertArrayHasKey('gen_ai.tool.call.result', $toolData);
+
+        // Tool result should be truncated
+        $resultStr = $toolData['gen_ai.tool.call.result'];
+        $this->assertLessThanOrEqual(20_014, strlen($resultStr),
+            'Tool result should be truncated to within budget');
+        $this->assertStringEndsWith('...(truncated)', $resultStr);
+    }
+
+    public function testEmbeddingInputsTruncatedByBudget(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'sentry.tracing.http_client_requests' => false,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        $provider = new TestProvider();
+
+        // Create many large embedding inputs that exceed 20KB total
+        $inputs = [];
+        for ($i = 0; $i < 50; $i++) {
+            $inputs[] = str_repeat("Input {$i}: ", 100);
+        }
+
+        $prompt = (object)[
+            'inputs' => $inputs,
+            'dimensions' => 1536,
+            'provider' => $provider,
+            'model' => 'text-embedding-3-small',
+        ];
+
+        $response = (object)[
+            'embeddings' => array_fill(0, 50, [0.1, 0.2]),
+            'tokens' => 500,
+            'meta' => (object)['provider' => 'openai', 'model' => 'text-embedding-3-small-2024'],
+        ];
+
+        $this->dispatchLaravelEvent(new GeneratingEmbeddings('emb-trunc1', $provider, 'text-embedding-3-small', $prompt));
+        $this->dispatchLaravelEvent(new EmbeddingsGenerated('emb-trunc1', $provider, 'text-embedding-3-small', $prompt, $response));
+
+        $embSpan = $this->findSpanByOp($transaction, 'gen_ai.embeddings');
+        $this->assertNotNull($embSpan);
+
+        $data = $embSpan->getData();
+        $this->assertArrayHasKey('gen_ai.embeddings.input', $data);
+
+        $serialized = $data['gen_ai.embeddings.input'];
+        $this->assertLessThanOrEqual(20_014, strlen($serialized),
+            'Serialized embedding inputs should be within 20KB budget');
+
+        // Should have kept some but not all inputs (working backward from end)
+        $keptInputs = json_decode($serialized, true);
+        $this->assertNotNull($keptInputs);
+        $this->assertGreaterThan(0, count($keptInputs));
+        $this->assertLessThan(50, count($keptInputs), 'Some inputs should have been dropped');
+
+        // The kept inputs should be the last ones
+        $lastKeptInput = end($keptInputs);
+        $this->assertStringContainsString('Input 49:', $lastKeptInput);
+    }
+
+    public function testEmbeddingInputsNotTruncatedWhenWithinBudget(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'sentry.tracing.http_client_requests' => false,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        [$provider, $prompt, $response] = $this->createEmbeddingsPromptAndResponse();
+
+        $this->dispatchLaravelEvent(new GeneratingEmbeddings('emb-notrunc', $provider, 'text-embedding-3-small', $prompt));
+        $this->dispatchLaravelEvent(new EmbeddingsGenerated('emb-notrunc', $provider, 'text-embedding-3-small', $prompt, $response));
+
+        $embSpan = $this->findSpanByOp($transaction, 'gen_ai.embeddings');
+        $data = $embSpan->getData();
+
+        // Small inputs should be preserved completely
+        $inputs = json_decode($data['gen_ai.embeddings.input'], true);
+        $this->assertCount(2, $inputs);
+        $this->assertEquals('Napa Valley has great wine.', $inputs[0]);
+        $this->assertEquals('Laravel is a PHP framework.', $inputs[1]);
+    }
+
+    public function testBinaryContentInOutputMessagesIsRedacted(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        $agent = new TestAgent();
+        $provider = new TestProvider();
+
+        // Response that contains a data URI in the text (unlikely but should be caught)
+        $dataUri = 'data:image/jpeg;base64,' . str_repeat('AAAA', 100);
+
+        $prompt = (object)[
+            'agent' => $agent,
+            'provider' => $provider,
+            'model' => 'gpt-4o',
+            'prompt' => 'Generate an image.',
+        ];
+
+        $step = (object)[
+            'text' => $dataUri,
+            'toolCalls' => [],
+            'toolResults' => [],
+            'finishReason' => (object)['value' => 'stop'],
+            'usage' => new TestUsage(50, 100),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+        ];
+
+        $response = (object)[
+            'text' => $dataUri,
+            'toolCalls' => [],
+            'toolResults' => [],
+            'steps' => [$step],
+            'usage' => new TestUsage(50, 100),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+            'conversationId' => 'conv-binary-out',
+        ];
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-binary-out', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-binary-out', $prompt, $response));
+
+        // Check agent span output messages
+        $agentSpan = $this->findSpanByOp($transaction, 'gen_ai.invoke_agent');
+        $agentData = $agentSpan->getData();
+        $this->assertArrayHasKey('gen_ai.output.messages', $agentData);
+
+        $outputMessages = json_decode($agentData['gen_ai.output.messages'], true);
+        $content = $outputMessages[0]['parts'][0]['content'];
+
+        // The data URI should be replaced with blob substitute
+        $this->assertEquals('[Blob substitute]', $content);
+
+        // Also check the chat span output
+        $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
+        $this->assertCount(1, $chatSpans);
+        $chatData = $chatSpans[0]->getData();
+        $this->assertArrayHasKey('gen_ai.output.messages', $chatData);
+
+        $chatOutput = json_decode($chatData['gen_ai.output.messages'], true);
+        $chatContent = $chatOutput[0]['parts'][0]['content'];
+        $this->assertEquals('[Blob substitute]', $chatContent);
+    }
+
+    public function testSmallMessagesAreNotTruncated(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createPromptAndResponse();
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-small', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-small', $prompt, $response));
+
+        $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
+        $this->assertCount(1, $chatSpans);
+
+        $chatData = $chatSpans[0]->getData();
+
+        // Input messages should be preserved completely
+        $inputMessages = json_decode($chatData['gen_ai.input.messages'], true);
+        $this->assertCount(1, $inputMessages);
+        $this->assertEquals('Analyze this transcript', $inputMessages[0]['parts'][0]['content']);
+
+        // Output messages should be preserved completely
+        $outputMessages = json_decode($chatData['gen_ai.output.messages'], true);
+        $this->assertCount(1, $outputMessages);
+        $this->assertEquals('The analysis shows positive trends.', $outputMessages[0]['parts'][0]['content']);
+    }
+
+    // ---- Attachment / multimodal tests ----
+
+    public function testLocalImageAttachmentAppearsAsRedactedBlobInInputMessages(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        $agent = new TestAgent();
+        $provider = new TestProvider();
+        $image = new TestLocalImage('/tmp/photo.png', 'image/png');
+
+        $prompt = (object)[
+            'agent' => $agent,
+            'provider' => $provider,
+            'model' => 'gpt-4o',
+            'prompt' => 'Describe this image in detail.',
+            'attachments' => collect([$image]),
+        ];
+
+        $step = (object)[
+            'text' => 'This is a photo of a sunset.',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'finishReason' => (object)['value' => 'stop'],
+            'usage' => new TestUsage(200, 50),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+        ];
+
+        $response = (object)[
+            'text' => 'This is a photo of a sunset.',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'steps' => [$step],
+            'usage' => new TestUsage(200, 50),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+            'conversationId' => 'conv-img-1',
+        ];
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-img1', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-img1', $prompt, $response));
+
+        // Check agent span input messages
+        $agentSpan = $this->findSpanByOp($transaction, 'gen_ai.invoke_agent');
+        $agentData = $agentSpan->getData();
+        $this->assertArrayHasKey('gen_ai.input.messages', $agentData);
+
+        $inputMessages = json_decode($agentData['gen_ai.input.messages'], true);
+        $this->assertCount(1, $inputMessages);
+        $this->assertEquals('user', $inputMessages[0]['role']);
+
+        // Should have 2 parts: text + blob (redacted image)
+        $parts = $inputMessages[0]['parts'];
+        $this->assertCount(2, $parts);
+
+        // First part: text prompt
+        $this->assertEquals('text', $parts[0]['type']);
+        $this->assertEquals('Describe this image in detail.', $parts[0]['content']);
+
+        // Second part: redacted image
+        $this->assertEquals('blob', $parts[1]['type']);
+        $this->assertEquals('image', $parts[1]['modality']);
+        $this->assertEquals('[Blob substitute]', $parts[1]['content']);
+        $this->assertEquals('image/png', $parts[1]['mime_type']);
+        $this->assertEquals('photo.png', $parts[1]['name']);
+    }
+
+    public function testBase64ImageAttachmentAppearsAsRedactedBlob(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        $agent = new TestAgent();
+        $provider = new TestProvider();
+        $image = (new TestBase64Image('iVBORw0KGgoAAAANSUhEUg==', 'image/png'))->as('screenshot.png');
+
+        $prompt = (object)[
+            'agent' => $agent,
+            'provider' => $provider,
+            'model' => 'gpt-4o',
+            'prompt' => 'What is in this image?',
+            'attachments' => collect([$image]),
+        ];
+
+        $step = (object)[
+            'text' => 'A screenshot.',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'finishReason' => (object)['value' => 'stop'],
+            'usage' => new TestUsage(100, 20),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+        ];
+
+        $response = (object)[
+            'text' => 'A screenshot.',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'steps' => [$step],
+            'usage' => new TestUsage(100, 20),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+            'conversationId' => 'conv-img-2',
+        ];
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-img2', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-img2', $prompt, $response));
+
+        $agentSpan = $this->findSpanByOp($transaction, 'gen_ai.invoke_agent');
+        $inputMessages = json_decode($agentSpan->getData()['gen_ai.input.messages'], true);
+        $parts = $inputMessages[0]['parts'];
+
+        $this->assertCount(2, $parts);
+        $this->assertEquals('blob', $parts[1]['type']);
+        $this->assertEquals('image', $parts[1]['modality']);
+        $this->assertEquals('[Blob substitute]', $parts[1]['content']);
+        $this->assertEquals('image/png', $parts[1]['mime_type']);
+        $this->assertEquals('screenshot.png', $parts[1]['name']);
+    }
+
+    public function testRemoteImageAttachmentAppearsAsUri(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        $agent = new TestAgent();
+        $provider = new TestProvider();
+        $image = new TestRemoteImage('https://example.com/photo.jpg', 'image/jpeg');
+
+        $prompt = (object)[
+            'agent' => $agent,
+            'provider' => $provider,
+            'model' => 'gpt-4o',
+            'prompt' => 'Describe this image.',
+            'attachments' => collect([$image]),
+        ];
+
+        $step = (object)[
+            'text' => 'A photo.',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'finishReason' => (object)['value' => 'stop'],
+            'usage' => new TestUsage(100, 20),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+        ];
+
+        $response = (object)[
+            'text' => 'A photo.',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'steps' => [$step],
+            'usage' => new TestUsage(100, 20),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+            'conversationId' => 'conv-img-3',
+        ];
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-img3', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-img3', $prompt, $response));
+
+        $agentSpan = $this->findSpanByOp($transaction, 'gen_ai.invoke_agent');
+        $inputMessages = json_decode($agentSpan->getData()['gen_ai.input.messages'], true);
+        $parts = $inputMessages[0]['parts'];
+
+        $this->assertCount(2, $parts);
+        // Remote image should be a URI, not redacted
+        $this->assertEquals('uri', $parts[1]['type']);
+        $this->assertEquals('image', $parts[1]['modality']);
+        $this->assertEquals('https://example.com/photo.jpg', $parts[1]['content']);
+        $this->assertEquals('image/jpeg', $parts[1]['mime_type']);
+    }
+
+    public function testProviderImageAttachmentAppearsAsFileId(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        $agent = new TestAgent();
+        $provider = new TestProvider();
+        $image = new TestProviderImage('file-abc123');
+
+        $prompt = (object)[
+            'agent' => $agent,
+            'provider' => $provider,
+            'model' => 'gpt-4o',
+            'prompt' => 'Describe this image.',
+            'attachments' => collect([$image]),
+        ];
+
+        $step = (object)[
+            'text' => 'A photo.',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'finishReason' => (object)['value' => 'stop'],
+            'usage' => new TestUsage(100, 20),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+        ];
+
+        $response = (object)[
+            'text' => 'A photo.',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'steps' => [$step],
+            'usage' => new TestUsage(100, 20),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+            'conversationId' => 'conv-img-4',
+        ];
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-img4', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-img4', $prompt, $response));
+
+        $agentSpan = $this->findSpanByOp($transaction, 'gen_ai.invoke_agent');
+        $inputMessages = json_decode($agentSpan->getData()['gen_ai.input.messages'], true);
+        $parts = $inputMessages[0]['parts'];
+
+        $this->assertCount(2, $parts);
+        $this->assertEquals('file_id', $parts[1]['type']);
+        $this->assertEquals('image', $parts[1]['modality']);
+        $this->assertEquals('file-abc123', $parts[1]['content']);
+    }
+
+    public function testDocumentAttachmentAppearsWithDocumentModality(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        $agent = new TestAgent();
+        $provider = new TestProvider();
+        $doc = new TestLocalDocument('/tmp/report.pdf', 'application/pdf');
+
+        $prompt = (object)[
+            'agent' => $agent,
+            'provider' => $provider,
+            'model' => 'gpt-4o',
+            'prompt' => 'Summarize this document.',
+            'attachments' => collect([$doc]),
+        ];
+
+        $step = (object)[
+            'text' => 'The document discusses...',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'finishReason' => (object)['value' => 'stop'],
+            'usage' => new TestUsage(500, 100),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+        ];
+
+        $response = (object)[
+            'text' => 'The document discusses...',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'steps' => [$step],
+            'usage' => new TestUsage(500, 100),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+            'conversationId' => 'conv-doc-1',
+        ];
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-doc1', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-doc1', $prompt, $response));
+
+        $agentSpan = $this->findSpanByOp($transaction, 'gen_ai.invoke_agent');
+        $inputMessages = json_decode($agentSpan->getData()['gen_ai.input.messages'], true);
+        $parts = $inputMessages[0]['parts'];
+
+        $this->assertCount(2, $parts);
+        $this->assertEquals('blob', $parts[1]['type']);
+        $this->assertEquals('document', $parts[1]['modality']);
+        $this->assertEquals('[Blob substitute]', $parts[1]['content']);
+        $this->assertEquals('application/pdf', $parts[1]['mime_type']);
+        $this->assertEquals('report.pdf', $parts[1]['name']);
+    }
+
+    public function testMultipleAttachmentsAppearAsMultipleParts(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        $agent = new TestAgent();
+        $provider = new TestProvider();
+
+        $image1 = new TestLocalImage('/tmp/photo1.jpg', 'image/jpeg');
+        $image2 = new TestRemoteImage('https://example.com/photo2.png', 'image/png');
+
+        $prompt = (object)[
+            'agent' => $agent,
+            'provider' => $provider,
+            'model' => 'gpt-4o',
+            'prompt' => 'Compare these two images.',
+            'attachments' => collect([$image1, $image2]),
+        ];
+
+        $step = (object)[
+            'text' => 'The images differ in...',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'finishReason' => (object)['value' => 'stop'],
+            'usage' => new TestUsage(300, 60),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+        ];
+
+        $response = (object)[
+            'text' => 'The images differ in...',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'steps' => [$step],
+            'usage' => new TestUsage(300, 60),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+            'conversationId' => 'conv-multi-img',
+        ];
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-multi-img', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-multi-img', $prompt, $response));
+
+        $agentSpan = $this->findSpanByOp($transaction, 'gen_ai.invoke_agent');
+        $inputMessages = json_decode($agentSpan->getData()['gen_ai.input.messages'], true);
+        $parts = $inputMessages[0]['parts'];
+
+        // text + 2 images = 3 parts
+        $this->assertCount(3, $parts);
+        $this->assertEquals('text', $parts[0]['type']);
+        $this->assertEquals('blob', $parts[1]['type']);
+        $this->assertEquals('image/jpeg', $parts[1]['mime_type']);
+        $this->assertEquals('uri', $parts[2]['type']);
+        $this->assertEquals('https://example.com/photo2.png', $parts[2]['content']);
+    }
+
+    public function testAttachmentsAppearInChatSpanInputMessages(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        $agent = new TestAgent();
+        $provider = new TestProvider();
+        $image = new TestLocalImage('/tmp/photo.png', 'image/png');
+
+        $prompt = (object)[
+            'agent' => $agent,
+            'provider' => $provider,
+            'model' => 'gpt-4o',
+            'prompt' => 'Describe this image.',
+            'attachments' => collect([$image]),
+        ];
+
+        $step = (object)[
+            'text' => 'A sunset over the ocean.',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'finishReason' => (object)['value' => 'stop'],
+            'usage' => new TestUsage(200, 40),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+        ];
+
+        $response = (object)[
+            'text' => 'A sunset over the ocean.',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'steps' => [$step],
+            'usage' => new TestUsage(200, 40),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+            'conversationId' => 'conv-chat-img',
+        ];
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-chat-img', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-chat-img', $prompt, $response));
+
+        // Check the chat span (not just the agent span) also has the attachment
+        $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
+        $this->assertCount(1, $chatSpans);
+
+        $chatData = $chatSpans[0]->getData();
+        $this->assertArrayHasKey('gen_ai.input.messages', $chatData);
+
+        $inputMessages = json_decode($chatData['gen_ai.input.messages'], true);
+        $parts = $inputMessages[0]['parts'];
+
+        // text + redacted image = 2 parts
+        $this->assertCount(2, $parts);
+        $this->assertEquals('text', $parts[0]['type']);
+        $this->assertEquals('Describe this image.', $parts[0]['content']);
+        $this->assertEquals('blob', $parts[1]['type']);
+        $this->assertEquals('image', $parts[1]['modality']);
+        $this->assertEquals('[Blob substitute]', $parts[1]['content']);
+    }
+
+    public function testAttachmentsNotIncludedWhenPiiDisabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => false,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        $agent = new TestAgent();
+        $provider = new TestProvider();
+        $image = new TestLocalImage('/tmp/photo.png', 'image/png');
+
+        $prompt = (object)[
+            'agent' => $agent,
+            'provider' => $provider,
+            'model' => 'gpt-4o',
+            'prompt' => 'Describe this image.',
+            'attachments' => collect([$image]),
+        ];
+
+        $step = (object)[
+            'text' => 'A sunset.',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'finishReason' => (object)['value' => 'stop'],
+            'usage' => new TestUsage(200, 40),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+        ];
+
+        $response = (object)[
+            'text' => 'A sunset.',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'steps' => [$step],
+            'usage' => new TestUsage(200, 40),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+            'conversationId' => 'conv-pii-img',
+        ];
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-pii-img', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-pii-img', $prompt, $response));
+
+        $agentSpan = $this->findSpanByOp($transaction, 'gen_ai.invoke_agent');
+        $agentData = $agentSpan->getData();
+
+        // No input messages at all when PII is disabled
+        $this->assertArrayNotHasKey('gen_ai.input.messages', $agentData);
+    }
+
+    public function testPromptWithoutAttachmentsPropertyStillWorks(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        // Use the standard prompt without attachments property (backward compat)
+        [$prompt, $response] = $this->createPromptAndResponse();
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-no-attach', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-no-attach', $prompt, $response));
+
+        $agentSpan = $this->findSpanByOp($transaction, 'gen_ai.invoke_agent');
+        $agentData = $agentSpan->getData();
+
+        $inputMessages = json_decode($agentData['gen_ai.input.messages'], true);
+        $this->assertCount(1, $inputMessages);
+
+        // Only the text part, no attachment parts
+        $parts = $inputMessages[0]['parts'];
+        $this->assertCount(1, $parts);
+        $this->assertEquals('text', $parts[0]['type']);
+    }
+
+    public function testRemoteDocumentAttachmentAppearsAsUri(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        $agent = new TestAgent();
+        $provider = new TestProvider();
+        $doc = new TestRemoteDocument('https://example.com/report.pdf', 'application/pdf');
+
+        $prompt = (object)[
+            'agent' => $agent,
+            'provider' => $provider,
+            'model' => 'gpt-4o',
+            'prompt' => 'Summarize this document.',
+            'attachments' => collect([$doc]),
+        ];
+
+        $step = (object)[
+            'text' => 'Summary...',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'finishReason' => (object)['value' => 'stop'],
+            'usage' => new TestUsage(500, 100),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+        ];
+
+        $response = (object)[
+            'text' => 'Summary...',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'steps' => [$step],
+            'usage' => new TestUsage(500, 100),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+            'conversationId' => 'conv-doc-remote',
+        ];
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-doc-remote', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-doc-remote', $prompt, $response));
+
+        $agentSpan = $this->findSpanByOp($transaction, 'gen_ai.invoke_agent');
+        $inputMessages = json_decode($agentSpan->getData()['gen_ai.input.messages'], true);
+        $parts = $inputMessages[0]['parts'];
+
+        $this->assertCount(2, $parts);
+        $this->assertEquals('uri', $parts[1]['type']);
+        $this->assertEquals('document', $parts[1]['modality']);
+        $this->assertEquals('https://example.com/report.pdf', $parts[1]['content']);
+        $this->assertEquals('application/pdf', $parts[1]['mime_type']);
     }
 
     // ---- Helper methods ----
