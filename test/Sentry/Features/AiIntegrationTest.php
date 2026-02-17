@@ -97,8 +97,30 @@ if (!class_exists(\Laravel\Ai\Events\AgentStreamed::class)) {
     }
 }
 
+// Stub PHP 8 attribute classes that mirror the Laravel AI SDK attributes
+namespace Laravel\Ai\Attributes;
+
+if (!class_exists(\Laravel\Ai\Attributes\Temperature::class)) {
+    #[\Attribute(\Attribute::TARGET_CLASS)]
+    class Temperature
+    {
+        public function __construct(public float $value) {}
+    }
+}
+
+if (!class_exists(\Laravel\Ai\Attributes\MaxTokens::class)) {
+    #[\Attribute(\Attribute::TARGET_CLASS)]
+    class MaxTokens
+    {
+        public function __construct(public int $value) {}
+    }
+}
+
 // Stub agent, tool, and data classes with predictable class names
 namespace Sentry\Laravel\Tests\Features\AiStubs;
+
+use Laravel\Ai\Attributes\MaxTokens;
+use Laravel\Ai\Attributes\Temperature;
 
 class TestAgent
 {
@@ -113,6 +135,22 @@ class TestAgent
         return [
             new WeatherLookup(),
         ];
+    }
+}
+
+#[Temperature(0.7)]
+#[MaxTokens(4096)]
+class TestAgentWithConfig
+{
+    public function instructions(): string
+    {
+        return 'You are a configured assistant.';
+    }
+
+    /** @return object[] */
+    public function tools(): array
+    {
+        return [];
     }
 }
 
@@ -226,6 +264,7 @@ use Laravel\Ai\Events\InvokingTool;
 use Laravel\Ai\Events\ToolInvoked;
 use Sentry\Laravel\Tests\Features\AiStubs\DatabaseQuery;
 use Sentry\Laravel\Tests\Features\AiStubs\TestAgent;
+use Sentry\Laravel\Tests\Features\AiStubs\TestAgentWithConfig;
 use Sentry\Laravel\Tests\Features\AiStubs\TestAgentNoTools;
 use Sentry\Laravel\Tests\Features\AiStubs\TestProvider;
 use Sentry\Laravel\Tests\Features\AiStubs\TestToolCall;
@@ -312,6 +351,40 @@ class AiIntegrationTest extends TestCase
         $this->assertEquals(20, $data['gen_ai.usage.input_tokens.cached']);
         $this->assertEquals(10, $data['gen_ai.usage.input_tokens.cache_write']);
         $this->assertEquals(15, $data['gen_ai.usage.output_tokens.reasoning']);
+    }
+
+    public function testAgentSpanCapturesRequestParameters(): void
+    {
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createPromptAndResponseWithConfiguredAgent();
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-params', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-params', $prompt, $response));
+
+        $spans = $transaction->getSpanRecorder()->getSpans();
+        $data = $spans[1]->getData();
+
+        $this->assertEquals(0.7, $data['gen_ai.request.temperature']);
+        $this->assertEquals(4096, $data['gen_ai.request.max_tokens']);
+    }
+
+    public function testAgentSpanDoesNotSetRequestParametersWhenNotConfigured(): void
+    {
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createPromptAndResponse();
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-noparams', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-noparams', $prompt, $response));
+
+        $spans = $transaction->getSpanRecorder()->getSpans();
+        $data = $spans[1]->getData();
+
+        $this->assertArrayNotHasKey('gen_ai.request.temperature', $data);
+        $this->assertArrayNotHasKey('gen_ai.request.max_tokens', $data);
     }
 
     public function testAgentSpanCapturesToolDefinitions(): void
@@ -1685,6 +1758,43 @@ class AiIntegrationTest extends TestCase
             'toolResults' => [],
             'steps' => [$step],
             'usage' => new TestUsage($promptTokens, $completionTokens, $cacheReadInputTokens, $cacheWriteInputTokens, $reasoningTokens),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+            'conversationId' => 'conv-abc-123',
+        ];
+
+        return [$prompt, $response];
+    }
+
+    /**
+     * Create a prompt and response using an agent with #[Temperature] and #[MaxTokens] attributes.
+     */
+    private function createPromptAndResponseWithConfiguredAgent(): array
+    {
+        $agent = new TestAgentWithConfig();
+        $provider = new TestProvider();
+
+        $prompt = (object)[
+            'agent' => $agent,
+            'provider' => $provider,
+            'model' => 'gpt-4o',
+            'prompt' => 'Analyze this transcript',
+        ];
+
+        $step = (object)[
+            'text' => 'The analysis shows positive trends.',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'finishReason' => (object)['value' => 'stop'],
+            'usage' => new TestUsage(60, 130),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+        ];
+
+        $response = (object)[
+            'text' => 'The analysis shows positive trends.',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'steps' => [$step],
+            'usage' => new TestUsage(60, 130),
             'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
             'conversationId' => 'conv-abc-123',
         ];

@@ -110,6 +110,16 @@ class AiIntegration extends Feature
             $data['gen_ai.system'] = $providerName;
         }
 
+        $temperature = $this->resolveAgentAttribute($event->prompt->agent, 'Laravel\Ai\Attributes\Temperature');
+        if ($temperature !== null) {
+            $data['gen_ai.request.temperature'] = $temperature;
+        }
+
+        $maxTokens = $this->resolveAgentAttribute($event->prompt->agent, 'Laravel\Ai\Attributes\MaxTokens');
+        if ($maxTokens !== null) {
+            $data['gen_ai.request.max_tokens'] = $maxTokens;
+        }
+
         $toolDefinitions = $this->resolveToolDefinitions($event->prompt->agent);
         if ($toolDefinitions !== null) {
             $data['gen_ai.tool.definitions'] = $toolDefinitions;
@@ -661,6 +671,36 @@ class AiIntegration extends Feature
     }
 
     // ---- Resolution helpers ----
+
+    /**
+     * Read a PHP attribute value from the agent class.
+     *
+     * Laravel AI SDK uses PHP 8 attributes like #[Temperature(0.7)], #[MaxTokens(4096)],
+     * etc. to configure agents. Each attribute has a public $value property.
+     *
+     * @return int|float|string|null The attribute's value, or null if not present
+     */
+    private function resolveAgentAttribute(object $agent, string $attributeClass): mixed
+    {
+        if (!class_exists($attributeClass)) {
+            return null;
+        }
+
+        try {
+            $reflection = new \ReflectionClass($agent);
+            $attributes = $reflection->getAttributes($attributeClass);
+
+            if (empty($attributes)) {
+                return null;
+            }
+
+            $instance = $attributes[0]->newInstance();
+
+            return $instance->value ?? null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
 
     private function resolveToolDefinitions(object $agent): ?string
     {
