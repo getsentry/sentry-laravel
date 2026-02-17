@@ -45,18 +45,12 @@ class AiIntegration extends Feature
      */
     private const BASE64_PATTERN = '/^[A-Za-z0-9+\/]{100,}={0,2}$/';
 
-    /** @var array<string, string> Known provider class → gen_ai.system identifier */
-    private const PROVIDER_SYSTEM_MAP = [
-        'Laravel\Ai\Providers\OpenAi' => 'openai',
-        'Laravel\Ai\Providers\Anthropic' => 'anthropic',
-        'Laravel\Ai\Providers\Gemini' => 'gcp.gemini',
-        'Laravel\Ai\Providers\Groq' => 'groq',
-        'Laravel\Ai\Providers\Mistral' => 'mistral_ai',
-        'Laravel\Ai\Providers\DeepSeek' => 'deepseek',
-        'Laravel\Ai\Providers\Ollama' => 'ollama',
-        'Laravel\Ai\Providers\Cohere' => 'cohere',
-        'Laravel\Ai\Providers\XAi' => 'xai',
-    ];
+    /**
+     * Maximum number of tracked invocations per map before the oldest entries
+     * are evicted. Prevents unbounded memory growth in long-running processes
+     * (queue workers, Octane) when completion events are lost.
+     */
+    private const MAX_TRACKED_INVOCATIONS = 100;
 
     /**
      * Per-agent-invocation state keyed by invocation ID.
@@ -184,6 +178,8 @@ class AiIntegration extends Feature
                 ->setDescription("invoke_agent {$agentName}")
         );
 
+        $this->evictOldestIfNeeded($this->invocations);
+
         $this->invocations[$event->invocationId] = [
             'span' => $agentSpan,
             'parentSpan' => $parentSpan,
@@ -295,9 +291,10 @@ class AiIntegration extends Feature
         }
 
         if ($this->shouldSendDefaultPii() && !empty($event->arguments)) {
-            $data['gen_ai.tool.call.arguments'] = $this->truncateString(
-                json_encode($event->arguments)
-            );
+            $encoded = json_encode($event->arguments);
+            if ($encoded !== false) {
+                $data['gen_ai.tool.call.arguments'] = $this->truncateString($encoded);
+            }
         }
 
         $span = $parentSpan->startChild(
@@ -307,6 +304,8 @@ class AiIntegration extends Feature
                 ->setOrigin('auto.ai.laravel')
                 ->setDescription("execute_tool {$toolName}")
         );
+
+        $this->evictOldestIfNeeded($this->toolInvocations);
 
         $this->toolInvocations[$event->toolInvocationId] = [
             'span' => $span,
@@ -340,7 +339,9 @@ class AiIntegration extends Feature
 
         if ($this->shouldSendDefaultPii() && $event->result !== null) {
             $resultString = is_string($event->result) ? $event->result : json_encode($event->result);
-            $data['gen_ai.tool.call.result'] = $this->truncateString($resultString);
+            if ($resultString !== false) {
+                $data['gen_ai.tool.call.result'] = $this->truncateString($resultString);
+            }
         }
 
         $span->setData($data);
@@ -392,8 +393,10 @@ class AiIntegration extends Feature
                 ->setOp('gen_ai.embeddings')
                 ->setData($data)
                 ->setOrigin('auto.ai.laravel')
-                ->setDescription("embeddings {$model}")
+                ->setDescription("embeddings " . ($model ?? 'unknown'))
         );
+
+        $this->evictOldestIfNeeded($this->embeddingsInvocations);
 
         $this->embeddingsInvocations[$event->invocationId] = [
             'span' => $span,
@@ -461,7 +464,7 @@ class AiIntegration extends Feature
 
         $inv = &$this->invocations[$invocationId];
         $meta = $inv['meta'];
-        $model = $meta['model'] ?? 'unknown';
+        $model = $meta['model'] ?? null;
 
         $data = [
             'gen_ai.operation.name' => 'chat',
@@ -471,7 +474,7 @@ class AiIntegration extends Feature
             $data['gen_ai.response.streaming'] = true;
         }
 
-        if ($model !== null && $model !== 'unknown') {
+        if ($model !== null) {
             $data['gen_ai.request.model'] = $model;
         }
 
@@ -492,7 +495,7 @@ class AiIntegration extends Feature
                 ->setOp('gen_ai.chat')
                 ->setData($data)
                 ->setOrigin('auto.ai.laravel')
-                ->setDescription("chat {$model}")
+                ->setDescription("chat " . ($model ?? 'unknown'))
         );
 
         $inv['activeChatSpan'] = $chatSpan;
@@ -526,7 +529,7 @@ class AiIntegration extends Feature
      */
     private function findMatchingInvocation(string $url): ?string
     {
-        foreach ($this->invocations as $invocationId => $inv) {
+        foreach (array_reverse($this->invocations, true) as $invocationId => $inv) {
             if ($inv['urlPrefix'] !== null && str_starts_with($url, $inv['urlPrefix'])) {
                 return $invocationId;
             }
@@ -677,6 +680,9 @@ class AiIntegration extends Feature
         }
     }
 
+    /**
+     * Resolve the base URL for a provider to match HTTP events against.
+     */
     private function resolveProviderUrlPrefix(object $provider): ?string
     {
         if (!method_exists($provider, 'driver')) {
@@ -960,7 +966,9 @@ class AiIntegration extends Feature
 
         $toolCalls = $this->flexGet($source, 'toolCalls');
         if ($toolCalls !== null) {
-            if (is_object($toolCalls) && method_exists($toolCalls, 'toArray')) {
+            if (is_object($toolCalls) && method_exists($toolCalls, 'all')) {
+                $toolCalls = $toolCalls->all();
+            } elseif (is_object($toolCalls) && method_exists($toolCalls, 'toArray')) {
                 $toolCalls = $toolCalls->toArray();
             }
 
@@ -976,7 +984,14 @@ class AiIntegration extends Feature
         }
 
         $toolResults = $this->flexGet($source, 'toolResults');
-        if ($toolResults !== null && is_array($toolResults)) {
+        if ($toolResults !== null) {
+            if (is_object($toolResults) && method_exists($toolResults, 'all')) {
+                $toolResults = $toolResults->all();
+            } elseif (is_object($toolResults) && method_exists($toolResults, 'toArray')) {
+                $toolResults = $toolResults->toArray();
+            }
+        }
+        if (is_array($toolResults)) {
             foreach ($toolResults as $toolResult) {
                 $result = $this->flexGet($toolResult, 'result');
                 if ($result === null) {
@@ -984,6 +999,9 @@ class AiIntegration extends Feature
                 }
 
                 $resultContent = is_string($result) ? $result : json_encode($result);
+                if ($resultContent === false) {
+                    continue;
+                }
                 $resultPart = ['type' => 'tool_result', 'content' => $resultContent];
 
                 $resultName = $this->flexGet($toolResult, 'name');
@@ -1009,7 +1027,10 @@ class AiIntegration extends Feature
 
         $args = $this->flexGet($toolCall, 'arguments');
         if ($args !== null) {
-            $part['arguments'] = is_string($args) ? $args : json_encode($args);
+            $encoded = is_string($args) ? $args : json_encode($args);
+            if ($encoded !== false) {
+                $part['arguments'] = $encoded;
+            }
         }
 
         return $part;
@@ -1078,7 +1099,13 @@ class AiIntegration extends Feature
             $definitions[] = $def;
         }
 
-        return !empty($definitions) ? json_encode($definitions) : null;
+        if (empty($definitions)) {
+            return null;
+        }
+
+        $encoded = json_encode($definitions);
+
+        return $encoded !== false ? $encoded : null;
     }
 
     /**
@@ -1160,6 +1187,10 @@ class AiIntegration extends Feature
 
         $instructions = $agent->instructions();
 
+        if ($instructions === null) {
+            return null;
+        }
+
         return is_string($instructions) ? $instructions : (string)$instructions;
     }
 
@@ -1217,7 +1248,7 @@ class AiIntegration extends Feature
         }
 
         if (is_object($source)) {
-            return $source->{$key} ?? null;
+            return property_exists($source, $key) ? $source->{$key} : null;
         }
 
         return $source[$key] ?? null;
@@ -1228,6 +1259,29 @@ class AiIntegration extends Feature
         $parts = explode('\\', get_class($obj));
 
         return end($parts);
+    }
+
+    /**
+     * Evict the oldest entries from an invocation map when it exceeds the cap.
+     *
+     * @param array<string, mixed> $map
+     */
+    private function evictOldestIfNeeded(array &$map): void
+    {
+        while (count($map) >= self::MAX_TRACKED_INVOCATIONS) {
+            $oldestKey = array_key_first($map);
+            if ($oldestKey === null) {
+                break;
+            }
+
+            $oldest = $map[$oldestKey];
+            if (isset($oldest['span']) && $oldest['span'] instanceof Span) {
+                $oldest['span']->setStatus(SpanStatus::deadlineExceeded());
+                $oldest['span']->finish();
+            }
+
+            unset($map[$oldestKey]);
+        }
     }
 
     // ---- Truncation and redaction ----
@@ -1284,7 +1338,20 @@ class AiIntegration extends Feature
         }
         unset($message);
 
-        // Try encoding all messages first
+        // For a single message, skip the "try all then fall back to last" dance
+        if (count($messages) === 1) {
+            $encoded = json_encode($messages);
+
+            if ($encoded === false) {
+                return '[]';
+            }
+
+            return strlen($encoded) <= self::MAX_MESSAGE_BYTES
+                ? $encoded
+                : $this->truncateString($encoded);
+        }
+
+        // Try encoding all messages first (fast path for small payloads)
         $encoded = json_encode($messages);
 
         if ($encoded !== false && strlen($encoded) <= self::MAX_MESSAGE_BYTES) {
@@ -1393,7 +1460,9 @@ class AiIntegration extends Feature
             foreach ($message['parts'] as &$part) {
                 $part = $this->redactContentPart($part);
             }
+            unset($part);
         }
+        unset($message);
 
         return $messages;
     }
