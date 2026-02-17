@@ -19,13 +19,13 @@ class AiIntegration extends Feature
      * Maximum total byte size for serialized message data (20KB).
      * Matches Python SDK's MAX_GEN_AI_MESSAGE_BYTES.
      */
-    private const MAX_MESSAGE_BYTES = 20_000;
+    private const MAX_MESSAGE_BYTES = 20000;
 
     /**
      * Maximum character length for a single message's content string (10K chars).
      * Matches Python SDK's MAX_SINGLE_MESSAGE_CONTENT_CHARS.
      */
-    private const MAX_SINGLE_MESSAGE_CONTENT_CHARS = 10_000;
+    private const MAX_SINGLE_MESSAGE_CONTENT_CHARS = 10000;
 
     /**
      * Placeholder used to replace binary/blob content that should not be sent to Sentry.
@@ -542,7 +542,7 @@ class AiIntegration extends Feature
     private function findMatchingInvocation(string $url): ?string
     {
         foreach (array_reverse($this->invocations, true) as $invocationId => $inv) {
-            if ($inv['urlPrefix'] !== null && str_starts_with($url, $inv['urlPrefix'])) {
+            if ($inv['urlPrefix'] !== null && substr($url, 0, strlen($inv['urlPrefix'])) === $inv['urlPrefix']) {
                 return $invocationId;
             }
         }
@@ -787,7 +787,7 @@ class AiIntegration extends Feature
 
         $type = $arrayForm['type'] ?? null;
         $name = method_exists($attachment, 'name') ? $attachment->name() : ($attachment->name ?? null);
-        $mimeType = method_exists($attachment, 'mimeType') ? $this->safeCall(fn() => $attachment->mimeType()) : null;
+        $mimeType = method_exists($attachment, 'mimeType') ? $this->safeCall(function () use ($attachment) { return $attachment->mimeType(); }) : null;
 
         // Remote files (have a URL, no binary data to redact)
         if ($type === 'remote-image' || $type === 'remote-document' || $type === 'remote-audio') {
@@ -843,17 +843,17 @@ class AiIntegration extends Feature
         $class = get_class($attachment);
 
         if (is_a($attachment, 'Laravel\Ai\Files\Image', true)
-            || str_contains($class, 'Image')) {
+            || strpos($class, 'Image') !== false) {
             return 'image';
         }
 
         if (is_a($attachment, 'Laravel\Ai\Files\Document', true)
-            || str_contains($class, 'Document')) {
+            || strpos($class, 'Document') !== false) {
             return 'document';
         }
 
         if (is_a($attachment, 'Laravel\Ai\Files\Audio', true)
-            || str_contains($class, 'Audio')) {
+            || strpos($class, 'Audio') !== false) {
             return 'audio';
         }
 
@@ -921,8 +921,10 @@ class AiIntegration extends Feature
 
     /**
      * Safely call a closure, returning null on any exception.
+     *
+     * @return mixed
      */
-    private function safeCall(callable $fn): mixed
+    private function safeCall(callable $fn)
     {
         try {
             return $fn();
@@ -966,7 +968,10 @@ class AiIntegration extends Feature
      *
      * @return array<int, array<string, mixed>>
      */
-    private function buildOutputMessages(object|array $source): array
+    /**
+     * @param object|array $source
+     */
+    private function buildOutputMessages($source): array
     {
         $messages = [];
         $parts = [];
@@ -1028,7 +1033,10 @@ class AiIntegration extends Feature
         return $messages;
     }
 
-    private function buildToolCallPart(object|array $toolCall): array
+    /**
+     * @param object|array $toolCall
+     */
+    private function buildToolCallPart($toolCall): array
     {
         $part = ['type' => 'tool_call'];
 
@@ -1058,9 +1066,14 @@ class AiIntegration extends Feature
      *
      * @return int|float|string|null The attribute's value, or null if not present
      */
-    private function resolveAgentAttribute(object $agent, string $attributeClass): mixed
+    private function resolveAgentAttribute(object $agent, string $attributeClass)
     {
         if (!class_exists($attributeClass)) {
+            return null;
+        }
+
+        // PHP Attributes require PHP 8.0+
+        if (PHP_VERSION_ID < 80000) {
             return null;
         }
 
@@ -1214,7 +1227,7 @@ class AiIntegration extends Feature
      * @param array<string, mixed> $data
      * @param object|array $usage The Usage object (or array) from the Laravel AI SDK
      */
-    private function setTokenUsage(array &$data, object|array $usage): void
+    private function setTokenUsage(array &$data, $usage): void
     {
         $inputTokens = $this->flexGet($usage, 'promptTokens');
         $outputTokens = $this->flexGet($usage, 'completionTokens');
@@ -1252,8 +1265,11 @@ class AiIntegration extends Feature
 
     /**
      * Access a property from a value that may be an object, array, or null.
+     *
+     * @param object|array|null $source
+     * @return mixed
      */
-    private function flexGet(object|array|null $source, string $key): mixed
+    private function flexGet($source, string $key)
     {
         if ($source === null) {
             return null;
@@ -1281,7 +1297,8 @@ class AiIntegration extends Feature
     private function evictOldestIfNeeded(array &$map): void
     {
         while (count($map) >= self::MAX_TRACKED_INVOCATIONS) {
-            $oldestKey = array_key_first($map);
+            reset($map);
+            $oldestKey = key($map);
             if ($oldestKey === null) {
                 break;
             }
