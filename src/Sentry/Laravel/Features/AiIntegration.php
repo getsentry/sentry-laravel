@@ -13,7 +13,7 @@ use Sentry\Tracing\SpanStatus;
 
 class AiIntegration extends Feature
 {
-    private const FEATURE_KEY = 'ai';
+    private const FEATURE_KEY = 'gen_ai';
 
     /**
      * Maximum total byte size for serialized message data (20KB).
@@ -114,6 +114,10 @@ class AiIntegration extends Feature
      */
     public function handlePromptingAgentForTracing(object $event): void
     {
+        if (!$this->isTracingFeatureEnabled('gen_ai_invoke_agent')) {
+            return;
+        }
+
         $parentSpan = SentrySdk::getCurrentHub()->getSpan();
 
         if ($parentSpan === null || !$parentSpan->getSampled()) {
@@ -269,6 +273,10 @@ class AiIntegration extends Feature
      */
     public function handleInvokingToolForTracing(object $event): void
     {
+        if (!$this->isTracingFeatureEnabled('gen_ai_execute_tool')) {
+            return;
+        }
+
         $parentSpan = SentrySdk::getCurrentHub()->getSpan();
 
         if ($parentSpan === null || !$parentSpan->getSampled()) {
@@ -456,6 +464,10 @@ class AiIntegration extends Feature
      */
     public function handleHttpRequestSending(RequestSending $event): void
     {
+        if (!$this->isTracingFeatureEnabled('gen_ai_chat')) {
+            return;
+        }
+
         $invocationId = $this->findMatchingInvocation($event->request->url());
 
         if ($invocationId === null || !isset($this->invocations[$invocationId])) {

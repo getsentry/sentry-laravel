@@ -767,7 +767,7 @@ class AiIntegrationTest extends TestCase
     public function testSpanIsNotRecordedWhenTracingDisabled(): void
     {
         $this->resetApplicationWithConfig([
-            'sentry.tracing.ai' => false,
+            'sentry.tracing.gen_ai' => false,
             'prism.providers.openai.url' => self::PROVIDER_URL,
         ]);
 
@@ -1618,7 +1618,7 @@ class AiIntegrationTest extends TestCase
     public function testEmbeddingsSpanIsNotRecordedWhenTracingDisabled(): void
     {
         $this->resetApplicationWithConfig([
-            'sentry.tracing.ai' => false,
+            'sentry.tracing.gen_ai' => false,
             'prism.providers.openai.url' => self::PROVIDER_URL,
         ]);
 
@@ -2002,7 +2002,7 @@ class AiIntegrationTest extends TestCase
     public function testStreamingAgentSpanIsNotRecordedWhenTracingDisabled(): void
     {
         $this->resetApplicationWithConfig([
-            'sentry.tracing.ai' => false,
+            'sentry.tracing.gen_ai' => false,
             'prism.providers.openai.url' => self::PROVIDER_URL,
         ]);
 
@@ -3188,6 +3188,113 @@ class AiIntegrationTest extends TestCase
         $this->assertEquals('document', $parts[1]['modality']);
         $this->assertEquals('https://example.com/report.pdf', $parts[1]['content']);
         $this->assertEquals('application/pdf', $parts[1]['mime_type']);
+    }
+
+    // ---- Granular span type config tests ----
+
+    public function testInvokeAgentSpanIsNotRecordedWhenDisabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.gen_ai_invoke_agent' => false,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createPromptAndResponse();
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-no-agent', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-no-agent', $prompt, $response));
+
+        $agentSpans = $this->findAllSpansByOp($transaction, 'gen_ai.invoke_agent');
+        $this->assertCount(0, $agentSpans);
+
+        // Chat spans also won't be created because no invocation was tracked
+        $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
+        $this->assertCount(0, $chatSpans);
+    }
+
+    public function testChatSpanIsNotRecordedWhenDisabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.gen_ai_chat' => false,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createPromptAndResponse();
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-no-chat', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-no-chat', $prompt, $response));
+
+        // Agent span should still be created
+        $agentSpans = $this->findAllSpansByOp($transaction, 'gen_ai.invoke_agent');
+        $this->assertCount(1, $agentSpans);
+
+        // Chat spans should not be created
+        $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
+        $this->assertCount(0, $chatSpans);
+    }
+
+    public function testToolSpanIsNotRecordedWhenDisabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.gen_ai_execute_tool' => false,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createPromptAndResponse();
+        $agent = new TestAgent();
+        $tool = new WeatherLookup();
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-no-tool', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new InvokingTool('inv-no-tool', 'tool-disabled', $agent, $tool, ['city' => 'Paris']));
+        $this->dispatchLaravelEvent(new ToolInvoked('inv-no-tool', 'tool-disabled', $agent, $tool, ['city' => 'Paris'], 'Sunny'));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-no-tool', $prompt, $response));
+
+        // Agent and chat spans should still be created
+        $agentSpans = $this->findAllSpansByOp($transaction, 'gen_ai.invoke_agent');
+        $this->assertCount(1, $agentSpans);
+
+        $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
+        $this->assertCount(2, $chatSpans);
+
+        // Tool spans should not be created
+        $toolSpans = $this->findAllSpansByOp($transaction, 'gen_ai.execute_tool');
+        $this->assertCount(0, $toolSpans);
+    }
+
+    public function testAllGranularSpanTypesEnabledByDefault(): void
+    {
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createPromptAndResponse();
+        $agent = new TestAgent();
+        $tool = new WeatherLookup();
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-all-enabled', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new InvokingTool('inv-all-enabled', 'tool-e1', $agent, $tool, ['city' => 'Paris']));
+        $this->dispatchLaravelEvent(new ToolInvoked('inv-all-enabled', 'tool-e1', $agent, $tool, ['city' => 'Paris'], 'Sunny'));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-all-enabled', $prompt, $response));
+
+        // All span types should be present
+        $agentSpans = $this->findAllSpansByOp($transaction, 'gen_ai.invoke_agent');
+        $this->assertCount(1, $agentSpans);
+
+        $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
+        $this->assertCount(2, $chatSpans);
+
+        $toolSpans = $this->findAllSpansByOp($transaction, 'gen_ai.execute_tool');
+        $this->assertCount(1, $toolSpans);
     }
 
     // ---- Helper methods ----
