@@ -97,6 +97,44 @@ if (!class_exists(\Laravel\Ai\Events\AgentStreamed::class)) {
     }
 }
 
+if (!class_exists(\Laravel\Ai\Events\GeneratingEmbeddings::class)) {
+    class GeneratingEmbeddings
+    {
+        public string $invocationId;
+        public object $provider;
+        public string $model;
+        public object $prompt;
+
+        public function __construct(string $invocationId, object $provider, string $model, object $prompt)
+        {
+            $this->invocationId = $invocationId;
+            $this->provider = $provider;
+            $this->model = $model;
+            $this->prompt = $prompt;
+        }
+    }
+}
+
+if (!class_exists(\Laravel\Ai\Events\EmbeddingsGenerated::class)) {
+    class EmbeddingsGenerated
+    {
+        public string $invocationId;
+        public object $provider;
+        public string $model;
+        public object $prompt;
+        public object $response;
+
+        public function __construct(string $invocationId, object $provider, string $model, object $prompt, object $response)
+        {
+            $this->invocationId = $invocationId;
+            $this->provider = $provider;
+            $this->model = $model;
+            $this->prompt = $prompt;
+            $this->response = $response;
+        }
+    }
+}
+
 // Stub PHP 8 attribute classes that mirror the Laravel AI SDK attributes
 namespace Laravel\Ai\Attributes;
 
@@ -172,6 +210,14 @@ class WeatherLookup
     public function description(): string
     {
         return 'Looks up the current weather for a given location.';
+    }
+
+    public function schema(\Illuminate\Contracts\JsonSchema\JsonSchema $schema): array
+    {
+        return [
+            'location' => $schema->string()->description('The city and state, e.g. San Francisco, CA')->required(),
+            'unit' => $schema->string()->enum(['celsius', 'fahrenheit']),
+        ];
     }
 }
 
@@ -256,6 +302,8 @@ use Illuminate\Http\Client\Events\RequestSending;
 use Illuminate\Http\Client\Events\ResponseReceived;
 use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Http\Client\Response as HttpResponse;
+use Laravel\Ai\Events\GeneratingEmbeddings;
+use Laravel\Ai\Events\EmbeddingsGenerated;
 use Laravel\Ai\Events\PromptingAgent;
 use Laravel\Ai\Events\AgentPrompted;
 use Laravel\Ai\Events\StreamingAgent;
@@ -403,8 +451,59 @@ class AiIntegrationTest extends TestCase
         $this->assertArrayHasKey('gen_ai.tool.definitions', $data);
         $toolDefs = json_decode($data['gen_ai.tool.definitions'], true);
         $this->assertCount(1, $toolDefs);
+        $this->assertEquals('function', $toolDefs[0]['type']);
         $this->assertEquals('WeatherLookup', $toolDefs[0]['name']);
         $this->assertEquals('Looks up the current weather for a given location.', $toolDefs[0]['description']);
+
+        // Parameters should include a JSON Schema object
+        $this->assertArrayHasKey('parameters', $toolDefs[0]);
+        $params = $toolDefs[0]['parameters'];
+        $this->assertEquals('object', $params['type']);
+        $this->assertArrayHasKey('properties', $params);
+        $this->assertArrayHasKey('location', $params['properties']);
+        $this->assertEquals('string', $params['properties']['location']['type']);
+        $this->assertEquals('The city and state, e.g. San Francisco, CA', $params['properties']['location']['description']);
+        $this->assertContains('location', $params['required']);
+        $this->assertArrayHasKey('unit', $params['properties']);
+        $this->assertEquals('string', $params['properties']['unit']['type']);
+        $this->assertEquals(['celsius', 'fahrenheit'], $params['properties']['unit']['enum']);
+    }
+
+    public function testChatSpanHasToolDefinitions(): void
+    {
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createPromptAndResponse();
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-chat-td', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-chat-td', $prompt, $response));
+
+        $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
+        $this->assertCount(1, $chatSpans);
+
+        $chatData = $chatSpans[0]->getData();
+        $this->assertArrayHasKey('gen_ai.tool.definitions', $chatData);
+        $toolDefs = json_decode($chatData['gen_ai.tool.definitions'], true);
+        $this->assertCount(1, $toolDefs);
+        $this->assertEquals('function', $toolDefs[0]['type']);
+        $this->assertEquals('WeatherLookup', $toolDefs[0]['name']);
+        $this->assertArrayHasKey('parameters', $toolDefs[0]);
+    }
+
+    public function testChatSpanOmitsToolDefinitionsWhenNoTools(): void
+    {
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createPromptAndResponseWithNoSteps();
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-no-td', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-no-td', $prompt, $response));
+
+        $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
+        $this->assertCount(1, $chatSpans);
+        $this->assertArrayNotHasKey('gen_ai.tool.definitions', $chatSpans[0]->getData());
     }
 
     public function testAgentSpanCapturesInputMessagesWhenPiiEnabled(): void
@@ -1260,6 +1359,132 @@ class AiIntegrationTest extends TestCase
         $this->assertArrayNotHasKey('gen_ai.input.messages', $chatData);
     }
 
+    // ---- Embeddings tests ----
+
+    public function testEmbeddingsSpanIsRecorded(): void
+    {
+        $transaction = $this->startTransaction();
+
+        [$provider, $prompt, $response] = $this->createEmbeddingsPromptAndResponse();
+
+        $this->dispatchLaravelEvent(new GeneratingEmbeddings('emb-1', $provider, 'text-embedding-3-small', $prompt));
+        $this->dispatchLaravelEvent(new EmbeddingsGenerated('emb-1', $provider, 'text-embedding-3-small', $prompt, $response));
+
+        $spans = $transaction->getSpanRecorder()->getSpans();
+
+        // Transaction + embeddings span = 2
+        $this->assertCount(2, $spans);
+
+        $embSpan = $spans[1];
+        $this->assertEquals('gen_ai.embeddings', $embSpan->getOp());
+        $this->assertEquals('embeddings text-embedding-3-small', $embSpan->getDescription());
+        $this->assertEquals(SpanStatus::ok(), $embSpan->getStatus());
+        $this->assertEquals('auto.ai.laravel', $embSpan->getOrigin());
+
+        $data = $embSpan->getData();
+        $this->assertEquals('embeddings', $data['gen_ai.operation.name']);
+        $this->assertEquals('text-embedding-3-small', $data['gen_ai.request.model']);
+        $this->assertEquals('openai', $data['gen_ai.system']);
+    }
+
+    public function testEmbeddingsSpanCapturesResponseData(): void
+    {
+        $transaction = $this->startTransaction();
+
+        [$provider, $prompt, $response] = $this->createEmbeddingsPromptAndResponse();
+
+        $this->dispatchLaravelEvent(new GeneratingEmbeddings('emb-2', $provider, 'text-embedding-3-small', $prompt));
+        $this->dispatchLaravelEvent(new EmbeddingsGenerated('emb-2', $provider, 'text-embedding-3-small', $prompt, $response));
+
+        $spans = $transaction->getSpanRecorder()->getSpans();
+        $data = $spans[1]->getData();
+
+        $this->assertEquals('text-embedding-3-small-2024', $data['gen_ai.response.model']);
+        $this->assertEquals(25, $data['gen_ai.usage.input_tokens']);
+    }
+
+    public function testEmbeddingsSpanCapturesInputWhenPiiEnabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'sentry.tracing.http_client_requests' => false,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        [$provider, $prompt, $response] = $this->createEmbeddingsPromptAndResponse();
+
+        $this->dispatchLaravelEvent(new GeneratingEmbeddings('emb-3', $provider, 'text-embedding-3-small', $prompt));
+        $this->dispatchLaravelEvent(new EmbeddingsGenerated('emb-3', $provider, 'text-embedding-3-small', $prompt, $response));
+
+        $spans = $transaction->getSpanRecorder()->getSpans();
+        $data = $spans[1]->getData();
+
+        $this->assertArrayHasKey('gen_ai.embeddings.input', $data);
+        $inputs = json_decode($data['gen_ai.embeddings.input'], true);
+        $this->assertCount(2, $inputs);
+        $this->assertEquals('Napa Valley has great wine.', $inputs[0]);
+        $this->assertEquals('Laravel is a PHP framework.', $inputs[1]);
+    }
+
+    public function testEmbeddingsSpanDoesNotCaptureInputWhenPiiDisabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => false,
+            'sentry.tracing.http_client_requests' => false,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        [$provider, $prompt, $response] = $this->createEmbeddingsPromptAndResponse();
+
+        $this->dispatchLaravelEvent(new GeneratingEmbeddings('emb-4', $provider, 'text-embedding-3-small', $prompt));
+        $this->dispatchLaravelEvent(new EmbeddingsGenerated('emb-4', $provider, 'text-embedding-3-small', $prompt, $response));
+
+        $spans = $transaction->getSpanRecorder()->getSpans();
+        $data = $spans[1]->getData();
+
+        $this->assertArrayNotHasKey('gen_ai.embeddings.input', $data);
+    }
+
+    public function testEmbeddingsSpanIsNotRecordedWhenTracingDisabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.ai' => false,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        [$provider, $prompt, $response] = $this->createEmbeddingsPromptAndResponse();
+
+        $this->dispatchLaravelEvent(new GeneratingEmbeddings('emb-5', $provider, 'text-embedding-3-small', $prompt));
+        $this->dispatchLaravelEvent(new EmbeddingsGenerated('emb-5', $provider, 'text-embedding-3-small', $prompt, $response));
+
+        $spans = $transaction->getSpanRecorder()->getSpans();
+
+        // Only the transaction span
+        $this->assertCount(1, $spans);
+    }
+
+    public function testEmbeddingsSpanIsFinishedEvenWithoutGeneratedEvent(): void
+    {
+        $transaction = $this->startTransaction();
+
+        [$provider, $prompt, $response] = $this->createEmbeddingsPromptAndResponse();
+
+        // Only dispatch the start event, not the end event
+        $this->dispatchLaravelEvent(new GeneratingEmbeddings('emb-orphan', $provider, 'text-embedding-3-small', $prompt));
+
+        $spans = $transaction->getSpanRecorder()->getSpans();
+
+        // Transaction + embeddings span = 2 (span started but not finished)
+        $this->assertCount(2, $spans);
+        $this->assertNull($spans[1]->getEndTimestamp());
+    }
+
     // ---- Streaming tests ----
 
     public function testStreamingAgentSpanIsRecorded(): void
@@ -1630,6 +1855,31 @@ class AiIntegrationTest extends TestCase
     }
 
     // ---- Helper methods ----
+
+    /**
+     * Create a prompt and response for embeddings tests.
+     *
+     * @return array{0: object, 1: object, 2: object} [provider, prompt, response]
+     */
+    private function createEmbeddingsPromptAndResponse(): array
+    {
+        $provider = new TestProvider();
+
+        $prompt = (object)[
+            'inputs' => ['Napa Valley has great wine.', 'Laravel is a PHP framework.'],
+            'dimensions' => 1536,
+            'provider' => $provider,
+            'model' => 'text-embedding-3-small',
+        ];
+
+        $response = (object)[
+            'embeddings' => [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]],
+            'tokens' => 25,
+            'meta' => (object)['provider' => 'openai', 'model' => 'text-embedding-3-small-2024'],
+        ];
+
+        return [$provider, $prompt, $response];
+    }
 
     /**
      * Find the first span with a given op in the transaction.

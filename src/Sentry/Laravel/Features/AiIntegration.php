@@ -48,6 +48,15 @@ class AiIntegration extends Feature
      */
     private $toolInvocations = [];
 
+    /**
+     * Per-embeddings-invocation state keyed by invocation ID.
+     *
+     * Each entry holds: span, parentSpan.
+     *
+     * @var array<string, array{span: Span, parentSpan: Span|null}>
+     */
+    private $embeddingsInvocations = [];
+
     public function isApplicable(): bool
     {
         if (!class_exists('Laravel\Ai\Events\PromptingAgent')) {
@@ -65,6 +74,8 @@ class AiIntegration extends Feature
         $events->listen('Laravel\Ai\Events\AgentStreamed', [$this, 'handleAgentPromptedForTracing']);
         $events->listen('Laravel\Ai\Events\InvokingTool', [$this, 'handleInvokingToolForTracing']);
         $events->listen('Laravel\Ai\Events\ToolInvoked', [$this, 'handleToolInvokedForTracing']);
+        $events->listen('Laravel\Ai\Events\GeneratingEmbeddings', [$this, 'handleGeneratingEmbeddingsForTracing']);
+        $events->listen('Laravel\Ai\Events\EmbeddingsGenerated', [$this, 'handleEmbeddingsGeneratedForTracing']);
 
         if (class_exists(RequestSending::class)) {
             $events->listen(RequestSending::class, [$this, 'handleHttpRequestSending']);
@@ -160,6 +171,7 @@ class AiIntegration extends Feature
                 'system' => $providerName,
                 'model' => $model,
                 'prompt' => $event->prompt->prompt ?? null,
+                'toolDefinitions' => $toolDefinitions,
             ],
             'urlPrefix' => $this->resolveProviderUrlPrefix($event->prompt->provider),
             'isStreaming' => $isStreaming,
@@ -318,6 +330,99 @@ class AiIntegration extends Feature
         }
     }
 
+    // ---- Embeddings event handlers ----
+
+    /**
+     * Handle the GeneratingEmbeddings event: start a gen_ai.embeddings span.
+     */
+    public function handleGeneratingEmbeddingsForTracing(object $event): void
+    {
+        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+
+        if ($parentSpan === null || !$parentSpan->getSampled()) {
+            return;
+        }
+
+        $model = $event->model ?? null;
+
+        $data = [
+            'gen_ai.operation.name' => 'embeddings',
+        ];
+
+        if ($model !== null) {
+            $data['gen_ai.request.model'] = $model;
+        }
+
+        $providerName = method_exists($event->provider, 'name') ? $event->provider->name() : null;
+        if ($providerName !== null) {
+            $data['gen_ai.system'] = $providerName;
+        }
+
+        if ($this->shouldSendDefaultPii()) {
+            $inputs = $event->prompt->inputs ?? null;
+            if (is_array($inputs) && !empty($inputs)) {
+                $data['gen_ai.embeddings.input'] = $this->truncateString(json_encode($inputs));
+            }
+        }
+
+        $span = $parentSpan->startChild(
+            SpanContext::make()
+                ->setOp('gen_ai.embeddings')
+                ->setData($data)
+                ->setOrigin('auto.ai.laravel')
+                ->setDescription("embeddings {$model}")
+        );
+
+        $this->embeddingsInvocations[$event->invocationId] = [
+            'span' => $span,
+            'parentSpan' => $parentSpan,
+        ];
+
+        SentrySdk::getCurrentHub()->setSpan($span);
+    }
+
+    /**
+     * Handle the EmbeddingsGenerated event: finish the gen_ai.embeddings span
+     * and enrich with response data.
+     */
+    public function handleEmbeddingsGeneratedForTracing(object $event): void
+    {
+        $invocationId = $event->invocationId;
+
+        if (!isset($this->embeddingsInvocations[$invocationId])) {
+            return;
+        }
+
+        $inv = $this->embeddingsInvocations[$invocationId];
+        unset($this->embeddingsInvocations[$invocationId]);
+
+        $span = $inv['span'];
+        $data = $span->getData();
+
+        $responseModel = $event->response->meta->model ?? null;
+        if ($responseModel !== null) {
+            $data['gen_ai.response.model'] = $responseModel;
+        }
+
+        $responseProvider = $event->response->meta->provider ?? null;
+        if ($responseProvider !== null && !isset($data['gen_ai.system'])) {
+            $data['gen_ai.system'] = strtolower($responseProvider);
+        }
+
+        $tokens = $event->response->tokens ?? null;
+        if ($tokens !== null && $tokens > 0) {
+            $data['gen_ai.usage.input_tokens'] = $tokens;
+        }
+
+        $span->setData($data);
+        $span->setStatus(SpanStatus::ok());
+        $span->finish();
+
+        if ($inv['parentSpan'] !== null) {
+            SentrySdk::getCurrentHub()->setSpan($inv['parentSpan']);
+        }
+    }
+
     // ---- HTTP client event handlers ----
 
     /**
@@ -354,6 +459,10 @@ class AiIntegration extends Feature
 
         if (($meta['system'] ?? null) !== null) {
             $data['gen_ai.system'] = $meta['system'];
+        }
+
+        if (($meta['toolDefinitions'] ?? null) !== null) {
+            $data['gen_ai.tool.definitions'] = $meta['toolDefinitions'];
         }
 
         $chatSpan = $inv['span']->startChild(
@@ -715,17 +824,60 @@ class AiIntegration extends Feature
 
         $definitions = [];
         foreach ($tools as $tool) {
-            $def = ['name' => $this->resolveToolName($tool)];
+            $def = [
+                'type' => 'function',
+                'name' => $this->resolveToolName($tool),
+            ];
 
             $description = $this->resolveToolDescription($tool);
             if ($description !== null) {
                 $def['description'] = $description;
             }
 
+            $parameters = $this->resolveToolParameters($tool);
+            if ($parameters !== null) {
+                $def['parameters'] = $parameters;
+            }
+
             $definitions[] = $def;
         }
 
         return !empty($definitions) ? json_encode($definitions) : null;
+    }
+
+    /**
+     * Resolve a tool's parameter schema by calling its schema() method.
+     *
+     * Uses Laravel's JsonSchema type system to serialize the tool's parameter
+     * definitions into a standard JSON Schema object with type, properties,
+     * required, etc.
+     *
+     * @return array<string, mixed>|null The JSON Schema array, or null if unavailable
+     */
+    private function resolveToolParameters(object $tool): ?array
+    {
+        if (!method_exists($tool, 'schema')) {
+            return null;
+        }
+
+        if (!class_exists('Illuminate\JsonSchema\JsonSchemaTypeFactory')) {
+            return null;
+        }
+
+        try {
+            $factory = new \Illuminate\JsonSchema\JsonSchemaTypeFactory();
+            $properties = $tool->schema($factory);
+
+            if (empty($properties) || !is_array($properties)) {
+                return null;
+            }
+
+            $objectType = new \Illuminate\JsonSchema\Types\ObjectType($properties);
+
+            return $objectType->toArray();
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     private function resolveAgentName(object $agent): string
