@@ -61,6 +61,8 @@ class AiIntegration extends Feature
     {
         $events->listen('Laravel\Ai\Events\PromptingAgent', [$this, 'handlePromptingAgentForTracing']);
         $events->listen('Laravel\Ai\Events\AgentPrompted', [$this, 'handleAgentPromptedForTracing']);
+        $events->listen('Laravel\Ai\Events\StreamingAgent', [$this, 'handlePromptingAgentForTracing']);
+        $events->listen('Laravel\Ai\Events\AgentStreamed', [$this, 'handleAgentPromptedForTracing']);
         $events->listen('Laravel\Ai\Events\InvokingTool', [$this, 'handleInvokingToolForTracing']);
         $events->listen('Laravel\Ai\Events\ToolInvoked', [$this, 'handleToolInvokedForTracing']);
 
@@ -88,10 +90,16 @@ class AiIntegration extends Feature
         $agentName = $this->resolveAgentName($event->prompt->agent);
         $model = $event->prompt->model ?? null;
 
+        $isStreaming = is_a($event, 'Laravel\Ai\Events\StreamingAgent');
+
         $data = [
             'gen_ai.operation.name' => 'invoke_agent',
             'gen_ai.agent.name' => $agentName,
         ];
+
+        if ($isStreaming) {
+            $data['gen_ai.response.streaming'] = true;
+        }
 
         if ($model !== null) {
             $data['gen_ai.request.model'] = $model;
@@ -144,6 +152,7 @@ class AiIntegration extends Feature
                 'prompt' => $event->prompt->prompt ?? null,
             ],
             'urlPrefix' => $this->resolveProviderUrlPrefix($event->prompt->provider),
+            'isStreaming' => $isStreaming,
             'activeChatSpan' => null,
             'chatSpans' => [],
             'toolSpans' => [],
@@ -321,6 +330,10 @@ class AiIntegration extends Feature
             'gen_ai.operation.name' => 'chat',
         ];
 
+        if ($inv['isStreaming'] ?? false) {
+            $data['gen_ai.response.streaming'] = true;
+        }
+
         if ($model !== null && $model !== 'unknown') {
             $data['gen_ai.request.model'] = $model;
         }
@@ -407,6 +420,9 @@ class AiIntegration extends Feature
      *
      * The response steps array matches 1:1 with chat spans in order:
      * step[0] → chatSpan[0], step[1] → chatSpan[1], etc.
+     *
+     * When steps are empty (e.g. streaming responses), falls back to
+     * enriching chat spans from response-level data.
      */
     private function enrichChatSpansWithStepData(string $invocationId, object $response, ?string $conversationId = null): void
     {
@@ -426,6 +442,14 @@ class AiIntegration extends Feature
         }
 
         $stepsArray = is_array($steps) ? array_values($steps) : [];
+
+        // When steps are empty (e.g. streaming responses), fall back to
+        // enriching chat spans from the aggregate response-level data.
+        if (empty($stepsArray)) {
+            $this->enrichChatSpansFromResponse($invocationId, $response, $conversationId);
+
+            return;
+        }
 
         foreach ($chatSpans as $index => $chatSpan) {
             $data = $chatSpan->getData();
@@ -470,6 +494,71 @@ class AiIntegration extends Feature
                 $outputMessages = $this->buildOutputMessages($step);
                 if (!empty($outputMessages)) {
                     $data['gen_ai.output.messages'] = $this->truncateString(json_encode($outputMessages));
+                }
+            }
+
+            $chatSpan->setData($data);
+        }
+    }
+
+    /**
+     * Enrich chat spans from response-level data when per-step data is unavailable.
+     *
+     * This is the case for streaming responses (StreamedAgentResponse) where the
+     * steps collection is empty. We use the aggregate response data instead:
+     *
+     * - Model and token usage are set from the response metadata.
+     * - The first chat span gets the user prompt as input messages.
+     * - The last chat span gets the response text as output messages.
+     * - For single chat spans, all data is attributed to that span.
+     */
+    private function enrichChatSpansFromResponse(string $invocationId, object $response, ?string $conversationId): void
+    {
+        $chatSpans = $this->invocations[$invocationId]['chatSpans'] ?? [];
+        $lastIndex = count($chatSpans) - 1;
+
+        $model = $this->flexGet($this->flexGet($response, 'meta'), 'model');
+        $usage = $this->flexGet($response, 'usage');
+
+        foreach ($chatSpans as $index => $chatSpan) {
+            $data = $chatSpan->getData();
+
+            if ($conversationId !== null) {
+                $data['gen_ai.conversation.id'] = $conversationId;
+            }
+
+            if ($model !== null) {
+                $data['gen_ai.request.model'] = $model;
+                $data['gen_ai.response.model'] = $model;
+                $chatSpan->setDescription("chat {$model}");
+            }
+
+            // For a single chat span, attribute the full usage to it.
+            // For multiple chat spans, we cannot split usage per-step.
+            if ($usage !== null && count($chatSpans) === 1) {
+                $this->setTokenUsage($data, $usage);
+            }
+
+            if ($this->shouldSendDefaultPii()) {
+                // First chat span: input is the original user prompt
+                if ($index === 0) {
+                    $promptText = $this->invocations[$invocationId]['meta']['prompt'] ?? null;
+                    if ($promptText !== null && $promptText !== '') {
+                        $data['gen_ai.input.messages'] = $this->truncateString(json_encode([
+                            [
+                                'role' => 'user',
+                                'parts' => [['type' => 'text', 'content' => $promptText]],
+                            ],
+                        ]));
+                    }
+                }
+
+                // Last chat span: output is the final response
+                if ($index === $lastIndex) {
+                    $outputMessages = $this->buildOutputMessages($response);
+                    if (!empty($outputMessages)) {
+                        $data['gen_ai.output.messages'] = $this->truncateString(json_encode($outputMessages));
+                    }
                 }
             }
 

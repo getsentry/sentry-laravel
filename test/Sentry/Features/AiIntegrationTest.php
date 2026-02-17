@@ -83,6 +83,20 @@ if (!class_exists(\Laravel\Ai\Events\ToolInvoked::class)) {
     }
 }
 
+if (!class_exists(\Laravel\Ai\Events\StreamingAgent::class)) {
+    class StreamingAgent extends PromptingAgent
+    {
+        //
+    }
+}
+
+if (!class_exists(\Laravel\Ai\Events\AgentStreamed::class)) {
+    class AgentStreamed extends AgentPrompted
+    {
+        //
+    }
+}
+
 // Stub agent, tool, and data classes with predictable class names
 namespace Sentry\Laravel\Tests\Features\AiStubs;
 
@@ -139,6 +153,11 @@ class DatabaseQuery
 class TestProvider
 {
     public function driver(): string
+    {
+        return 'openai';
+    }
+
+    public function name(): string
     {
         return 'openai';
     }
@@ -201,6 +220,8 @@ use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Http\Client\Response as HttpResponse;
 use Laravel\Ai\Events\PromptingAgent;
 use Laravel\Ai\Events\AgentPrompted;
+use Laravel\Ai\Events\StreamingAgent;
+use Laravel\Ai\Events\AgentStreamed;
 use Laravel\Ai\Events\InvokingTool;
 use Laravel\Ai\Events\ToolInvoked;
 use Sentry\Laravel\Tests\Features\AiStubs\DatabaseQuery;
@@ -218,6 +239,12 @@ use Sentry\Tracing\SpanStatus;
 class AiIntegrationTest extends TestCase
 {
     private const PROVIDER_URL = 'https://api.openai.com/v1';
+
+    protected $defaultSetupConfig = [
+        // Disable the HTTP client integration to avoid extra http.client spans
+        // that would interfere with our span count assertions
+        'sentry.tracing.http_client_requests' => false,
+    ];
 
     protected function setUp(): void
     {
@@ -257,6 +284,7 @@ class AiIntegrationTest extends TestCase
         $this->assertEquals('TestAgent', $data['gen_ai.agent.name']);
         $this->assertEquals('gpt-4o', $data['gen_ai.request.model']);
         $this->assertEquals('gpt-4o-2024-08-06', $data['gen_ai.response.model']);
+        $this->assertArrayNotHasKey('gen_ai.response.streaming', $data);
     }
 
     public function testAgentSpanCapturesTokenUsage(): void
@@ -1159,6 +1187,375 @@ class AiIntegrationTest extends TestCase
         $this->assertArrayNotHasKey('gen_ai.input.messages', $chatData);
     }
 
+    // ---- Streaming tests ----
+
+    public function testStreamingAgentSpanIsRecorded(): void
+    {
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createStreamingPromptAndResponse();
+
+        $this->dispatchLaravelEvent(new StreamingAgent('inv-stream1', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentStreamed('inv-stream1', $prompt, $response));
+
+        $spans = $transaction->getSpanRecorder()->getSpans();
+
+        // Transaction + agent span + 1 chat span = 3
+        $this->assertCount(3, $spans);
+
+        /** @var Span $agentSpan */
+        $agentSpan = $spans[1];
+
+        $this->assertEquals('gen_ai.invoke_agent', $agentSpan->getOp());
+        $this->assertEquals('invoke_agent TestAgent', $agentSpan->getDescription());
+        $this->assertEquals(SpanStatus::ok(), $agentSpan->getStatus());
+        $this->assertEquals('auto.ai.laravel', $agentSpan->getOrigin());
+
+        $data = $agentSpan->getData();
+        $this->assertEquals('invoke_agent', $data['gen_ai.operation.name']);
+        $this->assertEquals('TestAgent', $data['gen_ai.agent.name']);
+        $this->assertEquals('gpt-4o', $data['gen_ai.request.model']);
+        $this->assertEquals('gpt-4o-2024-08-06', $data['gen_ai.response.model']);
+        $this->assertTrue($data['gen_ai.response.streaming']);
+    }
+
+    public function testStreamingChatSpanHasStreamingAttribute(): void
+    {
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createStreamingPromptAndResponse();
+
+        $this->dispatchLaravelEvent(new StreamingAgent('inv-stream-attr', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentStreamed('inv-stream-attr', $prompt, $response));
+
+        $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
+        $this->assertCount(1, $chatSpans);
+        $this->assertTrue($chatSpans[0]->getData()['gen_ai.response.streaming']);
+    }
+
+    public function testNonStreamingChatSpanDoesNotHaveStreamingAttribute(): void
+    {
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createPromptAndResponse();
+
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-nostream-attr', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-nostream-attr', $prompt, $response));
+
+        $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
+        $this->assertCount(1, $chatSpans);
+        $this->assertArrayNotHasKey('gen_ai.response.streaming', $chatSpans[0]->getData());
+    }
+
+    public function testStreamingAgentSpanCapturesTokenUsage(): void
+    {
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createStreamingPromptAndResponse(
+            promptTokens: 100,
+            completionTokens: 50
+        );
+
+        $this->dispatchLaravelEvent(new StreamingAgent('inv-stream2', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentStreamed('inv-stream2', $prompt, $response));
+
+        $spans = $transaction->getSpanRecorder()->getSpans();
+        $data = $spans[1]->getData();
+
+        $this->assertEquals(100, $data['gen_ai.usage.input_tokens']);
+        $this->assertEquals(50, $data['gen_ai.usage.output_tokens']);
+        $this->assertEquals(150, $data['gen_ai.usage.total_tokens']);
+    }
+
+    public function testStreamingAgentSpanCapturesConversationId(): void
+    {
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createStreamingPromptAndResponse();
+
+        $this->dispatchLaravelEvent(new StreamingAgent('inv-stream3', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentStreamed('inv-stream3', $prompt, $response));
+
+        $agentSpan = $this->findSpanByOp($transaction, 'gen_ai.invoke_agent');
+        $this->assertNotNull($agentSpan);
+        $this->assertEquals('conv-stream-123', $agentSpan->getData()['gen_ai.conversation.id']);
+
+        $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
+        $this->assertCount(1, $chatSpans);
+        $this->assertEquals('conv-stream-123', $chatSpans[0]->getData()['gen_ai.conversation.id']);
+    }
+
+    public function testStreamingChatSpanIsCreatedFromHttpEvents(): void
+    {
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createStreamingPromptAndResponse();
+
+        $this->dispatchLaravelEvent(new StreamingAgent('inv-stream4', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentStreamed('inv-stream4', $prompt, $response));
+
+        $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
+        $this->assertCount(1, $chatSpans);
+
+        $chatSpan = $chatSpans[0];
+        $this->assertEquals('gen_ai.chat', $chatSpan->getOp());
+        $this->assertEquals(SpanStatus::ok(), $chatSpan->getStatus());
+        $this->assertEquals('auto.ai.laravel', $chatSpan->getOrigin());
+
+        // Chat span should be enriched from response-level data
+        $chatData = $chatSpan->getData();
+        $this->assertEquals('gpt-4o-2024-08-06', $chatData['gen_ai.request.model']);
+        $this->assertEquals('gpt-4o-2024-08-06', $chatData['gen_ai.response.model']);
+        $this->assertEquals('chat gpt-4o-2024-08-06', $chatSpan->getDescription());
+
+        // Single chat span gets token usage from response
+        $this->assertEquals(60, $chatData['gen_ai.usage.input_tokens']);
+        $this->assertEquals(130, $chatData['gen_ai.usage.output_tokens']);
+        $this->assertEquals(190, $chatData['gen_ai.usage.total_tokens']);
+    }
+
+    public function testStreamingChatSpanCapturesMessagesWhenPiiEnabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'sentry.tracing.http_client_requests' => false,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createStreamingPromptAndResponse();
+
+        $this->dispatchLaravelEvent(new StreamingAgent('inv-stream-chatmsg', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentStreamed('inv-stream-chatmsg', $prompt, $response));
+
+        $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
+        $this->assertCount(1, $chatSpans);
+
+        $chatData = $chatSpans[0]->getData();
+
+        // Input messages: user prompt
+        $this->assertArrayHasKey('gen_ai.input.messages', $chatData);
+        $inputMessages = json_decode($chatData['gen_ai.input.messages'], true);
+        $this->assertCount(1, $inputMessages);
+        $this->assertEquals('user', $inputMessages[0]['role']);
+        $this->assertEquals('text', $inputMessages[0]['parts'][0]['type']);
+        $this->assertEquals('Analyze this transcript', $inputMessages[0]['parts'][0]['content']);
+
+        // Output messages: response text
+        $this->assertArrayHasKey('gen_ai.output.messages', $chatData);
+        $outputMessages = json_decode($chatData['gen_ai.output.messages'], true);
+        $this->assertCount(1, $outputMessages);
+        $this->assertEquals('assistant', $outputMessages[0]['role']);
+        $this->assertEquals('text', $outputMessages[0]['parts'][0]['type']);
+        $this->assertStringContainsString('streamed analysis', $outputMessages[0]['parts'][0]['content']);
+    }
+
+    public function testStreamingChatSpanDoesNotCaptureMessagesWhenPiiDisabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => false,
+            'sentry.tracing.http_client_requests' => false,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createStreamingPromptAndResponse();
+
+        $this->dispatchLaravelEvent(new StreamingAgent('inv-stream-chatpii', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentStreamed('inv-stream-chatpii', $prompt, $response));
+
+        $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
+        $this->assertCount(1, $chatSpans);
+
+        $chatData = $chatSpans[0]->getData();
+        $this->assertArrayNotHasKey('gen_ai.input.messages', $chatData);
+        $this->assertArrayNotHasKey('gen_ai.output.messages', $chatData);
+    }
+
+    public function testStreamingAgentSpanCapturesOutputMessagesWhenPiiEnabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createStreamingPromptAndResponse();
+
+        $this->dispatchLaravelEvent(new StreamingAgent('inv-stream5', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentStreamed('inv-stream5', $prompt, $response));
+
+        $spans = $transaction->getSpanRecorder()->getSpans();
+        $agentData = $spans[1]->getData();
+
+        // Check input messages
+        $this->assertArrayHasKey('gen_ai.input.messages', $agentData);
+        $inputMessages = json_decode($agentData['gen_ai.input.messages'], true);
+        $this->assertEquals('user', $inputMessages[0]['role']);
+        $this->assertEquals('text', $inputMessages[0]['parts'][0]['type']);
+        $this->assertStringContainsString('Analyze this transcript', $inputMessages[0]['parts'][0]['content']);
+
+        // System instructions
+        $this->assertArrayHasKey('gen_ai.system_instructions', $agentData);
+
+        // Output messages
+        $this->assertArrayHasKey('gen_ai.output.messages', $agentData);
+        $outputMessages = json_decode($agentData['gen_ai.output.messages'], true);
+        $this->assertEquals('assistant', $outputMessages[0]['role']);
+        $this->assertEquals('text', $outputMessages[0]['parts'][0]['type']);
+        $this->assertStringContainsString('streamed analysis', $outputMessages[0]['parts'][0]['content']);
+    }
+
+    public function testStreamingAgentDoesNotCaptureMessagesWhenPiiDisabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => false,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createStreamingPromptAndResponse();
+
+        $this->dispatchLaravelEvent(new StreamingAgent('inv-stream6', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentStreamed('inv-stream6', $prompt, $response));
+
+        $spans = $transaction->getSpanRecorder()->getSpans();
+        $data = $spans[1]->getData();
+
+        $this->assertArrayNotHasKey('gen_ai.input.messages', $data);
+        $this->assertArrayNotHasKey('gen_ai.system_instructions', $data);
+        $this->assertArrayNotHasKey('gen_ai.output.messages', $data);
+    }
+
+    public function testStreamingMultiStepWithToolCalls(): void
+    {
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createStreamingPromptAndResponse();
+        $agent = new TestAgent();
+        $tool = new WeatherLookup();
+
+        // Simulate streaming with tool calls: stream -> tool -> stream
+        $this->dispatchLaravelEvent(new StreamingAgent('inv-stream7', $prompt));
+
+        // First HTTP request (LLM decides to call a tool)
+        $this->dispatchLlmHttpEvents();
+
+        // Tool execution happens mid-stream
+        $this->dispatchLaravelEvent(new InvokingTool('inv-stream7', 'tool-s1', $agent, $tool, ['city' => 'Paris']));
+        $this->dispatchLaravelEvent(new ToolInvoked('inv-stream7', 'tool-s1', $agent, $tool, ['city' => 'Paris'], 'Sunny, 22C'));
+
+        // Second HTTP request (LLM generates final response with tool result)
+        $this->dispatchLlmHttpEvents();
+
+        $this->dispatchLaravelEvent(new AgentStreamed('inv-stream7', $prompt, $response));
+
+        // Verify span structure
+        $spans = $transaction->getSpanRecorder()->getSpans();
+
+        // Transaction, invoke_agent, chat#0, execute_tool, chat#1 = 5
+        $this->assertCount(5, $spans);
+
+        $this->assertEquals('gen_ai.invoke_agent', $spans[1]->getOp());
+        $this->assertEquals('gen_ai.chat', $spans[2]->getOp());
+        $this->assertEquals('gen_ai.execute_tool', $spans[3]->getOp());
+        $this->assertEquals('gen_ai.chat', $spans[4]->getOp());
+
+        // Tool span should have the tool name
+        $this->assertEquals('execute_tool WeatherLookup', $spans[3]->getDescription());
+
+        // Both chat spans should have model from response-level data
+        $chat0Data = $spans[2]->getData();
+        $chat1Data = $spans[4]->getData();
+        $this->assertEquals('gpt-4o-2024-08-06', $chat0Data['gen_ai.request.model']);
+        $this->assertEquals('gpt-4o-2024-08-06', $chat1Data['gen_ai.request.model']);
+
+        // With multiple chat spans, per-step token usage is not available
+        $this->assertArrayNotHasKey('gen_ai.usage.input_tokens', $chat0Data);
+        $this->assertArrayNotHasKey('gen_ai.usage.input_tokens', $chat1Data);
+
+        // All child spans should be finished (skip transaction at index 0)
+        for ($i = 1; $i < count($spans); $i++) {
+            $this->assertNotNull($spans[$i]->getEndTimestamp(), "Span at index {$i} ({$spans[$i]->getOp()}) should be finished");
+        }
+    }
+
+    public function testStreamingMultiStepChatSpansHaveCorrectMessages(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.send_default_pii' => true,
+            'sentry.tracing.http_client_requests' => false,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createStreamingPromptAndResponse();
+        $agent = new TestAgent();
+        $tool = new WeatherLookup();
+
+        $this->dispatchLaravelEvent(new StreamingAgent('inv-stream-msg', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new InvokingTool('inv-stream-msg', 'tool-sm1', $agent, $tool, ['city' => 'Paris']));
+        $this->dispatchLaravelEvent(new ToolInvoked('inv-stream-msg', 'tool-sm1', $agent, $tool, ['city' => 'Paris'], 'Sunny, 22C'));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentStreamed('inv-stream-msg', $prompt, $response));
+
+        $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
+        $this->assertCount(2, $chatSpans);
+
+        // First chat span: input is the user prompt, no output (intermediate step)
+        $chat0Data = $chatSpans[0]->getData();
+        $this->assertArrayHasKey('gen_ai.input.messages', $chat0Data);
+        $input0 = json_decode($chat0Data['gen_ai.input.messages'], true);
+        $this->assertEquals('user', $input0[0]['role']);
+        $this->assertEquals('Analyze this transcript', $input0[0]['parts'][0]['content']);
+        $this->assertArrayNotHasKey('gen_ai.output.messages', $chat0Data);
+
+        // Second chat span: no input (can't determine from response-level data), output is the final text
+        $chat1Data = $chatSpans[1]->getData();
+        $this->assertArrayNotHasKey('gen_ai.input.messages', $chat1Data);
+        $this->assertArrayHasKey('gen_ai.output.messages', $chat1Data);
+        $output1 = json_decode($chat1Data['gen_ai.output.messages'], true);
+        $this->assertEquals('assistant', $output1[0]['role']);
+        $this->assertStringContainsString('streamed analysis', $output1[0]['parts'][0]['content']);
+    }
+
+    public function testStreamingAgentSpanIsNotRecordedWhenTracingDisabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.ai' => false,
+            'prism.providers.openai.url' => self::PROVIDER_URL,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        [$prompt, $response] = $this->createStreamingPromptAndResponse();
+
+        $this->dispatchLaravelEvent(new StreamingAgent('inv-stream8', $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentStreamed('inv-stream8', $prompt, $response));
+
+        $spans = $transaction->getSpanRecorder()->getSpans();
+
+        // Only the transaction span, no agent or chat spans
+        $this->assertCount(1, $spans);
+    }
+
     // ---- Helper methods ----
 
     /**
@@ -1369,6 +1766,43 @@ class AiIntegrationTest extends TestCase
             'usage' => new TestUsage(140, 50),
             'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
             'conversationId' => 'conv-abc-123',
+        ];
+
+        return [$prompt, $response];
+    }
+
+    /**
+     * Create a prompt and response simulating a streaming flow.
+     *
+     * Streaming responses differ from non-streaming: they have no steps (steps are
+     * not populated for StreamedAgentResponse), but they have text, usage, meta,
+     * toolCalls, toolResults, and conversationId.
+     *
+     * @return array{0: object, 1: object} [prompt, response]
+     */
+    private function createStreamingPromptAndResponse(
+        int $promptTokens = 60,
+        int $completionTokens = 130
+    ): array {
+        $agent = new TestAgent();
+        $provider = new TestProvider();
+
+        $prompt = (object)[
+            'agent' => $agent,
+            'provider' => $provider,
+            'model' => 'gpt-4o',
+            'prompt' => 'Analyze this transcript',
+        ];
+
+        // Streaming responses have no steps but have all other data
+        $response = (object)[
+            'text' => 'The streamed analysis shows positive trends.',
+            'toolCalls' => [],
+            'toolResults' => [],
+            'steps' => [],
+            'usage' => new TestUsage($promptTokens, $completionTokens),
+            'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'],
+            'conversationId' => 'conv-stream-123',
         ];
 
         return [$prompt, $response];
