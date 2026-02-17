@@ -1946,7 +1946,7 @@ class AiIntegrationTest extends TestCase
         $this->assertArrayNotHasKey('gen_ai.usage.input_tokens', $chat1Data);
 
         // All child spans should be finished (skip transaction at index 0)
-        for ($i = 1; $i < count($spans); $i++) {
+        for ($i = 1; $i < \count($spans); $i++) {
             $this->assertNotNull($spans[$i]->getEndTimestamp(), "Span at index {$i} ({$spans[$i]->getOp()}) should be finished");
         }
     }
@@ -2094,7 +2094,7 @@ class AiIntegrationTest extends TestCase
         // Verify the total serialized size is within budget
         $chat1Data = $chatSpans[1]->getData();
         if (isset($chat1Data['gen_ai.output.messages'])) {
-            $this->assertLessThanOrEqual(20_014, strlen($chat1Data['gen_ai.output.messages']),
+            $this->assertLessThanOrEqual(20_014, \strlen($chat1Data['gen_ai.output.messages']),
                 'Serialized output messages should be within 20KB budget (+ truncation suffix)');
         }
     }
@@ -2406,7 +2406,7 @@ class AiIntegrationTest extends TestCase
 
         // The serialized output should be within budget
         $serialized = $agentData['gen_ai.output.messages'];
-        $this->assertLessThanOrEqual(20_014, strlen($serialized),
+        $this->assertLessThanOrEqual(20_014, \strlen($serialized),
             'Serialized output messages should be within 20KB budget (+ truncation suffix)');
 
         // The output text content should be capped at 10K chars
@@ -2448,7 +2448,7 @@ class AiIntegrationTest extends TestCase
 
         // Tool result should be truncated
         $resultStr = $toolData['gen_ai.tool.call.result'];
-        $this->assertLessThanOrEqual(20_014, strlen($resultStr),
+        $this->assertLessThanOrEqual(20_014, \strlen($resultStr),
             'Tool result should be truncated to within budget');
         $this->assertStringEndsWith('...(truncated)', $resultStr);
     }
@@ -2494,14 +2494,14 @@ class AiIntegrationTest extends TestCase
         $this->assertArrayHasKey('gen_ai.embeddings.input', $data);
 
         $serialized = $data['gen_ai.embeddings.input'];
-        $this->assertLessThanOrEqual(20_014, strlen($serialized),
+        $this->assertLessThanOrEqual(20_014, \strlen($serialized),
             'Serialized embedding inputs should be within 20KB budget');
 
         // Should have kept some but not all inputs (working backward from end)
         $keptInputs = json_decode($serialized, true);
         $this->assertNotNull($keptInputs);
-        $this->assertGreaterThan(0, count($keptInputs));
-        $this->assertLessThan(50, count($keptInputs), 'Some inputs should have been dropped');
+        $this->assertGreaterThan(0, \count($keptInputs));
+        $this->assertLessThan(50, \count($keptInputs), 'Some inputs should have been dropped');
 
         // The kept inputs should be the last ones
         $lastKeptInput = end($keptInputs);

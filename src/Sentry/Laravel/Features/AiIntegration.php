@@ -297,7 +297,7 @@ class AiIntegration extends Feature
         $data = $span->getData();
 
         if ($this->shouldSendDefaultPii() && $event->result !== null) {
-            $resultString = is_string($event->result) ? $event->result : json_encode($event->result);
+            $resultString = \is_string($event->result) ? $event->result : json_encode($event->result);
             if ($resultString !== false) {
                 $data['gen_ai.tool.call.result'] = $this->truncateString($resultString);
             }
@@ -337,7 +337,7 @@ class AiIntegration extends Feature
 
         if ($this->shouldSendDefaultPii()) {
             $inputs = $event->prompt->inputs ?? null;
-            if (is_array($inputs) && !empty($inputs)) {
+            if (\is_array($inputs) && !empty($inputs)) {
                 $data['gen_ai.embeddings.input'] = $this->truncateEmbeddingInputs($inputs);
             }
         }
@@ -473,7 +473,7 @@ class AiIntegration extends Feature
     private function findMatchingInvocation(string $url): ?string
     {
         foreach (array_reverse($this->invocations, true) as $invocationId => $inv) {
-            if ($inv['urlPrefix'] !== null && substr($url, 0, strlen($inv['urlPrefix'])) === $inv['urlPrefix']) {
+            if ($inv['urlPrefix'] !== null && substr($url, 0, \strlen($inv['urlPrefix'])) === $inv['urlPrefix']) {
                 return $invocationId;
             }
         }
@@ -516,15 +516,15 @@ class AiIntegration extends Feature
 
         $steps = $response->steps ?? null;
 
-        if (is_object($steps) && method_exists($steps, 'all')) {
+        if (\is_object($steps) && method_exists($steps, 'all')) {
             $steps = $steps->all();
-        } elseif (is_object($steps) && method_exists($steps, 'toArray')) {
+        } elseif (\is_object($steps) && method_exists($steps, 'toArray')) {
             $steps = $steps->toArray();
         }
 
-        $stepsArray = is_array($steps) ? array_values($steps) : [];
+        $stepsArray = \is_array($steps) ? array_values($steps) : [];
         $hasSteps = !empty($stepsArray);
-        $lastIndex = count($chatSpans) - 1;
+        $lastIndex = \count($chatSpans) - 1;
 
         foreach ($chatSpans as $index => $chatSpan) {
             $data = $chatSpan->getData();
@@ -547,7 +547,7 @@ class AiIntegration extends Feature
 
             $usage = $step !== null
                 ? $this->flexGet($step, 'usage')
-                : (count($chatSpans) === 1 ? $this->flexGet($response, 'usage') : null);
+                : (\count($chatSpans) === 1 ? $this->flexGet($response, 'usage') : null);
 
             if ($usage !== null) {
                 $this->setTokenUsage($data, $usage);
@@ -556,7 +556,7 @@ class AiIntegration extends Feature
             if ($step !== null) {
                 $finishReason = $this->flexGet($step, 'finishReason');
                 if ($finishReason !== null) {
-                    $data['gen_ai.response.finish_reasons'] = is_object($finishReason) && property_exists($finishReason, 'value')
+                    $data['gen_ai.response.finish_reasons'] = \is_object($finishReason) && property_exists($finishReason, 'value')
                         ? $finishReason->value
                         : (string)$finishReason;
                 }
@@ -612,7 +612,7 @@ class AiIntegration extends Feature
 
         $url = config("prism.providers.{$provider->driver()}.url");
 
-        return is_string($url) && $url !== '' ? $url : null;
+        return \is_string($url) && $url !== '' ? $url : null;
     }
 
     /**
@@ -630,19 +630,19 @@ class AiIntegration extends Feature
             return [];
         }
 
-        if (is_object($attachments) && method_exists($attachments, 'all')) {
+        if (\is_object($attachments) && method_exists($attachments, 'all')) {
             $attachments = $attachments->all();
-        } elseif (is_object($attachments) && method_exists($attachments, 'toArray')) {
+        } elseif (\is_object($attachments) && method_exists($attachments, 'toArray')) {
             $attachments = $attachments->toArray();
         }
 
-        if (!is_array($attachments) || empty($attachments)) {
+        if (!\is_array($attachments) || empty($attachments)) {
             return [];
         }
 
         $parts = [];
         foreach ($attachments as $attachment) {
-            if (!is_object($attachment)) {
+            if (!\is_object($attachment)) {
                 continue;
             }
 
@@ -719,7 +719,7 @@ class AiIntegration extends Feature
 
     private function resolveAttachmentModality(object $attachment): string
     {
-        $class = get_class($attachment);
+        $class = \get_class($attachment);
 
         if (is_a($attachment, 'Laravel\Ai\Files\Image', true)
             || strpos($class, 'Image') !== false) {
@@ -841,13 +841,13 @@ class AiIntegration extends Feature
 
         $toolCalls = $this->flexGet($source, 'toolCalls');
         if ($toolCalls !== null) {
-            if (is_object($toolCalls) && method_exists($toolCalls, 'all')) {
+            if (\is_object($toolCalls) && method_exists($toolCalls, 'all')) {
                 $toolCalls = $toolCalls->all();
-            } elseif (is_object($toolCalls) && method_exists($toolCalls, 'toArray')) {
+            } elseif (\is_object($toolCalls) && method_exists($toolCalls, 'toArray')) {
                 $toolCalls = $toolCalls->toArray();
             }
 
-            if (is_array($toolCalls)) {
+            if (\is_array($toolCalls)) {
                 foreach ($toolCalls as $toolCall) {
                     $parts[] = $this->buildToolCallPart($toolCall);
                 }
@@ -860,20 +860,20 @@ class AiIntegration extends Feature
 
         $toolResults = $this->flexGet($source, 'toolResults');
         if ($toolResults !== null) {
-            if (is_object($toolResults) && method_exists($toolResults, 'all')) {
+            if (\is_object($toolResults) && method_exists($toolResults, 'all')) {
                 $toolResults = $toolResults->all();
-            } elseif (is_object($toolResults) && method_exists($toolResults, 'toArray')) {
+            } elseif (\is_object($toolResults) && method_exists($toolResults, 'toArray')) {
                 $toolResults = $toolResults->toArray();
             }
         }
-        if (is_array($toolResults)) {
+        if (\is_array($toolResults)) {
             foreach ($toolResults as $toolResult) {
                 $result = $this->flexGet($toolResult, 'result');
                 if ($result === null) {
                     continue;
                 }
 
-                $resultContent = is_string($result) ? $result : json_encode($result);
+                $resultContent = \is_string($result) ? $result : json_encode($result);
                 if ($resultContent === false) {
                     continue;
                 }
@@ -905,7 +905,7 @@ class AiIntegration extends Feature
 
         $args = $this->flexGet($toolCall, 'arguments');
         if ($args !== null) {
-            $encoded = is_string($args) ? $args : json_encode($args);
+            $encoded = \is_string($args) ? $args : json_encode($args);
             if ($encoded !== false) {
                 $part['arguments'] = $encoded;
             }
@@ -992,7 +992,7 @@ class AiIntegration extends Feature
             $factory = new \Illuminate\JsonSchema\JsonSchemaTypeFactory();
             $properties = $tool->schema($factory);
 
-            if (empty($properties) || !is_array($properties)) {
+            if (empty($properties) || !\is_array($properties)) {
                 return null;
             }
 
@@ -1013,7 +1013,7 @@ class AiIntegration extends Feature
     {
         if (method_exists($tool, 'name')) {
             $name = $tool->name();
-            if (is_string($name) && $name !== '') {
+            if (\is_string($name) && $name !== '') {
                 return $name;
             }
         }
@@ -1029,11 +1029,11 @@ class AiIntegration extends Feature
 
         $description = $tool->description();
 
-        if (is_string($description) && $description !== '') {
+        if (\is_string($description) && $description !== '') {
             return $description;
         }
 
-        if (is_object($description) && method_exists($description, '__toString')) {
+        if (\is_object($description) && method_exists($description, '__toString')) {
             return (string)$description;
         }
 
@@ -1052,7 +1052,7 @@ class AiIntegration extends Feature
             return null;
         }
 
-        return is_string($instructions) ? $instructions : (string)$instructions;
+        return \is_string($instructions) ? $instructions : (string)$instructions;
     }
 
     /**
@@ -1105,7 +1105,7 @@ class AiIntegration extends Feature
             return null;
         }
 
-        if (is_object($source)) {
+        if (\is_object($source)) {
             return property_exists($source, $key) ? $source->{$key} : null;
         }
 
@@ -1114,7 +1114,7 @@ class AiIntegration extends Feature
 
     private function shortClassName(object $obj): string
     {
-        $parts = explode('\\', get_class($obj));
+        $parts = explode('\\', \get_class($obj));
 
         return end($parts);
     }
@@ -1124,7 +1124,7 @@ class AiIntegration extends Feature
      */
     private function evictOldestIfNeeded(array &$map): void
     {
-        while (count($map) >= self::MAX_TRACKED_INVOCATIONS) {
+        while (\count($map) >= self::MAX_TRACKED_INVOCATIONS) {
             reset($map);
             $oldestKey = key($map);
             if ($oldestKey === null) {
@@ -1143,7 +1143,7 @@ class AiIntegration extends Feature
 
     private function truncateString(string $value, int $maxBytes = self::MAX_MESSAGE_BYTES): string
     {
-        if (strlen($value) <= $maxBytes) {
+        if (\strlen($value) <= $maxBytes) {
             return $value;
         }
 
@@ -1175,21 +1175,21 @@ class AiIntegration extends Feature
         }
         unset($message);
 
-        if (count($messages) === 1) {
+        if (\count($messages) === 1) {
             $encoded = json_encode($messages);
 
             if ($encoded === false) {
                 return '[]';
             }
 
-            return strlen($encoded) <= self::MAX_MESSAGE_BYTES
+            return \strlen($encoded) <= self::MAX_MESSAGE_BYTES
                 ? $encoded
                 : $this->truncateString($encoded);
         }
 
         $encoded = json_encode($messages);
 
-        if ($encoded !== false && strlen($encoded) <= self::MAX_MESSAGE_BYTES) {
+        if ($encoded !== false && \strlen($encoded) <= self::MAX_MESSAGE_BYTES) {
             return $encoded;
         }
 
@@ -1210,15 +1210,15 @@ class AiIntegration extends Feature
      */
     private function truncateMessageContent(array $message): array
     {
-        if (!isset($message['parts']) || !is_array($message['parts'])) {
+        if (!isset($message['parts']) || !\is_array($message['parts'])) {
             return $message;
         }
 
         foreach ($message['parts'] as &$part) {
-            if (isset($part['content']) && is_string($part['content'])) {
+            if (isset($part['content']) && \is_string($part['content'])) {
                 $part['content'] = $this->truncateContentString($part['content']);
             }
-            if (isset($part['arguments']) && is_string($part['arguments'])) {
+            if (isset($part['arguments']) && \is_string($part['arguments'])) {
                 $part['arguments'] = $this->truncateContentString($part['arguments']);
             }
         }
@@ -1238,9 +1238,9 @@ class AiIntegration extends Feature
         $kept = [];
         $totalBytes = 2;
 
-        for ($i = count($inputs) - 1; $i >= 0; $i--) {
+        for ($i = \count($inputs) - 1; $i >= 0; $i--) {
             $inputJson = json_encode($inputs[$i]);
-            $entryBytes = strlen($inputJson) + (empty($kept) ? 0 : 1); // +1 for comma separator
+            $entryBytes = \strlen($inputJson) + (empty($kept) ? 0 : 1); // +1 for comma separator
 
             if ($totalBytes + $entryBytes > self::MAX_MESSAGE_BYTES) {
                 break;
@@ -1252,7 +1252,7 @@ class AiIntegration extends Feature
 
         if (empty($kept)) {
             $lastInput = end($inputs);
-            if (is_string($lastInput)) {
+            if (\is_string($lastInput)) {
                 $lastInput = $this->truncateContentString($lastInput);
             }
             $kept = [$lastInput];
@@ -1270,7 +1270,7 @@ class AiIntegration extends Feature
     private function redactBinaryInMessages(array $messages): array
     {
         foreach ($messages as &$message) {
-            if (!isset($message['parts']) || !is_array($message['parts'])) {
+            if (!isset($message['parts']) || !\is_array($message['parts'])) {
                 continue;
             }
 
@@ -1301,17 +1301,17 @@ class AiIntegration extends Feature
             return $this->transformImagePart($part);
         }
 
-        if (isset($part['content']) && is_string($part['content'])) {
+        if (isset($part['content']) && \is_string($part['content'])) {
             $part['content'] = $this->redactBinaryInString($part['content']);
         }
 
-        if (isset($part['data']) && is_string($part['data'])) {
+        if (isset($part['data']) && \is_string($part['data'])) {
             if ($this->isBinaryString($part['data'])) {
                 $part['data'] = self::BLOB_SUBSTITUTE;
             }
         }
 
-        if (isset($part['source']) && is_array($part['source'])) {
+        if (isset($part['source']) && \is_array($part['source'])) {
             $part['source'] = $this->redactSourceField($part['source']);
         }
 
@@ -1324,7 +1324,7 @@ class AiIntegration extends Feature
      */
     private function transformImagePart(array $part): array
     {
-        if (isset($part['image_url']) && is_array($part['image_url'])) {
+        if (isset($part['image_url']) && \is_array($part['image_url'])) {
             $url = $part['image_url']['url'] ?? '';
             if ($this->isDataUri($url)) {
                 $metadata = $this->extractDataUriMetadata($url);
@@ -1342,21 +1342,21 @@ class AiIntegration extends Feature
             return $part;
         }
 
-        if (isset($part['content']) && is_string($part['content'])) {
+        if (isset($part['content']) && \is_string($part['content'])) {
             if ($this->isBinaryString($part['content'])) {
                 $part['content'] = self::BLOB_SUBSTITUTE;
                 $part['type'] = 'blob';
             }
         }
 
-        if (isset($part['data']) && is_string($part['data'])) {
+        if (isset($part['data']) && \is_string($part['data'])) {
             if ($this->isBinaryString($part['data'])) {
                 $part['data'] = self::BLOB_SUBSTITUTE;
                 $part['type'] = 'blob';
             }
         }
 
-        if (isset($part['url']) && is_string($part['url'])) {
+        if (isset($part['url']) && \is_string($part['url'])) {
             if ($this->isDataUri($part['url'])) {
                 $metadata = $this->extractDataUriMetadata($part['url']);
                 $part['type'] = 'blob';
@@ -1387,7 +1387,7 @@ class AiIntegration extends Feature
             $source['data'] = self::BLOB_SUBSTITUTE;
         }
 
-        if (isset($source['data']) && is_string($source['data']) && $this->isBinaryString($source['data'])) {
+        if (isset($source['data']) && \is_string($source['data']) && $this->isBinaryString($source['data'])) {
             $source['data'] = self::BLOB_SUBSTITUTE;
         }
 
