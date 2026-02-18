@@ -1,69 +1,243 @@
 <?php
 // Stub event classes so the test works without laravel/ai installed
 namespace Laravel\Ai\Events;
-if (!class_exists(PromptingAgent::class)) { class PromptingAgent { public function __construct(public string $invocationId, public object $prompt) {} } }
-if (!class_exists(AgentPrompted::class)) { class AgentPrompted { public function __construct(public string $invocationId, public object $prompt, public object $response) {} } }
-if (!class_exists(InvokingTool::class)) { class InvokingTool { public function __construct(public string $invocationId, public string $toolInvocationId, public object $agent, public object $tool, public array $arguments) {} } }
-if (!class_exists(ToolInvoked::class)) { class ToolInvoked { public function __construct(public string $invocationId, public string $toolInvocationId, public object $agent, public object $tool, public array $arguments, public $result) {} } }
-if (!class_exists(StreamingAgent::class)) { class StreamingAgent extends PromptingAgent {} }
-if (!class_exists(AgentStreamed::class)) { class AgentStreamed extends AgentPrompted {} }
-if (!class_exists(GeneratingEmbeddings::class)) { class GeneratingEmbeddings { public function __construct(public string $invocationId, public object $provider, public string $model, public object $prompt) {} } }
-if (!class_exists(EmbeddingsGenerated::class)) { class EmbeddingsGenerated { public function __construct(public string $invocationId, public object $provider, public string $model, public object $prompt, public object $response) {} } }
+
+if (!class_exists(PromptingAgent::class)) {
+    class PromptingAgent
+    {
+        public function __construct(public string $invocationId, public object $prompt)
+        {
+        }
+    }
+}
+if (!class_exists(AgentPrompted::class)) {
+    class AgentPrompted
+    {
+        public function __construct(public string $invocationId, public object $prompt, public object $response)
+        {
+        }
+    }
+}
+if (!class_exists(InvokingTool::class)) {
+    class InvokingTool
+    {
+        public function __construct(public string $invocationId, public string $toolInvocationId, public object $agent, public object $tool, public array $arguments)
+        {
+        }
+    }
+}
+if (!class_exists(ToolInvoked::class)) {
+    class ToolInvoked
+    {
+        public function __construct(public string $invocationId, public string $toolInvocationId, public object $agent, public object $tool, public array $arguments, public $result)
+        {
+        }
+    }
+}
+if (!class_exists(StreamingAgent::class)) {
+    class StreamingAgent extends PromptingAgent
+    {
+    }
+}
+if (!class_exists(AgentStreamed::class)) {
+    class AgentStreamed extends AgentPrompted
+    {
+    }
+}
+if (!class_exists(GeneratingEmbeddings::class)) {
+    class GeneratingEmbeddings
+    {
+        public function __construct(public string $invocationId, public object $provider, public string $model, public object $prompt)
+        {
+        }
+    }
+}
+if (!class_exists(EmbeddingsGenerated::class)) {
+    class EmbeddingsGenerated
+    {
+        public function __construct(public string $invocationId, public object $provider, public string $model, public object $prompt, public object $response)
+        {
+        }
+    }
+}
 
 namespace Laravel\Ai\Attributes;
-if (!class_exists(Temperature::class)) { #[\Attribute(\Attribute::TARGET_CLASS)] class Temperature { public function __construct(public float $value) {} } }
-if (!class_exists(MaxTokens::class)) { #[\Attribute(\Attribute::TARGET_CLASS)] class MaxTokens { public function __construct(public int $value) {} } }
+
+if (!class_exists(Temperature::class)) {
+    #[\Attribute(\Attribute::TARGET_CLASS)] class Temperature
+    {
+        public function __construct(public float $value)
+        {
+        }
+    }
+}
+if (!class_exists(MaxTokens::class)) {
+    #[\Attribute(\Attribute::TARGET_CLASS)] class MaxTokens
+    {
+        public function __construct(public int $value)
+        {
+        }
+    }
+}
 
 namespace Laravel\Ai\Files;
-if (!class_exists(File::class)) { abstract class File { public ?string $name = null; public function name(): ?string { return $this->name; } public function as(?string $name): static { $this->name = $name; return $this; } } }
-if (!class_exists(Image::class)) { abstract class Image extends File {} }
-if (!class_exists(Document::class)) { abstract class Document extends File {} }
+
+if (!class_exists(File::class)) {
+    abstract class File
+    {
+        public ?string $name = null;
+        public function name(): ?string
+        {
+            return $this->name;
+        } public function as(?string $name): static
+        {
+            $this->name = $name;
+            return $this;
+        }
+    }
+}
+if (!class_exists(Image::class)) {
+    abstract class Image extends File
+    {
+    }
+}
+if (!class_exists(Document::class)) {
+    abstract class Document extends File
+    {
+    }
+}
 
 namespace Sentry\Laravel\Tests\Features\AiStubs;
-use Laravel\Ai\Attributes\{MaxTokens, Temperature};
-class TestAgent {
-    public function instructions(): string { return 'You are a helpful assistant.'; }
-    public function tools(): array { return [new WeatherLookup()]; }
+
+use Laravel\Ai\Attributes\MaxTokens;
+use Laravel\Ai\Attributes\Temperature;
+
+class TestAgent
+{
+    public function instructions(): string
+    {
+        return 'You are a helpful assistant.';
+    }
+    public function tools(): array
+    {
+        return [new WeatherLookup()];
+    }
 }
 #[Temperature(0.7)] #[MaxTokens(4096)]
-class TestAgentWithConfig {
-    public function instructions(): string { return 'You are a configured assistant.'; }
-    public function tools(): array { return []; }
+class TestAgentWithConfig
+{
+    public function instructions(): string
+    {
+        return 'You are a configured assistant.';
+    }
+    public function tools(): array
+    {
+        return [];
+    }
 }
-class WeatherLookup {
-    public function name(): string { return 'WeatherLookup'; }
-    public function description(): string { return 'Looks up the current weather for a given location.'; }
-    public function schema(\Illuminate\Contracts\JsonSchema\JsonSchema $schema): array {
+class WeatherLookup
+{
+    public function name(): string
+    {
+        return 'WeatherLookup';
+    }
+    public function description(): string
+    {
+        return 'Looks up the current weather for a given location.';
+    }
+    public function schema(\Illuminate\Contracts\JsonSchema\JsonSchema $schema): array
+    {
         return ['location' => $schema->string()->description('The city and state, e.g. San Francisco, CA')->required(), 'unit' => $schema->string()->enum(['celsius', 'fahrenheit'])];
     }
 }
-class TestProvider {
-    public function driver(): string { return 'openai'; }
-    public function name(): string { return 'openai'; }
+class TestProvider
+{
+    public function driver(): string
+    {
+        return 'openai';
+    }
+    public function name(): string
+    {
+        return 'openai';
+    }
 }
-class TestUsage {
-    public function __construct(public int $promptTokens = 0, public int $completionTokens = 0, public int $cacheReadInputTokens = 0, public int $cacheWriteInputTokens = 0, public int $reasoningTokens = 0) {}
+class TestUsage
+{
+    public function __construct(public int $promptTokens = 0, public int $completionTokens = 0, public int $cacheReadInputTokens = 0, public int $cacheWriteInputTokens = 0, public int $reasoningTokens = 0)
+    {
+    }
 }
-class TestToolCall { public function __construct(public string $name, public array $arguments = []) {} }
-class TestToolResult { public function __construct(public string $name, public $result) {} }
-class TestLocalImage extends \Laravel\Ai\Files\Image {
-    public function __construct(public string $path, public ?string $mime = null) {}
-    public function mimeType(): ?string { return $this->mime; }
-    public function name(): ?string { return $this->name ?? basename($this->path); }
-    public function toArray(): array { return ['type' => 'local-image', 'name' => $this->name(), 'path' => $this->path, 'mime' => $this->mime]; }
+class TestToolCall
+{
+    public function __construct(public string $name, public array $arguments = [])
+    {
+    }
 }
-class TestRemoteImage extends \Laravel\Ai\Files\Image {
-    public function __construct(public string $url, public ?string $mime = null) {}
-    public function mimeType(): ?string { return $this->mime; }
-    public function toArray(): array { return ['type' => 'remote-image', 'name' => $this->name, 'url' => $this->url, 'mime' => $this->mime]; }
+class TestToolResult
+{
+    public function __construct(public string $name, public $result)
+    {
+    }
+}
+class TestLocalImage extends \Laravel\Ai\Files\Image
+{
+    public function __construct(public string $path, public ?string $mime = null)
+    {
+    }
+    public function mimeType(): ?string
+    {
+        return $this->mime;
+    }
+    public function name(): ?string
+    {
+        return $this->name ?? basename($this->path);
+    }
+    public function toArray(): array
+    {
+        return ['type' => 'local-image', 'name' => $this->name(), 'path' => $this->path, 'mime' => $this->mime];
+    }
+}
+class TestRemoteImage extends \Laravel\Ai\Files\Image
+{
+    public function __construct(public string $url, public ?string $mime = null)
+    {
+    }
+    public function mimeType(): ?string
+    {
+        return $this->mime;
+    }
+    public function toArray(): array
+    {
+        return ['type' => 'remote-image', 'name' => $this->name, 'url' => $this->url, 'mime' => $this->mime];
+    }
 }
 namespace Sentry\Laravel\Tests\Features;
-use Illuminate\Http\Client\Events\{ConnectionFailed, RequestSending, ResponseReceived};
-use Illuminate\Http\Client\{Request as HttpRequest, Response as HttpResponse};
-use Laravel\Ai\Events\{PromptingAgent, AgentPrompted, StreamingAgent, AgentStreamed, InvokingTool, ToolInvoked, GeneratingEmbeddings, EmbeddingsGenerated};
-use Sentry\Laravel\Tests\Features\AiStubs\{TestAgent, TestAgentWithConfig, TestProvider, TestToolCall, TestToolResult, TestUsage, WeatherLookup, TestLocalImage, TestRemoteImage};
+
+use Illuminate\Http\Client\Events\ConnectionFailed;
+use Illuminate\Http\Client\Events\RequestSending;
+use Illuminate\Http\Client\Events\ResponseReceived;
+use Illuminate\Http\Client\Request as HttpRequest;
+use Illuminate\Http\Client\Response as HttpResponse;
+use Laravel\Ai\Events\PromptingAgent;
+use Laravel\Ai\Events\AgentPrompted;
+use Laravel\Ai\Events\StreamingAgent;
+use Laravel\Ai\Events\AgentStreamed;
+use Laravel\Ai\Events\InvokingTool;
+use Laravel\Ai\Events\ToolInvoked;
+use Laravel\Ai\Events\GeneratingEmbeddings;
+use Laravel\Ai\Events\EmbeddingsGenerated;
+use Sentry\Laravel\Tests\Features\AiStubs\TestAgent;
+use Sentry\Laravel\Tests\Features\AiStubs\TestAgentWithConfig;
+use Sentry\Laravel\Tests\Features\AiStubs\TestProvider;
+use Sentry\Laravel\Tests\Features\AiStubs\TestToolCall;
+use Sentry\Laravel\Tests\Features\AiStubs\TestToolResult;
+use Sentry\Laravel\Tests\Features\AiStubs\TestUsage;
+use Sentry\Laravel\Tests\Features\AiStubs\WeatherLookup;
+use Sentry\Laravel\Tests\Features\AiStubs\TestLocalImage;
+use Sentry\Laravel\Tests\Features\AiStubs\TestRemoteImage;
 use Sentry\Laravel\Tests\TestCase;
-use Sentry\Tracing\{Span, SpanStatus};
+use Sentry\Tracing\Span;
+use Sentry\Tracing\SpanStatus;
 
 class AiIntegrationTest extends TestCase
 {
@@ -71,8 +245,12 @@ class AiIntegrationTest extends TestCase
     protected $defaultSetupConfig = ['sentry.tracing.http_client_requests' => false];
     protected function setUp(): void
     {
-        if (\PHP_VERSION_ID < 80400) { $this->markTestSkipped('Laravel AI requires PHP 8.4+.'); }
-        if (version_compare(\Illuminate\Foundation\Application::VERSION, '12', '<')) { $this->markTestSkipped('Laravel AI requires Laravel 12+.'); }
+        if (\PHP_VERSION_ID < 80400) {
+            $this->markTestSkipped('Laravel AI requires PHP 8.4+.');
+        }
+        if (version_compare(\Illuminate\Foundation\Application::VERSION, '12', '<')) {
+            $this->markTestSkipped('Laravel AI requires Laravel 12+.');
+        }
         parent::setUp();
         config(['prism.providers.openai.url' => self::PROVIDER_URL]);
     }
@@ -158,7 +336,8 @@ class AiIntegrationTest extends TestCase
     {
         $transaction = $this->startTransaction();
         [$prompt, $response] = $this->makeMultiStepPromptAndResponse();
-        $agent = new TestAgent(); $tool = new WeatherLookup();
+        $agent = new TestAgent();
+        $tool = new WeatherLookup();
         $this->dispatchLaravelEvent(new PromptingAgent('inv-m', $prompt));
         $this->dispatchLlmHttpEvents();
         $this->dispatchLaravelEvent(new InvokingTool('inv-m', 'tool-1', $agent, $tool, ['city' => 'Paris']));
@@ -182,7 +361,8 @@ class AiIntegrationTest extends TestCase
         $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'prism.providers.openai.url' => self::PROVIDER_URL]);
         $transaction = $this->startTransaction();
         [$prompt, $response] = $this->makePromptAndResponse();
-        $agent = new TestAgent(); $tool = new WeatherLookup();
+        $agent = new TestAgent();
+        $tool = new WeatherLookup();
         $this->dispatchLaravelEvent(new PromptingAgent('inv-t1', $prompt));
         $this->dispatchLlmHttpEvents();
         $this->dispatchLaravelEvent(new InvokingTool('inv-t1', 'tool-1', $agent, $tool, ['query' => 'weather in Paris']));
@@ -271,7 +451,8 @@ class AiIntegrationTest extends TestCase
     {
         $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'prism.providers.openai.url' => self::PROVIDER_URL]);
         $transaction = $this->startTransaction();
-        $agent = new TestAgent(); $provider = new TestProvider();
+        $agent = new TestAgent();
+        $provider = new TestProvider();
         $prompt = (object)['agent' => $agent, 'provider' => $provider, 'model' => 'gpt-4o', 'prompt' => 'Compare images.',
             'attachments' => collect([new TestLocalImage('/tmp/photo.png', 'image/png'), new TestRemoteImage('https://example.com/photo.jpg', 'image/jpeg')])];
         $step = (object)['text' => 'Done.', 'toolCalls' => [], 'toolResults' => [], 'finishReason' => (object)['value' => 'stop'],
@@ -294,8 +475,8 @@ class AiIntegrationTest extends TestCase
         // Disable invoke_agent -> no agent or chat spans
         $this->resetApplicationWithConfig(['sentry.tracing.gen_ai_invoke_agent' => false, 'prism.providers.openai.url' => self::PROVIDER_URL]);
         $spans = $this->runAgentFlow($this->makePromptAndResponse());
-        $this->assertEmpty(array_filter($spans, fn($s) => $s->getOp() === 'gen_ai.invoke_agent'));
-        $this->assertEmpty(array_filter($spans, fn($s) => $s->getOp() === 'gen_ai.chat'));
+        $this->assertEmpty(array_filter($spans, fn ($s) => $s->getOp() === 'gen_ai.invoke_agent'));
+        $this->assertEmpty(array_filter($spans, fn ($s) => $s->getOp() === 'gen_ai.chat'));
         // Disable chat -> agent span still created, no chat
         $this->resetApplicationWithConfig(['sentry.tracing.gen_ai_chat' => false, 'prism.providers.openai.url' => self::PROVIDER_URL]);
         $transaction = $this->startTransaction();
@@ -341,7 +522,8 @@ class AiIntegrationTest extends TestCase
     }
     private function makePromptAndResponse(int $promptTokens = 60, int $completionTokens = 130, int $cacheReadInputTokens = 0, int $reasoningTokens = 0, string $agentClass = TestAgent::class, string $promptText = 'Analyze this transcript'): array
     {
-        $agent = new $agentClass(); $provider = new TestProvider();
+        $agent = new $agentClass();
+        $provider = new TestProvider();
         $usage = new TestUsage($promptTokens, $completionTokens, $cacheReadInputTokens, 0, $reasoningTokens);
         $meta = (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'];
         $prompt = (object)['agent' => $agent, 'provider' => $provider, 'model' => 'gpt-4o', 'prompt' => $promptText];
@@ -352,9 +534,12 @@ class AiIntegrationTest extends TestCase
 
     private function makeMultiStepPromptAndResponse(): array
     {
-        $agent = new TestAgent(); $provider = new TestProvider(); $meta = (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'];
+        $agent = new TestAgent();
+        $provider = new TestProvider();
+        $meta = (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'];
         $prompt = (object)['agent' => $agent, 'provider' => $provider, 'model' => 'gpt-4o', 'prompt' => 'What is the weather in Paris?'];
-        $tc = new TestToolCall('WeatherLookup', ['city' => 'Paris']); $tr = new TestToolResult('WeatherLookup', 'Sunny, 22C');
+        $tc = new TestToolCall('WeatherLookup', ['city' => 'Paris']);
+        $tr = new TestToolResult('WeatherLookup', 'Sunny, 22C');
         $step1 = (object)['text' => '', 'toolCalls' => [$tc], 'toolResults' => [$tr], 'finishReason' => (object)['value' => 'tool_calls'], 'usage' => new TestUsage(60, 20), 'meta' => $meta];
         $step2 = (object)['text' => 'Sunny and 22 degrees.', 'toolCalls' => [], 'toolResults' => [], 'finishReason' => (object)['value' => 'stop'], 'usage' => new TestUsage(80, 30), 'meta' => $meta];
         $response = (object)['text' => 'Sunny and 22 degrees.', 'toolCalls' => [$tc], 'toolResults' => [$tr], 'steps' => [$step1, $step2], 'usage' => new TestUsage(140, 50), 'meta' => $meta, 'conversationId' => 'conv-abc-123'];
@@ -363,7 +548,8 @@ class AiIntegrationTest extends TestCase
 
     private function makeStreamingPromptAndResponse(): array
     {
-        $agent = new TestAgent(); $provider = new TestProvider();
+        $agent = new TestAgent();
+        $provider = new TestProvider();
         $prompt = (object)['agent' => $agent, 'provider' => $provider, 'model' => 'gpt-4o', 'prompt' => 'Analyze this transcript'];
         $response = (object)['text' => 'Streamed analysis.', 'toolCalls' => [], 'toolResults' => [], 'steps' => [], 'usage' => new TestUsage(60, 130), 'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'], 'conversationId' => 'conv-stream-123'];
         return [$prompt, $response];
@@ -377,21 +563,35 @@ class AiIntegrationTest extends TestCase
         return [$p, $prompt, $response];
     }
 
-    private function findSpanByOp(object $t, string $op): ?Span { return $this->findSpanByOpInSpans($t->getSpanRecorder()->getSpans(), $op); }
+    private function findSpanByOp(object $t, string $op): ?Span
+    {
+        return $this->findSpanByOpInSpans($t->getSpanRecorder()->getSpans(), $op);
+    }
 
     private function findSpanByOpInSpans(array $spans, string $op): ?Span
     {
-        foreach ($spans as $s) { if ($s->getOp() === $op) return $s; }
+        foreach ($spans as $s) {
+            if ($s->getOp() === $op) {
+                return $s;
+            }
+        }
         return null;
     }
 
     private function findAllSpansByOp(object $t, string $op): array
     {
-        return array_values(array_filter($t->getSpanRecorder()->getSpans(), fn(Span $s) => $s->getOp() === $op));
+        return array_values(array_filter($t->getSpanRecorder()->getSpans(), fn (Span $s) => $s->getOp() === $op));
     }
 
-    private function dispatchLlmHttpEvents(): void { $this->dispatchLlmRequestSending(); $this->dispatchLlmResponseReceived(); }
-    private function dispatchLlmRequestSending(): void { $this->dispatchLaravelEvent(new RequestSending(new HttpRequest(new \GuzzleHttp\Psr7\Request('POST', self::PROVIDER_URL . '/responses', [], '{}')))); }
+    private function dispatchLlmHttpEvents(): void
+    {
+        $this->dispatchLlmRequestSending();
+        $this->dispatchLlmResponseReceived();
+    }
+    private function dispatchLlmRequestSending(): void
+    {
+        $this->dispatchLaravelEvent(new RequestSending(new HttpRequest(new \GuzzleHttp\Psr7\Request('POST', self::PROVIDER_URL . '/responses', [], '{}'))));
+    }
     private function dispatchLlmResponseReceived(): void
     {
         $r = new HttpRequest(new \GuzzleHttp\Psr7\Request('POST', self::PROVIDER_URL . '/responses', [], '{}'));
