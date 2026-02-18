@@ -72,6 +72,10 @@ jobs:
       - name: Run phpunit
         run: vendor/bin/phpunit --coverage-clover=coverage.xml --coverage-filter=src/Sentry
 
+      - name: Run AI integration tests
+        if: matrix.packages.laravel == '^12.0'
+        run: vendor/bin/phpunit test/Sentry/Features/AiIntegrationTest.php
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
