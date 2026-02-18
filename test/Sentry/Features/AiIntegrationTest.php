@@ -198,6 +198,18 @@ class TestAgent implements Agent
     {
         return null;
     }
+    public function broadcast(...$args)
+    {
+        return null;
+    }
+    public function broadcastNow(...$args)
+    {
+        return null;
+    }
+    public function broadcastOnQueue(...$args)
+    {
+        return null;
+    }
 }
 #[Temperature(0.7)] #[MaxTokens(4096)]
 class TestAgentWithConfig implements Agent
@@ -231,6 +243,18 @@ class TestAgentWithConfig implements Agent
         return null;
     }
     public function queueRespond(...$args)
+    {
+        return null;
+    }
+    public function broadcast(...$args)
+    {
+        return null;
+    }
+    public function broadcastNow(...$args)
+    {
+        return null;
+    }
+    public function broadcastOnQueue(...$args)
     {
         return null;
     }
