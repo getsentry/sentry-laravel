@@ -284,6 +284,34 @@ class TestProvider implements TextProvider
     {
         return 'openai';
     }
+    public function prompt(...$args)
+    {
+        return null;
+    }
+    public function stream(...$args)
+    {
+        return null;
+    }
+    public function textGateway()
+    {
+        return null;
+    }
+    public function chat(...$args)
+    {
+        return null;
+    }
+    public function promptStreamed(...$args)
+    {
+        return null;
+    }
+    public function chatStreamed(...$args)
+    {
+        return null;
+    }
+    public function textModel()
+    {
+        return null;
+    }
 }
 class TestUsage
 {
