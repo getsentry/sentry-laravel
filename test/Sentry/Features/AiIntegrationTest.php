@@ -198,17 +198,17 @@ class TestAgent implements Agent
     {
         return null;
     }
-    public function broadcast(...$args)
+    public function broadcast(string $prompt, $channels, array $attachments = [], bool $now = false, array|string|null $provider = null, ?string $model = null): StreamableAgentResponse
     {
-        return null;
+        return new StreamableAgentResponse();
     }
-    public function broadcastNow(...$args)
+    public function broadcastNow(string $prompt, $channels, array $attachments = [], array|string|null $provider = null, ?string $model = null): StreamableAgentResponse
     {
-        return null;
+        return new StreamableAgentResponse();
     }
-    public function broadcastOnQueue(...$args)
+    public function broadcastOnQueue(string $prompt, $channels, array $attachments = [], ?string $queue = null, array|string|null $provider = null, ?string $model = null): StreamableAgentResponse
     {
-        return null;
+        return new StreamableAgentResponse();
     }
 }
 #[Temperature(0.7)] #[MaxTokens(4096)]
@@ -246,17 +246,17 @@ class TestAgentWithConfig implements Agent
     {
         return null;
     }
-    public function broadcast(...$args)
+    public function broadcast(string $prompt, $channels, array $attachments = [], bool $now = false, array|string|null $provider = null, ?string $model = null): StreamableAgentResponse
     {
-        return null;
+        return new StreamableAgentResponse();
     }
-    public function broadcastNow(...$args)
+    public function broadcastNow(string $prompt, $channels, array $attachments = [], array|string|null $provider = null, ?string $model = null): StreamableAgentResponse
     {
-        return null;
+        return new StreamableAgentResponse();
     }
-    public function broadcastOnQueue(...$args)
+    public function broadcastOnQueue(string $prompt, $channels, array $attachments = [], ?string $queue = null, array|string|null $provider = null, ?string $model = null): StreamableAgentResponse
     {
-        return null;
+        return new StreamableAgentResponse();
     }
 }
 class WeatherLookup
