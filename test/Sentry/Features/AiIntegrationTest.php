@@ -16,6 +16,20 @@ if (!interface_exists(TextProvider::class)) {
     }
 }
 
+namespace Laravel\Ai\Contracts\Gateway;
+
+if (!interface_exists(TextGateway::class)) {
+    interface TextGateway
+    {
+    }
+}
+
+if (!class_exists(StubTextGateway::class)) {
+    class StubTextGateway implements TextGateway
+    {
+    }
+}
+
 namespace Laravel\Ai\Responses;
 
 if (!class_exists(AgentResponse::class)) {
@@ -292,9 +306,9 @@ class TestProvider implements TextProvider
     {
         return new \Laravel\Ai\Responses\StreamableAgentResponse();
     }
-    public function textGateway()
+    public function textGateway(): \Laravel\Ai\Contracts\Gateway\TextGateway
     {
-        return null;
+        return new \Laravel\Ai\Contracts\Gateway\StubTextGateway();
     }
     public function chat(...$args)
     {
