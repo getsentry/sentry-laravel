@@ -14,6 +14,14 @@ if (!interface_exists(Provider::class)) {
     }
 }
 
+namespace Laravel\Ai\Responses;
+
+if (!class_exists(AgentResponse::class)) {
+    class AgentResponse
+    {
+    }
+}
+
 namespace Laravel\Ai\Prompts;
 
 if (!class_exists(AgentPrompt::class)) {
@@ -140,6 +148,7 @@ use Laravel\Ai\Attributes\MaxTokens;
 use Laravel\Ai\Attributes\Temperature;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Provider;
+use Laravel\Ai\Responses\AgentResponse;
 
 class TestAgent implements Agent
 {
@@ -151,15 +160,15 @@ class TestAgent implements Agent
     {
         return [new WeatherLookup()];
     }
-    public function prompt(string $prompt, ...$args)
+    public function prompt(string $prompt, array $attachments = [], ?string $provider = null, ?string $model = null): AgentResponse
+    {
+        return new AgentResponse();
+    }
+    public function stream(string $prompt, array $attachments = [], ?string $provider = null, ?string $model = null)
     {
         return null;
     }
-    public function stream(string $prompt, ...$args)
-    {
-        return null;
-    }
-    public function queue(string $prompt, ...$args)
+    public function queue(string $prompt, array $attachments = [], ?string $provider = null, ?string $model = null)
     {
         return null;
     }
@@ -187,15 +196,15 @@ class TestAgentWithConfig implements Agent
     {
         return [];
     }
-    public function prompt(string $prompt, ...$args)
+    public function prompt(string $prompt, array $attachments = [], ?string $provider = null, ?string $model = null): AgentResponse
+    {
+        return new AgentResponse();
+    }
+    public function stream(string $prompt, array $attachments = [], ?string $provider = null, ?string $model = null)
     {
         return null;
     }
-    public function stream(string $prompt, ...$args)
-    {
-        return null;
-    }
-    public function queue(string $prompt, ...$args)
+    public function queue(string $prompt, array $attachments = [], ?string $provider = null, ?string $model = null)
     {
         return null;
     }

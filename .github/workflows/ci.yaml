@@ -68,7 +68,7 @@ jobs:
             --no-interaction --no-update
 
           # Re-require laravel/ai if we're running AI tests (Laravel 12 with PHP 8.4+)
-          if [ "${{ matrix.packages.laravel }}" == "^12.0" ] && [ "${{ matrix.php }}" == "8.4" ] || [ "${{ matrix.php }}" == "8.5" ]; then
+          if [ "${{ matrix.packages.laravel }}" == "^12.0" ] && ([ "${{ matrix.php }}" == "8.4" ] || [ "${{ matrix.php }}" == "8.5" ]); then
             composer require "laravel/ai:^0.1.5" --dev --no-interaction --no-update
           fi
 
