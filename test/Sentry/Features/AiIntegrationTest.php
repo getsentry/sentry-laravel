@@ -8,10 +8,38 @@ if (!interface_exists(Agent::class)) {
     }
 }
 
+if (!interface_exists(Tool::class)) {
+    interface Tool
+    {
+    }
+}
+
+namespace Laravel\Ai\Providers;
+
+if (!class_exists(Provider::class)) {
+    abstract class Provider
+    {
+    }
+}
+
 namespace Laravel\Ai\Contracts\Providers;
 
 if (!interface_exists(TextProvider::class)) {
     interface TextProvider
+    {
+    }
+}
+
+if (!interface_exists(EmbeddingProvider::class)) {
+    interface EmbeddingProvider
+    {
+    }
+}
+
+namespace Laravel\Ai\Gateway;
+
+if (!class_exists(TextGenerationOptions::class)) {
+    class TextGenerationOptions
     {
     }
 }
@@ -24,17 +52,85 @@ if (!interface_exists(TextGateway::class)) {
     }
 }
 
+if (!interface_exists(EmbeddingGateway::class)) {
+    interface EmbeddingGateway
+    {
+    }
+}
+
+if (!class_exists(StubEmbeddingGateway::class)) {
+    class StubEmbeddingGateway implements EmbeddingGateway
+    {
+        public function generateEmbeddings($provider, string $model, array $inputs, int $dimensions): \Laravel\Ai\Responses\EmbeddingsResponse
+        {
+            return new \Laravel\Ai\Responses\EmbeddingsResponse();
+        }
+    }
+}
+
 if (!class_exists(StubTextGateway::class)) {
     class StubTextGateway implements TextGateway
     {
+        public function generateText(\Laravel\Ai\Contracts\Providers\TextProvider $provider, string $model, ?string $instructions, array $messages = [], array $tools = [], ?array $schema = null, ?\Laravel\Ai\Gateway\TextGenerationOptions $options = null, ?int $timeout = null): \Laravel\Ai\Responses\TextResponse
+        {
+            return new \Laravel\Ai\Responses\TextResponse();
+        }
+        public function streamText(string $invocationId, \Laravel\Ai\Contracts\Providers\TextProvider $provider, string $model, ?string $instructions, array $messages = [], array $tools = [], ?array $schema = null, ?\Laravel\Ai\Gateway\TextGenerationOptions $options = null, ?int $timeout = null): \Generator
+        {
+            yield from [];
+        }
+        public function onToolInvocation(\Closure $invoking, \Closure $invoked): self
+        {
+            return $this;
+        }
+    }
+}
+
+namespace Laravel\Ai\Responses\Data;
+
+if (!class_exists(Usage::class)) {
+    class Usage
+    {
+        public function __construct(public int $promptTokens = 0, public int $completionTokens = 0, public int $cacheWriteInputTokens = 0, public int $cacheReadInputTokens = 0, public int $reasoningTokens = 0)
+        {
+        }
+    }
+}
+
+if (!class_exists(Meta::class)) {
+    class Meta
+    {
+        public function __construct(public ?string $provider = null, public ?string $model = null)
+        {
+        }
     }
 }
 
 namespace Laravel\Ai\Responses;
 
-if (!class_exists(AgentResponse::class)) {
-    class AgentResponse
+if (!class_exists(TextResponse::class)) {
+    class TextResponse
     {
+        public $messages;
+        public $toolCalls;
+        public $toolResults;
+        public $steps;
+
+        public function __construct(public string $text, public object $usage, public object $meta)
+        {
+        }
+    }
+}
+
+if (!class_exists(AgentResponse::class)) {
+    class AgentResponse extends TextResponse
+    {
+        public ?string $conversationId = null;
+
+        public function __construct(public string $invocationId, string $text, object $usage, object $meta)
+        {
+            parent::__construct($text, $usage, $meta);
+        }
     }
 }
 
@@ -50,12 +146,33 @@ if (!class_exists(QueuedAgentResponse::class)) {
     }
 }
 
+if (!class_exists(TextResponse::class)) {
+    class TextResponse
+    {
+    }
+}
+
+if (!class_exists(EmbeddingsResponse::class)) {
+    class EmbeddingsResponse
+    {
+    }
+}
+
 namespace Laravel\Ai\Prompts;
 
 if (!class_exists(AgentPrompt::class)) {
     class AgentPrompt
     {
         public function __construct(public object $agent, public string $prompt, public array $attachments = [], public ?object $provider = null, public ?string $model = null)
+        {
+        }
+    }
+}
+
+if (!class_exists(EmbeddingsPrompt::class)) {
+    class EmbeddingsPrompt
+    {
+        public function __construct(public array $inputs = [], public ?int $dimensions = null, public ?object $provider = null, public ?string $model = null)
         {
         }
     }
@@ -173,7 +290,9 @@ namespace Sentry\Laravel\Tests\Features\AiStubs;
 use Laravel\Ai\Attributes\MaxTokens;
 use Laravel\Ai\Attributes\Temperature;
 use Laravel\Ai\Contracts\Agent;
+use Laravel\Ai\Contracts\Providers\EmbeddingProvider;
 use Laravel\Ai\Contracts\Providers\TextProvider;
+use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Responses\AgentResponse;
 use Laravel\Ai\Responses\QueuedAgentResponse;
 use Laravel\Ai\Responses\StreamableAgentResponse;
@@ -273,7 +392,7 @@ class TestAgentWithConfig implements Agent
         return new QueuedAgentResponse();
     }
 }
-class WeatherLookup
+class WeatherLookup implements Tool
 {
     public function name(): string
     {
@@ -287,9 +406,18 @@ class WeatherLookup
     {
         return ['location' => $schema->string()->description('The city and state, e.g. San Francisco, CA')->required(), 'unit' => $schema->string()->enum(['celsius', 'fahrenheit'])];
     }
+    public function handle($request): string
+    {
+        return 'Sunny, 22°C';
+    }
 }
-class TestProvider implements TextProvider
+class TestProvider extends \Laravel\Ai\Providers\Provider implements TextProvider, EmbeddingProvider
 {
+    public function __construct()
+    {
+        // Override parent constructor to allow no-arg instantiation
+    }
+
     public function driver(): string
     {
         return 'openai';
@@ -325,6 +453,50 @@ class TestProvider implements TextProvider
     public function textModel()
     {
         return null;
+    }
+    public function useTextGateway(\Laravel\Ai\Contracts\Gateway\TextGateway $gateway): self
+    {
+        return $this;
+    }
+    public function defaultTextModel(): string
+    {
+        return 'gpt-4o';
+    }
+    public function cheapestTextModel(): string
+    {
+        return 'gpt-4o-mini';
+    }
+    public function smartestTextModel(): string
+    {
+        return 'gpt-4o';
+    }
+    public function embeddings(array $inputs, ?int $dimensions = null, ?string $model = null): \Laravel\Ai\Responses\EmbeddingsResponse
+    {
+        return new \Laravel\Ai\Responses\EmbeddingsResponse();
+    }
+    public function embeddingGateway(): \Laravel\Ai\Contracts\Gateway\EmbeddingGateway
+    {
+        return new \Laravel\Ai\Contracts\Gateway\StubEmbeddingGateway();
+    }
+    public function useEmbeddingGateway($gateway): self
+    {
+        return $this;
+    }
+    public function defaultEmbeddingModel(): string
+    {
+        return 'text-embedding-3-small';
+    }
+    public function cheapestEmbeddingModel(): string
+    {
+        return 'text-embedding-3-small';
+    }
+    public function defaultEmbeddingsDimensions(): int
+    {
+        return 1536;
+    }
+    public function defaultEmbeddingsModel(): string
+    {
+        return 'text-embedding-3-small';
     }
 }
 class TestUsage
@@ -509,7 +681,7 @@ class AiIntegrationTest extends TestCase
         $this->dispatchLaravelEvent(new InvokingTool('inv-m', 'tool-1', $agent, $tool, ['city' => 'Paris']));
         $this->dispatchLaravelEvent(new ToolInvoked('inv-m', 'tool-1', $agent, $tool, ['city' => 'Paris'], 'Sunny, 22C'));
         $this->dispatchLlmHttpEvents();
-        $this->dispatchLaravelEvent(new AgentPrompted('inv-m', $prompt, $response));
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-m', $prompt, $this->wrapResponse($response)));
         $spans = $transaction->getSpanRecorder()->getSpans();
         $this->assertCount(5, $spans); // transaction + invoke_agent + chat#0 + tool + chat#1
         $this->assertEquals('gen_ai.invoke_agent', $spans[1]->getOp());
@@ -534,7 +706,7 @@ class AiIntegrationTest extends TestCase
         $this->dispatchLaravelEvent(new InvokingTool('inv-t1', 'tool-1', $agent, $tool, ['query' => 'weather in Paris']));
         $this->dispatchLaravelEvent(new ToolInvoked('inv-t1', 'tool-1', $agent, $tool, ['query' => 'weather in Paris'], 'Sunny, 22C'));
         $this->dispatchLlmHttpEvents();
-        $this->dispatchLaravelEvent(new AgentPrompted('inv-t1', $prompt, $response));
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-t1', $prompt, $this->wrapResponse($response)));
         $toolSpan = $this->findSpanByOp($transaction, 'gen_ai.execute_tool');
         $this->assertEquals('execute_tool WeatherLookup', $toolSpan->getDescription());
         $data = $toolSpan->getData();
@@ -552,7 +724,7 @@ class AiIntegrationTest extends TestCase
         $this->dispatchLaravelEvent(new InvokingTool('inv-t2', 'tool-2', $agent, $tool, ['q' => 'secret']));
         $this->dispatchLaravelEvent(new ToolInvoked('inv-t2', 'tool-2', $agent, $tool, ['q' => 'secret'], 'secret'));
         $this->dispatchLlmHttpEvents();
-        $this->dispatchLaravelEvent(new AgentPrompted('inv-t2', $prompt, $response));
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-t2', $prompt, $this->wrapResponse($response)));
         $data = $this->findSpanByOp($transaction, 'gen_ai.execute_tool')->getData();
         $this->assertArrayNotHasKey('gen_ai.tool.call.arguments', $data);
         $this->assertArrayNotHasKey('gen_ai.tool.call.result', $data);
@@ -564,7 +736,7 @@ class AiIntegrationTest extends TestCase
         [$prompt, $response] = $this->makeStreamingPromptAndResponse();
         $this->dispatchLaravelEvent(new StreamingAgent('inv-s', $prompt));
         $this->dispatchLlmHttpEvents();
-        $this->dispatchLaravelEvent(new AgentStreamed('inv-s', $prompt, $response));
+        $this->dispatchLaravelEvent(new AgentStreamed('inv-s', $prompt, $this->wrapResponse($response)));
         $this->assertTrue($transaction->getSpanRecorder()->getSpans()[1]->getData()['gen_ai.response.streaming']);
     }
 
@@ -573,7 +745,7 @@ class AiIntegrationTest extends TestCase
         $transaction = $this->startTransaction();
         [$provider, $prompt, $response] = $this->makeEmbeddingsPromptAndResponse();
         $this->dispatchLaravelEvent(new GeneratingEmbeddings('emb-1', $provider, 'text-embedding-3-small', $prompt));
-        $this->dispatchLaravelEvent(new EmbeddingsGenerated('emb-1', $provider, 'text-embedding-3-small', $prompt, $response));
+        $this->dispatchLaravelEvent(new EmbeddingsGenerated('emb-1', $provider, 'text-embedding-3-small', $prompt, $this->wrapEmbeddingsResponse($response)));
         $span = $transaction->getSpanRecorder()->getSpans()[1];
         $this->assertEquals('gen_ai.embeddings', $span->getOp());
         $this->assertEquals('embeddings text-embedding-3-small', $span->getDescription());
@@ -591,7 +763,7 @@ class AiIntegrationTest extends TestCase
         $transaction = $this->startTransaction();
         [$provider, $prompt, $response] = $this->makeEmbeddingsPromptAndResponse();
         $this->dispatchLaravelEvent(new GeneratingEmbeddings('emb-2', $provider, 'text-embedding-3-small', $prompt));
-        $this->dispatchLaravelEvent(new EmbeddingsGenerated('emb-2', $provider, 'text-embedding-3-small', $prompt, $response));
+        $this->dispatchLaravelEvent(new EmbeddingsGenerated('emb-2', $provider, 'text-embedding-3-small', $prompt, $this->wrapEmbeddingsResponse($response)));
         $inputs = json_decode($transaction->getSpanRecorder()->getSpans()[1]->getData()['gen_ai.embeddings.input'], true);
         $this->assertCount(2, $inputs);
         $this->assertEquals('Napa Valley has great wine.', $inputs[0]);
@@ -600,7 +772,7 @@ class AiIntegrationTest extends TestCase
         $transaction = $this->startTransaction();
         [$provider, $prompt, $response] = $this->makeEmbeddingsPromptAndResponse();
         $this->dispatchLaravelEvent(new GeneratingEmbeddings('emb-3', $provider, 'text-embedding-3-small', $prompt));
-        $this->dispatchLaravelEvent(new EmbeddingsGenerated('emb-3', $provider, 'text-embedding-3-small', $prompt, $response));
+        $this->dispatchLaravelEvent(new EmbeddingsGenerated('emb-3', $provider, 'text-embedding-3-small', $prompt, $this->wrapEmbeddingsResponse($response)));
         $this->assertArrayNotHasKey('gen_ai.embeddings.input', $transaction->getSpanRecorder()->getSpans()[1]->getData());
     }
 
@@ -656,7 +828,7 @@ class AiIntegrationTest extends TestCase
         // Orphaned events don't crash
         $transaction = $this->startTransaction();
         [$prompt, $response] = $this->makePromptAndResponse();
-        $this->dispatchLaravelEvent(new AgentPrompted('inv-orphan', $prompt, $response));
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-orphan', $prompt, $this->wrapResponse($response)));
         $this->dispatchLaravelEvent(new ToolInvoked('inv-orphan', 'tool-orphan', new TestAgent(), new WeatherLookup(), [], 'result'));
         $this->assertCount(1, $transaction->getSpanRecorder()->getSpans());
         // Connection failure finishes chat span with error
@@ -683,7 +855,56 @@ class AiIntegrationTest extends TestCase
     {
         $this->dispatchLaravelEvent(new PromptingAgent($id, $prompt));
         $this->dispatchLlmHttpEvents();
-        $this->dispatchLaravelEvent(new AgentPrompted($id, $prompt, $response));
+        $wrappedResponse = $this->wrapResponse($response);
+        $this->dispatchLaravelEvent(new AgentPrompted($id, $prompt, $wrappedResponse));
+    }
+
+    private function wrapResponse(object $response): object
+    {
+        if ($response instanceof \Laravel\Ai\Responses\AgentResponse) {
+            return $response;
+        }
+        $usage = new \Laravel\Ai\Responses\Data\Usage(
+            $response->usage->promptTokens ?? 0,
+            $response->usage->completionTokens ?? 0,
+            $response->usage->cacheWriteInputTokens ?? 0,
+            $response->usage->cacheReadInputTokens ?? 0,
+            $response->usage->reasoningTokens ?? 0
+        );
+        $meta = new \Laravel\Ai\Responses\Data\Meta(
+            $response->meta->provider ?? null,
+            $response->meta->model ?? null
+        );
+        $wrapped = new \Laravel\Ai\Responses\AgentResponse(
+            $response->conversationId ?? 'test-inv',
+            $response->text ?? '',
+            $usage,
+            $meta
+        );
+        $wrapped->conversationId = $response->conversationId ?? null;
+        if (isset($response->steps)) {
+            $wrapped->steps = collect($response->steps);
+        }
+        if (isset($response->toolCalls)) {
+            $wrapped->toolCalls = collect($response->toolCalls);
+        }
+        if (isset($response->toolResults)) {
+            $wrapped->toolResults = collect($response->toolResults);
+        }
+        return $wrapped;
+    }
+
+    private function wrapEmbeddingsResponse(object $response): \Laravel\Ai\Responses\EmbeddingsResponse
+    {
+        $meta = new \Laravel\Ai\Responses\Data\Meta(
+            $response->meta->provider ?? null,
+            $response->meta->model ?? null
+        );
+        return new \Laravel\Ai\Responses\EmbeddingsResponse(
+            $response->embeddings ?? [],
+            $response->tokens ?? 0,
+            $meta
+        );
     }
     private function makePromptAndResponse(int $promptTokens = 60, int $completionTokens = 130, int $cacheReadInputTokens = 0, int $reasoningTokens = 0, string $agentClass = TestAgent::class, string $promptText = 'Analyze this transcript'): array
     {
@@ -723,7 +944,7 @@ class AiIntegrationTest extends TestCase
     private function makeEmbeddingsPromptAndResponse(): array
     {
         $p = new TestProvider();
-        $prompt = (object)['inputs' => ['Napa Valley has great wine.', 'Laravel is a PHP framework.'], 'dimensions' => 1536, 'provider' => $p, 'model' => 'text-embedding-3-small'];
+        $prompt = new \Laravel\Ai\Prompts\EmbeddingsPrompt(['Napa Valley has great wine.', 'Laravel is a PHP framework.'], 1536, $p, 'text-embedding-3-small');
         $response = (object)['embeddings' => [[0.1, 0.2], [0.4, 0.5]], 'tokens' => 25, 'meta' => (object)['provider' => 'openai', 'model' => 'text-embedding-3-small-2024']];
         return [$p, $prompt, $response];
     }
