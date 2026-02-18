@@ -284,13 +284,13 @@ class TestProvider implements TextProvider
     {
         return 'openai';
     }
-    public function prompt(...$args)
+    public function prompt(\Laravel\Ai\Prompts\AgentPrompt $prompt): \Laravel\Ai\Responses\AgentResponse
     {
-        return null;
+        return new \Laravel\Ai\Responses\AgentResponse();
     }
-    public function stream(...$args)
+    public function stream(\Laravel\Ai\Prompts\AgentPrompt $prompt): \Laravel\Ai\Responses\StreamableAgentResponse
     {
-        return null;
+        return new \Laravel\Ai\Responses\StreamableAgentResponse();
     }
     public function textGateway()
     {
