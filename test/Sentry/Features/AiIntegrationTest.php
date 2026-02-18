@@ -8,8 +8,10 @@ if (!interface_exists(Agent::class)) {
     }
 }
 
-if (!interface_exists(Provider::class)) {
-    interface Provider
+namespace Laravel\Ai\Contracts\Providers;
+
+if (!interface_exists(TextProvider::class)) {
+    interface TextProvider
     {
     }
 }
@@ -157,7 +159,7 @@ namespace Sentry\Laravel\Tests\Features\AiStubs;
 use Laravel\Ai\Attributes\MaxTokens;
 use Laravel\Ai\Attributes\Temperature;
 use Laravel\Ai\Contracts\Agent;
-use Laravel\Ai\Contracts\Provider;
+use Laravel\Ai\Contracts\Providers\TextProvider;
 use Laravel\Ai\Responses\AgentResponse;
 use Laravel\Ai\Responses\QueuedAgentResponse;
 use Laravel\Ai\Responses\StreamableAgentResponse;
@@ -272,7 +274,7 @@ class WeatherLookup
         return ['location' => $schema->string()->description('The city and state, e.g. San Francisco, CA')->required(), 'unit' => $schema->string()->enum(['celsius', 'fahrenheit'])];
     }
 }
-class TestProvider implements Provider
+class TestProvider implements TextProvider
 {
     public function driver(): string
     {
