@@ -22,6 +22,12 @@ if (!class_exists(AgentResponse::class)) {
     }
 }
 
+if (!class_exists(StreamableAgentResponse::class)) {
+    class StreamableAgentResponse
+    {
+    }
+}
+
 namespace Laravel\Ai\Prompts;
 
 if (!class_exists(AgentPrompt::class)) {
@@ -149,6 +155,7 @@ use Laravel\Ai\Attributes\Temperature;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Provider;
 use Laravel\Ai\Responses\AgentResponse;
+use Laravel\Ai\Responses\StreamableAgentResponse;
 
 class TestAgent implements Agent
 {
@@ -160,15 +167,15 @@ class TestAgent implements Agent
     {
         return [new WeatherLookup()];
     }
-    public function prompt(string $prompt, array $attachments = [], ?string $provider = null, ?string $model = null): AgentResponse
+    public function prompt(string $prompt, array $attachments = [], array|string|null $provider = null, ?string $model = null): AgentResponse
     {
         return new AgentResponse();
     }
-    public function stream(string $prompt, array $attachments = [], ?string $provider = null, ?string $model = null)
+    public function stream(string $prompt, array $attachments = [], array|string|null $provider = null, ?string $model = null): StreamableAgentResponse
     {
-        return null;
+        return new StreamableAgentResponse();
     }
-    public function queue(string $prompt, array $attachments = [], ?string $provider = null, ?string $model = null)
+    public function queue(string $prompt, array $attachments = [], array|string|null $provider = null, ?string $model = null)
     {
         return null;
     }
@@ -196,15 +203,15 @@ class TestAgentWithConfig implements Agent
     {
         return [];
     }
-    public function prompt(string $prompt, array $attachments = [], ?string $provider = null, ?string $model = null): AgentResponse
+    public function prompt(string $prompt, array $attachments = [], array|string|null $provider = null, ?string $model = null): AgentResponse
     {
         return new AgentResponse();
     }
-    public function stream(string $prompt, array $attachments = [], ?string $provider = null, ?string $model = null)
+    public function stream(string $prompt, array $attachments = [], array|string|null $provider = null, ?string $model = null): StreamableAgentResponse
     {
-        return null;
+        return new StreamableAgentResponse();
     }
-    public function queue(string $prompt, array $attachments = [], ?string $provider = null, ?string $model = null)
+    public function queue(string $prompt, array $attachments = [], array|string|null $provider = null, ?string $model = null)
     {
         return null;
     }

@@ -562,7 +562,7 @@ class AiIntegration extends Feature
                 }
             }
 
-                if ($this->shouldSendDefaultPii()) {
+            if ($this->shouldSendDefaultPii()) {
                 if ($hasSteps) {
                     $inputMessages = $this->buildChatInputMessages($invocationId, $stepsArray, $index);
                 } elseif ($index === 0) {
@@ -671,7 +671,9 @@ class AiIntegration extends Feature
         $type = $arrayForm['type'] ?? null;
         $name = method_exists($attachment, 'name') ? $attachment->name() : ($attachment->name ?? null);
         $mimeType = method_exists($attachment, 'mimeType')
-            ? $this->safeCall(function () use ($attachment) { return $attachment->mimeType(); })
+            ? $this->safeCall(function () use ($attachment) {
+                return $attachment->mimeType();
+            })
             : null;
 
         if ($type === 'remote-image' || $type === 'remote-document' || $type === 'remote-audio') {
