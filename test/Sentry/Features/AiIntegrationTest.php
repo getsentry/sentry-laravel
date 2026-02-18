@@ -1,5 +1,19 @@
 <?php
-// Stub event classes so the test works without laravel/ai installed
+// Stub interfaces and classes so the test works without laravel/ai installed
+namespace Laravel\Ai\Contracts;
+
+if (!interface_exists(Agent::class)) {
+    interface Agent
+    {
+    }
+}
+
+if (!interface_exists(Provider::class)) {
+    interface Provider
+    {
+    }
+}
+
 namespace Laravel\Ai\Prompts;
 
 if (!class_exists(AgentPrompt::class)) {
@@ -124,8 +138,10 @@ namespace Sentry\Laravel\Tests\Features\AiStubs;
 
 use Laravel\Ai\Attributes\MaxTokens;
 use Laravel\Ai\Attributes\Temperature;
+use Laravel\Ai\Contracts\Agent;
+use Laravel\Ai\Contracts\Provider;
 
-class TestAgent
+class TestAgent implements Agent
 {
     public function instructions(): string
     {
@@ -137,7 +153,7 @@ class TestAgent
     }
 }
 #[Temperature(0.7)] #[MaxTokens(4096)]
-class TestAgentWithConfig
+class TestAgentWithConfig implements Agent
 {
     public function instructions(): string
     {
@@ -163,7 +179,7 @@ class WeatherLookup
         return ['location' => $schema->string()->description('The city and state, e.g. San Francisco, CA')->required(), 'unit' => $schema->string()->enum(['celsius', 'fahrenheit'])];
     }
 }
-class TestProvider
+class TestProvider implements Provider
 {
     public function driver(): string
     {
