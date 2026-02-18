@@ -151,6 +151,30 @@ class TestAgent implements Agent
     {
         return [new WeatherLookup()];
     }
+    public function prompt(string $prompt, ...$args)
+    {
+        return null;
+    }
+    public function stream(string $prompt, ...$args)
+    {
+        return null;
+    }
+    public function queue(string $prompt, ...$args)
+    {
+        return null;
+    }
+    public function respond(...$args)
+    {
+        return null;
+    }
+    public function streamRespond(...$args)
+    {
+        return null;
+    }
+    public function queueRespond(...$args)
+    {
+        return null;
+    }
 }
 #[Temperature(0.7)] #[MaxTokens(4096)]
 class TestAgentWithConfig implements Agent
@@ -162,6 +186,30 @@ class TestAgentWithConfig implements Agent
     public function tools(): array
     {
         return [];
+    }
+    public function prompt(string $prompt, ...$args)
+    {
+        return null;
+    }
+    public function stream(string $prompt, ...$args)
+    {
+        return null;
+    }
+    public function queue(string $prompt, ...$args)
+    {
+        return null;
+    }
+    public function respond(...$args)
+    {
+        return null;
+    }
+    public function streamRespond(...$args)
+    {
+        return null;
+    }
+    public function queueRespond(...$args)
+    {
+        return null;
     }
 }
 class WeatherLookup
