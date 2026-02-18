@@ -206,9 +206,9 @@ class TestAgent implements Agent
     {
         return new StreamableAgentResponse();
     }
-    public function broadcastOnQueue(string $prompt, $channels, array $attachments = [], ?string $queue = null, array|string|null $provider = null, ?string $model = null): StreamableAgentResponse
+    public function broadcastOnQueue(string $prompt, $channels, array $attachments = [], array|string|null $provider = null, ?string $model = null): QueuedAgentResponse
     {
-        return new StreamableAgentResponse();
+        return new QueuedAgentResponse();
     }
 }
 #[Temperature(0.7)] #[MaxTokens(4096)]
@@ -254,9 +254,9 @@ class TestAgentWithConfig implements Agent
     {
         return new StreamableAgentResponse();
     }
-    public function broadcastOnQueue(string $prompt, $channels, array $attachments = [], ?string $queue = null, array|string|null $provider = null, ?string $model = null): StreamableAgentResponse
+    public function broadcastOnQueue(string $prompt, $channels, array $attachments = [], array|string|null $provider = null, ?string $model = null): QueuedAgentResponse
     {
-        return new StreamableAgentResponse();
+        return new QueuedAgentResponse();
     }
 }
 class WeatherLookup
