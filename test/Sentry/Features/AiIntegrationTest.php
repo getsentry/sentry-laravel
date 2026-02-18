@@ -39,9 +39,7 @@ namespace Laravel\Ai\Prompts;
 if (!class_exists(AgentPrompt::class)) {
     class AgentPrompt
     {
-        public $attachments = null;
-
-        public function __construct(public object $agent, public string $prompt, public object $provider, public string $model)
+        public function __construct(public object $agent, public string $prompt, public array $attachments = [], public object $provider = null, public string $model = null)
         {
         }
     }
@@ -577,8 +575,7 @@ class AiIntegrationTest extends TestCase
         $transaction = $this->startTransaction();
         $agent = new TestAgent();
         $provider = new TestProvider();
-        $prompt = new \Laravel\Ai\Prompts\AgentPrompt($agent, 'Compare images.', $provider, 'gpt-4o');
-        $prompt->attachments = collect([new TestLocalImage('/tmp/photo.png', 'image/png'), new TestRemoteImage('https://example.com/photo.jpg', 'image/jpeg')]);
+        $prompt = new \Laravel\Ai\Prompts\AgentPrompt($agent, 'Compare images.', collect([new TestLocalImage('/tmp/photo.png', 'image/png'), new TestRemoteImage('https://example.com/photo.jpg', 'image/jpeg')]), $provider, 'gpt-4o');
         $step = (object)['text' => 'Done.', 'toolCalls' => [], 'toolResults' => [], 'finishReason' => (object)['value' => 'stop'],
             'usage' => new TestUsage(100, 20), 'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06']];
         $response = (object)['text' => 'Done.', 'toolCalls' => [], 'toolResults' => [], 'steps' => [$step],
@@ -650,7 +647,7 @@ class AiIntegrationTest extends TestCase
         $provider = new TestProvider();
         $usage = new TestUsage($promptTokens, $completionTokens, $cacheReadInputTokens, 0, $reasoningTokens);
         $meta = (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'];
-        $prompt = new \Laravel\Ai\Prompts\AgentPrompt($agent, $promptText, $provider, 'gpt-4o');
+        $prompt = new \Laravel\Ai\Prompts\AgentPrompt($agent, $promptText, [], $provider, 'gpt-4o');
         $step = (object)['text' => 'The analysis shows positive trends.', 'toolCalls' => [], 'toolResults' => [], 'finishReason' => (object)['value' => 'stop'], 'usage' => $usage, 'meta' => $meta];
         $response = (object)['text' => 'The analysis shows positive trends.', 'toolCalls' => [], 'toolResults' => [], 'steps' => [$step], 'usage' => $usage, 'meta' => $meta, 'conversationId' => 'conv-abc-123'];
         return [$prompt, $response];
@@ -661,7 +658,7 @@ class AiIntegrationTest extends TestCase
         $agent = new TestAgent();
         $provider = new TestProvider();
         $meta = (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'];
-        $prompt = new \Laravel\Ai\Prompts\AgentPrompt($agent, 'What is the weather in Paris?', $provider, 'gpt-4o');
+        $prompt = new \Laravel\Ai\Prompts\AgentPrompt($agent, 'What is the weather in Paris?', [], $provider, 'gpt-4o');
         $tc = new TestToolCall('WeatherLookup', ['city' => 'Paris']);
         $tr = new TestToolResult('WeatherLookup', 'Sunny, 22C');
         $step1 = (object)['text' => '', 'toolCalls' => [$tc], 'toolResults' => [$tr], 'finishReason' => (object)['value' => 'tool_calls'], 'usage' => new TestUsage(60, 20), 'meta' => $meta];
@@ -674,7 +671,7 @@ class AiIntegrationTest extends TestCase
     {
         $agent = new TestAgent();
         $provider = new TestProvider();
-        $prompt = new \Laravel\Ai\Prompts\AgentPrompt($agent, 'Analyze this transcript', $provider, 'gpt-4o');
+        $prompt = new \Laravel\Ai\Prompts\AgentPrompt($agent, 'Analyze this transcript', [], $provider, 'gpt-4o');
         $response = (object)['text' => 'Streamed analysis.', 'toolCalls' => [], 'toolResults' => [], 'steps' => [], 'usage' => new TestUsage(60, 130), 'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'], 'conversationId' => 'conv-stream-123'];
         return [$prompt, $response];
     }
