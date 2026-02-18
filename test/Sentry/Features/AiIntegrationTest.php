@@ -39,7 +39,7 @@ namespace Laravel\Ai\Prompts;
 if (!class_exists(AgentPrompt::class)) {
     class AgentPrompt
     {
-        public function __construct(public object $agent, public string $prompt, public array $attachments = [], public object $provider = null, public string $model = null)
+        public function __construct(public object $agent, public string $prompt, public array $attachments = [], public ?object $provider = null, public ?string $model = null)
         {
         }
     }
