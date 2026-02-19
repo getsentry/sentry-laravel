@@ -107,7 +107,7 @@ class AiIntegration extends Feature
 
         $providerName = $event->prompt->provider->name();
         if ($providerName !== null) {
-            $data['gen_ai.system'] = $providerName;
+            $data['gen_ai.provider.name'] = $providerName;
         }
 
         $temperature = $this->resolveAgentAttribute($event->prompt->agent, 'Laravel\Ai\Attributes\Temperature');
@@ -151,8 +151,8 @@ class AiIntegration extends Feature
             'span' => $agentSpan,
             'parentSpan' => $parentSpan,
             'meta' => [
-                'agent_name' => $agentName,
-                'system' => $providerName,
+                'agentName' => $agentName,
+                'providerName' => $providerName,
                 'model' => $model,
                 'prompt' => $event->prompt->prompt ?? null,
                 'attachments' => $this->resolveAttachments($event->prompt),
@@ -199,8 +199,8 @@ class AiIntegration extends Feature
         }
 
         $responseProvider = $event->response->meta->provider ?? null;
-        if ($responseProvider !== null && !isset($data['gen_ai.system'])) {
-            $data['gen_ai.system'] = strtolower($responseProvider);
+        if ($responseProvider !== null && !isset($data['gen_ai.provider.name'])) {
+            $data['gen_ai.provider.name'] = strtolower($responseProvider);
         }
 
         $usage = $event->response->usage ?? null;
@@ -332,7 +332,7 @@ class AiIntegration extends Feature
 
         $providerName = method_exists($event->provider, 'name') ? $event->provider->name() : null;
         if ($providerName !== null) {
-            $data['gen_ai.system'] = $providerName;
+            $data['gen_ai.provider.name'] = $providerName;
         }
 
         if ($this->shouldSendDefaultPii()) {
@@ -380,8 +380,8 @@ class AiIntegration extends Feature
         }
 
         $responseProvider = $event->response->meta->provider ?? null;
-        if ($responseProvider !== null && !isset($data['gen_ai.system'])) {
-            $data['gen_ai.system'] = strtolower($responseProvider);
+        if ($responseProvider !== null && !isset($data['gen_ai.provider.name'])) {
+            $data['gen_ai.provider.name'] = strtolower($responseProvider);
         }
 
         $tokens = $event->response->tokens ?? null;
@@ -426,12 +426,12 @@ class AiIntegration extends Feature
             $data['gen_ai.request.model'] = $model;
         }
 
-        if (($meta['agent_name'] ?? null) !== null) {
-            $data['gen_ai.agent.name'] = $meta['agent_name'];
+        if (($meta['agentName'] ?? null) !== null) {
+            $data['gen_ai.agent.name'] = $meta['agentName'];
         }
 
-        if (($meta['system'] ?? null) !== null) {
-            $data['gen_ai.system'] = $meta['system'];
+        if (($meta['providerName'] ?? null) !== null) {
+            $data['gen_ai.provider.name'] = $meta['providerName'];
         }
 
         if (($meta['toolDefinitions'] ?? null) !== null) {
@@ -540,9 +540,7 @@ class AiIntegration extends Feature
                 : $this->flexGet($this->flexGet($response, 'meta'), 'model');
 
             if ($model !== null) {
-                $data['gen_ai.request.model'] = $model;
                 $data['gen_ai.response.model'] = $model;
-                $chatSpan->setDescription("chat {$model}");
             }
 
             $usage = $step !== null
