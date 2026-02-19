@@ -599,7 +599,7 @@ class AiIntegrationTest extends TestCase
         $this->assertCount(3, $spans); // transaction + invoke_agent + chat
         $agentSpan = $spans[1];
         $this->assertEquals('gen_ai.invoke_agent', $agentSpan->getOp());
-        $this->assertEquals('invoke_agent TestAgent', $agentSpan->getDescription());
+        $this->assertEquals('invoke_agent gpt-4o', $agentSpan->getDescription());
         $this->assertEquals(SpanStatus::ok(), $agentSpan->getStatus());
         $this->assertEquals('auto.ai.laravel', $agentSpan->getOrigin());
         $data = $agentSpan->getData();
