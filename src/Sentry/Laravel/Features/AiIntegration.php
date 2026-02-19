@@ -142,7 +142,7 @@ class AiIntegration extends Feature
                 ->setOp('gen_ai.invoke_agent')
                 ->setData($data)
                 ->setOrigin('auto.ai.laravel')
-                ->setDescription("invoke_agent {$agentName}")
+                ->setDescription("invoke_agent " . ($model ?? 'unknown'))
         );
 
         $this->evictOldestIfNeeded($this->invocations);
