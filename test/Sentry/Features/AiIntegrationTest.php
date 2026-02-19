@@ -664,7 +664,8 @@ class AiIntegrationTest extends TestCase
         $this->assertCount(1, $chatSpans);
         $data = $chatSpans[0]->getData();
         $this->assertEquals('chat', $data['gen_ai.operation.name']);
-        $this->assertEquals('gpt-4o-2024-08-06', $data['gen_ai.request.model']);
+        $this->assertEquals('gpt-4o', $data['gen_ai.request.model']);
+        $this->assertEquals('gpt-4o-2024-08-06', $data['gen_ai.response.model']);
         $this->assertEquals('stop', $data['gen_ai.response.finish_reasons']);
         $this->assertEquals(100, $data['gen_ai.usage.input_tokens']);
         $this->assertEquals('conv-abc-123', $data['gen_ai.conversation.id']);
@@ -752,7 +753,7 @@ class AiIntegrationTest extends TestCase
         $data = $span->getData();
         $this->assertEquals('text-embedding-3-small', $data['gen_ai.request.model']);
         $this->assertEquals('text-embedding-3-small-2024', $data['gen_ai.response.model']);
-        $this->assertEquals('openai', $data['gen_ai.system']);
+        $this->assertEquals('openai', $data['gen_ai.provider.name']);
         $this->assertEquals(25, $data['gen_ai.usage.input_tokens']);
     }
 
