@@ -105,7 +105,7 @@ class AiIntegration extends Feature
             $data['gen_ai.request.model'] = $model;
         }
 
-        $providerName = $event->prompt->provider->name();
+        $providerName = method_exists($event->prompt->provider ?? null, 'name') ? $event->prompt->provider->name() : null;
         if ($providerName !== null) {
             $data['gen_ai.provider.name'] = $providerName;
         }
@@ -158,7 +158,7 @@ class AiIntegration extends Feature
                 'attachments' => $this->resolveAttachments($event->prompt),
                 'toolDefinitions' => $toolDefinitions,
             ],
-            'urlPrefix' => $this->resolveProviderUrlPrefix($event->prompt->provider),
+            'urlPrefix' => $event->prompt->provider !== null ? $this->resolveProviderUrlPrefix($event->prompt->provider) : null,
             'isStreaming' => $isStreaming,
             'activeChatSpan' => null,
             'chatSpans' => [],
@@ -551,13 +551,12 @@ class AiIntegration extends Feature
                 $this->setTokenUsage($data, $usage);
             }
 
-            if ($step !== null) {
-                $finishReason = $this->flexGet($step, 'finishReason');
-                if ($finishReason !== null) {
-                    $data['gen_ai.response.finish_reasons'] = \is_object($finishReason) && property_exists($finishReason, 'value')
-                        ? $finishReason->value
-                        : (string)$finishReason;
-                }
+            $finishReasonSource = $step ?? $response;
+            $finishReason = $this->flexGet($finishReasonSource, 'finishReason');
+            if ($finishReason !== null) {
+                $data['gen_ai.response.finish_reasons'] = \is_object($finishReason) && property_exists($finishReason, 'value')
+                    ? $finishReason->value
+                    : (string)$finishReason;
             }
 
             if ($this->shouldSendDefaultPii()) {
@@ -566,20 +565,19 @@ class AiIntegration extends Feature
                 } elseif ($index === 0) {
                     $inputMessages = $this->buildChatInputMessages($invocationId, [], 0);
                 } else {
-                    $inputMessages = [];
+                    // Streaming without steps: use response output as input for subsequent chat spans
+                    $inputMessages = $this->buildOutputMessages($response);
                 }
 
                 if (!empty($inputMessages)) {
                     $data['gen_ai.input.messages'] = $this->truncateMessages($inputMessages);
                 }
 
-                $outputSource = $step ?? ($index === $lastIndex ? $response : null);
+                $outputSource = $step ?? $response;
 
-                if ($outputSource !== null) {
-                    $outputMessages = $this->buildOutputMessages($outputSource);
-                    if (!empty($outputMessages)) {
-                        $data['gen_ai.output.messages'] = $this->truncateMessages($outputMessages);
-                    }
+                $outputMessages = $this->buildOutputMessages($outputSource);
+                if (!empty($outputMessages)) {
+                    $data['gen_ai.output.messages'] = $this->truncateMessages($outputMessages);
                 }
             }
 
@@ -877,7 +875,12 @@ class AiIntegration extends Feature
                 if ($resultContent === false) {
                     continue;
                 }
-                $resultPart = ['type' => 'tool_result', 'content' => $resultContent];
+                $resultPart = ['type' => 'tool_call_response', 'content' => $resultContent];
+
+                $resultId = $this->flexGet($toolResult, 'id');
+                if ($resultId !== null) {
+                    $resultPart['id'] = $resultId;
+                }
 
                 $resultName = $this->flexGet($toolResult, 'name');
                 if ($resultName !== null) {
@@ -897,6 +900,11 @@ class AiIntegration extends Feature
     private function buildToolCallPart($toolCall): array
     {
         $part = ['type' => 'tool_call'];
+
+        $id = $this->flexGet($toolCall, 'id');
+        if ($id !== null) {
+            $part['id'] = $id;
+        }
 
         $name = $this->flexGet($toolCall, 'name');
         if ($name !== null) {
@@ -1240,6 +1248,9 @@ class AiIntegration extends Feature
 
         for ($i = \count($inputs) - 1; $i >= 0; $i--) {
             $inputJson = json_encode($inputs[$i]);
+            if ($inputJson === false) {
+                continue;
+            }
             $entryBytes = \strlen($inputJson) + (empty($kept) ? 0 : 1); // +1 for comma separator
 
             if ($totalBytes + $entryBytes > self::MAX_MESSAGE_BYTES) {
