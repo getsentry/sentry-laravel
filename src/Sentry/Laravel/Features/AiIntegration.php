@@ -314,6 +314,10 @@ class AiIntegration extends Feature
 
     public function handleGeneratingEmbeddingsForTracing(object $event): void
     {
+        if (!$this->isTracingFeatureEnabled('gen_ai_embeddings')) {
+            return;
+        }
+
         $parentSpan = SentrySdk::getCurrentHub()->getSpan();
 
         if ($parentSpan === null || !$parentSpan->getSampled()) {
