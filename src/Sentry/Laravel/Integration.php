@@ -193,7 +193,7 @@ class Integration implements IntegrationInterface
      */
     public static function sentryTracingMeta(): string
     {
-        return sprintf('<meta name="sentry-trace" content="%s"/>', getTraceparent());
+        return sprintf('<meta name="sentry-trace" content="%s"/>', self::escapeMetaTagContent(getTraceparent()));
     }
 
     /**
@@ -215,7 +215,12 @@ class Integration implements IntegrationInterface
      */
     public static function sentryBaggageMeta(): string
     {
-        return sprintf('<meta name="baggage" content="%s"/>', getBaggage());
+        return sprintf('<meta name="baggage" content="%s"/>', self::escapeMetaTagContent(getBaggage()));
+    }
+
+    private static function escapeMetaTagContent(string $value): string
+    {
+        return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
     }
 
     /**
