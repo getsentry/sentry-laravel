@@ -1,5 +1,22 @@
 # Changelog
 
+## 4.21.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.21.0.
+
+### Features
+
+- Use Laravel Context to pass check-in IDs between processes [(#1084)](https://github.com/getsentry/sentry-laravel/pull/1084)
+
+### Bug Fixes
+
+- Explicitly escape `sentry-trace` and `baggage` headers [(#1091)](https://github.com/getsentry/sentry-laravel/pull/1091)
+- Add `preg_quote` for environment variables [(#1093)](https://github.com/getsentry/sentry-laravel/pull/1093)
+
+### Misc
+
+- Bump the PHP SDK to version `4.21.0` [(#1095)](https://github.com/getsentry/sentry-laravel/pull/1095)
+
 ## 4.20.1
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.20.1.
