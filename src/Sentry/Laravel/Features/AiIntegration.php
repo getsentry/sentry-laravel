@@ -1054,11 +1054,11 @@ class AiIntegration extends Feature
             return property_exists($source, $key) ? $source->{$key} : null;
         }
 
-        if (\is_array($source)) {  
-            return $source[$key] ?? null;  
-        }  
+        if (\is_array($source)) {
+            return $source[$key] ?? null;
+        }
         
-        return null;  
+        return null;
     }
 
     /**
