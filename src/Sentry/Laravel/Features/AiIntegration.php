@@ -531,8 +531,6 @@ class AiIntegration extends Feature
 
         $stepsArray = \is_array($steps) ? array_values($steps) : [];
         $hasSteps = !empty($stepsArray);
-        $lastIndex = \count($chatSpans) - 1;
-
         foreach ($chatSpans as $index => $chatSpan) {
             $data = $chatSpan->getData();
 
