@@ -414,6 +414,9 @@ class AiIntegration extends Feature
             return;
         }
 
+        // Finish any active chat span to prevent orphaned spans if events overlap.
+        $this->finishActiveChatSpan($invocationId);
+
         $inv = &$this->invocations[$invocationId];
         $meta = $inv['meta'];
         $model = $meta['model'] ?? null;
@@ -1144,6 +1147,13 @@ class AiIntegration extends Feature
             }
 
             $oldest = $map[$oldestKey];
+
+            // Finish any active chat span before finishing the parent span.
+            if (isset($oldest['activeChatSpan']) && $oldest['activeChatSpan'] instanceof Span) {
+                $oldest['activeChatSpan']->setStatus(SpanStatus::deadlineExceeded());
+                $oldest['activeChatSpan']->finish();
+            }
+
             if (isset($oldest['span']) && $oldest['span'] instanceof Span) {
                 $oldest['span']->setStatus(SpanStatus::deadlineExceeded());
                 $oldest['span']->finish();
