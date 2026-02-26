@@ -503,7 +503,7 @@ class AiIntegration extends Feature
         $chatSpan->setStatus($status ?? SpanStatus::ok());
         $chatSpan->finish();
 
-        SentrySdk::getCurrentHub()->setSpan($this->invocations['span']);
+        SentrySdk::getCurrentHub()->setSpan($this->invocations[$invocationId]['span']);
     }
 
     /**
