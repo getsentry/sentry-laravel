@@ -126,7 +126,10 @@ class AiIntegration extends Feature
         }
 
         if ($this->shouldSendDefaultPii()) {
-            $inputMessages = $this->buildUserInputMessages($event->prompt);
+            $inputMessages = $this->buildUserInputMessageFromParts(
+                $this->flexGet($event->prompt, 'prompt'),
+                $this->resolveAttachments($event->prompt)
+            );
             if (!empty($inputMessages)) {
                 $data['gen_ai.input.messages'] = $this->truncateMessages($inputMessages);
             }
@@ -553,7 +556,11 @@ class AiIntegration extends Feature
 
             if ($this->shouldSendDefaultPii()) {
                 if ($index === 0) {
-                    $inputMessages = $this->buildUserInputMessagesFromMeta($this->invocations[$invocationId]['meta'] ?? []);
+                    $meta = $this->invocations[$invocationId]['meta'] ?? [];
+                    $inputMessages = $this->buildUserInputMessageFromParts(
+                        $meta['prompt'] ?? null,
+                        $meta['attachments'] ?? []
+                    );
                 } elseif (!empty($stepsArray)) {
                     $inputMessages = $this->buildChatInputMessages($stepsArray, $index);
                 } else {
@@ -722,41 +729,11 @@ class AiIntegration extends Feature
     }
 
     /**
+     * @param array<int, array<string, mixed>> $attachmentParts
      * @return array<int, array<string, mixed>>
      */
-    private function buildUserInputMessages(object $prompt): array
+    private function buildUserInputMessageFromParts($promptText, array $attachmentParts): array
     {
-        $promptText = $this->flexGet($prompt, 'prompt');
-        $attachmentParts = $this->resolveAttachments($prompt);
-
-        $parts = [];
-
-        if ($promptText !== null && $promptText !== '') {
-            $parts[] = ['type' => 'text', 'content' => $promptText];
-        }
-
-        foreach ($attachmentParts as $attachmentPart) {
-            $parts[] = $attachmentPart;
-        }
-
-        if (empty($parts)) {
-            return [];
-        }
-
-        return [
-            ['role' => 'user', 'parts' => $parts],
-        ];
-    }
-
-    /**
-     * @param array<string, mixed> $meta
-     * @return array<int, array<string, mixed>>
-     */
-    private function buildUserInputMessagesFromMeta(array $meta): array
-    {
-        $promptText = $meta['prompt'] ?? null;
-        $attachmentParts = $meta['attachments'] ?? [];
-
         $parts = [];
 
         if ($promptText !== null && $promptText !== '') {
@@ -1077,7 +1054,11 @@ class AiIntegration extends Feature
             return property_exists($source, $key) ? $source->{$key} : null;
         }
 
-        return $source[$key] ?? null;
+        if (\is_array($source)) {  
+            return $source[$key] ?? null;  
+        }  
+        
+        return null;  
     }
 
     /**
