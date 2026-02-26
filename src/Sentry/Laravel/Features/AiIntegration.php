@@ -105,7 +105,7 @@ class AiIntegration extends Feature
             $data['gen_ai.request.model'] = $model;
         }
 
-        $providerName = method_exists($event->prompt->provider ?? null, 'name') ? $event->prompt->provider->name() : null;
+        $providerName = $this->flexCall($event->prompt->provider ?? null, 'name');
         if ($providerName !== null) {
             $data['gen_ai.provider.name'] = $providerName;
         }
@@ -334,7 +334,7 @@ class AiIntegration extends Feature
             $data['gen_ai.request.model'] = $model;
         }
 
-        $providerName = method_exists($event->provider, 'name') ? $event->provider->name() : null;
+        $providerName = $this->flexCall($event->provider, 'name');
         if ($providerName !== null) {
             $data['gen_ai.provider.name'] = $providerName;
         }
@@ -490,23 +490,17 @@ class AiIntegration extends Feature
 
     private function finishActiveChatSpan(string $invocationId, ?SpanStatus $status = null): void
     {
-        if (!isset($this->invocations[$invocationId])) {
-            return;
-        }
-
-        $inv = &$this->invocations[$invocationId];
-        $chatSpan = $inv['activeChatSpan'];
-
+        $chatSpan = $this->invocations[$invocationId]['activeChatSpan'] ?? null;
         if ($chatSpan === null) {
             return;
         }
-
-        $inv['activeChatSpan'] = null;
-
+        
+        $this->invocations[$invocationId]['activeChatSpan'] = null;
+        
         $chatSpan->setStatus($status ?? SpanStatus::ok());
         $chatSpan->finish();
 
-        SentrySdk::getCurrentHub()->setSpan($inv['span']);
+        SentrySdk::getCurrentHub()->setSpan($this->invocations['span']);
     }
 
     /**
@@ -523,14 +517,8 @@ class AiIntegration extends Feature
 
         $steps = $response->steps ?? null;
 
-        if (\is_object($steps) && method_exists($steps, 'all')) {
-            $steps = $steps->all();
-        } elseif (\is_object($steps) && method_exists($steps, 'toArray')) {
-            $steps = $steps->toArray();
-        }
-
-        $stepsArray = \is_array($steps) ? array_values($steps) : [];
-        $hasSteps = !empty($stepsArray);
+        $stepsArray = $this->toArrayIfPossible($steps);
+        $stepsArray = \is_array($stepsArray) ? array_values($stepsArray) : [];
         foreach ($chatSpans as $index => $chatSpan) {
             $data = $chatSpan->getData();
 
@@ -556,8 +544,7 @@ class AiIntegration extends Feature
                 $this->setTokenUsage($data, $usage);
             }
 
-            $finishReasonSource = $step ?? $response;
-            $finishReason = $this->flexGet($finishReasonSource, 'finishReason');
+            $finishReason = $this->flexGet($step, 'finishReason') ?? $this->flexGet($response, 'finishReason');
             if ($finishReason !== null) {
                 $data['gen_ai.response.finish_reasons'] = \is_object($finishReason) && property_exists($finishReason, 'value')
                     ? $finishReason->value
@@ -565,10 +552,10 @@ class AiIntegration extends Feature
             }
 
             if ($this->shouldSendDefaultPii()) {
-                if ($hasSteps) {
-                    $inputMessages = $this->buildChatInputMessages($invocationId, $stepsArray, $index);
-                } elseif ($index === 0) {
-                    $inputMessages = $this->buildChatInputMessages($invocationId, [], 0);
+                if ($index === 0) {
+                    $inputMessages = $this->buildUserInputMessagesFromMeta($this->invocations[$invocationId]['meta'] ?? []);
+                } elseif (!empty($stepsArray)) {
+                    $inputMessages = $this->buildChatInputMessages($stepsArray, $index);
                 } else {
                     // Streaming without steps: use response output as input for subsequent chat spans
                     $inputMessages = $this->buildOutputMessages($response);
@@ -621,21 +608,13 @@ class AiIntegration extends Feature
      */
     private function resolveAttachments(object $prompt): array
     {
-        try {
-            $attachments = $prompt->attachments ?? null;
-        } catch (\Throwable $e) {
-            return [];
-        }
+        $attachments = $this->flexGet($prompt, 'attachments');
 
         if ($attachments === null) {
             return [];
         }
 
-        if (\is_object($attachments) && method_exists($attachments, 'all')) {
-            $attachments = $attachments->all();
-        } elseif (\is_object($attachments) && method_exists($attachments, 'toArray')) {
-            $attachments = $attachments->toArray();
-        }
+        $attachments = $this->toArrayIfPossible($attachments);
 
         if (!\is_array($attachments) || empty($attachments)) {
             return [];
@@ -667,10 +646,10 @@ class AiIntegration extends Feature
     {
         $modality = $this->resolveAttachmentModality($attachment);
 
-        $arrayForm = method_exists($attachment, 'toArray') ? $attachment->toArray() : null;
+        $arrayForm = $this->flexCall($attachment, 'toArray');
 
         $type = $arrayForm['type'] ?? null;
-        $name = method_exists($attachment, 'name') ? $attachment->name() : ($attachment->name ?? null);
+        $name = $this->flexCall($attachment, 'name') ?? $attachment->name ?? null;
         $mimeType = method_exists($attachment, 'mimeType')
             ? $this->safeCall(function () use ($attachment) {
                 return $attachment->mimeType();
@@ -747,7 +726,7 @@ class AiIntegration extends Feature
      */
     private function buildUserInputMessages(object $prompt): array
     {
-        $promptText = $prompt->prompt ?? null;
+        $promptText = $this->flexGet($prompt, 'prompt');
         $attachmentParts = $this->resolveAttachments($prompt);
 
         $parts = [];
@@ -813,12 +792,8 @@ class AiIntegration extends Feature
      * @param array<int, object|array> $stepsArray
      * @return array<int, array<string, mixed>>
      */
-    private function buildChatInputMessages(string $invocationId, array $stepsArray, int $index): array
+    private function buildChatInputMessages(array $stepsArray, int $index): array
     {
-        if ($index === 0) {
-            return $this->buildUserInputMessagesFromMeta($this->invocations[$invocationId]['meta'] ?? []);
-        }
-
         $previousStep = $stepsArray[$index - 1] ?? null;
 
         if ($previousStep === null) {
@@ -844,11 +819,7 @@ class AiIntegration extends Feature
 
         $toolCalls = $this->flexGet($source, 'toolCalls');
         if ($toolCalls !== null) {
-            if (\is_object($toolCalls) && method_exists($toolCalls, 'all')) {
-                $toolCalls = $toolCalls->all();
-            } elseif (\is_object($toolCalls) && method_exists($toolCalls, 'toArray')) {
-                $toolCalls = $toolCalls->toArray();
-            }
+            $toolCalls = $this->toArrayIfPossible($toolCalls);
 
             if (\is_array($toolCalls)) {
                 foreach ($toolCalls as $toolCall) {
@@ -863,11 +834,7 @@ class AiIntegration extends Feature
 
         $toolResults = $this->flexGet($source, 'toolResults');
         if ($toolResults !== null) {
-            if (\is_object($toolResults) && method_exists($toolResults, 'all')) {
-                $toolResults = $toolResults->all();
-            } elseif (\is_object($toolResults) && method_exists($toolResults, 'toArray')) {
-                $toolResults = $toolResults->toArray();
-            }
+            $toolResults = $this->toArrayIfPossible($toolResults);
         }
         if (\is_array($toolResults)) {
             foreach ($toolResults as $toolResult) {
@@ -954,11 +921,7 @@ class AiIntegration extends Feature
 
     private function resolveToolDefinitions(object $agent): ?string
     {
-        if (!method_exists($agent, 'tools')) {
-            return null;
-        }
-
-        $tools = $agent->tools();
+        $tools = $this->flexCall($agent, 'tools');
         if (empty($tools)) {
             return null;
         }
@@ -1036,11 +999,7 @@ class AiIntegration extends Feature
 
     private function resolveToolDescription(object $tool): ?string
     {
-        if (!method_exists($tool, 'description')) {
-            return null;
-        }
-
-        $description = $tool->description();
+        $description = $this->flexCall($tool, 'description');
 
         if (\is_string($description) && $description !== '') {
             return $description;
@@ -1055,11 +1014,7 @@ class AiIntegration extends Feature
 
     private function resolveAgentInstructions(object $agent): ?string
     {
-        if (!method_exists($agent, 'instructions')) {
-            return null;
-        }
-
-        $instructions = $agent->instructions();
+        $instructions = $this->flexCall($agent, 'instructions');
 
         if ($instructions === null) {
             return null;
@@ -1123,6 +1078,42 @@ class AiIntegration extends Feature
         }
 
         return $source[$key] ?? null;
+    }
+
+    /**
+     * @param object|null $source
+     * @return mixed
+     */
+    private function flexCall($source, string $method)
+    {
+        if ($source !== null && method_exists($source, $method)) {
+            return $source->{$method}();
+        }
+
+        return null;
+    }
+
+    /**
+     * @param mixed $source
+     * @return array|null
+     */
+    private function toArrayIfPossible($source): ?array
+    {
+        if (\is_array($source)) {
+            return $source;
+        }
+
+        if (\is_object($source)) {
+            if (method_exists($source, 'all')) {
+                return $source->all();
+            }
+
+            if (method_exists($source, 'toArray')) {
+                return $source->toArray();
+            }
+        }
+
+        return null;
     }
 
     private function shortClassName(object $obj): string
