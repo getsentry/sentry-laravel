@@ -1214,6 +1214,7 @@ class AiIntegration extends Feature
                 $part['arguments'] = $this->truncateContentString($part['arguments']);
             }
         }
+        unset($part);
 
         return $message;
     }
