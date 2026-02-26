@@ -125,10 +125,12 @@ class AiIntegration extends Feature
             $data['gen_ai.tool.definitions'] = $toolDefinitions;
         }
 
+        $attachments = $this->resolveAttachments($event->prompt);
+
         if ($this->shouldSendDefaultPii()) {
             $inputMessages = $this->buildUserInputMessageFromParts(
                 $this->flexGet($event->prompt, 'prompt'),
-                $this->resolveAttachments($event->prompt)
+                $attachments
             );
             if (!empty($inputMessages)) {
                 $data['gen_ai.input.messages'] = $this->truncateMessages($inputMessages);
@@ -158,7 +160,7 @@ class AiIntegration extends Feature
                 'providerName' => $providerName,
                 'model' => $model,
                 'prompt' => $event->prompt->prompt ?? null,
-                'attachments' => $this->resolveAttachments($event->prompt),
+                'attachments' => $attachments,
                 'toolDefinitions' => $toolDefinitions,
             ],
             'urlPrefix' => $event->prompt->provider !== null ? $this->resolveProviderUrlPrefix($event->prompt->provider) : null,
