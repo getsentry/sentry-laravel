@@ -469,7 +469,9 @@ class AiIntegration extends Feature
         $invocationId = $this->findMatchingInvocation($event->request->url());
 
         if ($invocationId !== null) {
-            $this->finishActiveChatSpan($invocationId);
+            $status = SpanStatus::createFromHttpStatusCode($event->response->status());
+
+            $this->finishActiveChatSpan($invocationId, $status);
         }
     }
 
