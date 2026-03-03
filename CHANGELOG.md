@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.21.1
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.21.1.
+
+### Bug Fixes
+
+- Fix view engine decorator decorating itself [(#1098)](https://github.com/getsentry/sentry-laravel/pull/1098)
+
 ## 4.21.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.21.0.
