@@ -99,6 +99,11 @@ class ServiceProvider extends BaseServiceProvider
                 try {
                     $realEngine = $engineResolver->resolve($engineName);
 
+                    // Prevent double wrapping the view engine, this causes issues in Laravel internals where it's unable to collect the data it needs
+                    if ($realEngine instanceof ViewEngineDecorator) {
+                        continue;
+                    }
+
                     $engineResolver->register($engineName, function () use ($realEngine) {
                         return $this->wrapViewEngine($realEngine);
                     });
