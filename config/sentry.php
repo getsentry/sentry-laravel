@@ -109,6 +109,12 @@ return [
         // Capture HTTP client requests as spans
         'http_client_requests' => env('SENTRY_TRACE_HTTP_CLIENT_REQUESTS_ENABLED', true),
 
+        // Capture where the HTTP client request originated from on the HTTP client request spans
+        'http_client_requests_origin' => env('SENTRY_TRACE_HTTP_CLIENT_REQUESTS_ORIGIN_ENABLED', true),
+
+        // Define a threshold in milliseconds for HTTP client requests to resolve their origin
+        'http_client_requests_origin_threshold_ms' => env('SENTRY_TRACE_HTTP_CLIENT_REQUESTS_ORIGIN_THRESHOLD_MS', 250),
+
         // Capture Laravel cache events (hits, writes etc.) as spans
         'cache' => env('SENTRY_TRACE_CACHE_ENABLED', true),
 
