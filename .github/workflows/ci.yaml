@@ -56,7 +56,8 @@ jobs:
       - name: Install Composer dependencies
         run: |
           # friendsofphp/php-cs-fixer: No need for this package to run phpunit and it conflicts with older Laravel versions
-          composer remove friendsofphp/php-cs-fixer --dev --no-interaction --no-update
+          # laravel/ai: Only supported on PHP 8.4+
+          composer remove friendsofphp/php-cs-fixer laravel/ai --dev --no-interaction --no-update
 
           # Require the correct versions we want to run phpunit for
           composer require \
@@ -66,11 +67,20 @@ jobs:
             "orchestra/testbench:${{ matrix.packages.testbench }}" \
             --no-interaction --no-update
 
+          # Re-require laravel/ai if we're running AI tests (Laravel 12 with PHP 8.4+)
+          if [ "${{ matrix.packages.laravel }}" == "^12.0" ] && ([ "${{ matrix.php }}" == "8.4" ] || [ "${{ matrix.php }}" == "8.5" ]); then
+            composer require "laravel/ai:^0.1.5" --dev --no-interaction --no-update
+          fi
+
           # Actually run the composer installation
           composer install --no-interaction --prefer-dist --no-progress
 
       - name: Run phpunit
         run: vendor/bin/phpunit --coverage-clover=coverage.xml --coverage-filter=src/Sentry
+
+      - name: Run AI integration tests
+        if: matrix.packages.laravel == '^12.0'
+        run: vendor/bin/phpunit test/Sentry/Features/AiIntegrationTest.php
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -166,7 +176,8 @@ jobs:
           # livewire/livewire: Only supported on Laravel 7.0 and above
           # laravel/folio: Only supported on PHP 8.1 + Laravel 10.0 and above
           # laravel/pennant: Only supported on PHP 8.1 + Laravel 10.0 and above
-          composer remove friendsofphp/php-cs-fixer livewire/livewire laravel/folio laravel/pennant --dev --no-interaction --no-update
+          # laravel/ai: Only supported on PHP 8.4+
+          composer remove friendsofphp/php-cs-fixer livewire/livewire laravel/folio laravel/pennant laravel/ai --dev --no-interaction --no-update
 
           # Require the correct versions we want to run phpunit for
           composer require \
