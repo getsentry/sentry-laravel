@@ -26,19 +26,23 @@ class Integration extends Feature
     public function register(): void
     {
         $this->container()->afterResolving(FilesystemManager::class, function (FilesystemManager $filesystemManager): void {
+            // Store the driver name in a local variable because `FilesystemManager::extend()` re-binds the
+            // closure scope to `FilesystemManager` which causes `self::` to resolve on the wrong class.
+            $driverName = self::STORAGE_DRIVER_NAME;
+
             $filesystemManager->extend(
-                self::STORAGE_DRIVER_NAME,
-                function (Application $application, array $config) use ($filesystemManager): Filesystem {
+                $driverName,
+                function (Application $application, array $config) use ($filesystemManager, $driverName): Filesystem {
                     if (empty($config['sentry_disk_name'])) {
-                        throw new RuntimeException(sprintf('Missing `sentry_disk_name` config key for `%s` filesystem driver.', self::STORAGE_DRIVER_NAME));
+                        throw new RuntimeException(sprintf('Missing `sentry_disk_name` config key for `%s` filesystem driver.', $driverName));
                     }
 
                     if (empty($config['sentry_original_driver'])) {
-                        throw new RuntimeException(sprintf('Missing `sentry_original_driver` config key for `%s` filesystem driver.', self::STORAGE_DRIVER_NAME));
+                        throw new RuntimeException(sprintf('Missing `sentry_original_driver` config key for `%s` filesystem driver.', $driverName));
                     }
 
-                    if ($config['sentry_original_driver'] === self::STORAGE_DRIVER_NAME) {
-                        throw new RuntimeException(sprintf('`sentry_original_driver` for Sentry storage integration cannot be the `%s` driver.', self::STORAGE_DRIVER_NAME));
+                    if ($config['sentry_original_driver'] === $driverName) {
+                        throw new RuntimeException(sprintf('`sentry_original_driver` for Sentry storage integration cannot be the `%s` driver.', $driverName));
                     }
 
                     $disk = $config['sentry_disk_name'];
