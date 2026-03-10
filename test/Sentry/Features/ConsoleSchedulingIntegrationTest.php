@@ -9,6 +9,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Application;
 use Illuminate\Log\Context\Repository as ContextRepository;
+use Orchestra\Testbench\Attributes\DefineEnvironment;
 use ReflectionClass;
 use RuntimeException;
 use Sentry\CheckInStatus;
@@ -119,6 +120,7 @@ class ConsoleSchedulingIntegrationTest extends TestCase
     }
 
     /** @define-env envWithoutDsnSet */
+    #[DefineEnvironment('envWithoutDsnSet')]
     public function testScheduleMacroWithoutDsnSet(): void
     {
         /** @var Event $scheduledEvent */
@@ -143,6 +145,7 @@ class ConsoleSchedulingIntegrationTest extends TestCase
     }
 
     /** @define-env envWithoutDsnSet */
+    #[DefineEnvironment('envWithoutDsnSet')]
     public function testScheduleMacroIsRegisteredWithoutDsnSet(): void
     {
         if (!method_exists(Event::class, 'flushMacros')) {
@@ -157,6 +160,7 @@ class ConsoleSchedulingIntegrationTest extends TestCase
     }
 
     /** @define-env envSamplingAllTransactions */
+    #[DefineEnvironment('envSamplingAllTransactions')]
     public function testScheduledClosureCreatesTransaction(): void
     {
         $this->getScheduler()->call(function () {})->everyMinute();
@@ -171,6 +175,7 @@ class ConsoleSchedulingIntegrationTest extends TestCase
     }
 
     /** @define-env envSamplingAllTransactions */
+    #[DefineEnvironment('envSamplingAllTransactions')]
     public function testScheduledJobCreatesTransaction(): void
     {
         $this->getScheduler()->job(ScheduledQueuedJob::class)->everyMinute();

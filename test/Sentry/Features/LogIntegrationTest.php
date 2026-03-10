@@ -4,6 +4,7 @@ namespace Sentry\Laravel\Tests\Features;
 
 use Illuminate\Config\Repository;
 use Illuminate\Support\Facades\Log;
+use Orchestra\Testbench\Attributes\DefineEnvironment;
 use Sentry\Laravel\Tests\TestCase;
 use Sentry\Severity;
 
@@ -33,6 +34,7 @@ class LogIntegrationTest extends TestCase
     }
 
     /** @define-env envWithoutDsnSet */
+    #[DefineEnvironment('envWithoutDsnSet')]
     public function testLogChannelIsRegisteredWithoutDsn(): void
     {
         $this->expectNotToPerformAssertions();
