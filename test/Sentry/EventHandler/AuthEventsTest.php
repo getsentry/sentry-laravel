@@ -57,6 +57,48 @@ class AuthEventsTest extends TestCase
         $this->assertEquals('456', $scope->getUser()->getUsername());
     }
 
+    public function testAuthenticatedEventFillsUserOnScopeWhenEmailIsNotAString(): void
+    {
+        $user = new AuthEventsTestUserModel();
+
+        $user->forceFill([
+            'id' => 123,
+            'email' => 456,
+        ]);
+
+        $scope = $this->getCurrentSentryScope();
+
+        $this->assertNull($scope->getUser());
+
+        $this->dispatchLaravelEvent(new Authenticated('test', $user));
+
+        $this->assertNotNull($scope->getUser());
+
+        $this->assertEquals(123, $scope->getUser()->getId());
+        $this->assertEquals('456', $scope->getUser()->getEmail());
+    }
+
+    public function testAuthenticatedEventDoesNotSetEmailOnScopeWhenEmailAttributeIsNull(): void
+    {
+        $user = new AuthEventsTestUserModel();
+
+        $user->forceFill([
+            'id' => 123,
+            'email' => null,
+        ]);
+
+        $scope = $this->getCurrentSentryScope();
+
+        $this->assertNull($scope->getUser());
+
+        $this->dispatchLaravelEvent(new Authenticated('test', $user));
+
+        $this->assertNotNull($scope->getUser());
+
+        $this->assertEquals(123, $scope->getUser()->getId());
+        $this->assertNull($scope->getUser()->getEmail());
+    }
+
     public function testAuthenticatedEventDoesNotFillUserOnScopeWhenPIIShouldNotBeSent(): void
     {
         $this->resetApplicationWithConfig([
