@@ -120,7 +120,7 @@ class QueueIntegrationTest extends TestCase
     }
 
     /**
-     * @define-env withQueueTracingDisabled
+     * @define-env withQueueJobTracingDisabled
      */
     #[DefineEnvironment('withQueueJobTracingDisabled')]
     public function testQueueJobDoesntCreateTransaction(): void
