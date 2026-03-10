@@ -26,13 +26,16 @@ class Integration extends Feature
     public function register(): void
     {
         $this->container()->afterResolving(FilesystemManager::class, function (FilesystemManager $filesystemManager): void {
-            // Store the driver name in a local variable because `FilesystemManager::extend()` re-binds the
-            // closure scope to `FilesystemManager` which causes `self::` to resolve on the wrong class.
+            // Store constants and default feature flags in local variables because `FilesystemManager::extend()`
+            // re-binds the closure scope to `FilesystemManager` which causes `self::` and `$this` to resolve
+            // on `FilesystemManager` instead of the `Integration` class.
             $driverName = self::STORAGE_DRIVER_NAME;
+            $defaultRecordSpans = $this->isTracingFeatureEnabled(self::FEATURE_KEY);
+            $defaultRecordBreadcrumbs = $this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY);
 
             $filesystemManager->extend(
                 $driverName,
-                function (Application $application, array $config) use ($filesystemManager, $driverName): Filesystem {
+                function (Application $application, array $config) use ($filesystemManager, $driverName, $defaultRecordSpans, $defaultRecordBreadcrumbs): Filesystem {
                     if (empty($config['sentry_disk_name'])) {
                         throw new RuntimeException(sprintf('Missing `sentry_disk_name` config key for `%s` filesystem driver.', $driverName));
                     }
@@ -69,8 +72,8 @@ class Integration extends Feature
 
                     $defaultData = ['disk' => $disk, 'driver' => $config['driver']];
 
-                    $recordSpans = $config['sentry_enable_spans'] ?? $this->isTracingFeatureEnabled(self::FEATURE_KEY);
-                    $recordBreadcrumbs = $config['sentry_enable_breadcrumbs'] ?? $this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY);
+                    $recordSpans = $config['sentry_enable_spans'] ?? $defaultRecordSpans;
+                    $recordBreadcrumbs = $config['sentry_enable_breadcrumbs'] ?? $defaultRecordBreadcrumbs;
 
                     if ($originalFilesystem instanceof AwsS3V3Adapter) {
                         return new SentryS3V3Adapter($originalFilesystem, $defaultData, $recordSpans, $recordBreadcrumbs);

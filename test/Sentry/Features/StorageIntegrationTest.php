@@ -172,6 +172,46 @@ class StorageIntegrationTest extends TestCase
         $this->assertEquals($originalConfig, config('filesystems.disks.local'));
     }
 
+    public function testCreatesSpansWithoutExplicitConfigOption(): void
+    {
+        $this->resetApplicationWithConfig([
+            'filesystems.disks.local' => [
+                'driver' => 'sentry',
+                'sentry_disk_name' => 'local',
+                'sentry_original_driver' => 'local',
+                'root' => storage_path('framework/testing/disks/local'),
+            ],
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        Storage::exists('foo');
+
+        $spans = $transaction->getSpanRecorder()->getSpans();
+
+        $this->assertCount(2, $spans);
+        $this->assertSame('file.exists', $spans[1]->getOp());
+    }
+
+    public function testCreatesBreadcrumbsWithoutExplicitConfigOption(): void
+    {
+        $this->resetApplicationWithConfig([
+            'filesystems.disks.local' => [
+                'driver' => 'sentry',
+                'sentry_disk_name' => 'local',
+                'sentry_original_driver' => 'local',
+                'root' => storage_path('framework/testing/disks/local'),
+            ],
+        ]);
+
+        Storage::exists('foo');
+
+        $breadcrumbs = $this->getCurrentSentryBreadcrumbs();
+
+        $this->assertCount(1, $breadcrumbs);
+        $this->assertSame('file.exists', $breadcrumbs[0]->getCategory());
+    }
+
     public function testThrowsIfDiskConfigurationDoesntSpecifyDiskName(): void
     {
         $this->resetApplicationWithConfig([
