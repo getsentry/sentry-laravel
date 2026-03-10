@@ -34,11 +34,18 @@ jobs:
           # All versions below only support PHP ^8.2 (Laravel requirement)
           - { laravel: ^11.0,  testbench: ^9.0, phpunit: 10.5.* }
           - { laravel: ^12.0,  testbench: ^10.0, phpunit: 11.5.* }
+
+          # All versions below only support PHP ^8.3 (Laravel requirement)
+          - { laravel: ^13.0,  testbench: ^11.0, phpunit: 12.* }
         exclude:
           - php: "8.1"
             packages: { laravel: ^11.0,  testbench: ^9.0, phpunit: 10.5.* }
           - php: "8.1"
             packages: { laravel: ^12.0,  testbench: ^10.0, phpunit: 11.5.* }
+          - php: "8.1"
+            packages: { laravel: ^13.0,  testbench: ^11.0, phpunit: 12.* }
+          - php: "8.2"
+            packages: { laravel: ^13.0,  testbench: ^11.0, phpunit: 12.* }
 
     name: phpunit (PHP:${{ matrix.php }}, Laravel:${{ matrix.packages.laravel }})
 
@@ -56,7 +63,9 @@ jobs:
       - name: Install Composer dependencies
         run: |
           # friendsofphp/php-cs-fixer: No need for this package to run phpunit and it conflicts with older Laravel versions
+          # laravel/pennant: Does not yet support Laravel 13
           composer remove friendsofphp/php-cs-fixer --dev --no-interaction --no-update
+          [[ "${{ matrix.packages.laravel }}" == "^13.0" ]] && composer remove laravel/pennant --dev --no-interaction --no-update || true
 
           # Require the correct versions we want to run phpunit for
           composer require \
