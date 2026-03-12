@@ -1,5 +1,17 @@
 # Changelog
 
+## 4.22.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.22.0.
+
+### Features
+
+- Add support for Laravel 13 [(#1102)](https://github.com/getsentry/sentry-laravel/pull/1102)
+
+### Bug Fixes
+
+- Reset the transaction name between Octane requests [(#1103)](https://github.com/getsentry/sentry-laravel/pull/1103)
+
 ## 4.21.1
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.21.1.
