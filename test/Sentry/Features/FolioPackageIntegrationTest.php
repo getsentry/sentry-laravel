@@ -3,6 +3,7 @@
 namespace Sentry\Laravel\Tests\Features;
 
 use Laravel\Folio\Folio;
+use Orchestra\Testbench\Attributes\DefineEnvironment;
 use Sentry\EventType;
 use Sentry\Laravel\Integration;
 use Illuminate\Config\Repository;
@@ -51,6 +52,7 @@ class FolioPackageIntegrationTest extends TestCase
     }
 
     /** @define-env envSamplingAllTransactions */
+    #[DefineEnvironment('envSamplingAllTransactions')]
     public function testFolioCatchAllRouteCreatesTransaction(): void
     {
         $this->get('/')->assertOk();
@@ -64,6 +66,7 @@ class FolioPackageIntegrationTest extends TestCase
     }
 
     /** @define-env envSamplingAllTransactions */
+    #[DefineEnvironment('envSamplingAllTransactions')]
     public function testFolioCatchAllRouteWithoutHandlerDropsTransaction(): void
     {
         $this->get('/non-existing-route')->assertNotFound();
@@ -72,6 +75,7 @@ class FolioPackageIntegrationTest extends TestCase
     }
 
     /** @define-env envSamplingAllTransactions */
+    #[DefineEnvironment('envSamplingAllTransactions')]
     public function testFolioCatchAllRouteThrowingNotFoundDropsTransaction(): void
     {
         $this->get('/user/420')->assertNotFound();
@@ -82,6 +86,7 @@ class FolioPackageIntegrationTest extends TestCase
     }
 
     /** @define-env envSamplingAllTransactions */
+    #[DefineEnvironment('envSamplingAllTransactions')]
     public function testFolioPathRouteCreatesTransaction(): void
     {
         $this->get('/folio')->assertOk();
@@ -95,6 +100,7 @@ class FolioPackageIntegrationTest extends TestCase
     }
 
     /** @define-env envSamplingAllTransactions */
+    #[DefineEnvironment('envSamplingAllTransactions')]
     public function testFolioPathRouteWithoutHandlerDropsTransaction(): void
     {
         $this->get('/folio/non-existing-route')->assertNotFound();
@@ -103,6 +109,7 @@ class FolioPackageIntegrationTest extends TestCase
     }
 
     /** @define-env envSamplingAllTransactions */
+    #[DefineEnvironment('envSamplingAllTransactions')]
     public function testFolioPathRouteThrowingNotFoundDropsTransaction(): void
     {
         $this->get('/folio/user/420')->assertNotFound();

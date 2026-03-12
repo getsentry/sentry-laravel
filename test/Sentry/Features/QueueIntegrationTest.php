@@ -4,6 +4,7 @@ namespace Sentry\Laravel\Tests\Features;
 
 use Exception;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Orchestra\Testbench\Attributes\DefineEnvironment;
 use Sentry\Breadcrumb;
 use Sentry\EventType;
 use Sentry\Laravel\Tests\TestCase;
@@ -95,6 +96,7 @@ class QueueIntegrationTest extends TestCase
     /**
      * @define-env withTracingEnabled
      */
+    #[DefineEnvironment('withTracingEnabled')]
     public function testQueueJobCreatesTransactionByDefault(): void
     {
         dispatch(new QueueEventsTestJob);
@@ -118,8 +120,9 @@ class QueueIntegrationTest extends TestCase
     }
 
     /**
-     * @define-env withQueueTracingDisabled
+     * @define-env withQueueJobTracingDisabled
      */
+    #[DefineEnvironment('withQueueJobTracingDisabled')]
     public function testQueueJobDoesntCreateTransaction(): void
     {
         dispatch(new QueueEventsTestJob);

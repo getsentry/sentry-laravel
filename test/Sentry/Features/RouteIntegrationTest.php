@@ -3,6 +3,7 @@
 namespace Sentry\Laravel\Tests\Features;
 
 use Illuminate\Routing\Router;
+use Orchestra\Testbench\Attributes\DefineEnvironment;
 use Sentry\Laravel\Tests\TestCase;
 
 class RouteIntegrationTest extends TestCase
@@ -21,6 +22,7 @@ class RouteIntegrationTest extends TestCase
     }
 
     /** @define-env envSamplingAllTransactions */
+    #[DefineEnvironment('envSamplingAllTransactions')]
     public function testTransactionIsRecordedForRoute(): void
     {
         $this->get('/sentry/ok')->assertOk();
@@ -29,6 +31,7 @@ class RouteIntegrationTest extends TestCase
     }
 
     /** @define-env envSamplingAllTransactions */
+    #[DefineEnvironment('envSamplingAllTransactions')]
     public function testTransactionIsRecordedForNotFound(): void
     {
         $this->get('/sentry/abort/404')->assertNotFound();
@@ -37,6 +40,7 @@ class RouteIntegrationTest extends TestCase
     }
 
     /** @define-env envSamplingAllTransactions */
+    #[DefineEnvironment('envSamplingAllTransactions')]
     public function testTransactionIsDroppedForUndefinedRoute(): void
     {
         $this->get('/sentry/non-existent-route')->assertNotFound();

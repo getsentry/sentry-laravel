@@ -26,19 +26,26 @@ class Integration extends Feature
     public function register(): void
     {
         $this->container()->afterResolving(FilesystemManager::class, function (FilesystemManager $filesystemManager): void {
+            // Store constants and default feature flags in local variables because `FilesystemManager::extend()`
+            // re-binds the closure scope to `FilesystemManager` which causes `self::` and `$this` to resolve
+            // on `FilesystemManager` instead of the `Integration` class.
+            $driverName = self::STORAGE_DRIVER_NAME;
+            $defaultRecordSpans = $this->isTracingFeatureEnabled(self::FEATURE_KEY);
+            $defaultRecordBreadcrumbs = $this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY);
+
             $filesystemManager->extend(
-                self::STORAGE_DRIVER_NAME,
-                function (Application $application, array $config) use ($filesystemManager): Filesystem {
+                $driverName,
+                function (Application $application, array $config) use ($filesystemManager, $driverName, $defaultRecordSpans, $defaultRecordBreadcrumbs): Filesystem {
                     if (empty($config['sentry_disk_name'])) {
-                        throw new RuntimeException(sprintf('Missing `sentry_disk_name` config key for `%s` filesystem driver.', self::STORAGE_DRIVER_NAME));
+                        throw new RuntimeException(sprintf('Missing `sentry_disk_name` config key for `%s` filesystem driver.', $driverName));
                     }
 
                     if (empty($config['sentry_original_driver'])) {
-                        throw new RuntimeException(sprintf('Missing `sentry_original_driver` config key for `%s` filesystem driver.', self::STORAGE_DRIVER_NAME));
+                        throw new RuntimeException(sprintf('Missing `sentry_original_driver` config key for `%s` filesystem driver.', $driverName));
                     }
 
-                    if ($config['sentry_original_driver'] === self::STORAGE_DRIVER_NAME) {
-                        throw new RuntimeException(sprintf('`sentry_original_driver` for Sentry storage integration cannot be the `%s` driver.', self::STORAGE_DRIVER_NAME));
+                    if ($config['sentry_original_driver'] === $driverName) {
+                        throw new RuntimeException(sprintf('`sentry_original_driver` for Sentry storage integration cannot be the `%s` driver.', $driverName));
                     }
 
                     $disk = $config['sentry_disk_name'];
@@ -65,8 +72,8 @@ class Integration extends Feature
 
                     $defaultData = ['disk' => $disk, 'driver' => $config['driver']];
 
-                    $recordSpans = $config['sentry_enable_spans'] ?? $this->isTracingFeatureEnabled(self::FEATURE_KEY);
-                    $recordBreadcrumbs = $config['sentry_enable_breadcrumbs'] ?? $this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY);
+                    $recordSpans = $config['sentry_enable_spans'] ?? $defaultRecordSpans;
+                    $recordBreadcrumbs = $config['sentry_enable_breadcrumbs'] ?? $defaultRecordBreadcrumbs;
 
                     if ($originalFilesystem instanceof AwsS3V3Adapter) {
                         return new SentryS3V3Adapter($originalFilesystem, $defaultData, $recordSpans, $recordBreadcrumbs);
