@@ -4,6 +4,7 @@ namespace Sentry\Laravel\Tests\Features;
 
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
+use Orchestra\Testbench\Attributes\DefineEnvironment;
 use Sentry\Laravel\Tests\TestCase;
 use Sentry\Tracing\Span;
 
@@ -43,6 +44,7 @@ class DatabaseIntegrationTest extends TestCase
     /**
      * @define-env usesMySQL
      */
+    #[DefineEnvironment('usesMySQL')]
     public function testSpanIsCreatedForMySQLConnectionQuery(): void
     {
         $span = $this->executeQueryAndRetrieveSpan(
@@ -58,6 +60,7 @@ class DatabaseIntegrationTest extends TestCase
     /**
      * @define-env usesMySQLFromUrl
      */
+    #[DefineEnvironment('usesMySQLFromUrl')]
     public function testSpanIsCreatedForMySQLUrlConnectionQuery(): void
     {
         $span = $this->executeQueryAndRetrieveSpan(
@@ -73,6 +76,7 @@ class DatabaseIntegrationTest extends TestCase
     /**
      * @define-env usesInMemorySqlite
      */
+    #[DefineEnvironment('usesInMemorySqlite')]
     public function testSpanIsCreatedForSqliteConnectionQuery(): void
     {
         $span = $this->executeQueryAndRetrieveSpan(
