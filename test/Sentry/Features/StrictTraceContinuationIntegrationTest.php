@@ -11,9 +11,9 @@ class StrictTraceContinuationIntegrationTest extends TestCase
     private const INCOMING_PARENT_SPAN_ID = '566e3688a61d4bc8';
     private const INCOMING_SENTRY_TRACE_HEADER = self::INCOMING_TRACE_ID . '-' . self::INCOMING_PARENT_SPAN_ID . '-1';
 
-    protected function defineRoutes($router): void
+    private function registerRoutes(): void
     {
-        $router->group(['prefix' => 'sentry'], function (Router $router) {
+        $this->app['router']->group(['prefix' => 'sentry'], function (Router $router) {
             $router->get('/strict-trace-continuation', function () {
                 return 'ok';
             });
@@ -35,6 +35,7 @@ class StrictTraceContinuationIntegrationTest extends TestCase
         }
 
         $this->resetApplicationWithConfig($config);
+        $this->registerRoutes();
 
         $server = [
             'HTTP_SENTRY_TRACE' => self::INCOMING_SENTRY_TRACE_HEADER,
@@ -71,6 +72,7 @@ class StrictTraceContinuationIntegrationTest extends TestCase
             'sentry.strict_trace_continuation' => true,
             'sentry.traces_sample_rate' => 1.0,
         ]);
+        $this->registerRoutes();
 
         $response = $this->call('GET', '/sentry/strict-trace-continuation', [], [], [], [
             'HTTP_SENTRY_TRACE' => self::INCOMING_SENTRY_TRACE_HEADER,
