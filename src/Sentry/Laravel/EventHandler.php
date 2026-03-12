@@ -435,6 +435,7 @@ class EventHandler
     private function afterTaskWithinLongRunningProcess(): void
     {
         Integration::flushEvents();
+        Integration::setTransaction(null);
     }
 
     /**
