@@ -64,8 +64,9 @@ jobs:
         run: |
           # friendsofphp/php-cs-fixer: No need for this package to run phpunit and it conflicts with older Laravel versions
           # laravel/pennant: Does not yet support Laravel 13
+          # laravel/octane: Does not yet support Laravel 13
           composer remove friendsofphp/php-cs-fixer --dev --no-interaction --no-update
-          [[ "${{ matrix.packages.laravel }}" == "^13.0" ]] && composer remove laravel/pennant --dev --no-interaction --no-update || true
+          [[ "${{ matrix.packages.laravel }}" == "^13.0" ]] && composer remove laravel/pennant laravel/octane --dev --no-interaction --no-update || true
 
           # Require the correct versions we want to run phpunit for
           composer require \
