@@ -78,6 +78,32 @@ class AuthEventsTest extends TestCase
         $this->assertEquals('456', $scope->getUser()->getEmail());
     }
 
+    public function testAuthenticatedEventFillsUserOnScopeWhenEmailCanBeCastToAString(): void
+    {
+        $user = new AuthEventsTestUserModel();
+
+        $user->forceFill([
+            'id' => 123,
+            'email' => new class {
+                public function __toString(): string
+                {
+                    return 'foo@example.com';
+                }
+            },
+        ]);
+
+        $scope = $this->getCurrentSentryScope();
+
+        $this->assertNull($scope->getUser());
+
+        $this->dispatchLaravelEvent(new Authenticated('test', $user));
+
+        $this->assertNotNull($scope->getUser());
+
+        $this->assertEquals(123, $scope->getUser()->getId());
+        $this->assertEquals('foo@example.com', $scope->getUser()->getEmail());
+    }
+
     public function testAuthenticatedEventDoesNotSetEmailOnScopeWhenEmailAttributeIsNull(): void
     {
         $user = new AuthEventsTestUserModel();
