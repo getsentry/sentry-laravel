@@ -705,12 +705,12 @@ class AiIntegration extends Feature
     }
 
     /**
-     * @param array<int, object|array> $stepsArray
+     * @param \Illuminate\Support\Collection<int, \Laravel\Ai\Responses\Data\Step> $steps
      * @return array<int, array<string, mixed>>
      */
-    private function buildChatInputMessages(array $stepsArray, int $index): array
+    private function buildChatInputMessages(\Illuminate\Support\Collection $steps, int $index): array
     {
-        $previousStep = $stepsArray[$index - 1] ?? null;
+        $previousStep = $steps[$index - 1] ?? null;
 
         if ($previousStep === null) {
             return [];

@@ -499,12 +499,6 @@ class TestProvider extends \Laravel\Ai\Providers\Provider implements TextProvide
         return 'text-embedding-3-small';
     }
 }
-class TestUsage
-{
-    public function __construct(public int $promptTokens = 0, public int $completionTokens = 0, public int $cacheReadInputTokens = 0, public int $cacheWriteInputTokens = 0, public int $reasoningTokens = 0)
-    {
-    }
-}
 class TestToolCall
 {
     public function __construct(public string $name, public array $arguments = [])
@@ -535,19 +529,8 @@ class TestLocalImage extends \Laravel\Ai\Files\Image
         return ['type' => 'local-image', 'name' => $this->name(), 'path' => $this->path, 'mime' => $this->mime];
     }
 }
-class TestRemoteImage extends \Laravel\Ai\Files\Image
+class TestRemoteImage extends \Laravel\Ai\Files\RemoteImage
 {
-    public function __construct(public string $url, public ?string $mime = null)
-    {
-    }
-    public function mimeType(): ?string
-    {
-        return $this->mime;
-    }
-    public function toArray(): array
-    {
-        return ['type' => 'remote-image', 'name' => $this->name, 'url' => $this->url, 'mime' => $this->mime];
-    }
 }
 namespace Sentry\Laravel\Tests\Features;
 
@@ -569,7 +552,7 @@ use Sentry\Laravel\Tests\Features\AiStubs\TestAgentWithConfig;
 use Sentry\Laravel\Tests\Features\AiStubs\TestProvider;
 use Sentry\Laravel\Tests\Features\AiStubs\TestToolCall;
 use Sentry\Laravel\Tests\Features\AiStubs\TestToolResult;
-use Sentry\Laravel\Tests\Features\AiStubs\TestUsage;
+use Laravel\Ai\Responses\Data\Usage;
 use Sentry\Laravel\Tests\Features\AiStubs\WeatherLookup;
 use Sentry\Laravel\Tests\Features\AiStubs\TestLocalImage;
 use Sentry\Laravel\Tests\Features\AiStubs\TestRemoteImage;
@@ -794,9 +777,9 @@ class AiIntegrationTest extends TestCase
         $provider = new TestProvider();
         $prompt = new \Laravel\Ai\Prompts\AgentPrompt($agent, 'Compare images.', collect([new TestLocalImage('/tmp/photo.png', 'image/png'), new TestRemoteImage('https://example.com/photo.jpg', 'image/jpeg')]), $provider, 'gpt-4o');
         $step = (object)['text' => 'Done.', 'toolCalls' => [], 'toolResults' => [], 'finishReason' => (object)['value' => 'stop'],
-            'usage' => new TestUsage(100, 20), 'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06']];
+            'usage' => new Usage(100, 20), 'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06']];
         $response = (object)['text' => 'Done.', 'toolCalls' => [], 'toolResults' => [], 'steps' => [$step],
-            'usage' => new TestUsage(100, 20), 'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'], 'conversationId' => 'conv-img'];
+            'usage' => new Usage(100, 20), 'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'], 'conversationId' => 'conv-img'];
         $this->dispatchAgentFlow('inv-a', $prompt, $response);
         $parts = json_decode($this->findSpanByOp($transaction, 'gen_ai.invoke_agent')->getData()['gen_ai.input.messages'], true)[0]['parts'];
         $this->assertCount(3, $parts); // text + local blob + remote uri
@@ -865,7 +848,7 @@ class AiIntegrationTest extends TestCase
         if ($response instanceof \Laravel\Ai\Responses\AgentResponse) {
             return $response;
         }
-        $usage = new \Laravel\Ai\Responses\Data\Usage(
+        $usage = new Usage(
             $response->usage->promptTokens ?? 0,
             $response->usage->completionTokens ?? 0,
             $response->usage->cacheWriteInputTokens ?? 0,
@@ -911,7 +894,7 @@ class AiIntegrationTest extends TestCase
     {
         $agent = new $agentClass();
         $provider = new TestProvider();
-        $usage = new TestUsage($promptTokens, $completionTokens, $cacheReadInputTokens, 0, $reasoningTokens);
+        $usage = new Usage($promptTokens, $completionTokens, 0, $cacheReadInputTokens, $reasoningTokens);
         $meta = (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'];
         $prompt = new \Laravel\Ai\Prompts\AgentPrompt($agent, $promptText, [], $provider, 'gpt-4o');
         $step = (object)['text' => 'The analysis shows positive trends.', 'toolCalls' => [], 'toolResults' => [], 'finishReason' => (object)['value' => 'stop'], 'usage' => $usage, 'meta' => $meta];
@@ -927,9 +910,9 @@ class AiIntegrationTest extends TestCase
         $prompt = new \Laravel\Ai\Prompts\AgentPrompt($agent, 'What is the weather in Paris?', [], $provider, 'gpt-4o');
         $tc = new TestToolCall('WeatherLookup', ['city' => 'Paris']);
         $tr = new TestToolResult('WeatherLookup', 'Sunny, 22C');
-        $step1 = (object)['text' => '', 'toolCalls' => [$tc], 'toolResults' => [$tr], 'finishReason' => (object)['value' => 'tool_calls'], 'usage' => new TestUsage(60, 20), 'meta' => $meta];
-        $step2 = (object)['text' => 'Sunny and 22 degrees.', 'toolCalls' => [], 'toolResults' => [], 'finishReason' => (object)['value' => 'stop'], 'usage' => new TestUsage(80, 30), 'meta' => $meta];
-        $response = (object)['text' => 'Sunny and 22 degrees.', 'toolCalls' => [$tc], 'toolResults' => [$tr], 'steps' => [$step1, $step2], 'usage' => new TestUsage(140, 50), 'meta' => $meta, 'conversationId' => 'conv-abc-123'];
+        $step1 = (object)['text' => '', 'toolCalls' => [$tc], 'toolResults' => [$tr], 'finishReason' => (object)['value' => 'tool_calls'], 'usage' => new Usage(60, 20), 'meta' => $meta];
+        $step2 = (object)['text' => 'Sunny and 22 degrees.', 'toolCalls' => [], 'toolResults' => [], 'finishReason' => (object)['value' => 'stop'], 'usage' => new Usage(80, 30), 'meta' => $meta];
+        $response = (object)['text' => 'Sunny and 22 degrees.', 'toolCalls' => [$tc], 'toolResults' => [$tr], 'steps' => [$step1, $step2], 'usage' => new Usage(140, 50), 'meta' => $meta, 'conversationId' => 'conv-abc-123'];
         return [$prompt, $response];
     }
 
@@ -938,7 +921,7 @@ class AiIntegrationTest extends TestCase
         $agent = new TestAgent();
         $provider = new TestProvider();
         $prompt = new \Laravel\Ai\Prompts\AgentPrompt($agent, 'Analyze this transcript', [], $provider, 'gpt-4o');
-        $response = (object)['text' => 'Streamed analysis.', 'toolCalls' => [], 'toolResults' => [], 'steps' => [], 'usage' => new TestUsage(60, 130), 'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'], 'conversationId' => 'conv-stream-123'];
+        $response = (object)['text' => 'Streamed analysis.', 'toolCalls' => [], 'toolResults' => [], 'steps' => [], 'usage' => new Usage(60, 130), 'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'], 'conversationId' => 'conv-stream-123'];
         return [$prompt, $response];
     }
 
