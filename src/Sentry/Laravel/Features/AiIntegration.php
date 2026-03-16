@@ -105,7 +105,8 @@ class AiIntegration extends Feature
             $data['gen_ai.request.model'] = $model;
         }
 
-        $providerName = $this->flexCall($event->prompt->provider ?? null, 'name');
+        $provider = $event->prompt->provider ?? null;
+        $providerName = $provider !== null ? $provider->name() : null;
         if ($providerName !== null) {
             $data['gen_ai.provider.name'] = $providerName;
         }
@@ -332,9 +333,8 @@ class AiIntegration extends Feature
             $data['gen_ai.request.model'] = $model;
         }
 
-        $providerName = $this->flexCall($event->provider, 'name');
-        if ($providerName !== null) {
-            $data['gen_ai.provider.name'] = $providerName;
+        if ($event->provider !== null) {
+            $data['gen_ai.provider.name'] = $event->provider->name();
         }
 
         if ($this->shouldSendDefaultPii()) {
@@ -683,7 +683,7 @@ class AiIntegration extends Feature
      * @param array<int, array<string, mixed>> $attachmentParts
      * @return array<int, array<string, mixed>>
      */
-    private function buildUserInputMessageFromParts($promptText, array $attachmentParts): array
+    private function buildUserInputMessageFromParts(?string $promptText, array $attachmentParts): array
     {
         $parts = [];
 
@@ -798,7 +798,7 @@ class AiIntegration extends Feature
     /**
      * @return int|float|string|null
      */
-    private function resolveAgentAttribute(object $agent, string $attributeClass)
+    private function resolveAgentAttribute(\Laravel\Ai\Contracts\Agent $agent, string $attributeClass)
     {
         if (!class_exists($attributeClass) || PHP_VERSION_ID < 80000) {
             return null;
@@ -822,7 +822,11 @@ class AiIntegration extends Feature
 
     private function resolveToolDefinitions(\Laravel\Ai\Contracts\Agent $agent): ?string
     {
-        $tools = $this->flexCall($agent, 'tools');
+        if (!$agent instanceof \Laravel\Ai\Contracts\HasTools) {
+            return null;
+        }
+
+        $tools = $agent->tools();
         if (empty($tools)) {
             return null;
         }
@@ -859,7 +863,7 @@ class AiIntegration extends Feature
     /**
      * @return array<string, mixed>|null
      */
-    private function resolveToolParameters(object $tool): ?array
+    private function resolveToolParameters(\Laravel\Ai\Contracts\Tool $tool): ?array
     {
         if (!method_exists($tool, 'schema') || !class_exists('Illuminate\JsonSchema\JsonSchemaTypeFactory')) {
             return null;
@@ -881,12 +885,12 @@ class AiIntegration extends Feature
         }
     }
 
-    private function resolveAgentName(object $agent): string
+    private function resolveAgentName(\Laravel\Ai\Contracts\Agent $agent): string
     {
         return $this->shortClassName($agent);
     }
 
-    private function resolveToolName(object $tool): string
+    private function resolveToolName(\Laravel\Ai\Contracts\Tool $tool): string
     {
         if (method_exists($tool, 'name')) {
             $name = $tool->name();
@@ -900,33 +904,18 @@ class AiIntegration extends Feature
 
     private function resolveToolDescription(\Laravel\Ai\Contracts\Tool $tool): ?string
     {
-        $description = $this->flexCall($tool, 'description');
-
-        if (\is_string($description) && $description !== '') {
-            return $description;
-        }
-
-        if (\is_object($description) && method_exists($description, '__toString')) {
-            return (string)$description;
-        }
-
-        return null;
+        $description = (string)$tool->description();
+        return $description !== '' ? $description : null;
     }
 
-    private function resolveAgentInstructions(object $agent): ?string
+    private function resolveAgentInstructions(\Laravel\Ai\Contracts\Agent $agent): ?string
     {
-        $instructions = $this->flexCall($agent, 'instructions');
-
-        if ($instructions === null) {
-            return null;
-        }
-
-        return \is_string($instructions) ? $instructions : (string)$instructions;
+        $instructions = $agent->instructions();
+        return $instructions !== null ? (string)$instructions : null;
     }
 
     /**
      * @param array<string, mixed> $data
-     * @param object|array $usage
      */
     private function setTokenUsage(array &$data, \Laravel\Ai\Responses\Data\Usage $usage): void
     {
@@ -960,20 +949,6 @@ class AiIntegration extends Feature
             $data['gen_ai.usage.output_tokens.reasoning'] = $reasoningTokens;
         }
     }
-
-    /**
-     * @param object|null $source
-     * @return mixed
-     */
-    private function flexCall($source, string $method)
-    {
-        if ($source !== null && method_exists($source, $method)) {
-            return $source->{$method}();
-        }
-
-        return null;
-    }
-
 
     private function shortClassName(object $obj): string
     {
@@ -1332,11 +1307,11 @@ class AiInvocationMeta
 
     public function __construct(
         string $agentName,
-        $providerName,
-        $model,
-        $prompt,
+        ?string $providerName,
+        ?string $model,
+        ?string $prompt,
         array $attachments,
-        $toolDefinitions
+        ?string $toolDefinitions
     ) {
         $this->agentName = $agentName;
         $this->providerName = $providerName;
@@ -1375,10 +1350,10 @@ class AiInvocationData
 
     public function __construct(
         Span $span,
-        $parentSpan,
+        ?Span $parentSpan,
         AiInvocationMeta $meta,
-        $urlPrefix,
-        $isStreaming
+        ?string $urlPrefix,
+        bool $isStreaming
     ) {
         $this->span = $span;
         $this->parentSpan = $parentSpan;
