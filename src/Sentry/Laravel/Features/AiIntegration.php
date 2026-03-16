@@ -19,6 +19,9 @@ class AiIntegration extends Feature
     /** @var array<string, AiInvocationData> */
     private $invocations = [];
 
+    /** @var array<string, array{span: Span, parentSpan: Span|null}> */
+    private $toolInvocations = [];
+
     public function isApplicable(): bool
     {
         if (!class_exists('Laravel\Ai\Events\PromptingAgent')) {
@@ -34,6 +37,8 @@ class AiIntegration extends Feature
         $events->listen('Laravel\Ai\Events\AgentPrompted', [$this, 'handleAgentPromptedForTracing']);
         $events->listen('Laravel\Ai\Events\StreamingAgent', [$this, 'handlePromptingAgentForTracing']);
         $events->listen('Laravel\Ai\Events\AgentStreamed', [$this, 'handleAgentPromptedForTracing']);
+        $events->listen('Laravel\Ai\Events\InvokingTool', [$this, 'handleInvokingToolForTracing']);
+        $events->listen('Laravel\Ai\Events\ToolInvoked', [$this, 'handleToolInvokedForTracing']);
 
         if (class_exists(RequestSending::class)) {
             $events->listen(RequestSending::class, [$this, 'handleHttpRequestSending']);
@@ -86,6 +91,11 @@ class AiIntegration extends Feature
             $data['gen_ai.request.max_tokens'] = $maxTokens;
         }
 
+        $toolDefinitions = $this->resolveToolDefinitions($event->prompt->agent);
+        if ($toolDefinitions !== null) {
+            $data['gen_ai.tool.definitions'] = $toolDefinitions;
+        }
+
         $agentSpan = $parentSpan->startChild(
             SpanContext::make()
                 ->setOp('gen_ai.invoke_agent')
@@ -99,7 +109,7 @@ class AiIntegration extends Feature
         $this->invocations[$event->invocationId] = new AiInvocationData(
             $agentSpan,
             $parentSpan,
-            new AiInvocationMeta($agentName, $providerName, $model),
+            new AiInvocationMeta($agentName, $providerName, $model, $toolDefinitions),
             $provider !== null ? $this->resolveProviderUrlPrefix($provider) : null,
             $isStreaming
         );
@@ -192,6 +202,10 @@ class AiIntegration extends Feature
             $data['gen_ai.provider.name'] = $meta->providerName;
         }
 
+        if ($meta->toolDefinitions !== null) {
+            $data['gen_ai.tool.definitions'] = $meta->toolDefinitions;
+        }
+
         $chatSpan = $invocation->span->startChild(
             SpanContext::make()
                 ->setOp('gen_ai.chat')
@@ -204,6 +218,88 @@ class AiIntegration extends Feature
         $invocation->chatSpans[] = $chatSpan;
 
         SentrySdk::getCurrentHub()->setSpan($chatSpan);
+    }
+
+    public function handleInvokingToolForTracing(\Laravel\Ai\Events\InvokingTool $event): void
+    {
+        if (!$this->isTracingFeatureEnabled('gen_ai_execute_tool')) {
+            return;
+        }
+
+        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+        if ($parentSpan === null || !$parentSpan->getSampled()) {
+            return;
+        }
+
+        $toolDef = $this->resolveToolDefinition($event->tool);
+        $agentName = $this->shortClassName($event->agent);
+
+        $data = [
+            'gen_ai.operation.name' => 'execute_tool',
+            'gen_ai.tool.name' => $toolDef['name'],
+            'gen_ai.tool.type' => $toolDef['type'],
+            'gen_ai.agent.name' => $agentName,
+        ];
+
+        if (isset($toolDef['description'])) {
+            $data['gen_ai.tool.description'] = $toolDef['description'];
+        }
+
+        if ($this->shouldSendDefaultPii() && !empty($event->arguments)) {
+            $encoded = json_encode($event->arguments);
+            if ($encoded !== false) {
+                $data['gen_ai.tool.call.arguments'] = $encoded;
+            }
+        }
+
+        $span = $parentSpan->startChild(
+            SpanContext::make()
+                ->setOp('gen_ai.execute_tool')
+                ->setData($data)
+                ->setOrigin('auto.ai.laravel')
+                ->setDescription('execute_tool ' . $toolDef['name'])
+        );
+
+        $this->evictOldestIfNeeded($this->toolInvocations);
+        $this->toolInvocations[$event->toolInvocationId] = [
+            'span' => $span,
+            'parentSpan' => $parentSpan,
+        ];
+
+        if (isset($this->invocations[$event->invocationId])) {
+            $this->invocations[$event->invocationId]->toolSpans[] = $span;
+        }
+
+        SentrySdk::getCurrentHub()->setSpan($span);
+    }
+
+    public function handleToolInvokedForTracing(\Laravel\Ai\Events\ToolInvoked $event): void
+    {
+        $toolInvocationId = $event->toolInvocationId;
+        if (!isset($this->toolInvocations[$toolInvocationId])) {
+            return;
+        }
+
+        $invocation = $this->toolInvocations[$toolInvocationId];
+        unset($this->toolInvocations[$toolInvocationId]);
+
+        $span = $invocation['span'];
+        $data = $span->getData();
+
+        if ($this->shouldSendDefaultPii() && $event->result !== null) {
+            $resultString = \is_string($event->result) ? $event->result : json_encode($event->result);
+            if ($resultString !== false) {
+                $data['gen_ai.tool.call.result'] = $resultString;
+            }
+        }
+
+        $span->setData($data);
+        $span->setStatus(SpanStatus::ok());
+        $span->finish();
+
+        if ($invocation['parentSpan'] !== null) {
+            SentrySdk::getCurrentHub()->setSpan($invocation['parentSpan']);
+        }
     }
 
     public function handleHttpResponseReceived(ResponseReceived $event): void
@@ -292,6 +388,10 @@ class AiIntegration extends Feature
         $invocation = $this->invocations[$invocationId];
         $spans = [$invocation->span];
 
+        foreach ($invocation->toolSpans as $toolSpan) {
+            $spans[] = $toolSpan;
+        }
+
         foreach ($invocation->chatSpans as $chatSpan) {
             $spans[] = $chatSpan;
         }
@@ -308,6 +408,60 @@ class AiIntegration extends Feature
         $url = config("prism.providers.{$provider->driver()}.url");
 
         return \is_string($url) && $url !== '' ? $url : null;
+    }
+
+    private function resolveToolDefinitions(\Laravel\Ai\Contracts\Agent $agent): ?string
+    {
+        if (!$agent instanceof \Laravel\Ai\Contracts\HasTools) {
+            return null;
+        }
+
+        $tools = $agent->tools();
+        if (empty($tools)) {
+            return null;
+        }
+
+        $definitions = [];
+        foreach ($tools as $tool) {
+            $definitions[] = $this->resolveToolDefinition($tool);
+        }
+
+        $encoded = json_encode($definitions);
+
+        return $encoded !== false ? $encoded : null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function resolveToolDefinition(\Laravel\Ai\Contracts\Tool $tool): array
+    {
+        $name = method_exists($tool, 'name') ? $tool->name() : null;
+
+        $definition = [
+            'type' => 'function',
+            'name' => \is_string($name) && $name !== '' ? $name : $this->shortClassName($tool),
+        ];
+
+        $description = (string) $tool->description();
+        if ($description !== '') {
+            $definition['description'] = $description;
+        }
+
+        if (method_exists($tool, 'schema') && class_exists('Illuminate\JsonSchema\JsonSchemaTypeFactory')) {
+            try {
+                $factory = new \Illuminate\JsonSchema\JsonSchemaTypeFactory();
+                $properties = $tool->schema($factory);
+                if (!empty($properties) && \is_array($properties)) {
+                    $objectType = new \Illuminate\JsonSchema\Types\ObjectType($properties);
+                    $definition['parameters'] = $objectType->toArray();
+                }
+            } catch (\Throwable $e) {
+                // Ignore schema resolution failures.
+            }
+        }
+
+        return $definition;
     }
 
     /**
@@ -397,6 +551,9 @@ class AiIntegration extends Feature
 
                 $oldest->span->setStatus(SpanStatus::deadlineExceeded());
                 $oldest->span->finish();
+            } elseif (isset($oldest['span']) && $oldest['span'] instanceof Span) {
+                $oldest['span']->setStatus(SpanStatus::deadlineExceeded());
+                $oldest['span']->finish();
             }
 
             unset($map[$oldestKey]);
@@ -427,6 +584,9 @@ class AiInvocationData
     /** @var list<Span> */
     public $chatSpans = [];
 
+    /** @var list<Span> */
+    public $toolSpans = [];
+
     public function __construct(Span $span, ?Span $parentSpan, AiInvocationMeta $meta, ?string $urlPrefix, bool $isStreaming)
     {
         $this->span = $span;
@@ -449,10 +609,14 @@ class AiInvocationMeta
     /** @var string|null */
     public $model;
 
-    public function __construct(string $agentName, ?string $providerName, ?string $model)
+    /** @var string|null */
+    public $toolDefinitions;
+
+    public function __construct(string $agentName, ?string $providerName, ?string $model, ?string $toolDefinitions)
     {
         $this->agentName = $agentName;
         $this->providerName = $providerName;
         $this->model = $model;
+        $this->toolDefinitions = $toolDefinitions;
     }
 }
