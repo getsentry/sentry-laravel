@@ -726,8 +726,6 @@ class AiIntegrationTest extends TestCase
 
     public function testEmbeddingsSpanIsRecorded(): void
     {
-        $this->markTestSkipped('Covered in stacked PR5 (embeddings).');
-
         $transaction = $this->startTransaction();
         [$provider, $prompt, $response] = $this->makeEmbeddingsPromptAndResponse();
         $this->dispatchLaravelEvent(new GeneratingEmbeddings('emb-1', $provider, 'text-embedding-3-small', $prompt));
@@ -744,8 +742,6 @@ class AiIntegrationTest extends TestCase
 
     public function testEmbeddingsPiiControl(): void
     {
-        $this->markTestSkipped('Covered in stacked PR5 (embeddings).');
-
         // With PII: inputs captured
         $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'sentry.tracing.http_client_requests' => false, 'prism.providers.openai.url' => self::PROVIDER_URL]);
         $transaction = $this->startTransaction();

@@ -39,6 +39,8 @@ class AiIntegration extends Feature
     /** @var array<string, array{span: Span, parentSpan: Span|null}> Per-tool-invocation state keyed by tool invocation ID. */
     private $toolInvocations = [];
 
+    /** @var array<string, array{span: Span, parentSpan: Span|null}> Per-embeddings-invocation state keyed by invocation ID. */
+    private $embeddingsInvocations = [];
 
     public function isApplicable(): bool
     {
@@ -57,6 +59,9 @@ class AiIntegration extends Feature
         $events->listen('Laravel\Ai\Events\AgentStreamed', [$this, 'handleAgentPromptedForTracing']);
         $events->listen('Laravel\Ai\Events\InvokingTool', [$this, 'handleInvokingToolForTracing']);
         $events->listen('Laravel\Ai\Events\ToolInvoked', [$this, 'handleToolInvokedForTracing']);
+        $events->listen('Laravel\Ai\Events\GeneratingEmbeddings', [$this, 'handleGeneratingEmbeddingsForTracing']);
+        $events->listen('Laravel\Ai\Events\EmbeddingsGenerated', [$this, 'handleEmbeddingsGeneratedForTracing']);
+
         if (class_exists(RequestSending::class)) {
             $events->listen(RequestSending::class, [$this, 'handleHttpRequestSending']);
             $events->listen(ResponseReceived::class, [$this, 'handleHttpResponseReceived']);
@@ -305,6 +310,94 @@ class AiIntegration extends Feature
         }
     }
 
+    public function handleGeneratingEmbeddingsForTracing(\Laravel\Ai\Events\GeneratingEmbeddings $event): void
+    {
+        if (!$this->isTracingFeatureEnabled('gen_ai_embeddings')) {
+            return;
+        }
+
+        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+
+        if ($parentSpan === null || !$parentSpan->getSampled()) {
+            return;
+        }
+
+        $model = $event->model ?? null;
+
+        $data = [
+            'gen_ai.operation.name' => 'embeddings',
+        ];
+
+        if ($model !== null) {
+            $data['gen_ai.request.model'] = $model;
+        }
+
+        if ($event->provider !== null) {
+            $data['gen_ai.provider.name'] = $event->provider->name();
+        }
+
+        if ($this->shouldSendDefaultPii()) {
+            $inputs = $event->prompt->inputs ?? null;
+            if (\is_array($inputs) && !empty($inputs)) {
+                $data['gen_ai.embeddings.input'] = $this->truncateEmbeddingInputs($inputs);
+            }
+        }
+
+        $span = $parentSpan->startChild(
+            SpanContext::make()
+                ->setOp('gen_ai.embeddings')
+                ->setData($data)
+                ->setOrigin('auto.ai.laravel')
+                ->setDescription("embeddings " . ($model ?? 'unknown'))
+        );
+
+        $this->evictOldestIfNeeded($this->embeddingsInvocations);
+
+        $this->embeddingsInvocations[$event->invocationId] = [
+            'span' => $span,
+            'parentSpan' => $parentSpan,
+        ];
+
+        SentrySdk::getCurrentHub()->setSpan($span);
+    }
+
+    public function handleEmbeddingsGeneratedForTracing(\Laravel\Ai\Events\EmbeddingsGenerated $event): void
+    {
+        $invocationId = $event->invocationId;
+
+        if (!isset($this->embeddingsInvocations[$invocationId])) {
+            return;
+        }
+
+        $inv = $this->embeddingsInvocations[$invocationId];
+        unset($this->embeddingsInvocations[$invocationId]);
+
+        $span = $inv['span'];
+        $data = $span->getData();
+
+        $responseModel = $event->response->meta->model ?? null;
+        if ($responseModel !== null) {
+            $data['gen_ai.response.model'] = $responseModel;
+        }
+
+        $responseProvider = $event->response->meta->provider ?? null;
+        if ($responseProvider !== null && !isset($data['gen_ai.provider.name'])) {
+            $data['gen_ai.provider.name'] = strtolower($responseProvider);
+        }
+
+        $tokens = $event->response->tokens ?? null;
+        if ($tokens !== null && $tokens > 0) {
+            $data['gen_ai.usage.input_tokens'] = $tokens;
+        }
+
+        $span->setData($data);
+        $span->setStatus(SpanStatus::ok());
+        $span->finish();
+
+        if ($inv['parentSpan'] !== null) {
+            SentrySdk::getCurrentHub()->setSpan($inv['parentSpan']);
+        }
+    }
 
     public function handleHttpRequestSending(RequestSending $event): void
     {
@@ -949,6 +1042,46 @@ class AiIntegration extends Feature
         unset($part);
 
         return $message;
+    }
+
+    /**
+     * @param array<int, mixed> $inputs
+     */
+    private function truncateEmbeddingInputs(array $inputs): string
+    {
+        if (empty($inputs)) {
+            return '[]';
+        }
+
+        $kept = [];
+        $totalBytes = 2;
+
+        for ($i = \count($inputs) - 1; $i >= 0; $i--) {
+            $inputJson = json_encode($inputs[$i]);
+            if ($inputJson === false) {
+                continue;
+            }
+            $entryBytes = \strlen($inputJson) + (empty($kept) ? 0 : 1); // +1 for comma separator
+
+            if ($totalBytes + $entryBytes > self::MAX_MESSAGE_BYTES) {
+                break;
+            }
+
+            array_unshift($kept, $inputs[$i]);
+            $totalBytes += $entryBytes;
+        }
+
+        if (empty($kept)) {
+            $lastInput = end($inputs);
+            if (\is_string($lastInput)) {
+                $lastInput = $this->truncateContentString($lastInput);
+            }
+            $kept = [$lastInput];
+        }
+
+        $encoded = json_encode($kept);
+
+        return $this->truncateString($encoded !== false ? $encoded : '[]');
     }
 
     /**
