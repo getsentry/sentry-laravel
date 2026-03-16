@@ -3,6 +3,9 @@
 namespace Sentry\Laravel\Features;
 
 use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Http\Client\Events\ConnectionFailed;
+use Illuminate\Http\Client\Events\RequestSending;
+use Illuminate\Http\Client\Events\ResponseReceived;
 use Sentry\SentrySdk;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
@@ -31,6 +34,12 @@ class AiIntegration extends Feature
         $events->listen('Laravel\Ai\Events\AgentPrompted', [$this, 'handleAgentPromptedForTracing']);
         $events->listen('Laravel\Ai\Events\StreamingAgent', [$this, 'handlePromptingAgentForTracing']);
         $events->listen('Laravel\Ai\Events\AgentStreamed', [$this, 'handleAgentPromptedForTracing']);
+
+        if (class_exists(RequestSending::class)) {
+            $events->listen(RequestSending::class, [$this, 'handleHttpRequestSending']);
+            $events->listen(ResponseReceived::class, [$this, 'handleHttpResponseReceived']);
+            $events->listen(ConnectionFailed::class, [$this, 'handleHttpConnectionFailed']);
+        }
     }
 
     public function handlePromptingAgentForTracing(\Laravel\Ai\Events\PromptingAgent $event): void
@@ -87,7 +96,14 @@ class AiIntegration extends Feature
 
         $this->evictOldestIfNeeded($this->invocations);
 
-        $this->invocations[$event->invocationId] = new AiInvocationData($agentSpan, $parentSpan);
+        $this->invocations[$event->invocationId] = new AiInvocationData(
+            $agentSpan,
+            $parentSpan,
+            new AiInvocationMeta($agentName, $providerName, $model),
+            $provider !== null ? $this->resolveProviderUrlPrefix($provider) : null,
+            $isStreaming
+        );
+
         SentrySdk::getCurrentHub()->setSpan($agentSpan);
     }
 
@@ -101,6 +117,9 @@ class AiIntegration extends Feature
         $invocation = $this->invocations[$invocationId];
         $agentSpan = $invocation->span;
         $parentSpan = $invocation->parentSpan;
+
+        $this->finishActiveChatSpan($invocationId);
+        $this->enrichChatSpansWithStepData($invocationId, $event->response);
 
         $data = $agentSpan->getData();
 
@@ -122,6 +141,7 @@ class AiIntegration extends Feature
         $conversationId = $event->response->conversationId ?? null;
         if ($conversationId !== null) {
             $data['gen_ai.conversation.id'] = $conversationId;
+            $this->setConversationIdOnSpans($invocationId, $conversationId);
         }
 
         $agentSpan->setData($data);
@@ -133,6 +153,161 @@ class AiIntegration extends Feature
         if ($parentSpan !== null) {
             SentrySdk::getCurrentHub()->setSpan($parentSpan);
         }
+    }
+
+    public function handleHttpRequestSending(RequestSending $event): void
+    {
+        if (!$this->isTracingFeatureEnabled('gen_ai_chat')) {
+            return;
+        }
+
+        $invocationId = $this->findMatchingInvocation($event->request->url());
+        if ($invocationId === null || !isset($this->invocations[$invocationId])) {
+            return;
+        }
+
+        $this->finishActiveChatSpan($invocationId);
+
+        $invocation = $this->invocations[$invocationId];
+        $meta = $invocation->meta;
+        $model = $meta->model;
+
+        $data = [
+            'gen_ai.operation.name' => 'chat',
+        ];
+
+        if ($invocation->isStreaming) {
+            $data['gen_ai.response.streaming'] = true;
+        }
+
+        if ($model !== null) {
+            $data['gen_ai.request.model'] = $model;
+        }
+
+        if ($meta->agentName !== null) {
+            $data['gen_ai.agent.name'] = $meta->agentName;
+        }
+
+        if ($meta->providerName !== null) {
+            $data['gen_ai.provider.name'] = $meta->providerName;
+        }
+
+        $chatSpan = $invocation->span->startChild(
+            SpanContext::make()
+                ->setOp('gen_ai.chat')
+                ->setData($data)
+                ->setOrigin('auto.ai.laravel')
+                ->setDescription('chat ' . ($model ?? 'unknown'))
+        );
+
+        $invocation->activeChatSpan = $chatSpan;
+        $invocation->chatSpans[] = $chatSpan;
+
+        SentrySdk::getCurrentHub()->setSpan($chatSpan);
+    }
+
+    public function handleHttpResponseReceived(ResponseReceived $event): void
+    {
+        $invocationId = $this->findMatchingInvocation($event->request->url());
+        if ($invocationId !== null) {
+            $status = SpanStatus::createFromHttpStatusCode($event->response->status());
+            $this->finishActiveChatSpan($invocationId, $status);
+        }
+    }
+
+    public function handleHttpConnectionFailed(ConnectionFailed $event): void
+    {
+        $invocationId = $this->findMatchingInvocation($event->request->url());
+        if ($invocationId !== null) {
+            $this->finishActiveChatSpan($invocationId, SpanStatus::internalError());
+        }
+    }
+
+    private function findMatchingInvocation(string $url): ?string
+    {
+        foreach (array_reverse($this->invocations, true) as $invocationId => $invocation) {
+            if ($invocation->urlPrefix !== null && substr($url, 0, \strlen($invocation->urlPrefix)) === $invocation->urlPrefix) {
+                return $invocationId;
+            }
+        }
+
+        return null;
+    }
+
+    private function finishActiveChatSpan(string $invocationId, ?SpanStatus $status = null): void
+    {
+        $invocation = $this->invocations[$invocationId];
+        if ($invocation->activeChatSpan === null) {
+            return;
+        }
+
+        $invocation->activeChatSpan->setStatus($status ?? SpanStatus::ok());
+        $invocation->activeChatSpan->finish();
+        $invocation->activeChatSpan = null;
+
+        SentrySdk::getCurrentHub()->setSpan($invocation->span);
+    }
+
+    private function enrichChatSpansWithStepData(string $invocationId, \Laravel\Ai\Responses\AgentResponse $response): void
+    {
+        $chatSpans = $this->invocations[$invocationId]->chatSpans;
+        if (empty($chatSpans)) {
+            return;
+        }
+
+        $steps = $response->steps ?? [];
+
+        foreach ($chatSpans as $index => $chatSpan) {
+            $data = $chatSpan->getData();
+            $step = $steps[$index] ?? null;
+
+            if ($step !== null) {
+                $model = $step->meta->model ?? null;
+                $usage = $step->usage ?? null;
+                $finishReason = $step->finishReason ?? null;
+            } else {
+                $model = $response->meta->model ?? null;
+                $usage = \count($chatSpans) === 1 ? $response->usage ?? null : null;
+                $finishReason = null;
+            }
+
+            if ($model !== null) {
+                $data['gen_ai.response.model'] = $model;
+            }
+
+            if ($usage !== null) {
+                $this->setTokenUsage($data, $usage);
+            }
+
+            if ($finishReason !== null) {
+                $data['gen_ai.response.finish_reasons'] = $finishReason->value;
+            }
+
+            $chatSpan->setData($data);
+        }
+    }
+
+    private function setConversationIdOnSpans(string $invocationId, string $conversationId): void
+    {
+        $invocation = $this->invocations[$invocationId];
+        $spans = [$invocation->span];
+
+        foreach ($invocation->chatSpans as $chatSpan) {
+            $spans[] = $chatSpan;
+        }
+
+        foreach ($spans as $span) {
+            $data = $span->getData();
+            $data['gen_ai.conversation.id'] = $conversationId;
+            $span->setData($data);
+        }
+    }
+
+    private function resolveProviderUrlPrefix(\Laravel\Ai\Providers\Provider $provider): ?string
+    {
+        $url = config("prism.providers.{$provider->driver()}.url");
+
+        return \is_string($url) && $url !== '' ? $url : null;
     }
 
     /**
@@ -215,6 +390,11 @@ class AiIntegration extends Feature
 
             $oldest = $map[$oldestKey];
             if ($oldest instanceof AiInvocationData) {
+                if ($oldest->activeChatSpan !== null) {
+                    $oldest->activeChatSpan->setStatus(SpanStatus::deadlineExceeded());
+                    $oldest->activeChatSpan->finish();
+                }
+
                 $oldest->span->setStatus(SpanStatus::deadlineExceeded());
                 $oldest->span->finish();
             }
@@ -232,9 +412,47 @@ class AiInvocationData
     /** @var Span|null */
     public $parentSpan;
 
-    public function __construct(Span $span, ?Span $parentSpan)
+    /** @var AiInvocationMeta */
+    public $meta;
+
+    /** @var string|null */
+    public $urlPrefix;
+
+    /** @var bool */
+    public $isStreaming;
+
+    /** @var Span|null */
+    public $activeChatSpan;
+
+    /** @var list<Span> */
+    public $chatSpans = [];
+
+    public function __construct(Span $span, ?Span $parentSpan, AiInvocationMeta $meta, ?string $urlPrefix, bool $isStreaming)
     {
         $this->span = $span;
         $this->parentSpan = $parentSpan;
+        $this->meta = $meta;
+        $this->urlPrefix = $urlPrefix;
+        $this->isStreaming = $isStreaming;
+        $this->activeChatSpan = null;
+    }
+}
+
+class AiInvocationMeta
+{
+    /** @var string */
+    public $agentName;
+
+    /** @var string|null */
+    public $providerName;
+
+    /** @var string|null */
+    public $model;
+
+    public function __construct(string $agentName, ?string $providerName, ?string $model)
+    {
+        $this->agentName = $agentName;
+        $this->providerName = $providerName;
+        $this->model = $model;
     }
 }
