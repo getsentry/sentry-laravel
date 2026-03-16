@@ -87,7 +87,7 @@ class AiIntegration extends Feature
             return;
         }
 
-        $agentName = $this->resolveAgentName($event->prompt->agent);
+        $agentName = $this->shortClassName($event->prompt->agent);
         $model = $event->prompt->model ?? null;
 
         $isStreaming = is_a($event, 'Laravel\Ai\Events\StreamingAgent');
@@ -237,19 +237,18 @@ class AiIntegration extends Feature
             return;
         }
 
-        $toolName = $this->resolveToolName($event->tool);
-        $agentName = $this->resolveAgentName($event->agent);
+        $toolDef = $this->resolveToolDefinition($event->tool);
+        $agentName = $this->shortClassName($event->agent);
 
         $data = [
             'gen_ai.operation.name' => 'execute_tool',
-            'gen_ai.tool.name' => $toolName,
-            'gen_ai.tool.type' => 'function',
+            'gen_ai.tool.name' => $toolDef['name'],
+            'gen_ai.tool.type' => $toolDef['type'],
             'gen_ai.agent.name' => $agentName,
         ];
 
-        $toolDescription = $this->resolveToolDescription($event->tool);
-        if ($toolDescription !== null) {
-            $data['gen_ai.tool.description'] = $toolDescription;
+        if (isset($toolDef['description'])) {
+            $data['gen_ai.tool.description'] = $toolDef['description'];
         }
 
         if ($this->shouldSendDefaultPii() && !empty($event->arguments)) {
@@ -264,7 +263,7 @@ class AiIntegration extends Feature
                 ->setOp('gen_ai.execute_tool')
                 ->setData($data)
                 ->setOrigin('auto.ai.laravel')
-                ->setDescription("execute_tool {$toolName}")
+                ->setDescription("execute_tool {$toolDef['name']}")
         );
 
         $this->evictOldestIfNeeded($this->toolInvocations);
@@ -833,22 +832,7 @@ class AiIntegration extends Feature
 
         $definitions = [];
         foreach ($tools as $tool) {
-            $def = [
-                'type' => 'function',
-                'name' => $this->resolveToolName($tool),
-            ];
-
-            $description = $this->resolveToolDescription($tool);
-            if ($description !== null) {
-                $def['description'] = $description;
-            }
-
-            $parameters = $this->resolveToolParameters($tool);
-            if ($parameters !== null) {
-                $def['parameters'] = $parameters;
-            }
-
-            $definitions[] = $def;
+            $definitions[] = $this->resolveToolDefinition($tool);
         }
 
         if (empty($definitions)) {
@@ -861,51 +845,37 @@ class AiIntegration extends Feature
     }
 
     /**
-     * @return array<string, mixed>|null
+     * @return array<string, mixed>
      */
-    private function resolveToolParameters(\Laravel\Ai\Contracts\Tool $tool): ?array
+    private function resolveToolDefinition(\Laravel\Ai\Contracts\Tool $tool): array
     {
-        if (!method_exists($tool, 'schema') || !class_exists('Illuminate\JsonSchema\JsonSchemaTypeFactory')) {
-            return null;
-        }
+        $name = method_exists($tool, 'name') ? $tool->name() : null;
 
-        try {
-            $factory = new \Illuminate\JsonSchema\JsonSchemaTypeFactory();
-            $properties = $tool->schema($factory);
+        $def = [
+            'type' => 'function',
+            'name' => \is_string($name) && $name !== '' ? $name : $this->shortClassName($tool),
+        ];
 
-            if (empty($properties) || !\is_array($properties)) {
-                return null;
-            }
-
-            $objectType = new \Illuminate\JsonSchema\Types\ObjectType($properties);
-
-            return $objectType->toArray();
-        } catch (\Throwable $e) {
-            return null;
-        }
-    }
-
-    private function resolveAgentName(\Laravel\Ai\Contracts\Agent $agent): string
-    {
-        return $this->shortClassName($agent);
-    }
-
-    private function resolveToolName(\Laravel\Ai\Contracts\Tool $tool): string
-    {
-        if (method_exists($tool, 'name')) {
-            $name = $tool->name();
-            if (\is_string($name) && $name !== '') {
-                return $name;
-            }
-        }
-
-        return $this->shortClassName($tool);
-    }
-
-    private function resolveToolDescription(\Laravel\Ai\Contracts\Tool $tool): ?string
-    {
         $description = (string)$tool->description();
-        return $description !== '' ? $description : null;
+        if ($description !== '') {
+            $def['description'] = $description;
+        }
+
+        if (method_exists($tool, 'schema') && class_exists('Illuminate\JsonSchema\JsonSchemaTypeFactory')) {
+            try {
+                $factory = new \Illuminate\JsonSchema\JsonSchemaTypeFactory();
+                $properties = $tool->schema($factory);
+
+                if (!empty($properties) && \is_array($properties)) {
+                    $objectType = new \Illuminate\JsonSchema\Types\ObjectType($properties);
+                    $def['parameters'] = $objectType->toArray();
+                }
+            } catch (\Throwable $e) {
+                // Ignore schema resolution failures
+            }
+        }
+
+        return $def;
     }
 
     private function resolveAgentInstructions(\Laravel\Ai\Contracts\Agent $agent): ?string
