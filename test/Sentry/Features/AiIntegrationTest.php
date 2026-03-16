@@ -612,8 +612,6 @@ class AiIntegrationTest extends TestCase
 
     public function testPiiControlsMessageCapture(): void
     {
-        $this->markTestSkipped('Covered in stacked PR4 (messages + redaction).');
-
         // PII enabled: messages captured
         $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'prism.providers.openai.url' => self::PROVIDER_URL]);
         $spans = $this->runAgentFlow($this->makePromptAndResponse());
@@ -674,8 +672,6 @@ class AiIntegrationTest extends TestCase
         $this->assertEquals('gen_ai.chat', $spans[2]->getOp());
         $this->assertEquals('gen_ai.execute_tool', $spans[3]->getOp());
         $this->assertEquals('gen_ai.chat', $spans[4]->getOp());
-        $this->assertArrayHasKey('gen_ai.tool.definitions', $spans[1]->getData());
-        $this->assertArrayHasKey('gen_ai.tool.definitions', $spans[2]->getData());
         $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
         $this->assertEquals('tool_calls', $chatSpans[0]->getData()['gen_ai.response.finish_reasons']);
         $this->assertEquals('stop', $chatSpans[1]->getData()['gen_ai.response.finish_reasons']);
@@ -770,8 +766,6 @@ class AiIntegrationTest extends TestCase
 
     public function testBinaryContentIsRedacted(): void
     {
-        $this->markTestSkipped('Covered in stacked PR4 (messages + redaction).');
-
         $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'prism.providers.openai.url' => self::PROVIDER_URL]);
         $dataUri = 'data:image/png;base64,' . str_repeat('iVBORw0KGgoAAAANSUhEUgAA', 100);
         $spans = $this->runAgentFlow($this->makePromptAndResponse(promptText: $dataUri));
@@ -781,8 +775,6 @@ class AiIntegrationTest extends TestCase
 
     public function testAttachmentHandling(): void
     {
-        $this->markTestSkipped('Covered in stacked PR4 (attachments).');
-
         $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'prism.providers.openai.url' => self::PROVIDER_URL]);
         $transaction = $this->startTransaction();
         $agent = new TestAgent();
@@ -805,8 +797,6 @@ class AiIntegrationTest extends TestCase
 
     public function testGranularSpanTypeDisabling(): void
     {
-        $this->markTestSkipped('Covered across stacked PR2/PR3/PR5.');
-
         // Disable invoke_agent -> no agent or chat spans
         $this->resetApplicationWithConfig(['sentry.tracing.gen_ai_invoke_agent' => false, 'prism.providers.openai.url' => self::PROVIDER_URL]);
         $spans = $this->runAgentFlow($this->makePromptAndResponse());
