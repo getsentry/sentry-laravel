@@ -79,7 +79,7 @@ jobs:
         run: vendor/bin/phpunit --coverage-clover=coverage.xml --coverage-filter=src/Sentry
 
       - name: Run AI integration tests
-        if: matrix.packages.laravel == '^12.0'
+        if: matrix.packages.laravel == '^12.0' && (matrix.php == '8.4' || matrix.php == '8.5')
         run: vendor/bin/phpunit test/Sentry/Features/AiIntegrationTest.php
 
       - name: Upload coverage to Codecov

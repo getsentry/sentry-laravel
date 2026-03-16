@@ -573,7 +573,7 @@ class AiIntegration extends Feature
         }
     }
 
-    private function setConversationIdOnSpans(?string $invocationId, ?string $conversationId): void
+    private function setConversationIdOnSpans(string $invocationId, ?string $conversationId): void
     {
         if ($conversationId !== null) {
             $invocation = $this->invocations[$invocationId];
