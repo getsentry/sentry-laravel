@@ -290,13 +290,8 @@ class AiIntegration extends Feature
     private function setConversationIdOnSpans(string $invocationId, string $conversationId): void
     {
         $invocation = $this->invocations[$invocationId];
-        $spans = [$invocation->span];
 
-        foreach ($invocation->chatSpans as $chatSpan) {
-            $spans[] = $chatSpan;
-        }
-
-        foreach ($spans as $span) {
+        foreach ($invocation->chatSpans as $span) {
             $data = $span->getData();
             $data['gen_ai.conversation.id'] = $conversationId;
             $span->setData($data);
