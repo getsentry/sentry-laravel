@@ -482,15 +482,17 @@ class AiIntegration extends Feature
 
     private function setConversationIdOnSpans(?string $invocationId, ?string $conversationId): void
     {
-        if ($conversationId !== null) {
-            $invocation = $this->invocations[$invocationId];
-            $spans = [$invocation->span, ...$invocation->toolSpans, ...$invocation->chatSpans];
-    
-            foreach ($spans as $span) {
-                $data = $span->getData();
-                $data['gen_ai.conversation.id'] = $conversationId;
-                $span->setData($data);
-            }
+        if ($conversationId === null || $invocationId === null || !isset($this->invocations[$invocationId])) {
+            return;
+        }
+
+        $invocation = $this->invocations[$invocationId];
+        $spans = [$invocation->span, ...$invocation->toolSpans, ...$invocation->chatSpans];
+
+        foreach ($spans as $span) {
+            $data = $span->getData();
+            $data['gen_ai.conversation.id'] = $conversationId;
+            $span->setData($data);
         }
     }
 
@@ -641,7 +643,7 @@ class AiIntegration extends Feature
             $parts[] = ['type' => 'text', 'content' => $text];
         }
 
-        foreach ($source->toolCalls as $toolCall) {
+        foreach (($source->toolCalls ?? []) as $toolCall) {
             $parts[] = $this->buildToolCallPart($toolCall);
         }
 
@@ -649,7 +651,7 @@ class AiIntegration extends Feature
             $messages[] = ['role' => 'assistant', 'parts' => $parts];
         }
 
-        foreach ($source->toolResults as $toolResult) {
+        foreach (($source->toolResults ?? []) as $toolResult) {
             $result = $toolResult->result;
             if ($result === null) {
                 continue;

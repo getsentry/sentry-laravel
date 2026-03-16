@@ -831,6 +831,23 @@ class AiIntegrationTest extends TestCase
         $this->assertEquals(SpanStatus::internalError(), $chatSpans[0]->getStatus());
     }
 
+    public function testOutputMessageBuildingHandlesMissingToolCollections(): void
+    {
+        $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'prism.providers.openai.url' => self::PROVIDER_URL]);
+        [$prompt, $response] = $this->makePromptAndResponse();
+
+        unset($response->toolCalls, $response->toolResults);
+        unset($response->steps[0]->toolCalls, $response->steps[0]->toolResults);
+
+        $spans = $this->runAgentFlow([$prompt, $response], 'inv-null-tools');
+        $agentData = $this->findSpanByOpInSpans($spans, 'gen_ai.invoke_agent')->getData();
+        $output = json_decode($agentData['gen_ai.output.messages'], true);
+
+        $this->assertCount(1, $output);
+        $this->assertEquals('assistant', $output[0]['role']);
+        $this->assertEquals('The analysis shows positive trends.', $output[0]['parts'][0]['content']);
+    }
+
     // ---- Helpers ----
 
     private function runAgentFlow(array $pr, string $id = 'inv-x'): array
