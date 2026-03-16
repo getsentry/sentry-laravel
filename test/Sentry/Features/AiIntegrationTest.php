@@ -277,7 +277,7 @@ class AiIntegrationTest extends TestCase
     public function testAgentSpanIsRecorded(): void
     {
         $spans = $this->runAgentFlow($this->makePromptAndResponse());
-        $this->assertCount(2, $spans); // transaction + invoke_agent
+        $this->assertCount(3, $spans); // transaction + invoke_agent + chat
         $agentSpan = $spans[1];
         $this->assertEquals('gen_ai.invoke_agent', $agentSpan->getOp());
         $this->assertEquals('invoke_agent gpt-4o', $agentSpan->getDescription());
@@ -342,8 +342,6 @@ class AiIntegrationTest extends TestCase
 
     public function testChatSpanIsCreatedWithStepData(): void
     {
-        $this->markTestSkipped('Covered in stacked PR2 (chat spans).');
-
         $transaction = $this->startTransaction();
         [$prompt, $response] = $this->makePromptAndResponse(100, 50);
         $this->dispatchAgentFlow('inv-c', $prompt, $response);
@@ -531,8 +529,6 @@ class AiIntegrationTest extends TestCase
 
     public function testEdgeCases(): void
     {
-        $this->markTestSkipped('Covered in stacked PR2 (chat edge cases).');
-
         // Orphaned events don't crash
         $transaction = $this->startTransaction();
         [$prompt, $response] = $this->makePromptAndResponse();
