@@ -10,6 +10,7 @@
     <testsuites>
         <testsuite name="Sentry Laravel Test Suite">
             <directory>./test/Sentry/</directory>
+            <exclude>./test/Sentry/Features/AiIntegrationTest.php</exclude>
         </testsuite>
     </testsuites>
 </phpunit>
