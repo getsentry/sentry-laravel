@@ -966,7 +966,7 @@ class AiIntegrationTest extends TestCase
         $transaction = $this->startTransaction();
         $agent = new TestAgent();
         $provider = new TestProvider();
-        $prompt = new \Laravel\Ai\Prompts\AgentPrompt($agent, 'Compare images.', collect([new TestLocalImage('/tmp/photo.png', 'image/png'), new TestRemoteImage('https://example.com/photo.jpg', 'image/jpeg')]), $provider, 'gpt-4o');
+        $prompt = new \Laravel\Ai\Prompts\AgentPrompt($agent, 'Compare images.', [new TestLocalImage('/tmp/photo.png', 'image/png'), new TestRemoteImage('https://example.com/photo.jpg', 'image/jpeg')], $provider, 'gpt-4o');
         $step = (object)['text' => 'Done.', 'toolCalls' => [], 'toolResults' => [], 'finishReason' => (object)['value' => 'stop'],
             'usage' => new Usage(100, 20), 'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06']];
         $response = (object)['text' => 'Done.', 'toolCalls' => [], 'toolResults' => [], 'steps' => [$step],
