@@ -14,6 +14,13 @@ if (!interface_exists(Tool::class)) {
     }
 }
 
+if (!interface_exists(HasTools::class)) {
+    interface HasTools
+    {
+        public function tools(): array;
+    }
+}
+
 namespace Laravel\Ai\Providers;
 
 if (!class_exists(Provider::class)) {
@@ -444,6 +451,7 @@ namespace Sentry\Laravel\Tests\Features\AiStubs;
 use Laravel\Ai\Attributes\MaxTokens;
 use Laravel\Ai\Attributes\Temperature;
 use Laravel\Ai\Contracts\Agent;
+use Laravel\Ai\Contracts\HasTools;
 use Laravel\Ai\Contracts\Providers\EmbeddingProvider;
 use Laravel\Ai\Contracts\Providers\TextProvider;
 use Laravel\Ai\Contracts\Tool;
@@ -451,7 +459,7 @@ use Laravel\Ai\Responses\AgentResponse;
 use Laravel\Ai\Responses\QueuedAgentResponse;
 use Laravel\Ai\Responses\StreamableAgentResponse;
 
-class TestAgent implements Agent
+class TestAgent implements Agent, HasTools
 {
     public function instructions(): string
     {
