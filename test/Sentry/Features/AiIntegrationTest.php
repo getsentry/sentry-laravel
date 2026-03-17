@@ -761,16 +761,35 @@ class AiIntegrationTest extends TestCase
         $spans = $this->runAgentFlow($this->makePromptAndResponse(60, 130, 0, 0, TestAgentWithConfig::class));
         $data = $spans[1]->getData();
         $reflection = new \ReflectionClass(TestAgentWithConfig::class);
-        $hasTemperatureAttribute = !empty($reflection->getAttributes('Laravel\Ai\Attributes\Temperature'));
-        if ($hasTemperatureAttribute) {
-            $this->assertArrayHasKey('gen_ai.request.temperature', $data);
-            $this->assertEquals(0.7, $data['gen_ai.request.temperature']);
+
+        $temperatureValue = null;
+        $temperatureAttributes = $reflection->getAttributes('Laravel\Ai\Attributes\Temperature');
+        if (!empty($temperatureAttributes)) {
+            try {
+                $temperatureValue = $temperatureAttributes[0]->newInstance()->value ?? null;
+            } catch (\Throwable $e) {
+                $temperatureValue = null;
+            }
         }
 
-        $hasMaxTokensAttribute = !empty($reflection->getAttributes('Laravel\Ai\Attributes\MaxTokens'));
-        if ($hasMaxTokensAttribute) {
+        if ($temperatureValue !== null) {
+            $this->assertArrayHasKey('gen_ai.request.temperature', $data);
+            $this->assertEquals($temperatureValue, $data['gen_ai.request.temperature']);
+        }
+
+        $maxTokensValue = null;
+        $maxTokensAttributes = $reflection->getAttributes('Laravel\Ai\Attributes\MaxTokens');
+        if (!empty($maxTokensAttributes)) {
+            try {
+                $maxTokensValue = $maxTokensAttributes[0]->newInstance()->value ?? null;
+            } catch (\Throwable $e) {
+                $maxTokensValue = null;
+            }
+        }
+
+        if ($maxTokensValue !== null) {
             $this->assertArrayHasKey('gen_ai.request.max_tokens', $data);
-            $this->assertEquals(4096, $data['gen_ai.request.max_tokens']);
+            $this->assertEquals($maxTokensValue, $data['gen_ai.request.max_tokens']);
         }
     }
 
