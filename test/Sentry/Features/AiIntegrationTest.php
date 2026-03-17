@@ -500,9 +500,11 @@ class TestAgent implements Agent
 }
 if (\PHP_VERSION_ID >= 80000) {
     eval('
+        namespace Sentry\Laravel\Tests\Features\AiStubs;
+
         #[\Laravel\Ai\Attributes\Temperature(0.7)]
         #[\Laravel\Ai\Attributes\MaxTokens(4096)]
-        class TestAgentWithConfig extends TestAgent
+        class TestAgentWithConfig extends \Sentry\Laravel\Tests\Features\AiStubs\TestAgent
         {
             public function instructions(): string
             {
