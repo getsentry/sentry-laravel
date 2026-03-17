@@ -91,8 +91,19 @@ namespace Laravel\Ai\Responses\Data;
 if (!class_exists(Usage::class)) {
     class Usage
     {
-        public function __construct(public int $promptTokens = 0, public int $completionTokens = 0, public int $cacheWriteInputTokens = 0, public int $cacheReadInputTokens = 0, public int $reasoningTokens = 0)
+        public $promptTokens;
+        public $completionTokens;
+        public $cacheWriteInputTokens;
+        public $cacheReadInputTokens;
+        public $reasoningTokens;
+
+        public function __construct($promptTokens = 0, $completionTokens = 0, $cacheWriteInputTokens = 0, $cacheReadInputTokens = 0, $reasoningTokens = 0)
         {
+            $this->promptTokens = $promptTokens;
+            $this->completionTokens = $completionTokens;
+            $this->cacheWriteInputTokens = $cacheWriteInputTokens;
+            $this->cacheReadInputTokens = $cacheReadInputTokens;
+            $this->reasoningTokens = $reasoningTokens;
         }
     }
 }
@@ -100,8 +111,13 @@ if (!class_exists(Usage::class)) {
 if (!class_exists(Meta::class)) {
     class Meta
     {
-        public function __construct(public ?string $provider = null, public ?string $model = null)
+        public $provider;
+        public $model;
+
+        public function __construct($provider = null, $model = null)
         {
+            $this->provider = $provider;
+            $this->model = $model;
         }
     }
 }
@@ -111,13 +127,19 @@ namespace Laravel\Ai\Responses;
 if (!class_exists(TextResponse::class)) {
     class TextResponse
     {
+        public $text;
+        public $usage;
+        public $meta;
         public $messages;
         public $toolCalls;
         public $toolResults;
         public $steps;
 
-        public function __construct(public string $text, public object $usage, public object $meta)
+        public function __construct($text = '', $usage = null, $meta = null)
         {
+            $this->text = $text;
+            $this->usage = $usage;
+            $this->meta = $meta;
         }
     }
 }
@@ -125,10 +147,12 @@ if (!class_exists(TextResponse::class)) {
 if (!class_exists(AgentResponse::class)) {
     class AgentResponse extends TextResponse
     {
-        public ?string $conversationId = null;
+        public $conversationId;
+        public $invocationId;
 
-        public function __construct(public string $invocationId, string $text, object $usage, object $meta)
+        public function __construct($invocationId = '', $text = '', $usage = null, $meta = null)
         {
+            $this->invocationId = $invocationId;
             parent::__construct($text, $usage, $meta);
         }
     }
@@ -163,8 +187,19 @@ namespace Laravel\Ai\Prompts;
 if (!class_exists(AgentPrompt::class)) {
     class AgentPrompt
     {
-        public function __construct(public object $agent, public string $prompt, public array $attachments = [], public ?object $provider = null, public ?string $model = null)
+        public $agent;
+        public $prompt;
+        public $attachments;
+        public $provider;
+        public $model;
+
+        public function __construct($agent, $prompt, array $attachments = [], $provider = null, $model = null)
         {
+            $this->agent = $agent;
+            $this->prompt = $prompt;
+            $this->attachments = $attachments;
+            $this->provider = $provider;
+            $this->model = $model;
         }
     }
 }
@@ -172,8 +207,17 @@ if (!class_exists(AgentPrompt::class)) {
 if (!class_exists(EmbeddingsPrompt::class)) {
     class EmbeddingsPrompt
     {
-        public function __construct(public array $inputs = [], public ?int $dimensions = null, public ?object $provider = null, public ?string $model = null)
+        public $inputs;
+        public $dimensions;
+        public $provider;
+        public $model;
+
+        public function __construct(array $inputs = [], $dimensions = null, $provider = null, $model = null)
         {
+            $this->inputs = $inputs;
+            $this->dimensions = $dimensions;
+            $this->provider = $provider;
+            $this->model = $model;
         }
     }
 }
@@ -183,32 +227,68 @@ namespace Laravel\Ai\Events;
 if (!class_exists(PromptingAgent::class)) {
     class PromptingAgent
     {
-        public function __construct(public string $invocationId, public object $prompt)
+        public $invocationId;
+        public $prompt;
+
+        public function __construct($invocationId, $prompt)
         {
+            $this->invocationId = $invocationId;
+            $this->prompt = $prompt;
         }
     }
 }
 if (!class_exists(AgentPrompted::class)) {
     class AgentPrompted
     {
-        public function __construct(public string $invocationId, public object $prompt, public object $response)
+        public $invocationId;
+        public $prompt;
+        public $response;
+
+        public function __construct($invocationId, $prompt, $response)
         {
+            $this->invocationId = $invocationId;
+            $this->prompt = $prompt;
+            $this->response = $response;
         }
     }
 }
 if (!class_exists(InvokingTool::class)) {
     class InvokingTool
     {
-        public function __construct(public string $invocationId, public string $toolInvocationId, public object $agent, public object $tool, public array $arguments)
+        public $invocationId;
+        public $toolInvocationId;
+        public $agent;
+        public $tool;
+        public $arguments;
+
+        public function __construct($invocationId, $toolInvocationId, $agent, $tool, array $arguments)
         {
+            $this->invocationId = $invocationId;
+            $this->toolInvocationId = $toolInvocationId;
+            $this->agent = $agent;
+            $this->tool = $tool;
+            $this->arguments = $arguments;
         }
     }
 }
 if (!class_exists(ToolInvoked::class)) {
     class ToolInvoked
     {
-        public function __construct(public string $invocationId, public string $toolInvocationId, public object $agent, public object $tool, public array $arguments, public $result)
+        public $invocationId;
+        public $toolInvocationId;
+        public $agent;
+        public $tool;
+        public $arguments;
+        public $result;
+
+        public function __construct($invocationId, $toolInvocationId, $agent, $tool, array $arguments, $result)
         {
+            $this->invocationId = $invocationId;
+            $this->toolInvocationId = $toolInvocationId;
+            $this->agent = $agent;
+            $this->tool = $tool;
+            $this->arguments = $arguments;
+            $this->result = $result;
         }
     }
 }
@@ -225,16 +305,36 @@ if (!class_exists(AgentStreamed::class)) {
 if (!class_exists(GeneratingEmbeddings::class)) {
     class GeneratingEmbeddings
     {
-        public function __construct(public string $invocationId, public object $provider, public string $model, public object $prompt)
+        public $invocationId;
+        public $provider;
+        public $model;
+        public $prompt;
+
+        public function __construct($invocationId, $provider, $model, $prompt)
         {
+            $this->invocationId = $invocationId;
+            $this->provider = $provider;
+            $this->model = $model;
+            $this->prompt = $prompt;
         }
     }
 }
 if (!class_exists(EmbeddingsGenerated::class)) {
     class EmbeddingsGenerated
     {
-        public function __construct(public string $invocationId, public object $provider, public string $model, public object $prompt, public object $response)
+        public $invocationId;
+        public $provider;
+        public $model;
+        public $prompt;
+        public $response;
+
+        public function __construct($invocationId, $provider, $model, $prompt, $response)
         {
+            $this->invocationId = $invocationId;
+            $this->provider = $provider;
+            $this->model = $model;
+            $this->prompt = $prompt;
+            $this->response = $response;
         }
     }
 }
@@ -242,18 +342,54 @@ if (!class_exists(EmbeddingsGenerated::class)) {
 namespace Laravel\Ai\Attributes;
 
 if (!class_exists(Temperature::class)) {
-    #[\Attribute(\Attribute::TARGET_CLASS)] class Temperature
-    {
-        public function __construct(public float $value)
+    if (\PHP_VERSION_ID >= 80000) {
+        eval('
+            #[\Attribute(\Attribute::TARGET_CLASS)]
+            class Temperature
+            {
+                public $value;
+
+                public function __construct($value)
+                {
+                    $this->value = $value;
+                }
+            }
+        ');
+    } else {
+        class Temperature
         {
+            public $value;
+
+            public function __construct($value)
+            {
+                $this->value = $value;
+            }
         }
     }
 }
 if (!class_exists(MaxTokens::class)) {
-    #[\Attribute(\Attribute::TARGET_CLASS)] class MaxTokens
-    {
-        public function __construct(public int $value)
+    if (\PHP_VERSION_ID >= 80000) {
+        eval('
+            #[\Attribute(\Attribute::TARGET_CLASS)]
+            class MaxTokens
+            {
+                public $value;
+
+                public function __construct($value)
+                {
+                    $this->value = $value;
+                }
+            }
+        ');
+    } else {
+        class MaxTokens
         {
+            public $value;
+
+            public function __construct($value)
+            {
+                $this->value = $value;
+            }
         }
     }
 }
@@ -263,13 +399,17 @@ namespace Laravel\Ai\Files;
 if (!class_exists(File::class)) {
     abstract class File
     {
-        public ?string $name = null;
-        public function name(): ?string
+        public $name = null;
+
+        public function name()
         {
             return $this->name;
-        } public function as(?string $name): static
+        }
+
+        public function as($name)
         {
             $this->name = $name;
+
             return $this;
         }
     }
@@ -282,6 +422,20 @@ if (!class_exists(Image::class)) {
 if (!class_exists(Document::class)) {
     abstract class Document extends File
     {
+    }
+}
+
+if (!class_exists(RemoteImage::class)) {
+    class RemoteImage extends Image
+    {
+        public $url;
+        public $mime;
+
+        public function __construct($url, $mime = null)
+        {
+            $this->url = $url;
+            $this->mime = $mime;
+        }
     }
 }
 
@@ -307,15 +461,15 @@ class TestAgent implements Agent
     {
         return [new WeatherLookup()];
     }
-    public function prompt(string $prompt, array $attachments = [], array|string|null $provider = null, ?string $model = null): AgentResponse
+    public function prompt(string $prompt, array $attachments = [], $provider = null, ?string $model = null): AgentResponse
     {
         return new AgentResponse();
     }
-    public function stream(string $prompt, array $attachments = [], array|string|null $provider = null, ?string $model = null): StreamableAgentResponse
+    public function stream(string $prompt, array $attachments = [], $provider = null, ?string $model = null): StreamableAgentResponse
     {
         return new StreamableAgentResponse();
     }
-    public function queue(string $prompt, array $attachments = [], array|string|null $provider = null, ?string $model = null): QueuedAgentResponse
+    public function queue(string $prompt, array $attachments = [], $provider = null, ?string $model = null): QueuedAgentResponse
     {
         return new QueuedAgentResponse();
     }
@@ -331,65 +485,48 @@ class TestAgent implements Agent
     {
         return null;
     }
-    public function broadcast(string $prompt, $channels, array $attachments = [], bool $now = false, array|string|null $provider = null, ?string $model = null): StreamableAgentResponse
+    public function broadcast(string $prompt, $channels, array $attachments = [], bool $now = false, $provider = null, ?string $model = null): StreamableAgentResponse
     {
         return new StreamableAgentResponse();
     }
-    public function broadcastNow(string $prompt, $channels, array $attachments = [], array|string|null $provider = null, ?string $model = null): StreamableAgentResponse
+    public function broadcastNow(string $prompt, $channels, array $attachments = [], $provider = null, ?string $model = null): StreamableAgentResponse
     {
         return new StreamableAgentResponse();
     }
-    public function broadcastOnQueue(string $prompt, $channels, array $attachments = [], array|string|null $provider = null, ?string $model = null): QueuedAgentResponse
+    public function broadcastOnQueue(string $prompt, $channels, array $attachments = [], $provider = null, ?string $model = null): QueuedAgentResponse
     {
         return new QueuedAgentResponse();
     }
 }
-#[Temperature(0.7)] #[MaxTokens(4096)]
-class TestAgentWithConfig implements Agent
-{
-    public function instructions(): string
+if (\PHP_VERSION_ID >= 80000) {
+    eval('
+        #[\Laravel\Ai\Attributes\Temperature(0.7)]
+        #[\Laravel\Ai\Attributes\MaxTokens(4096)]
+        class TestAgentWithConfig extends TestAgent
+        {
+            public function instructions(): string
+            {
+                return "You are a configured assistant.";
+            }
+
+            public function tools(): array
+            {
+                return [];
+            }
+        }
+    ');
+} else {
+    class TestAgentWithConfig extends TestAgent
     {
-        return 'You are a configured assistant.';
-    }
-    public function tools(): array
-    {
-        return [];
-    }
-    public function prompt(string $prompt, array $attachments = [], array|string|null $provider = null, ?string $model = null): AgentResponse
-    {
-        return new AgentResponse();
-    }
-    public function stream(string $prompt, array $attachments = [], array|string|null $provider = null, ?string $model = null): StreamableAgentResponse
-    {
-        return new StreamableAgentResponse();
-    }
-    public function queue(string $prompt, array $attachments = [], array|string|null $provider = null, ?string $model = null): QueuedAgentResponse
-    {
-        return new QueuedAgentResponse();
-    }
-    public function respond(...$args)
-    {
-        return null;
-    }
-    public function streamRespond(...$args)
-    {
-        return null;
-    }
-    public function queueRespond(...$args)
-    {
-        return null;
-    }
-    public function broadcast(string $prompt, $channels, array $attachments = [], bool $now = false, array|string|null $provider = null, ?string $model = null): StreamableAgentResponse
-    {
-        return new StreamableAgentResponse();
-    }
-    public function broadcastNow(string $prompt, $channels, array $attachments = [], array|string|null $provider = null, ?string $model = null): StreamableAgentResponse
-    {
-        return new StreamableAgentResponse();
-    }
-    public function broadcastOnQueue(string $prompt, $channels, array $attachments = [], array|string|null $provider = null, ?string $model = null): QueuedAgentResponse
-    {
-        return new QueuedAgentResponse();
+        public function instructions(): string
+        {
+            return 'You are a configured assistant.';
+        }
+
+        public function tools(): array
+        {
+            return [];
+        }
     }
 }
 class WeatherLookup implements Tool
@@ -501,20 +638,35 @@ class TestProvider extends \Laravel\Ai\Providers\Provider implements TextProvide
 }
 class TestToolCall
 {
-    public function __construct(public string $name, public array $arguments = [])
+    public $name;
+    public $arguments;
+
+    public function __construct($name, array $arguments = [])
     {
+        $this->name = $name;
+        $this->arguments = $arguments;
     }
 }
 class TestToolResult
 {
-    public function __construct(public string $name, public $result)
+    public $name;
+    public $result;
+
+    public function __construct($name, $result)
     {
+        $this->name = $name;
+        $this->result = $result;
     }
 }
 class TestLocalImage extends \Laravel\Ai\Files\Image
 {
-    public function __construct(public string $path, public ?string $mime = null)
+    public $path;
+    public $mime;
+
+    public function __construct($path, $mime = null)
     {
+        $this->path = $path;
+        $this->mime = $mime;
     }
     public function mimeType(): ?string
     {
@@ -596,7 +748,7 @@ class AiIntegrationTest extends TestCase
     public function testAgentSpanCapturesTokenUsageAndRequestParams(): void
     {
         // Token usage
-        $spans = $this->runAgentFlow($this->makePromptAndResponse(promptTokens: 100, completionTokens: 50, cacheReadInputTokens: 20, reasoningTokens: 15));
+        $spans = $this->runAgentFlow($this->makePromptAndResponse(100, 50, 20, 15));
         $data = $spans[1]->getData();
         $this->assertEquals(100, $data['gen_ai.usage.input_tokens']);
         $this->assertEquals(50, $data['gen_ai.usage.output_tokens']);
@@ -604,7 +756,7 @@ class AiIntegrationTest extends TestCase
         $this->assertEquals(20, $data['gen_ai.usage.input_tokens.cached']);
         $this->assertEquals(15, $data['gen_ai.usage.output_tokens.reasoning']);
         // Request parameters from attributes
-        $spans = $this->runAgentFlow($this->makePromptAndResponse(agentClass: TestAgentWithConfig::class));
+        $spans = $this->runAgentFlow($this->makePromptAndResponse(60, 130, 0, 0, TestAgentWithConfig::class));
         $data = $spans[1]->getData();
         $this->assertEquals(0.7, $data['gen_ai.request.temperature']);
         $this->assertEquals(4096, $data['gen_ai.request.max_tokens']);
@@ -641,7 +793,7 @@ class AiIntegrationTest extends TestCase
     public function testChatSpanIsCreatedWithStepData(): void
     {
         $transaction = $this->startTransaction();
-        [$prompt, $response] = $this->makePromptAndResponse(promptTokens: 100, completionTokens: 50);
+        [$prompt, $response] = $this->makePromptAndResponse(100, 50);
         $this->dispatchAgentFlow('inv-c', $prompt, $response);
         $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
         $this->assertCount(1, $chatSpans);
@@ -768,7 +920,7 @@ class AiIntegrationTest extends TestCase
     {
         $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'prism.providers.openai.url' => self::PROVIDER_URL]);
         $dataUri = 'data:image/png;base64,' . str_repeat('iVBORw0KGgoAAAANSUhEUgAA', 100);
-        $spans = $this->runAgentFlow($this->makePromptAndResponse(promptText: $dataUri));
+        $spans = $this->runAgentFlow($this->makePromptAndResponse(60, 130, 0, 0, TestAgent::class, $dataUri));
         $input = json_decode($this->findSpanByOpInSpans($spans, 'gen_ai.invoke_agent')->getData()['gen_ai.input.messages'], true);
         $this->assertEquals('[Blob substitute]', $input[0]['parts'][0]['content']);
     }
@@ -800,8 +952,12 @@ class AiIntegrationTest extends TestCase
         // Disable invoke_agent -> no agent or chat spans
         $this->resetApplicationWithConfig(['sentry.tracing.gen_ai_invoke_agent' => false, 'prism.providers.openai.url' => self::PROVIDER_URL]);
         $spans = $this->runAgentFlow($this->makePromptAndResponse());
-        $this->assertEmpty(array_filter($spans, fn ($s) => $s->getOp() === 'gen_ai.invoke_agent'));
-        $this->assertEmpty(array_filter($spans, fn ($s) => $s->getOp() === 'gen_ai.chat'));
+        $this->assertEmpty(array_filter($spans, function ($s) {
+            return $s->getOp() === 'gen_ai.invoke_agent';
+        }));
+        $this->assertEmpty(array_filter($spans, function ($s) {
+            return $s->getOp() === 'gen_ai.chat';
+        }));
         // Disable chat -> agent span still created, no chat
         $this->resetApplicationWithConfig(['sentry.tracing.gen_ai_chat' => false, 'prism.providers.openai.url' => self::PROVIDER_URL]);
         $transaction = $this->startTransaction();
@@ -954,7 +1110,9 @@ class AiIntegrationTest extends TestCase
 
     private function findAllSpansByOp(object $t, string $op): array
     {
-        return array_values(array_filter($t->getSpanRecorder()->getSpans(), fn (Span $s) => $s->getOp() === $op));
+        return array_values(array_filter($t->getSpanRecorder()->getSpans(), function (Span $s) use ($op) {
+            return $s->getOp() === $op;
+        }));
     }
 
     private function dispatchLlmHttpEvents(): void
