@@ -1,5 +1,21 @@
 # Changelog
 
+## 4.23.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.23.0.
+
+### Features
+
+- Add `strict_trace_continuation` support to only continue incoming traces when the upstream baggage `org_id` matches the SDK org ID. [(#1106)](https://github.com/getsentry/sentry-laravel/pull/1106)
+
+### Bug Fixes
+
+- Cast authenticated user email attributes to strings when populating the Sentry user scope [(#1101)](https://github.com/getsentry/sentry-laravel/pull/1101)
+
+### Misc
+
+- Bump the PHP SDK to version `4.22.0` [(#1106)](https://github.com/getsentry/sentry-laravel/pull/1106)
+
 ## 4.22.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.22.0.
