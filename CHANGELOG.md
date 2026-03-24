@@ -1,5 +1,17 @@
 # Changelog
 
+## 4.24.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.24.0.
+
+### Features
+
+- Add `log_flush_threshold` to automatically flush buffered logs after a configured number of log records. [(#1116)](https://github.com/getsentry/sentry-laravel/pull/1116)
+
+### Misc
+
+- Bump the PHP SDK to version `4.23.0` [(#1116)](https://github.com/getsentry/sentry-laravel/pull/1116)
+
 ## 4.23.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.23.0.
