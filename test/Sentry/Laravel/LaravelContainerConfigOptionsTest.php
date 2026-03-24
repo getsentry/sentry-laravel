@@ -44,6 +44,24 @@ class LaravelContainerConfigOptionsTest extends TestCase
         $this->assertTrue($enabled);
     }
 
+    public function testLogFlushThresholdIsNullByDefault(): void
+    {
+        $logFlushThreshold = app(HubInterface::class)->getClient()->getOptions()->getLogFlushThreshold();
+
+        $this->assertNull($logFlushThreshold);
+    }
+
+    public function testLogFlushThresholdIsResolvedFromConfig(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.log_flush_threshold' => 2,
+        ]);
+
+        $logFlushThreshold = app(HubInterface::class)->getClient()->getOptions()->getLogFlushThreshold();
+
+        $this->assertSame(2, $logFlushThreshold);
+    }
+
     public function testLoggerIsNullByDefault(): void
     {
         $logger = app(HubInterface::class)->getClient()->getOptions()->getLogger();
