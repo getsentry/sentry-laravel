@@ -91,6 +91,26 @@ class StrictTraceContinuationIntegrationTest extends TestCase
         $this->assertSame(self::INCOMING_PARENT_SPAN_ID, $traceContext['parent_span_id']);
     }
 
+    public function testIncomingTraceHeadersPopulatePropagationContextWhenTracingIsDisabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.enable_tracing' => false,
+        ]);
+        $this->registerRoutes();
+
+        $response = $this->call('GET', '/sentry/strict-trace-continuation', [], [], [], [
+            'HTTP_SENTRY_TRACE' => self::INCOMING_SENTRY_TRACE_HEADER,
+        ]);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSentryTransactionCount(0);
+
+        $propagationContext = $this->getCurrentSentryScope()->getPropagationContext();
+
+        $this->assertSame(self::INCOMING_TRACE_ID, (string) $propagationContext->getTraceId());
+        $this->assertSame(self::INCOMING_PARENT_SPAN_ID, (string) $propagationContext->getParentSpanId());
+    }
+
     public static function strictTraceContinuationDataProvider(): \Generator
     {
         yield [1, false, 'sentry-org_id=1', true];
