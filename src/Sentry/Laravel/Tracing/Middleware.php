@@ -137,6 +137,12 @@ class Middleware
     private function startTransaction(Request $request): void
     {
         $hub = SentrySdk::getCurrentHub();
+        $client = $hub->getClient();
+
+        // OTLP external propagation relies on the scope not already carrying a Sentry span.
+        if ($client === null || !$client->getOptions()->isTracingEnabled()) {
+            return;
+        }
 
         // Prevent starting a new transaction if we are already in a transaction
         if ($hub->getTransaction() !== null) {
