@@ -139,11 +139,6 @@ class Middleware
         $hub = SentrySdk::getCurrentHub();
         $client = $hub->getClient();
 
-        // OTLP external propagation relies on the scope not already carrying a Sentry span.
-        if ($client === null || !$client->getOptions()->isTracingEnabled()) {
-            return;
-        }
-
         // Prevent starting a new transaction if we are already in a transaction
         if ($hub->getTransaction() !== null) {
             return;
@@ -164,6 +159,13 @@ class Middleware
             $request->header('sentry-trace', ''),
             $request->header('baggage', '')
         );
+
+        // OTLP external propagation relies on the scope not already carrying a Sentry span,
+        // but continueTrace() still needs to run so incoming distributed trace headers can
+        // populate the scope propagation context while tracing is disabled.
+        if ($client === null || !$client->getOptions()->isTracingEnabled()) {
+            return;
+        }
 
         $requestPath = '/' . ltrim($request->path(), '/');
 
