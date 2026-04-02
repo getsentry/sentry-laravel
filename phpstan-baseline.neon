@@ -164,3 +164,13 @@ parameters:
 			message: "#^Parameter \\$agent of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:resolveAgentInstructions\\(\\) has invalid type Laravel\\\\Ai\\\\Contracts\\\\Agent\\.$#"
 			count: 1
 			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Parameter \\$event of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:handleGeneratingEmbeddingsForTracing\\(\\) has invalid type Laravel\\\\Ai\\\\Events\\\\GeneratingEmbeddings\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Parameter \\$event of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:handleEmbeddingsGeneratedForTracing\\(\\) has invalid type Laravel\\\\Ai\\\\Events\\\\EmbeddingsGenerated\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
