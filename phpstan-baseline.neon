@@ -99,3 +99,78 @@ parameters:
 			message: "#^Class Laravel\\\\Lumen\\\\Application not found\\.$#"
 			count: 2
 			path: src/Sentry/Laravel/Tracing/ServiceProvider.php
+
+		-
+			message: "#^Parameter \\$event of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:handlePromptingAgentForTracing\\(\\) has invalid type Laravel\\\\Ai\\\\Events\\\\PromptingAgent\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Parameter \\$event of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:handleAgentPromptedForTracing\\(\\) has invalid type Laravel\\\\Ai\\\\Events\\\\AgentPrompted\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Parameter \\$agent of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:resolveAgentAttribute\\(\\) has invalid type Laravel\\\\Ai\\\\Contracts\\\\Agent\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Parameter \\$usage of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:setTokenUsage\\(\\) has invalid type Laravel\\\\Ai\\\\Responses\\\\Data\\\\Usage\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Parameter \\$response of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:enrichChatSpansWithStepData\\(\\) has invalid type Laravel\\\\Ai\\\\Responses\\\\AgentResponse\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Parameter \\$provider of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:resolveProviderUrlPrefix\\(\\) has invalid type Laravel\\\\Ai\\\\Providers\\\\Provider\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Parameter \\$event of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:handleInvokingToolForTracing\\(\\) has invalid type Laravel\\\\Ai\\\\Events\\\\InvokingTool\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Parameter \\$event of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:handleToolInvokedForTracing\\(\\) has invalid type Laravel\\\\Ai\\\\Events\\\\ToolInvoked\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Parameter \\$agent of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:resolveToolDefinitions\\(\\) has invalid type Laravel\\\\Ai\\\\Contracts\\\\Agent\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Class Laravel\\\\Ai\\\\Contracts\\\\HasTools not found\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Parameter \\$tool of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:resolveToolDefinition\\(\\) has invalid type Laravel\\\\Ai\\\\Contracts\\\\Tool\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Parameter \\$prompt of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:resolveAttachments\\(\\) has invalid type Laravel\\\\Ai\\\\Prompts\\\\AgentPrompt\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Parameter \\$agent of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:resolveAgentInstructions\\(\\) has invalid type Laravel\\\\Ai\\\\Contracts\\\\Agent\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Parameter \\$event of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:handleGeneratingEmbeddingsForTracing\\(\\) has invalid type Laravel\\\\Ai\\\\Events\\\\GeneratingEmbeddings\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Parameter \\$event of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:handleEmbeddingsGeneratedForTracing\\(\\) has invalid type Laravel\\\\Ai\\\\Events\\\\EmbeddingsGenerated\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
