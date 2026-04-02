@@ -24,7 +24,10 @@ jobs:
           php-version: '8.3'
 
       - name: Install dependencies
-        run: composer update --no-progress --no-interaction --prefer-dist
+        run: |
+          # laravel/ai: Only supported on PHP 8.4+
+          composer remove laravel/ai --dev --no-interaction --no-update
+          composer update --no-progress --no-interaction --prefer-dist
 
       - name: Run script
         run: vendor/bin/php-cs-fixer fix --verbose --diff --dry-run
@@ -42,7 +45,10 @@ jobs:
           php-version: '8.3'
 
       - name: Install dependencies
-        run: composer update --no-progress --no-interaction --prefer-dist
+        run: |
+          # laravel/ai: Only supported on PHP 8.4+
+          composer remove laravel/ai --dev --no-interaction --no-update
+          composer update --no-progress --no-interaction --prefer-dist
 
       - name: Run script
         run: vendor/bin/phpstan analyse
