@@ -129,3 +129,28 @@ parameters:
 			message: "#^Parameter \\$provider of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:resolveProviderUrlPrefix\\(\\) has invalid type Laravel\\\\Ai\\\\Providers\\\\Provider\\.$#"
 			count: 1
 			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Parameter \\$event of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:handleInvokingToolForTracing\\(\\) has invalid type Laravel\\\\Ai\\\\Events\\\\InvokingTool\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Parameter \\$event of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:handleToolInvokedForTracing\\(\\) has invalid type Laravel\\\\Ai\\\\Events\\\\ToolInvoked\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Parameter \\$agent of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:resolveToolDefinitions\\(\\) has invalid type Laravel\\\\Ai\\\\Contracts\\\\Agent\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Class Laravel\\\\Ai\\\\Contracts\\\\HasTools not found\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Parameter \\$tool of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:resolveToolDefinition\\(\\) has invalid type Laravel\\\\Ai\\\\Contracts\\\\Tool\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
