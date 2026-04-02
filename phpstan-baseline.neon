@@ -119,3 +119,13 @@ parameters:
 			message: "#^Parameter \\$usage of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:setTokenUsage\\(\\) has invalid type Laravel\\\\Ai\\\\Responses\\\\Data\\\\Usage\\.$#"
 			count: 1
 			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Parameter \\$response of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:enrichChatSpansWithStepData\\(\\) has invalid type Laravel\\\\Ai\\\\Responses\\\\AgentResponse\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Parameter \\$provider of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:resolveProviderUrlPrefix\\(\\) has invalid type Laravel\\\\Ai\\\\Providers\\\\Provider\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
