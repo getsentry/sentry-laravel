@@ -7,6 +7,7 @@ The Sentry SDK team is happy to announce the immediate availability of Sentry La
 ### Features
 
 - Add support for the PHP SDK's `OTLPIntegration`. [(#1122)](https://github.com/getsentry/sentry-laravel/pull/1122)
+- Add `SentryTracesSampleRate` job middleware to control trace sampling for individual jobs. [(#1114)](https://github.com/getsentry/sentry-laravel/pull/1114)
 
 ### Bug Fixes
 
