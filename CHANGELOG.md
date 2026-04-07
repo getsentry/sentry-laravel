@@ -1,5 +1,17 @@
 # Changelog
 
+## 4.25.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.25.0.
+
+### Features
+
+- Add support for the PHP SDK's `OTLPIntegration`. [(#1122)](https://github.com/getsentry/sentry-laravel/pull/1122)
+
+### Bug Fixes
+
+- Preserve scope tags and context configured in `withExceptions(..)` callbacks for unhandled console exceptions. [(#1125)](https://github.com/getsentry/sentry-laravel/pull/1125)
+
 ## 4.24.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.24.0.
