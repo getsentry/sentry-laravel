@@ -8,6 +8,7 @@ use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Contracts\Session\Session;
 use Illuminate\Redis\Events as RedisEvents;
 use Illuminate\Redis\RedisManager;
+use Illuminate\Session\CacheBasedSessionHandler;
 use Illuminate\Support\Str;
 use Sentry\Breadcrumb;
 use Sentry\Laravel\Features\Concerns\ResolvesEventOrigin;
@@ -98,11 +99,12 @@ class CacheIntegration extends Feature
         }
 
         $displayKey = $this->replaceSessionKey($event->key);
+        $category = $this->isCacheEventForActiveSession($event->key) ? 'session' : 'cache';
 
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,
             Breadcrumb::TYPE_DEFAULT,
-            'cache',
+            $category,
             "{$message}: {$displayKey}",
             $event->tags ? ['tags' => $event->tags] : []
         ));
@@ -122,16 +124,17 @@ class CacheIntegration extends Feature
                         : $event->keys
                 );
 
-                $displayKeys = $this->replaceSessionKeys($keys);
+                $isSessionOperation = count($keys) === 1 && $this->isCacheEventForActiveSession($keys[0]);
+                $displayKeys = $isSessionOperation ? ['{sessionKey}'] : $this->replaceSessionKeys($keys);
 
                 $this->pushSpan(
                     $parentSpan->startChild(
                         SpanContext::make()
-                            ->setOp('cache.get')
+                            ->setOp($isSessionOperation ? 'session.get' : 'cache.get')
                             ->setData([
-                                'cache.key' => $displayKeys,
+                                $isSessionOperation ? 'session.key' : 'cache.key' => $displayKeys,
                             ])
-                            ->setOrigin('auto.cache')
+                            ->setOrigin($isSessionOperation ? 'auto.session' : 'auto.cache')
                             ->setDescription(implode(', ', $displayKeys))
                     )
                 );
@@ -144,33 +147,35 @@ class CacheIntegration extends Feature
                         : $event->keys
                 );
 
-                $displayKeys = $this->replaceSessionKeys($keys);
+                $isSessionOperation = count($keys) === 1 && $this->isCacheEventForActiveSession($keys[0]);
+                $displayKeys = $isSessionOperation ? ['{sessionKey}'] : $this->replaceSessionKeys($keys);
 
                 $this->pushSpan(
                     $parentSpan->startChild(
                         SpanContext::make()
-                            ->setOp('cache.put')
+                            ->setOp($isSessionOperation ? 'session.put' : 'cache.put')
                             ->setData([
-                                'cache.key' => $displayKeys,
-                                'cache.ttl' => $event->seconds,
+                                $isSessionOperation ? 'session.key' : 'cache.key' => $displayKeys,
+                                $isSessionOperation ? 'session.ttl' : 'cache.ttl' => $event->seconds,
                             ])
-                            ->setOrigin('auto.cache')
+                            ->setOrigin($isSessionOperation ? 'auto.session' : 'auto.cache')
                             ->setDescription(implode(', ', $displayKeys))
                     )
                 );
             }
 
             if ($event instanceof Events\ForgettingKey) {
-                $displayKey = $this->replaceSessionKey($event->key);
+                $isSessionOperation = $this->isCacheEventForActiveSession($event->key);
+                $displayKey = $isSessionOperation ? '{sessionKey}' : $this->replaceSessionKey($event->key);
 
                 $this->pushSpan(
                     $parentSpan->startChild(
                         SpanContext::make()
-                            ->setOp('cache.remove')
+                            ->setOp($isSessionOperation ? 'session.remove' : 'cache.remove')
                             ->setData([
-                                'cache.key' => [$displayKey],
+                                $isSessionOperation ? 'session.key' : 'cache.key' => [$displayKey],
                             ])
-                            ->setOrigin('auto.cache')
+                            ->setOrigin($isSessionOperation ? 'auto.session' : 'auto.cache')
                             ->setDescription($displayKey)
                     )
                 );
@@ -230,7 +235,11 @@ class CacheIntegration extends Feature
         if ($event instanceof Events\CacheHit || $event instanceof Events\CacheMissed) {
             $finishedSpan = $this->maybeFinishSpan(SpanStatus::ok());
 
-            if ($finishedSpan !== null && count($finishedSpan->getData()['cache.key'] ?? []) === 1) {
+            if ($finishedSpan !== null && $finishedSpan->getOp() === 'session.get' && count($finishedSpan->getData('session.key', [])) === 1) {
+                $finishedSpan->setData([
+                    'session.hit' => $event instanceof Events\CacheHit
+                ]);
+            } elseif ($finishedSpan !== null && count($finishedSpan->getData()['cache.key'] ?? []) === 1) {
                 $finishedSpan->setData([
                     'cache.hit' => $event instanceof Events\CacheHit
                 ]);
@@ -246,9 +255,15 @@ class CacheIntegration extends Feature
             );
 
             if ($finishedSpan !== null) {
-                $finishedSpan->setData([
-                    'cache.success' => $event instanceof Events\KeyWritten
-                ]);
+                if ($finishedSpan->getOp() === 'session.put') {
+                    $finishedSpan->setData([
+                        'session.success' => $event instanceof Events\KeyWritten
+                    ]);
+                } else {
+                    $finishedSpan->setData([
+                        'cache.success' => $event instanceof Events\KeyWritten
+                    ]);
+                }
             }
 
             return true;
@@ -262,6 +277,68 @@ class CacheIntegration extends Feature
         }
 
         return false;
+    }
+
+    /**
+     * Indicates whether the given cache event key belongs to the active cache-backed session.
+     *
+     * @param mixed $key
+     */
+    private function isCacheEventForActiveSession($key): bool
+    {
+        if (!is_string($key)) {
+            return false;
+        }
+
+        $sessionStore = $this->getActiveCacheBackedSessionStore();
+
+        return $sessionStore !== null && $key === $sessionStore->getId();
+    }
+
+    private function getActiveCacheBackedSessionStore(): ?Session
+    {
+        $container = $this->container();
+
+        if (!$container->resolved('session') || !class_exists(CacheBasedSessionHandler::class)) {
+            return null;
+        }
+
+        try {
+            $sessionManager = $container->make('session');
+
+            if (!method_exists($sessionManager, 'getDrivers')) {
+                return null;
+            }
+
+            $sessionDrivers = $sessionManager->getDrivers();
+            $defaultSessionDriver = method_exists($sessionManager, 'getDefaultDriver')
+                ? $sessionManager->getDefaultDriver()
+                : null;
+
+            if (is_string($defaultSessionDriver) && isset($sessionDrivers[$defaultSessionDriver]) && $this->isCacheBackedSessionStore($sessionDrivers[$defaultSessionDriver])) {
+                return $sessionDrivers[$defaultSessionDriver];
+            }
+
+            foreach ($sessionDrivers as $sessionStore) {
+                if ($this->isCacheBackedSessionStore($sessionStore)) {
+                    return $sessionStore;
+                }
+            }
+        } catch (\Exception $e) {
+            return null;
+        }
+
+        return null;
+    }
+
+    /**
+     * @param mixed $sessionStore
+     */
+    private function isCacheBackedSessionStore($sessionStore): bool
+    {
+        return $sessionStore instanceof Session
+            && method_exists($sessionStore, 'getHandler')
+            && $sessionStore->getHandler() instanceof CacheBasedSessionHandler;
     }
 
     /**
