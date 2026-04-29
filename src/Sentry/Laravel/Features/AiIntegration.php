@@ -515,7 +515,7 @@ class AiIntegration extends Feature
                         $meta->prompt,
                         $meta->attachments
                     );
-                } elseif (!empty($steps)) {
+                } elseif (count($steps) > 0) {
                     $inputMessages = $this->buildChatInputMessages($steps, $index);
                 } else {
                     // Streaming without steps: use response output as input for subsequent chat spans
@@ -538,7 +538,7 @@ class AiIntegration extends Feature
         }
     }
 
-    private function setConversationIdOnSpans(?string $invocationId, ?string $conversationId): void
+    private function setConversationIdOnSpans(string $invocationId, ?string $conversationId): void
     {
         if ($conversationId !== null) {
             $invocation = $this->invocations[$invocationId];
@@ -699,7 +699,7 @@ class AiIntegration extends Feature
             $parts[] = ['type' => 'text', 'content' => $text];
         }
 
-        foreach ($source->toolCalls as $toolCall) {
+        foreach (($source->toolCalls ?? []) as $toolCall) {
             $parts[] = $this->buildToolCallPart($toolCall);
         }
 
@@ -707,7 +707,7 @@ class AiIntegration extends Feature
             $messages[] = ['role' => 'assistant', 'parts' => $parts];
         }
 
-        foreach ($source->toolResults as $toolResult) {
+        foreach (($source->toolResults ?? []) as $toolResult) {
             $result = $toolResult->result;
             if ($result === null) {
                 continue;
