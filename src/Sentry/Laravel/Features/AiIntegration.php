@@ -234,7 +234,7 @@ class AiIntegration extends Feature
         }
 
         $toolDef = $this->resolveToolDefinition($event->tool);
-        $agentName = $this->shortClassName($event->agent);
+        $agentName = class_basename($event->agent);
 
         $data = [
             'gen_ai.operation.name' => 'execute_tool',
@@ -442,7 +442,7 @@ class AiIntegration extends Feature
 
         $definition = [
             'type' => 'function',
-            'name' => \is_string($name) && $name !== '' ? $name : $this->shortClassName($tool),
+            'name' => \is_string($name) && $name !== '' ? $name : class_basename($tool),
         ];
 
         $description = (string) $tool->description();
