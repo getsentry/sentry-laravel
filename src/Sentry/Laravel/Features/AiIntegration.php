@@ -15,6 +15,7 @@ class AiIntegration extends Feature
 {
     private const FEATURE_KEY = 'gen_ai';
     private const FEATURE_KEY_INVOKE_AGENT = 'gen_ai_invoke_agent';
+    private const FEATURE_KEY_CHAT = 'gen_ai_chat';
     private const MAX_TRACKED_INVOCATIONS = 100;
 
     /** @var array<string, AiInvocationData> */
@@ -158,7 +159,7 @@ class AiIntegration extends Feature
 
     public function handleHttpRequestSending(RequestSending $event): void
     {
-        if (!$this->isTracingFeatureEnabled('gen_ai_chat')) {
+        if (!$this->isTracingFeatureEnabled(self::FEATURE_KEY_CHAT)) {
             return;
         }
 
