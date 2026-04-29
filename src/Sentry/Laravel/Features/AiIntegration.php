@@ -1107,7 +1107,7 @@ class AiIntegration extends Feature
         $kept = [];
         $totalBytes = 2;
 
-        for ($i = \count($inputs) - 1; $i >= 0; $i--) {
+        for ($i = 0, $count = \count($inputs); $i < $count; $i++) {
             $inputJson = json_encode($inputs[$i]);
             if ($inputJson === false) {
                 continue;
@@ -1118,16 +1118,16 @@ class AiIntegration extends Feature
                 break;
             }
 
-            array_unshift($kept, $inputs[$i]);
+            $kept[] = $inputs[$i];
             $totalBytes += $entryBytes;
         }
 
         if (empty($kept)) {
-            $lastInput = end($inputs);
-            if (\is_string($lastInput)) {
-                $lastInput = $this->truncateContentString($lastInput);
+            $firstInput = reset($inputs);
+            if (\is_string($firstInput)) {
+                $firstInput = $this->truncateContentString($firstInput);
             }
-            $kept = [$lastInput];
+            $kept = [$firstInput];
         }
 
         $encoded = json_encode($kept);
