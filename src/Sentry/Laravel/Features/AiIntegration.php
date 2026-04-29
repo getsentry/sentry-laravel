@@ -11,6 +11,7 @@ use Sentry\Tracing\SpanStatus;
 class AiIntegration extends Feature
 {
     private const FEATURE_KEY = 'gen_ai';
+    private const FEATURE_KEY_INVOKE_AGENT = 'gen_ai_invoke_agent';
     private const MAX_TRACKED_INVOCATIONS = 100;
 
     /** @var array<string, AiInvocationData> */
@@ -35,7 +36,7 @@ class AiIntegration extends Feature
 
     public function handlePromptingAgentForTracing(\Laravel\Ai\Events\PromptingAgent $event): void
     {
-        if (!$this->isTracingFeatureEnabled('gen_ai_invoke_agent')) {
+        if (!$this->isTracingFeatureEnabled(self::FEATURE_KEY_INVOKE_AGENT)) {
             return;
         }
 
@@ -44,7 +45,7 @@ class AiIntegration extends Feature
             return;
         }
 
-        $agentName = $this->shortClassName($event->prompt->agent);
+        $agentName = class_basename($event->prompt->agent);
         $model = $event->prompt->model ?? null;
         $isStreaming = is_a($event, 'Laravel\Ai\Events\StreamingAgent');
 
@@ -111,7 +112,7 @@ class AiIntegration extends Feature
 
         $responseProvider = $event->response->meta->provider ?? null;
         if ($responseProvider !== null && !isset($data['gen_ai.provider.name'])) {
-            $data['gen_ai.provider.name'] = strtolower($responseProvider);
+            $data['gen_ai.provider.name'] = $responseProvider;
         }
 
         $usage = $event->response->usage ?? null;
@@ -192,13 +193,6 @@ class AiIntegration extends Feature
         if ($reasoningTokens > 0) {
             $data['gen_ai.usage.output_tokens.reasoning'] = $reasoningTokens;
         }
-    }
-
-    private function shortClassName(object $obj): string
-    {
-        $parts = explode('\\', \get_class($obj));
-
-        return end($parts);
     }
 
     /**
