@@ -17,6 +17,7 @@ class AiIntegration extends Feature
     private const FEATURE_KEY_INVOKE_AGENT = 'gen_ai_invoke_agent';
     private const FEATURE_KEY_CHAT = 'gen_ai_chat';
     private const FEATURE_KEY_EXECUTE_TOOL = 'gen_ai_execute_tool';
+    private const FEATURE_KEY_EMBEDDINGS = 'gen_ai_embeddings';
 
     /** Maximum total byte size for serialized message data (matches Python SDK). */
     private const MAX_MESSAGE_BYTES = 20000;
@@ -228,61 +229,6 @@ class AiIntegration extends Feature
         }
     }
 
-    public function handleHttpRequestSending(RequestSending $event): void
-    {
-        if (!$this->isTracingFeatureEnabled(self::FEATURE_KEY_CHAT)) {
-            return;
-        }
-
-        $invocationId = $this->findMatchingInvocation($event->request->url());
-        if ($invocationId === null || !isset($this->invocations[$invocationId])) {
-            return;
-        }
-
-        $this->finishActiveChatSpan($invocationId);
-
-        $invocation = $this->invocations[$invocationId];
-        $meta = $invocation->meta;
-        $model = $meta->model;
-
-        $data = [
-            'gen_ai.operation.name' => 'chat',
-        ];
-
-        if ($invocation->isStreaming) {
-            $data['gen_ai.response.streaming'] = true;
-        }
-
-        if ($model !== null) {
-            $data['gen_ai.request.model'] = $model;
-        }
-
-        if ($meta->agentName !== null) {
-            $data['gen_ai.agent.name'] = $meta->agentName;
-        }
-
-        if ($meta->providerName !== null) {
-            $data['gen_ai.provider.name'] = $meta->providerName;
-        }
-
-        if ($meta->toolDefinitions !== null) {
-            $data['gen_ai.tool.definitions'] = $meta->toolDefinitions;
-        }
-
-        $chatSpan = $invocation->span->startChild(
-            SpanContext::make()
-                ->setOp('gen_ai.chat')
-                ->setData($data)
-                ->setOrigin('auto.ai.laravel')
-                ->setDescription('chat ' . ($model ?? 'unknown'))
-        );
-
-        $invocation->activeChatSpan = $chatSpan;
-        $invocation->chatSpans[] = $chatSpan;
-
-        SentrySdk::getCurrentHub()->setSpan($chatSpan);
-    }
-
     public function handleInvokingToolForTracing(\Laravel\Ai\Events\InvokingTool $event): void
     {
         if (!$this->isTracingFeatureEnabled(self::FEATURE_KEY_EXECUTE_TOOL)) {
@@ -370,7 +316,7 @@ class AiIntegration extends Feature
 
     public function handleGeneratingEmbeddingsForTracing(\Laravel\Ai\Events\GeneratingEmbeddings $event): void
     {
-        if (!$this->isTracingFeatureEnabled('gen_ai_embeddings')) {
+        if (!$this->isTracingFeatureEnabled(self::FEATURE_KEY_EMBEDDINGS)) {
             return;
         }
 
