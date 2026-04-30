@@ -99,3 +99,23 @@ parameters:
 			message: "#^Class Laravel\\\\Lumen\\\\Application not found\\.$#"
 			count: 2
 			path: src/Sentry/Laravel/Tracing/ServiceProvider.php
+
+		-
+			message: "#^Parameter \\$event of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:handlePromptingAgentForTracing\\(\\) has invalid type Laravel\\\\Ai\\\\Events\\\\PromptingAgent\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Parameter \\$event of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:handleAgentPromptedForTracing\\(\\) has invalid type Laravel\\\\Ai\\\\Events\\\\AgentPrompted\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Parameter \\$agent of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:resolveAgentAttribute\\(\\) has invalid type Laravel\\\\Ai\\\\Contracts\\\\Agent\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Parameter \\$usage of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:setTokenUsage\\(\\) has invalid type Laravel\\\\Ai\\\\Responses\\\\Data\\\\Usage\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
