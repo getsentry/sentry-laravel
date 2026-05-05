@@ -3,10 +3,13 @@
 namespace Sentry\Laravel\Tests\Features;
 
 use Illuminate\Cache\Events\RetrievingKey;
+use Illuminate\Session\NullSessionHandler;
+use Illuminate\Session\Store;
 use Illuminate\Support\Facades\Cache;
 use Sentry\Laravel\Tests\TestCase;
 use Sentry\Tracing\Span;
 use Sentry\Laravel\Features\CacheIntegration;
+use RuntimeException;
 
 class CacheIntegrationTest extends TestCase
 {
@@ -219,6 +222,58 @@ class CacheIntegrationTest extends TestCase
         $this->assertEquals(['{sessionKey}', 'regular-key', $sessionId . '_another'], $span->getData()['cache.key']);
     }
 
+    public function testCacheBreadcrumbReplacesSessionKeyFromRequestCookieWithoutResolvingSessionStore(): void
+    {
+        $sessionId = str_repeat('a', 40);
+
+        $this->app['request']->cookies->set($this->app['config']->get('session.cookie'), $sessionId);
+
+        CacheIntegrationCacheAccessingSessionStore::$constructionCount = 0;
+
+        $this->app->singleton('session.store', static function () {
+            CacheIntegrationCacheAccessingSessionStore::$constructionCount++;
+
+            throw new RuntimeException('The session store should not be resolved when the request cookie is available.');
+        });
+
+        Cache::get($sessionId);
+
+        $this->assertSame(0, CacheIntegrationCacheAccessingSessionStore::$constructionCount);
+        $this->assertEquals('Missed: {sessionKey}', $this->getLastSentryBreadcrumb()->getMessage());
+    }
+
+    public function testCacheBreadcrumbUsesResolvedSessionStoreBeforeRequestCookie(): void
+    {
+        $cookieSessionId = str_repeat('a', 40);
+
+        $this->app['request']->cookies->set($this->app['config']->get('session.cookie'), $cookieSessionId);
+
+        $this->startSession();
+
+        $sessionStoreSessionId = $this->app['session.store']->getId();
+
+        $this->assertNotSame($cookieSessionId, $sessionStoreSessionId);
+
+        Cache::get($sessionStoreSessionId);
+
+        $this->assertEquals('Missed: {sessionKey}', $this->getLastSentryBreadcrumb()->getMessage());
+    }
+
+    public function testCacheSessionKeyDetectionDoesNotReenterSessionStoreConstruction(): void
+    {
+        CacheIntegrationCacheAccessingSessionStore::$cacheKey = 'browser-detect-like-cache-key';
+        CacheIntegrationCacheAccessingSessionStore::$constructionCount = 0;
+
+        $this->app->singleton('session.store', static function () {
+            return new CacheIntegrationCacheAccessingSessionStore();
+        });
+
+        Cache::get('outer-cache-key');
+
+        $this->assertSame(1, CacheIntegrationCacheAccessingSessionStore::$constructionCount);
+        $this->assertEquals('Missed: outer-cache-key', $this->getLastSentryBreadcrumb()->getMessage());
+    }
+
     public function testCacheOperationDoesNotStartSessionPrematurely(): void
     {
         $this->markSkippedIfTracingEventsNotAvailable();
@@ -256,5 +311,29 @@ class CacheIntegrationTest extends TestCase
         $this->assertTrue(count($spans) >= 2);
 
         return array_pop($spans);
+    }
+}
+
+class CacheIntegrationCacheAccessingSessionStore extends Store
+{
+    /** @var int */
+    public static $constructionCount = 0;
+
+    /** @var string */
+    public static $cacheKey = 'browser-detect-like-cache-key';
+
+    public function __construct()
+    {
+        self::$constructionCount++;
+
+        if (self::$constructionCount > 3) {
+            throw new RuntimeException('Session store construction re-entered too many times.');
+        }
+
+        Cache::remember(self::$cacheKey, 60, static function () {
+            return 'bot-detection-result';
+        });
+
+        parent::__construct('laravel_session', new NullSessionHandler);
     }
 }
