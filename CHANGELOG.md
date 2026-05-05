@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.25.1
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.25.1.
+
+### Bug Fixes
+
+- Fix a recursive loop when detecting the session key for cache instrumentation. [(#1128)](https://github.com/getsentry/sentry-laravel/pull/1128)
+
 ## 4.25.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.25.0.
