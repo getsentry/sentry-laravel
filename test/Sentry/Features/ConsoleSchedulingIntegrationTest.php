@@ -15,6 +15,7 @@ use RuntimeException;
 use Sentry\CheckInStatus;
 use Sentry\Laravel\Features\ConsoleSchedulingIntegration;
 use Sentry\Laravel\Tests\TestCase;
+use Sentry\MonitorSchedule;
 
 class ConsoleSchedulingIntegrationTest extends TestCase
 {
@@ -73,6 +74,34 @@ class ConsoleSchedulingIntegrationTest extends TestCase
 
         $this->assertNotNull($finishCheckInEvent->getCheckIn());
         $this->assertEquals($expectedTimezone, $finishCheckInEvent->getCheckIn()->getMonitorConfig()->getTimezone());
+    }
+
+    public function testScheduleMacroWithScheduleOverride(): void
+    {
+        $expectedSchedule = '*/5 9-17 * * *';
+
+        /** @var Event $scheduledEvent */
+        $scheduledEvent = $this->getScheduler()
+            ->call(function () {})
+            ->everyFiveMinutes()
+            ->between('09:00', '17:59')
+            ->sentryMonitor('test-monitor', null, null, true, null, null, $expectedSchedule);
+
+        $this->assertEquals('*/5 * * * *', $scheduledEvent->getExpression());
+
+        $scheduledEvent->run($this->app);
+
+        // We expect a total of 2 events to be sent to Sentry:
+        // 1. The start check-in event
+        // 2. The finish check-in event
+        $this->assertSentryCheckInCount(2);
+
+        $finishCheckInEvent = $this->getLastSentryEvent();
+
+        $this->assertNotNull($finishCheckInEvent->getCheckIn());
+        $this->assertNotNull($finishCheckInEvent->getCheckIn()->getMonitorConfig());
+        $this->assertEquals(MonitorSchedule::TYPE_CRONTAB, $finishCheckInEvent->getCheckIn()->getMonitorConfig()->getSchedule()->getType());
+        $this->assertEquals($expectedSchedule, $finishCheckInEvent->getCheckIn()->getMonitorConfig()->getSchedule()->getValue());
     }
 
     public function testScheduleMacroAutomaticSlugForCommand(): void
