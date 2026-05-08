@@ -307,7 +307,12 @@ class AiIntegration extends Feature
 
     private function resolveProviderUrlPrefix(\Laravel\Ai\Providers\Provider $provider): ?string
     {
-        $url = config("prism.providers.{$provider->driver()}.url");
+        // Try to get the URL from the additional config, then from laravel AI config and then
+        // from the prism config. Just using prism config here might not be enough if someone
+        // configures values in config/ai.php
+        $url = $provider->additionalConfiguration()['url']
+            ?? config("ai.providers.{$provider->name()}.url")
+            ?? config("prism.providers.{$provider->driver()}.url");
 
         return \is_string($url) && $url !== '' ? $url : null;
     }
