@@ -28,7 +28,7 @@ class AiIntegration extends Feature
     private const BLOB_SUBSTITUTE = '[Blob substitute]';
 
     /** Regex pattern to detect data URIs (e.g. data:image/png;base64,...). */
-    private const DATA_URI_PATTERN = '/^data:([^;,]+)?(?:;([^,]*))?,(.*)/s';
+    private const DATA_URI_PATTERN = '/^data:([^;,]+)?(?:;([^,]*))?,/s';
 
     /** Regex pattern to detect standalone base64-encoded strings (100+ chars). */
     private const BASE64_PATTERN = '/^[A-Za-z0-9+\/]{100,}={0,2}$/';
@@ -162,7 +162,7 @@ class AiIntegration extends Feature
                 $attachments,
                 $toolDefinitions
             ),
-            $event->prompt->provider !== null ? $this->resolveProviderUrlPrefix($event->prompt->provider) : null,
+            $provider !== null ? $this->resolveProviderUrlPrefix($provider) : null,
             $isStreaming
         );
 
@@ -363,64 +363,6 @@ class AiIntegration extends Feature
         }
     }
 
-
-    public function handleHttpRequestSending(RequestSending $event): void
-    {
-        if (!$this->isTracingFeatureEnabled(self::FEATURE_KEY_CHAT)) {
-            return;
-        }
-
-        $invocationId = $this->findMatchingInvocation($event->request->url());
-
-        if ($invocationId === null || !isset($this->invocations[$invocationId])) {
-            return;
-        }
-
-        // Finish any active chat span to prevent orphaned spans if events overlap.
-        $this->finishActiveChatSpan($invocationId);
-
-        $inv = $this->invocations[$invocationId];
-        $meta = $inv->meta;
-        $model = $meta->model;
-
-        $data = [
-            'gen_ai.operation.name' => 'chat',
-        ];
-
-        if ($inv->isStreaming) {
-            $data['gen_ai.response.streaming'] = true;
-        }
-
-        if ($model !== null) {
-            $data['gen_ai.request.model'] = $model;
-        }
-
-        if ($meta->agentName !== null) {
-            $data['gen_ai.agent.name'] = $meta->agentName;
-        }
-
-        if ($meta->providerName !== null) {
-            $data['gen_ai.provider.name'] = $meta->providerName;
-        }
-
-        if ($meta->toolDefinitions !== null) {
-            $data['gen_ai.tool.definitions'] = $meta->toolDefinitions;
-        }
-
-        $chatSpan = $inv->span->startChild(
-            SpanContext::make()
-                ->setOp('gen_ai.chat')
-                ->setData($data)
-                ->setOrigin('auto.ai.laravel')
-                ->setDescription("chat " . ($model ?? 'unknown'))
-        );
-
-        $inv->activeChatSpan = $chatSpan;
-        $inv->chatSpans[] = $chatSpan;
-
-        SentrySdk::getCurrentHub()->setSpan($chatSpan);
-    }
-
     public function handleHttpResponseReceived(ResponseReceived $event): void
     {
         $invocationId = $this->findMatchingInvocation($event->request->url());
@@ -515,7 +457,7 @@ class AiIntegration extends Feature
                         $meta->prompt,
                         $meta->attachments
                     );
-                } elseif (count($steps) > 0) {
+                } elseif (\count($steps) > 0) {
                     $inputMessages = $this->buildChatInputMessages($steps, $index);
                 } else {
                     // Streaming without steps: use response output as input for subsequent chat spans
@@ -540,21 +482,33 @@ class AiIntegration extends Feature
 
     private function setConversationIdOnSpans(string $invocationId, ?string $conversationId): void
     {
-        if ($conversationId !== null) {
-            $invocation = $this->invocations[$invocationId];
-            $spans = [$invocation->span, ...$invocation->toolSpans, ...$invocation->chatSpans];
-    
-            foreach ($spans as $span) {
-                $data = $span->getData();
-                $data['gen_ai.conversation.id'] = $conversationId;
-                $span->setData($data);
-            }
+        if ($conversationId === null) {
+            return;
+        }
+
+        $invocation = $this->invocations[$invocationId];
+        $spans = [$invocation->span];
+
+        foreach ($invocation->toolSpans as $toolSpan) {
+            $spans[] = $toolSpan;
+        }
+
+        foreach ($invocation->chatSpans as $chatSpan) {
+            $spans[] = $chatSpan;
+        }
+
+        foreach ($spans as $span) {
+            $data = $span->getData();
+            $data['gen_ai.conversation.id'] = $conversationId;
+            $span->setData($data);
         }
     }
 
     private function resolveProviderUrlPrefix(\Laravel\Ai\Providers\Provider $provider): ?string
     {
-        $url = config("prism.providers.{$provider->driver()}.url");
+        // Prefer Laravel AI config, but keep the Prism fallback used by current providers.
+        $url = config("ai.providers.{$provider->name()}.url")
+            ?? config("prism.providers.{$provider->driver()}.url");
 
         return \is_string($url) && $url !== '' ? $url : null;
     }
@@ -669,10 +623,10 @@ class AiIntegration extends Feature
     }
 
     /**
-     * @param \Illuminate\Support\Collection<int, \Laravel\Ai\Responses\Data\Step> $steps
+     * @param array<int, \Laravel\Ai\Responses\Data\Step>|\Illuminate\Support\Collection<int, \Laravel\Ai\Responses\Data\Step> $steps
      * @return array<int, array<string, mixed>>
      */
-    private function buildChatInputMessages(\Illuminate\Support\Collection $steps, int $index): array
+    private function buildChatInputMessages($steps, int $index): array
     {
         $previousStep = $steps[$index - 1] ?? null;
 
@@ -797,6 +751,10 @@ class AiIntegration extends Feature
 
         $definitions = [];
         foreach ($tools as $tool) {
+            if (!$tool instanceof \Laravel\Ai\Contracts\Tool) {
+                continue;
+            }
+
             $definitions[] = $this->resolveToolDefinition($tool);
         }
 
@@ -816,14 +774,14 @@ class AiIntegration extends Feature
     {
         $name = method_exists($tool, 'name') ? $tool->name() : null;
 
-        $def = [
+        $definition = [
             'type' => 'function',
             'name' => \is_string($name) && $name !== '' ? $name : class_basename($tool),
         ];
 
-        $description = (string)$tool->description();
+        $description = (string) $tool->description();
         if ($description !== '') {
-            $def['description'] = $description;
+            $definition['description'] = $description;
         }
 
         if (method_exists($tool, 'schema') && class_exists('Illuminate\JsonSchema\JsonSchemaTypeFactory')) {
@@ -833,14 +791,14 @@ class AiIntegration extends Feature
 
                 if (!empty($properties) && \is_array($properties)) {
                     $objectType = new \Illuminate\JsonSchema\Types\ObjectType($properties);
-                    $def['parameters'] = $objectType->toArray();
+                    $definition['parameters'] = $objectType->toArray();
                 }
             } catch (\Throwable $e) {
-                // Ignore schema resolution failures
+                // Ignore schema resolution failures.
             }
         }
 
-        return $def;
+        return $definition;
     }
 
     private function resolveAgentInstructions(\Laravel\Ai\Contracts\Agent $agent): ?string

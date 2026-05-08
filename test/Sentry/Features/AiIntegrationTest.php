@@ -373,6 +373,8 @@ class AiIntegrationTest extends TestCase
         $this->assertEquals('gen_ai.chat', $spans[2]->getOp());
         $this->assertEquals('gen_ai.execute_tool', $spans[3]->getOp());
         $this->assertEquals('gen_ai.chat', $spans[4]->getOp());
+        $this->assertArrayHasKey('gen_ai.tool.definitions', $spans[1]->getData());
+        $this->assertArrayHasKey('gen_ai.tool.definitions', $spans[2]->getData());
         $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
         $this->assertEquals('tool_calls', $chatSpans[0]->getData()['gen_ai.response.finish_reasons']);
         $this->assertEquals('stop', $chatSpans[1]->getData()['gen_ai.response.finish_reasons']);
