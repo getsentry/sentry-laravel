@@ -430,7 +430,14 @@ class AiIntegration extends Feature
 
         $definitions = [];
         foreach ($tools as $tool) {
+            if (!$tool instanceof \Laravel\Ai\Contracts\Tool) {
+                continue;
+            }
             $definitions[] = $this->resolveToolDefinition($tool);
+        }
+        
+        if (empty($definitions)) {
+            return null;
         }
 
         $encoded = json_encode($definitions);
