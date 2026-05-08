@@ -147,7 +147,12 @@ parameters:
 
 		-
 			message: "#^Class Laravel\\\\Ai\\\\Contracts\\\\HasTools not found\\.$#"
-			count: 2
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+			
+		-
+			message: "#^Class Laravel\\\\Ai\\\\Contracts\\\\Tool not found\\.$#"
+			count: 1
 			path: src/Sentry/Laravel/Features/AiIntegration.php
 
 		-
