@@ -313,8 +313,6 @@ class AiIntegrationTest extends TestCase
 
     public function testPiiControlsMessageCapture(): void
     {
-        $this->markTestSkipped('Covered in stacked PR4 (messages + redaction).');
-
         // PII enabled: messages captured
         $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'prism.providers.openai.url' => self::PROVIDER_URL]);
         $spans = $this->runAgentFlow($this->makePromptAndResponse());
@@ -471,8 +469,6 @@ class AiIntegrationTest extends TestCase
 
     public function testBinaryContentIsRedacted(): void
     {
-        $this->markTestSkipped('Covered in stacked PR4 (messages + redaction).');
-
         $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'prism.providers.openai.url' => self::PROVIDER_URL]);
         $dataUri = 'data:image/png;base64,' . str_repeat('iVBORw0KGgoAAAANSUhEUgAA', 100);
         $spans = $this->runAgentFlow($this->makePromptAndResponse(60, 130, 0, 0, TestAgent::class, $dataUri));
@@ -482,8 +478,6 @@ class AiIntegrationTest extends TestCase
 
     public function testAttachmentHandling(): void
     {
-        $this->markTestSkipped('Covered in stacked PR4 (attachments).');
-
         $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'prism.providers.openai.url' => self::PROVIDER_URL]);
         $transaction = $this->startTransaction();
         $agent = new TestAgent();
@@ -506,8 +500,6 @@ class AiIntegrationTest extends TestCase
 
     public function testGranularSpanTypeDisabling(): void
     {
-        $this->markTestSkipped('Covered across stacked PR2/PR3/PR5.');
-
         // Disable invoke_agent -> no agent or chat spans
         $this->resetApplicationWithConfig(['sentry.tracing.gen_ai_invoke_agent' => false, 'prism.providers.openai.url' => self::PROVIDER_URL]);
         $spans = $this->runAgentFlow($this->makePromptAndResponse());

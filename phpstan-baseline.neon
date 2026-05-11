@@ -149,7 +149,7 @@ parameters:
 			message: "#^Class Laravel\\\\Ai\\\\Contracts\\\\HasTools not found\\.$#"
 			count: 1
 			path: src/Sentry/Laravel/Features/AiIntegration.php
-			
+
 		-
 			message: "#^Class Laravel\\\\Ai\\\\Contracts\\\\Tool not found\\.$#"
 			count: 1
@@ -157,5 +157,10 @@ parameters:
 
 		-
 			message: "#^Parameter \\$tool of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:resolveToolDefinition\\(\\) has invalid type Laravel\\\\Ai\\\\Contracts\\\\Tool\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Parameter \\$prompt of method Sentry\\\\Laravel\\\\Features\\\\AiIntegration\\:\\:resolveAttachments\\(\\) has invalid type Laravel\\\\Ai\\\\Prompts\\\\AgentPrompt\\.$#"
 			count: 1
 			path: src/Sentry/Laravel/Features/AiIntegration.php

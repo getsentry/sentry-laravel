@@ -6,6 +6,19 @@ use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Client\Events\ConnectionFailed;
 use Illuminate\Http\Client\Events\RequestSending;
 use Illuminate\Http\Client\Events\ResponseReceived;
+use Illuminate\Support\Collection;
+use Laravel\Ai\Contracts\Agent;
+use Laravel\Ai\Contracts\HasTools;
+use Laravel\Ai\Contracts\Tool;
+use Laravel\Ai\Events\AgentPrompted;
+use Laravel\Ai\Events\InvokingTool;
+use Laravel\Ai\Events\PromptingAgent;
+use Laravel\Ai\Events\ToolInvoked;
+use Laravel\Ai\Prompts\AgentPrompt;
+use Laravel\Ai\Responses\AgentResponse;
+use Laravel\Ai\Responses\Data\Step;
+use Laravel\Ai\Responses\Data\Usage;
+use Laravel\Ai\Responses\TextResponse;
 use Sentry\SentrySdk;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
@@ -17,21 +30,35 @@ class AiIntegration extends Feature
     private const FEATURE_KEY_INVOKE_AGENT = 'gen_ai_invoke_agent';
     private const FEATURE_KEY_CHAT = 'gen_ai_chat';
     private const FEATURE_KEY_EXECUTE_TOOL = 'gen_ai_execute_tool';
+
+    /** Maximum total byte size for serialized message data (matches Python SDK). */
+    private const MAX_MESSAGE_BYTES = 20000;
+
+    /** Maximum character length for a single message's content string (matches Python SDK). */
+    private const MAX_SINGLE_MESSAGE_CONTENT_CHARS = 10000;
+
+    /** Placeholder for binary content that should not be sent to Sentry. */
+    private const BLOB_SUBSTITUTE = '[Blob substitute]';
+
+    /** Regex pattern to detect data URIs (e.g. data:image/png;base64,...). */
+    private const DATA_URI_PATTERN = '/^data:([^;,]+)?(?:;([^,]*))?,/s';
+
+    /** Regex pattern to detect standalone base64-encoded strings (100+ chars). */
+    private const BASE64_PATTERN = '/^[A-Za-z0-9+\/]{100,}={0,2}$/';
+
+    /** Maximum tracked invocations before evicting oldest (prevents memory leaks in long-running processes). */
     private const MAX_TRACKED_INVOCATIONS = 100;
 
-    /** @var array<string, AiInvocationData> */
+    /** @var array<string, AiInvocationData> Per-agent-invocation state keyed by invocation ID. */
     private $invocations = [];
 
-    /** @var array<string, array{span: Span, parentSpan: Span|null}> */
+    /** @var array<string, array{span: Span, parentSpan: Span|null}> Per-tool-invocation state keyed by tool invocation ID. */
     private $toolInvocations = [];
 
     public function isApplicable(): bool
     {
-        if (!class_exists('Laravel\Ai\Events\PromptingAgent')) {
-            return false;
-        }
-
-        return $this->isTracingFeatureEnabled(self::FEATURE_KEY);
+        return $this->isTracingFeatureEnabled(self::FEATURE_KEY)
+            && class_exists('Laravel\Ai\Events\PromptingAgent');
     }
 
     public function onBoot(Dispatcher $events): void
@@ -50,7 +77,7 @@ class AiIntegration extends Feature
         }
     }
 
-    public function handlePromptingAgentForTracing(\Laravel\Ai\Events\PromptingAgent $event): void
+    public function handlePromptingAgentForTracing(PromptingAgent $event): void
     {
         if (!$this->isTracingFeatureEnabled(self::FEATURE_KEY_INVOKE_AGENT)) {
             return;
@@ -62,25 +89,22 @@ class AiIntegration extends Feature
         }
 
         $agentName = class_basename($event->prompt->agent);
-        $model = $event->prompt->model ?? null;
+        $model = $event->prompt->model;
         $isStreaming = is_a($event, 'Laravel\Ai\Events\StreamingAgent');
 
         $data = [
             'gen_ai.operation.name' => 'invoke_agent',
             'gen_ai.agent.name' => $agentName,
+            'gen_ai.request.model' => $model
         ];
 
         if ($isStreaming) {
             $data['gen_ai.response.streaming'] = true;
         }
 
-        if ($model !== null) {
-            $data['gen_ai.request.model'] = $model;
-        }
-
-        $provider = $event->prompt->provider ?? null;
-        $providerName = $provider !== null ? $provider->name() : null;
-        if ($providerName !== null) {
+        $provider = $event->prompt->provider;
+        $providerName = is_a($provider, 'Laravel\Ai\Providers\Provider') ? $provider->name() : null;
+        if (!empty($providerName)) {
             $data['gen_ai.provider.name'] = $providerName;
         }
 
@@ -99,12 +123,29 @@ class AiIntegration extends Feature
             $data['gen_ai.tool.definitions'] = $toolDefinitions;
         }
 
+        $attachments = $this->resolveAttachments($event->prompt);
+
+        if ($this->shouldSendDefaultPii()) {
+            $inputMessages = $this->buildUserInputMessageFromParts(
+                $event->prompt->prompt,
+                $attachments
+            );
+            if (!empty($inputMessages)) {
+                $data['gen_ai.input.messages'] = $this->truncateMessages($inputMessages);
+            }
+
+            $instructions = (string) $event->prompt->agent->instructions();
+            if (!empty($instructions)) {
+                $data['gen_ai.system_instructions'] = $this->truncateString($instructions);
+            }
+        }
+
         $agentSpan = $parentSpan->startChild(
             SpanContext::make()
                 ->setOp('gen_ai.invoke_agent')
                 ->setData($data)
                 ->setOrigin('auto.ai.laravel')
-                ->setDescription('invoke_agent ' . ($model ?? 'unknown'))
+                ->setDescription('invoke_agent ' . $model)
         );
 
         $this->evictOldestIfNeeded($this->invocations);
@@ -112,49 +153,57 @@ class AiIntegration extends Feature
         $this->invocations[$event->invocationId] = new AiInvocationData(
             $agentSpan,
             $parentSpan,
-            new AiInvocationMeta($agentName, $providerName, $model, $toolDefinitions),
-            $provider !== null ? $this->resolveProviderUrlPrefix($provider) : null,
+            new AiInvocationMeta(
+                $agentName,
+                $providerName,
+                $model,
+                $event->prompt->prompt,
+                $attachments,
+                $toolDefinitions
+            ),
+            is_a($provider, 'Laravel\Ai\Providers\Provider') ? $this->resolveProviderUrlPrefix($provider) : null,
             $isStreaming
         );
 
         SentrySdk::getCurrentHub()->setSpan($agentSpan);
     }
 
-    public function handleAgentPromptedForTracing(\Laravel\Ai\Events\AgentPrompted $event): void
+    public function handleAgentPromptedForTracing(AgentPrompted $event): void
     {
         $invocationId = $event->invocationId;
         if (!isset($this->invocations[$invocationId])) {
             return;
         }
 
+        $this->finishActiveChatSpan($invocationId);
+
         $invocation = $this->invocations[$invocationId];
         $agentSpan = $invocation->span;
         $parentSpan = $invocation->parentSpan;
 
-        $this->finishActiveChatSpan($invocationId);
+        $conversationId = $event->response->conversationId;
+
         $this->enrichChatSpansWithStepData($invocationId, $event->response);
+        $this->setConversationIdOnSpans($invocationId, $conversationId);
 
         $data = $agentSpan->getData();
 
-        $responseModel = $event->response->meta->model ?? null;
+        $responseModel = $event->response->meta->model;
         if ($responseModel !== null) {
             $data['gen_ai.response.model'] = $responseModel;
         }
 
-        $responseProvider = $event->response->meta->provider ?? null;
+        $responseProvider = $event->response->meta->provider;
         if ($responseProvider !== null && !isset($data['gen_ai.provider.name'])) {
             $data['gen_ai.provider.name'] = $responseProvider;
         }
 
-        $usage = $event->response->usage ?? null;
-        if ($usage !== null) {
-            $this->setTokenUsage($data, $usage);
-        }
-
-        $conversationId = $event->response->conversationId ?? null;
-        if ($conversationId !== null) {
-            $data['gen_ai.conversation.id'] = $conversationId;
-            $this->setConversationIdOnSpans($invocationId, $conversationId);
+        $this->setTokenUsage($data, $event->response->usage);
+        if ($this->shouldSendDefaultPii()) {
+            $outputMessages = $this->buildOutputMessages($event->response);
+            if (!empty($outputMessages)) {
+                $data['gen_ai.output.messages'] = $this->truncateMessages($outputMessages);
+            }
         }
 
         $agentSpan->setData($data);
@@ -223,7 +272,7 @@ class AiIntegration extends Feature
         SentrySdk::getCurrentHub()->setSpan($chatSpan);
     }
 
-    public function handleInvokingToolForTracing(\Laravel\Ai\Events\InvokingTool $event): void
+    public function handleInvokingToolForTracing(InvokingTool $event): void
     {
         if (!$this->isTracingFeatureEnabled(self::FEATURE_KEY_EXECUTE_TOOL)) {
             return;
@@ -251,7 +300,7 @@ class AiIntegration extends Feature
         if ($this->shouldSendDefaultPii() && !empty($event->arguments)) {
             $encoded = json_encode($event->arguments);
             if ($encoded !== false) {
-                $data['gen_ai.tool.call.arguments'] = $encoded;
+                $data['gen_ai.tool.call.arguments'] = $this->truncateString($encoded);
             }
         }
 
@@ -276,7 +325,7 @@ class AiIntegration extends Feature
         SentrySdk::getCurrentHub()->setSpan($span);
     }
 
-    public function handleToolInvokedForTracing(\Laravel\Ai\Events\ToolInvoked $event): void
+    public function handleToolInvokedForTracing(ToolInvoked $event): void
     {
         $toolInvocationId = $event->toolInvocationId;
         if (!isset($this->toolInvocations[$toolInvocationId])) {
@@ -292,7 +341,7 @@ class AiIntegration extends Feature
         if ($this->shouldSendDefaultPii() && $event->result !== null) {
             $resultString = \is_string($event->result) ? $event->result : json_encode($event->result);
             if ($resultString !== false) {
-                $data['gen_ai.tool.call.result'] = $resultString;
+                $data['gen_ai.tool.call.result'] = $this->truncateString($resultString);
             }
         }
 
@@ -336,25 +385,34 @@ class AiIntegration extends Feature
     private function finishActiveChatSpan(string $invocationId, ?SpanStatus $status = null): void
     {
         $invocation = $this->invocations[$invocationId];
-        if ($invocation->activeChatSpan === null) {
+        $chatSpan = $invocation->activeChatSpan;
+        if ($chatSpan === null) {
             return;
         }
 
-        $invocation->activeChatSpan->setStatus($status ?? SpanStatus::ok());
-        $invocation->activeChatSpan->finish();
         $invocation->activeChatSpan = null;
+
+        $chatSpan->setStatus($status ?? SpanStatus::ok());
+        $chatSpan->finish();
 
         SentrySdk::getCurrentHub()->setSpan($invocation->span);
     }
 
-    private function enrichChatSpansWithStepData(string $invocationId, \Laravel\Ai\Responses\AgentResponse $response): void
+    /**
+     * Enrich chat spans with step data. With steps (non-streaming), each step maps 1:1 to a chat span.
+     * Without steps (streaming), response-level data is used instead.
+     */
+    private function enrichChatSpansWithStepData(string $invocationId, AgentResponse $response): void
     {
         $chatSpans = $this->invocations[$invocationId]->chatSpans;
         if (empty($chatSpans)) {
             return;
         }
 
-        $steps = $response->steps ?? [];
+        /**
+         * @var $steps Step[]
+         */
+        $steps = $response->steps;
 
         foreach ($chatSpans as $index => $chatSpan) {
             $data = $chatSpan->getData();
@@ -362,11 +420,11 @@ class AiIntegration extends Feature
 
             if ($step !== null) {
                 $model = $step->meta->model ?? null;
-                $usage = $step->usage ?? null;
+                $usage = $step->usage;
                 $finishReason = $step->finishReason ?? null;
             } else {
                 $model = $response->meta->model ?? null;
-                $usage = \count($chatSpans) === 1 ? $response->usage ?? null : null;
+                $usage = \count($chatSpans) === 1 ? $response->usage : null;
                 $finishReason = null;
             }
 
@@ -382,23 +440,45 @@ class AiIntegration extends Feature
                 $data['gen_ai.response.finish_reasons'] = $finishReason->value;
             }
 
+            if ($this->shouldSendDefaultPii()) {
+                if ($index === 0) {
+                    $meta = $this->invocations[$invocationId]->meta;
+                    $inputMessages = $this->buildUserInputMessageFromParts(
+                        $meta->prompt,
+                        $meta->attachments
+                    );
+                } elseif (\count($steps) > 0) {
+                    $inputMessages = $this->buildChatInputMessages($steps, $index);
+                } else {
+                    // Streaming without steps: use response output as input for subsequent chat spans
+                    $inputMessages = $this->buildOutputMessages($response);
+                }
+
+                if (!empty($inputMessages)) {
+                    $data['gen_ai.input.messages'] = $this->truncateMessages($inputMessages);
+                }
+
+                $outputSource = $step ?? $response;
+
+                $outputMessages = $this->buildOutputMessages($outputSource);
+                if (!empty($outputMessages)) {
+                    $data['gen_ai.output.messages'] = $this->truncateMessages($outputMessages);
+                }
+            }
+
             $chatSpan->setData($data);
         }
     }
 
-    private function setConversationIdOnSpans(string $invocationId, string $conversationId): void
+    private function setConversationIdOnSpans(string $invocationId, ?string $conversationId): void
     {
+        if ($conversationId === null) {
+            return;
+        }
+
         $invocation = $this->invocations[$invocationId];
         $spans = [$invocation->span];
-
-        foreach ($invocation->toolSpans as $toolSpan) {
-            $spans[] = $toolSpan;
-        }
-
-        foreach ($invocation->chatSpans as $chatSpan) {
-            $spans[] = $chatSpan;
-        }
-
+        $spans = array_merge($spans, $invocation->toolSpans, $invocation->chatSpans);
         foreach ($spans as $span) {
             $data = $span->getData();
             $data['gen_ai.conversation.id'] = $conversationId;
@@ -417,25 +497,211 @@ class AiIntegration extends Feature
         return \is_string($url) && $url !== '' ? $url : null;
     }
 
-    private function resolveToolDefinitions(\Laravel\Ai\Contracts\Agent $agent): ?string
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function resolveAttachments(AgentPrompt $prompt): array
     {
-        if (!$agent instanceof \Laravel\Ai\Contracts\HasTools) {
-            return null;
+        $parts = [];
+        foreach ($prompt->attachments as $attachment) {
+            if (!\is_object($attachment)) {
+                continue;
+            }
+
+            try {
+                $parts[] = $this->transformAttachment($attachment);
+            } catch (\Throwable $e) {
+                continue;
+            }
         }
 
-        $tools = $agent->tools();
-        if (empty($tools)) {
+        return $parts;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function transformAttachment(object $attachment): array
+    {
+        $name = method_exists($attachment, 'name') ? $attachment->name() : null;
+        $mimeType = method_exists($attachment, 'mimeType')
+            ? $attachment->mimeType()
+            : null;
+
+        if (is_a($attachment, 'Laravel\Ai\Files\RemoteImage')) {
+            $modality = 'image';
+            $type = 'uri';
+            $content = $attachment->url ?? null;
+        } elseif (is_a($attachment, 'Laravel\Ai\Files\RemoteDocument')) {
+            $modality = 'document';
+            $type = 'uri';
+            $content = $attachment->url ?? null;
+        } elseif (is_a($attachment, 'Laravel\Ai\Files\RemoteAudio')) {
+            $modality = 'audio';
+            $type = 'uri';
+            $content = $attachment->url ?? null;
+        } elseif (is_a($attachment, 'Laravel\Ai\Files\ProviderImage')) {
+            $modality = 'image';
+            $type = 'file_id';
+            $content = $attachment->id ?? null;
+        } elseif (is_a($attachment, 'Laravel\Ai\Files\ProviderDocument')) {
+            $modality = 'document';
+            $type = 'file_id';
+            $content = $attachment->id ?? null;
+        } else {
+            $class = \get_class($attachment);
+            if (is_a($attachment, 'Laravel\Ai\Files\Image', true)
+                || strpos($class, 'Image') !== false) {
+                $modality = 'image';
+            } elseif (is_a($attachment, 'Laravel\Ai\Files\Document', true)
+                || strpos($class, 'Document') !== false) {
+                $modality = 'document';
+            } elseif (is_a($attachment, 'Laravel\Ai\Files\Audio', true)
+                || strpos($class, 'Audio') !== false) {
+                $modality = 'audio';
+            } else {
+                $modality = 'file';
+            }
+            $type = 'blob';
+            $content = self::BLOB_SUBSTITUTE;
+        }
+
+        $part = [
+            'modality' => $modality,
+            'type' => $type,
+            'content' => $content,
+        ];
+        if ($name !== null) {
+            $part['name'] = $name;
+        }
+        if ($mimeType !== null) {
+            $part['mime_type'] = $mimeType;
+        }
+
+        return $part;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $attachmentParts
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildUserInputMessageFromParts(string $promptText, array $attachmentParts): array
+    {
+        $parts = $promptText !== ''
+            ? [['type' => 'text', 'content' => $promptText]]
+            : [];
+
+        $parts = array_merge($parts, $attachmentParts);
+
+        if (empty($parts)) {
+            return [];
+        }
+
+        return [
+            ['role' => 'user', 'parts' => $parts],
+        ];
+    }
+
+    /**
+     * @param array<int, Step>|Collection<int, Step> $steps
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildChatInputMessages($steps, int $index): array
+    {
+        $previousStep = $steps[$index - 1] ?? null;
+
+        if ($previousStep === null) {
+            return [];
+        }
+
+        return $this->buildOutputMessages($previousStep);
+    }
+
+    /**
+     * Build output messages from a TextResponse or Step.
+     *
+     * @param TextResponse|Step $source
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildOutputMessages($source): array
+    {
+        $messages = [];
+        $parts = [];
+
+        $text = $source->text;
+        if ($text !== '') {
+            $parts[] = ['type' => 'text', 'content' => $text];
+        }
+
+        foreach ($source->toolCalls as $toolCall) {
+            if (is_a($toolCall, 'Laravel\Ai\Responses\Data\ToolCall')) {
+                $parts[] = $this->buildToolCallPart($toolCall);
+            }
+        }
+
+        if (!empty($parts)) {
+            $messages[] = ['role' => 'assistant', 'parts' => $parts];
+        }
+
+        foreach ($source->toolResults as $toolResult) {
+            if (!is_a($toolResult, 'Laravel\Ai\Responses\Data\ToolResult')) {
+                continue;
+            }
+            $result = $toolResult->result;
+            if ($result === null) {
+                continue;
+            }
+
+            $resultContent = \is_string($result) ? $result : json_encode($result);
+            if ($resultContent === false) {
+                continue;
+            }
+
+            $messages[] = [
+                'role' => 'tool',
+                'parts' => [[
+                    'type' => 'tool_call_response',
+                    'content' => $resultContent,
+                    'id' => $toolResult->id,
+                    'name' => $toolResult->name,
+                ]]
+            ];
+        }
+
+        return $messages;
+    }
+
+    /**
+     * @param \Laravel\Ai\Responses\Data\ToolCall $toolCall
+     */
+    private function buildToolCallPart(object $toolCall): array
+    {
+        $part = [
+            'type' => 'tool_call',
+            'id' => $toolCall->id,
+            'name' => $toolCall->name,
+        ];
+
+        $encoded = \json_encode($toolCall->arguments);
+        if ($encoded !== false) {
+            $part['arguments'] = $encoded;
+        }
+
+        return $part;
+    }
+
+    private function resolveToolDefinitions(Agent $agent): ?string
+    {
+        if (!$agent instanceof HasTools) {
             return null;
         }
 
         $definitions = [];
-        foreach ($tools as $tool) {
-            if (!$tool instanceof \Laravel\Ai\Contracts\Tool) {
-                continue;
+        foreach ($agent->tools() as $tool) {
+            if ($tool instanceof Tool) {
+                $definitions[] = $this->resolveToolDefinition($tool);
             }
-            $definitions[] = $this->resolveToolDefinition($tool);
         }
-        
         if (empty($definitions)) {
             return null;
         }
@@ -448,7 +714,7 @@ class AiIntegration extends Feature
     /**
      * @return array<string, mixed>
      */
-    private function resolveToolDefinition(\Laravel\Ai\Contracts\Tool $tool): array
+    private function resolveToolDefinition(Tool $tool): array
     {
         $name = method_exists($tool, 'name') ? $tool->name() : null;
 
@@ -481,9 +747,9 @@ class AiIntegration extends Feature
     /**
      * @return int|float|string|null
      */
-    private function resolveAgentAttribute(\Laravel\Ai\Contracts\Agent $agent, string $attributeClass)
+    private function resolveAgentAttribute(Agent $agent, string $attributeClass)
     {
-        if (!class_exists($attributeClass) || PHP_VERSION_ID < 80000) {
+        if (PHP_VERSION_ID < 80000 || !class_exists($attributeClass)) {
             return null;
         }
 
@@ -504,7 +770,7 @@ class AiIntegration extends Feature
     /**
      * @param array<string, mixed> $data
      */
-    private function setTokenUsage(array &$data, \Laravel\Ai\Responses\Data\Usage $usage): void
+    private function setTokenUsage(array &$data, Usage $usage): void
     {
         $inputTokens = $usage->promptTokens ?? 0;
         if ($inputTokens > 0) {
@@ -566,6 +832,262 @@ class AiIntegration extends Feature
             unset($map[$oldestKey]);
         }
     }
+
+    private function truncateString(string $value, int $maxBytes = self::MAX_MESSAGE_BYTES): string
+    {
+        if (\strlen($value) <= $maxBytes) {
+            return $value;
+        }
+
+        return substr($value, 0, $maxBytes) . '...(truncated)';
+    }
+
+    private function truncateContentString(string $value): string
+    {
+        if (mb_strlen($value) <= self::MAX_SINGLE_MESSAGE_CONTENT_CHARS) {
+            return $value;
+        }
+
+        return mb_substr($value, 0, self::MAX_SINGLE_MESSAGE_CONTENT_CHARS) . '...';
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $messages
+     */
+    private function truncateMessages(array $messages): string
+    {
+        if (empty($messages)) {
+            return '[]';
+        }
+
+        $messages = $this->redactBinaryInMessages($messages);
+
+        foreach ($messages as &$message) {
+            $message = $this->truncateMessageContent($message);
+        }
+        unset($message);
+
+        if (\count($messages) === 1) {
+            $encoded = json_encode($messages);
+
+            if ($encoded === false) {
+                return '[]';
+            }
+
+            return \strlen($encoded) <= self::MAX_MESSAGE_BYTES
+                ? $encoded
+                : $this->truncateString($encoded);
+        }
+
+        $encoded = json_encode($messages);
+
+        if ($encoded !== false && \strlen($encoded) <= self::MAX_MESSAGE_BYTES) {
+            return $encoded;
+        }
+
+        $lastMessage = end($messages);
+
+        $encoded = json_encode([$lastMessage]);
+
+        if ($encoded === false) {
+            return '[]';
+        }
+
+        return $this->truncateString($encoded);
+    }
+
+    /**
+     * @param array<string, mixed> $message
+     * @return array<string, mixed>
+     */
+    private function truncateMessageContent(array $message): array
+    {
+        if (!isset($message['parts']) || !\is_array($message['parts'])) {
+            return $message;
+        }
+
+        foreach ($message['parts'] as &$part) {
+            if (isset($part['content']) && \is_string($part['content'])) {
+                $part['content'] = $this->truncateContentString($part['content']);
+            }
+            if (isset($part['arguments']) && \is_string($part['arguments'])) {
+                $part['arguments'] = $this->truncateContentString($part['arguments']);
+            }
+        }
+        unset($part);
+
+        return $message;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $messages
+     * @return array<int, array<string, mixed>>
+     */
+    private function redactBinaryInMessages(array $messages): array
+    {
+        foreach ($messages as &$message) {
+            if (!isset($message['parts']) || !\is_array($message['parts'])) {
+                continue;
+            }
+
+            foreach ($message['parts'] as &$part) {
+                $part = $this->redactContentPart($part);
+            }
+            unset($part);
+        }
+        unset($message);
+
+        return $messages;
+    }
+
+    /**
+     * @param array<string, mixed> $part
+     * @return array<string, mixed>
+     */
+    private function redactContentPart(array $part): array
+    {
+        $type = $part['type'] ?? null;
+
+        if ($type === 'blob') {
+            $part['content'] = self::BLOB_SUBSTITUTE;
+            return $part;
+        }
+
+        if ($type === 'image' || $type === 'image_url') {
+            return $this->transformImagePart($part);
+        }
+
+        if (isset($part['content']) && \is_string($part['content'])) {
+            $part['content'] = $this->redactBinaryInString($part['content']);
+        }
+
+        if (isset($part['data']) && \is_string($part['data'])) {
+            if ($this->isBinaryString($part['data'])) {
+                $part['data'] = self::BLOB_SUBSTITUTE;
+            }
+        }
+
+        if (isset($part['source']) && \is_array($part['source'])) {
+            $part['source'] = $this->redactSourceField($part['source']);
+        }
+
+        return $part;
+    }
+
+    /**
+     * @param array<string, mixed> $part
+     * @return array<string, mixed>
+     */
+    private function transformImagePart(array $part): array
+    {
+        if (isset($part['image_url']) && \is_array($part['image_url'])) {
+            $url = $part['image_url']['url'] ?? '';
+            if ($this->isDataUri($url)) {
+                $metadata = $this->extractDataUriMetadata($url);
+                $part['type'] = 'blob';
+                $part['content'] = self::BLOB_SUBSTITUTE;
+                if ($metadata['mime_type'] !== null) {
+                    $part['mime_type'] = $metadata['mime_type'];
+                }
+                unset($part['image_url']);
+            } else {
+                $part['type'] = 'uri';
+                $part['content'] = $url;
+                unset($part['image_url']);
+            }
+            return $part;
+        }
+
+        if (isset($part['content']) && \is_string($part['content'])) {
+            if ($this->isBinaryString($part['content'])) {
+                $part['content'] = self::BLOB_SUBSTITUTE;
+                $part['type'] = 'blob';
+            }
+        }
+
+        if (isset($part['data']) && \is_string($part['data'])) {
+            if ($this->isBinaryString($part['data'])) {
+                $part['data'] = self::BLOB_SUBSTITUTE;
+                $part['type'] = 'blob';
+            }
+        }
+
+        if (isset($part['url']) && \is_string($part['url'])) {
+            if ($this->isDataUri($part['url'])) {
+                $metadata = $this->extractDataUriMetadata($part['url']);
+                $part['type'] = 'blob';
+                $part['content'] = self::BLOB_SUBSTITUTE;
+                if ($metadata['mime_type'] !== null) {
+                    $part['mime_type'] = $metadata['mime_type'];
+                }
+                unset($part['url']);
+            } else {
+                $part['type'] = 'uri';
+                $part['content'] = $part['url'];
+                unset($part['url']);
+            }
+        }
+
+        return $part;
+    }
+
+    /**
+     * @param array<string, mixed> $source
+     * @return array<string, mixed>
+     */
+    private function redactSourceField(array $source): array
+    {
+        $sourceType = $source['type'] ?? null;
+
+        if ($sourceType === 'base64') {
+            $source['data'] = self::BLOB_SUBSTITUTE;
+        }
+
+        if (isset($source['data']) && \is_string($source['data']) && $this->isBinaryString($source['data'])) {
+            $source['data'] = self::BLOB_SUBSTITUTE;
+        }
+
+        return $source;
+    }
+
+    private function redactBinaryInString(string $value): string
+    {
+        if ($this->isDataUri($value) || $this->isBase64String($value)) {
+            return self::BLOB_SUBSTITUTE;
+        }
+
+        return $value;
+    }
+
+    private function isBinaryString(string $value): bool
+    {
+        return $this->isDataUri($value) || $this->isBase64String($value);
+    }
+
+    private function isDataUri(string $value): bool
+    {
+        return (bool) preg_match(self::DATA_URI_PATTERN, $value);
+    }
+
+    private function isBase64String(string $value): bool
+    {
+        return (bool) preg_match(self::BASE64_PATTERN, $value);
+    }
+
+    /**
+     * @return array{mime_type: string|null, encoding: string|null}
+     */
+    private function extractDataUriMetadata(string $dataUri): array
+    {
+        if (!preg_match(self::DATA_URI_PATTERN, $dataUri, $matches)) {
+            return ['mime_type' => null, 'encoding' => null];
+        }
+
+        return [
+            'mime_type' => !empty($matches[1]) ? $matches[1] : null,
+            'encoding' => !empty($matches[2]) ? $matches[2] : null,
+        ];
+    }
 }
 
 class AiInvocationData
@@ -586,7 +1108,7 @@ class AiInvocationData
     public $isStreaming;
 
     /** @var Span|null */
-    public $activeChatSpan;
+    public $activeChatSpan = null;
 
     /** @var list<Span> */
     public $chatSpans = [];
@@ -601,7 +1123,6 @@ class AiInvocationData
         $this->meta = $meta;
         $this->urlPrefix = $urlPrefix;
         $this->isStreaming = $isStreaming;
-        $this->activeChatSpan = null;
     }
 }
 
@@ -616,14 +1137,22 @@ class AiInvocationMeta
     /** @var string|null */
     public $model;
 
+    /** @var string */
+    public $prompt;
+
+    /** @var array */
+    public $attachments;
+
     /** @var string|null */
     public $toolDefinitions;
 
-    public function __construct(string $agentName, ?string $providerName, ?string $model, ?string $toolDefinitions)
+    public function __construct(string $agentName, ?string $providerName, ?string $model, string $prompt, array $attachments, ?string $toolDefinitions)
     {
         $this->agentName = $agentName;
         $this->providerName = $providerName;
         $this->model = $model;
+        $this->prompt = $prompt;
+        $this->attachments = $attachments;
         $this->toolDefinitions = $toolDefinitions;
     }
 }
