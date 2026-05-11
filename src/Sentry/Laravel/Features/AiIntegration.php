@@ -6,6 +6,21 @@ use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Client\Events\ConnectionFailed;
 use Illuminate\Http\Client\Events\RequestSending;
 use Illuminate\Http\Client\Events\ResponseReceived;
+use Illuminate\Support\Collection;
+use Laravel\Ai\Contracts\Agent;
+use Laravel\Ai\Contracts\HasTools;
+use Laravel\Ai\Contracts\Tool;
+use Laravel\Ai\Events\AgentPrompted;
+use Laravel\Ai\Events\EmbeddingsGenerated;
+use Laravel\Ai\Events\GeneratingEmbeddings;
+use Laravel\Ai\Events\InvokingTool;
+use Laravel\Ai\Events\PromptingAgent;
+use Laravel\Ai\Events\ToolInvoked;
+use Laravel\Ai\Prompts\AgentPrompt;
+use Laravel\Ai\Responses\AgentResponse;
+use Laravel\Ai\Responses\Data\Step;
+use Laravel\Ai\Responses\Data\Usage;
+use Laravel\Ai\Responses\TextResponse;
 use Sentry\SentrySdk;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
@@ -29,7 +44,7 @@ class AiIntegration extends Feature
     private const BLOB_SUBSTITUTE = '[Blob substitute]';
 
     /** Regex pattern to detect data URIs (e.g. data:image/png;base64,...). */
-    private const DATA_URI_PATTERN = '/^data:([^;,]+)?(?:;([^,]*))?,(.*)/s';
+    private const DATA_URI_PATTERN = '/^data:([^;,]+)?(?:;([^,]*))?,/s';
 
     /** Regex pattern to detect standalone base64-encoded strings (100+ chars). */
     private const BASE64_PATTERN = '/^[A-Za-z0-9+\/]{100,}={0,2}$/';
@@ -48,11 +63,8 @@ class AiIntegration extends Feature
 
     public function isApplicable(): bool
     {
-        if (!class_exists('Laravel\Ai\Events\PromptingAgent')) {
-            return false;
-        }
-
-        return $this->isTracingFeatureEnabled(self::FEATURE_KEY);
+        return $this->isTracingFeatureEnabled(self::FEATURE_KEY)
+            && class_exists('Laravel\Ai\Events\PromptingAgent');
     }
 
     public function onBoot(Dispatcher $events): void
@@ -73,13 +85,7 @@ class AiIntegration extends Feature
         }
     }
 
-    // ---- Agent lifecycle event handlers ----
-
-    /**
-     * Handle the PromptingAgent event: start an invoke_agent span and record
-     * the provider URL prefix for HTTP event matching.
-     */
-    public function handlePromptingAgentForTracing(\Laravel\Ai\Events\PromptingAgent $event): void
+    public function handlePromptingAgentForTracing(PromptingAgent $event): void
     {
         if (!$this->isTracingFeatureEnabled(self::FEATURE_KEY_INVOKE_AGENT)) {
             return;
@@ -92,26 +98,22 @@ class AiIntegration extends Feature
         }
 
         $agentName = class_basename($event->prompt->agent);
-        $model = $event->prompt->model ?? null;
-
+        $model = $event->prompt->model;
         $isStreaming = is_a($event, 'Laravel\Ai\Events\StreamingAgent');
 
         $data = [
             'gen_ai.operation.name' => 'invoke_agent',
             'gen_ai.agent.name' => $agentName,
+            'gen_ai.request.model' => $model
         ];
 
         if ($isStreaming) {
             $data['gen_ai.response.streaming'] = true;
         }
 
-        if ($model !== null) {
-            $data['gen_ai.request.model'] = $model;
-        }
-
-        $provider = $event->prompt->provider ?? null;
-        $providerName = $provider !== null ? $provider->name() : null;
-        if ($providerName !== null) {
+        $provider = $event->prompt->provider;
+        $providerName = is_a($provider, 'Laravel\Ai\Providers\Provider') ? $provider->name() : null;
+        if (!empty($providerName)) {
             $data['gen_ai.provider.name'] = $providerName;
         }
 
@@ -134,15 +136,15 @@ class AiIntegration extends Feature
 
         if ($this->shouldSendDefaultPii()) {
             $inputMessages = $this->buildUserInputMessageFromParts(
-                $event->prompt->prompt ?? null,
+                $event->prompt->prompt,
                 $attachments
             );
             if (!empty($inputMessages)) {
                 $data['gen_ai.input.messages'] = $this->truncateMessages($inputMessages);
             }
 
-            $instructions = $this->resolveAgentInstructions($event->prompt->agent);
-            if ($instructions !== null) {
+            $instructions = (string) $event->prompt->agent->instructions();
+            if (!empty($instructions)) {
                 $data['gen_ai.system_instructions'] = $this->truncateString($instructions);
             }
         }
@@ -152,7 +154,7 @@ class AiIntegration extends Feature
                 ->setOp('gen_ai.invoke_agent')
                 ->setData($data)
                 ->setOrigin('auto.ai.laravel')
-                ->setDescription("invoke_agent " . ($model ?? 'unknown'))
+                ->setDescription('invoke_agent ' . $model)
         );
 
         $this->evictOldestIfNeeded($this->invocations);
@@ -164,18 +166,18 @@ class AiIntegration extends Feature
                 $agentName,
                 $providerName,
                 $model,
-                $event->prompt->prompt ?? null,
+                $event->prompt->prompt,
                 $attachments,
                 $toolDefinitions
             ),
-            $event->prompt->provider !== null ? $this->resolveProviderUrlPrefix($event->prompt->provider) : null,
+            is_a($provider, 'Laravel\Ai\Providers\Provider') ? $this->resolveProviderUrlPrefix($provider) : null,
             $isStreaming
         );
 
         SentrySdk::getCurrentHub()->setSpan($agentSpan);
     }
 
-    public function handleAgentPromptedForTracing(\Laravel\Ai\Events\AgentPrompted $event): void
+    public function handleAgentPromptedForTracing(AgentPrompted $event): void
     {
         $invocationId = $event->invocationId;
 
@@ -185,32 +187,28 @@ class AiIntegration extends Feature
 
         $this->finishActiveChatSpan($invocationId);
 
-        $inv = $this->invocations[$invocationId];
-        $agentSpan = $inv->span;
-        $parentSpan = $inv->parentSpan;
+        $invocation = $this->invocations[$invocationId];
+        $agentSpan = $invocation->span;
+        $parentSpan = $invocation->parentSpan;
 
-        $conversationId = $event->response->conversationId ?? null;
+        $conversationId = $event->response->conversationId;
 
         $this->enrichChatSpansWithStepData($invocationId, $event->response);
         $this->setConversationIdOnSpans($invocationId, $conversationId);
 
         $data = $agentSpan->getData();
 
-        $responseModel = $event->response->meta->model ?? null;
+        $responseModel = $event->response->meta->model;
         if ($responseModel !== null) {
             $data['gen_ai.response.model'] = $responseModel;
         }
 
-        $responseProvider = $event->response->meta->provider ?? null;
+        $responseProvider = $event->response->meta->provider;
         if ($responseProvider !== null && !isset($data['gen_ai.provider.name'])) {
             $data['gen_ai.provider.name'] = $responseProvider;
         }
 
-        $usage = $event->response->usage ?? null;
-        if ($usage !== null) {
-            $this->setTokenUsage($data, $usage);
-        }
-
+        $this->setTokenUsage($data, $event->response->usage);
         if ($this->shouldSendDefaultPii()) {
             $outputMessages = $this->buildOutputMessages($event->response);
             if (!empty($outputMessages)) {
@@ -229,7 +227,7 @@ class AiIntegration extends Feature
         }
     }
 
-    public function handleInvokingToolForTracing(\Laravel\Ai\Events\InvokingTool $event): void
+    public function handleInvokingToolForTracing(InvokingTool $event): void
     {
         if (!$this->isTracingFeatureEnabled(self::FEATURE_KEY_EXECUTE_TOOL)) {
             return;
@@ -267,7 +265,7 @@ class AiIntegration extends Feature
                 ->setOp('gen_ai.execute_tool')
                 ->setData($data)
                 ->setOrigin('auto.ai.laravel')
-                ->setDescription("execute_tool {$toolDef['name']}")
+                ->setDescription('execute_tool ' . $toolDef['name'])
         );
 
         $this->evictOldestIfNeeded($this->toolInvocations);
@@ -284,7 +282,7 @@ class AiIntegration extends Feature
         SentrySdk::getCurrentHub()->setSpan($span);
     }
 
-    public function handleToolInvokedForTracing(\Laravel\Ai\Events\ToolInvoked $event): void
+    public function handleToolInvokedForTracing(ToolInvoked $event): void
     {
         $toolInvocationId = $event->toolInvocationId;
 
@@ -292,10 +290,10 @@ class AiIntegration extends Feature
             return;
         }
 
-        $inv = $this->toolInvocations[$toolInvocationId];
+        $invocation = $this->toolInvocations[$toolInvocationId];
         unset($this->toolInvocations[$toolInvocationId]);
 
-        $span = $inv['span'];
+        $span = $invocation['span'];
         $data = $span->getData();
 
         if ($this->shouldSendDefaultPii() && $event->result !== null) {
@@ -309,12 +307,12 @@ class AiIntegration extends Feature
         $span->setStatus(SpanStatus::ok());
         $span->finish();
 
-        if ($inv['parentSpan'] !== null) {
-            SentrySdk::getCurrentHub()->setSpan($inv['parentSpan']);
+        if ($invocation['parentSpan'] !== null) {
+            SentrySdk::getCurrentHub()->setSpan($invocation['parentSpan']);
         }
     }
 
-    public function handleGeneratingEmbeddingsForTracing(\Laravel\Ai\Events\GeneratingEmbeddings $event): void
+    public function handleGeneratingEmbeddingsForTracing(GeneratingEmbeddings $event): void
     {
         if (!$this->isTracingFeatureEnabled(self::FEATURE_KEY_EMBEDDINGS)) {
             return;
@@ -326,25 +324,14 @@ class AiIntegration extends Feature
             return;
         }
 
-        $model = $event->model ?? null;
-
         $data = [
             'gen_ai.operation.name' => 'embeddings',
+            'gen_ai.request.model' => $event->model,
+            'gen_ai.provider.name' => $event->provider->name(),
         ];
 
-        if ($model !== null) {
-            $data['gen_ai.request.model'] = $model;
-        }
-
-        if ($event->provider !== null) {
-            $data['gen_ai.provider.name'] = $event->provider->name();
-        }
-
-        if ($this->shouldSendDefaultPii()) {
-            $inputs = $event->prompt->inputs ?? null;
-            if (\is_array($inputs) && !empty($inputs)) {
-                $data['gen_ai.embeddings.input'] = $this->truncateEmbeddingInputs($inputs);
-            }
+        if ($this->shouldSendDefaultPii() && !empty($event->prompt->inputs)) {
+            $data['gen_ai.embeddings.input'] = $this->truncateEmbeddingInputs($event->prompt->inputs);
         }
 
         $span = $parentSpan->startChild(
@@ -352,7 +339,7 @@ class AiIntegration extends Feature
                 ->setOp('gen_ai.embeddings')
                 ->setData($data)
                 ->setOrigin('auto.ai.laravel')
-                ->setDescription("embeddings " . ($model ?? 'unknown'))
+                ->setDescription('embeddings ' . $event->model)
         );
 
         $this->evictOldestIfNeeded($this->embeddingsInvocations);
@@ -365,7 +352,7 @@ class AiIntegration extends Feature
         SentrySdk::getCurrentHub()->setSpan($span);
     }
 
-    public function handleEmbeddingsGeneratedForTracing(\Laravel\Ai\Events\EmbeddingsGenerated $event): void
+    public function handleEmbeddingsGeneratedForTracing(EmbeddingsGenerated $event): void
     {
         $invocationId = $event->invocationId;
 
@@ -373,33 +360,32 @@ class AiIntegration extends Feature
             return;
         }
 
-        $inv = $this->embeddingsInvocations[$invocationId];
+        $invocation = $this->embeddingsInvocations[$invocationId];
         unset($this->embeddingsInvocations[$invocationId]);
 
-        $span = $inv['span'];
+        $span = $invocation['span'];
         $data = $span->getData();
 
-        $responseModel = $event->response->meta->model ?? null;
+        $responseModel = $event->response->meta->model;
         if ($responseModel !== null) {
             $data['gen_ai.response.model'] = $responseModel;
         }
 
-        $responseProvider = $event->response->meta->provider ?? null;
+        $responseProvider = $event->response->meta->provider;
         if ($responseProvider !== null && !isset($data['gen_ai.provider.name'])) {
             $data['gen_ai.provider.name'] = strtolower($responseProvider);
         }
 
-        $tokens = $event->response->tokens ?? null;
-        if ($tokens !== null && $tokens > 0) {
-            $data['gen_ai.usage.input_tokens'] = $tokens;
+        if ($event->response->tokens > 0) {
+            $data['gen_ai.usage.input_tokens'] = $event->response->tokens;
         }
 
         $span->setData($data);
         $span->setStatus(SpanStatus::ok());
         $span->finish();
 
-        if ($inv['parentSpan'] !== null) {
-            SentrySdk::getCurrentHub()->setSpan($inv['parentSpan']);
+        if ($invocation['parentSpan'] !== null) {
+            SentrySdk::getCurrentHub()->setSpan($invocation['parentSpan']);
         }
     }
 
@@ -415,18 +401,17 @@ class AiIntegration extends Feature
             return;
         }
 
-        // Finish any active chat span to prevent orphaned spans if events overlap.
         $this->finishActiveChatSpan($invocationId);
 
-        $inv = $this->invocations[$invocationId];
-        $meta = $inv->meta;
+        $invocation = $this->invocations[$invocationId];
+        $meta = $invocation->meta;
         $model = $meta->model;
 
         $data = [
             'gen_ai.operation.name' => 'chat',
         ];
 
-        if ($inv->isStreaming) {
+        if ($invocation->isStreaming) {
             $data['gen_ai.response.streaming'] = true;
         }
 
@@ -446,16 +431,16 @@ class AiIntegration extends Feature
             $data['gen_ai.tool.definitions'] = $meta->toolDefinitions;
         }
 
-        $chatSpan = $inv->span->startChild(
+        $chatSpan = $invocation->span->startChild(
             SpanContext::make()
                 ->setOp('gen_ai.chat')
                 ->setData($data)
                 ->setOrigin('auto.ai.laravel')
-                ->setDescription("chat " . ($model ?? 'unknown'))
+                ->setDescription('chat ' . ($model ?? 'unknown'))
         );
 
-        $inv->activeChatSpan = $chatSpan;
-        $inv->chatSpans[] = $chatSpan;
+        $invocation->activeChatSpan = $chatSpan;
+        $invocation->chatSpans[] = $chatSpan;
 
         SentrySdk::getCurrentHub()->setSpan($chatSpan);
     }
@@ -482,8 +467,8 @@ class AiIntegration extends Feature
 
     private function findMatchingInvocation(string $url): ?string
     {
-        foreach (array_reverse($this->invocations, true) as $invocationId => $inv) {
-            if ($inv->urlPrefix !== null && substr($url, 0, \strlen($inv->urlPrefix)) === $inv->urlPrefix) {
+        foreach (array_reverse($this->invocations, true) as $invocationId => $invocation) {
+            if ($invocation->urlPrefix !== null && substr($url, 0, \strlen($invocation->urlPrefix)) === $invocation->urlPrefix) {
                 return $invocationId;
             }
         }
@@ -493,25 +478,25 @@ class AiIntegration extends Feature
 
     private function finishActiveChatSpan(string $invocationId, ?SpanStatus $status = null): void
     {
-        $inv = $this->invocations[$invocationId];
-        $chatSpan = $inv->activeChatSpan;
+        $invocation = $this->invocations[$invocationId];
+        $chatSpan = $invocation->activeChatSpan;
         if ($chatSpan === null) {
             return;
         }
 
-        $inv->activeChatSpan = null;
-        
+        $invocation->activeChatSpan = null;
+
         $chatSpan->setStatus($status ?? SpanStatus::ok());
         $chatSpan->finish();
 
-        SentrySdk::getCurrentHub()->setSpan($inv->span);
+        SentrySdk::getCurrentHub()->setSpan($invocation->span);
     }
 
     /**
      * Enrich chat spans with step data. With steps (non-streaming), each step maps 1:1 to a chat span.
      * Without steps (streaming), response-level data is used instead.
      */
-    private function enrichChatSpansWithStepData(string $invocationId, \Laravel\Ai\Responses\AgentResponse $response): void
+    private function enrichChatSpansWithStepData(string $invocationId, AgentResponse $response): void
     {
         $chatSpans = $this->invocations[$invocationId]->chatSpans;
 
@@ -519,7 +504,11 @@ class AiIntegration extends Feature
             return;
         }
 
-        $steps = $response->steps ?? [];
+        /**
+         * @var $steps Step[]
+         */
+        $steps = $response->steps;
+
         foreach ($chatSpans as $index => $chatSpan) {
             $data = $chatSpan->getData();
 
@@ -527,11 +516,11 @@ class AiIntegration extends Feature
 
             if ($step !== null) {
                 $model = $step->meta->model ?? null;
-                $usage = $step->usage ?? null;
+                $usage = $step->usage;
                 $finishReason = $step->finishReason ?? null;
             } else {
                 $model = $response->meta->model ?? null;
-                $usage = \count($chatSpans) === 1 ? $response->usage ?? null : null;
+                $usage = \count($chatSpans) === 1 ? $response->usage : null;
                 $finishReason = null;
             }
 
@@ -554,7 +543,7 @@ class AiIntegration extends Feature
                         $meta->prompt,
                         $meta->attachments
                     );
-                } elseif (count($steps) > 0) {
+                } elseif (\count($steps) > 0) {
                     $inputMessages = $this->buildChatInputMessages($steps, $index);
                 } else {
                     // Streaming without steps: use response output as input for subsequent chat spans
@@ -602,7 +591,7 @@ class AiIntegration extends Feature
     /**
      * @return array<int, array<string, mixed>>
      */
-    private function resolveAttachments(\Laravel\Ai\Prompts\AgentPrompt $prompt): array
+    private function resolveAttachments(AgentPrompt $prompt): array
     {
         $parts = [];
         foreach ($prompt->attachments as $attachment) {
@@ -687,17 +676,13 @@ class AiIntegration extends Feature
      * @param array<int, array<string, mixed>> $attachmentParts
      * @return array<int, array<string, mixed>>
      */
-    private function buildUserInputMessageFromParts(?string $promptText, array $attachmentParts): array
+    private function buildUserInputMessageFromParts(string $promptText, array $attachmentParts): array
     {
-        $parts = [];
+        $parts = $promptText !== ''
+            ? [['type' => 'text', 'content' => $promptText]]
+            : [];
 
-        if ($promptText !== null && $promptText !== '') {
-            $parts[] = ['type' => 'text', 'content' => $promptText];
-        }
-
-        foreach ($attachmentParts as $attachmentPart) {
-            $parts[] = $attachmentPart;
-        }
+        $parts = array_merge($parts, $attachmentParts);
 
         if (empty($parts)) {
             return [];
@@ -709,10 +694,10 @@ class AiIntegration extends Feature
     }
 
     /**
-     * @param \Illuminate\Support\Collection<int, \Laravel\Ai\Responses\Data\Step> $steps
+     * @param array<int, Step>|Collection<int, Step> $steps
      * @return array<int, array<string, mixed>>
      */
-    private function buildChatInputMessages(\Illuminate\Support\Collection $steps, int $index): array
+    private function buildChatInputMessages($steps, int $index): array
     {
         $previousStep = $steps[$index - 1] ?? null;
 
@@ -726,28 +711,34 @@ class AiIntegration extends Feature
     /**
      * Build output messages from a TextResponse or Step.
      *
-     * @param \Laravel\Ai\Responses\TextResponse|\Laravel\Ai\Responses\Data\Step $source
+     * @param TextResponse|Step $source
      * @return array<int, array<string, mixed>>
      */
-    private function buildOutputMessages(object $source): array
+    private function buildOutputMessages($source): array
     {
         $messages = [];
         $parts = [];
 
         $text = $source->text;
-        if ($text !== null && $text !== '') {
+        if ($text !== '') {
             $parts[] = ['type' => 'text', 'content' => $text];
         }
 
-        foreach (($source->toolCalls ?? []) as $toolCall) {
-            $parts[] = $this->buildToolCallPart($toolCall);
+        foreach ($source->toolCalls as $toolCall) {
+            if (is_a($toolCall, 'Laravel\Ai\Responses\Data\ToolCall')) {
+                $parts[] = $this->buildToolCallPart($toolCall);
+            }
         }
 
         if (!empty($parts)) {
             $messages[] = ['role' => 'assistant', 'parts' => $parts];
         }
 
-        foreach (($source->toolResults ?? []) as $toolResult) {
+        foreach ($source->toolResults as $toolResult) {
+            if (!is_a($toolResult, 'Laravel\Ai\Responses\Data\ToolResult')) {
+                continue;
+            }
+
             $result = $toolResult->result;
             if ($result === null) {
                 continue;
@@ -757,17 +748,15 @@ class AiIntegration extends Feature
             if ($resultContent === false) {
                 continue;
             }
-            $resultPart = ['type' => 'tool_call_response', 'content' => $resultContent];
-
-            if ($toolResult->id !== null) {
-                $resultPart['id'] = $toolResult->id;
-            }
-
-            if ($toolResult->name !== null) {
-                $resultPart['name'] = $toolResult->name;
-            }
-
-            $messages[] = ['role' => 'tool', 'parts' => [$resultPart]];
+            $messages[] = [
+                'role' => 'tool',
+                'parts' => [[
+                    'type' => 'tool_call_response',
+                    'content' => $resultContent,
+                    'id' => $toolResult->id,
+                    'name' => $toolResult->name,
+                ]]
+            ];
         }
 
         return $messages;
@@ -778,22 +767,15 @@ class AiIntegration extends Feature
      */
     private function buildToolCallPart(object $toolCall): array
     {
-        $part = ['type' => 'tool_call'];
+        $part = [
+            'type' => 'tool_call',
+            'id' => $toolCall->id,
+            'name' => $toolCall->name,
+        ];
 
-        if ($toolCall->id !== null) {
-            $part['id'] = $toolCall->id;
-        }
-
-        if ($toolCall->name !== null) {
-            $part['name'] = $toolCall->name;
-        }
-
-        $args = $toolCall->arguments;
-        if ($args !== null) {
-            $encoded = \is_string($args) ? $args : json_encode($args);
-            if ($encoded !== false) {
-                $part['arguments'] = $encoded;
-            }
+        $encoded = \json_encode($toolCall->arguments);
+        if ($encoded !== false) {
+            $part['arguments'] = $encoded;
         }
 
         return $part;
@@ -802,9 +784,9 @@ class AiIntegration extends Feature
     /**
      * @return int|float|string|null
      */
-    private function resolveAgentAttribute(\Laravel\Ai\Contracts\Agent $agent, string $attributeClass)
+    private function resolveAgentAttribute(Agent $agent, string $attributeClass)
     {
-        if (!class_exists($attributeClass) || PHP_VERSION_ID < 80000) {
+        if (PHP_VERSION_ID < 80000 || !class_exists($attributeClass)) {
             return null;
         }
 
@@ -824,26 +806,18 @@ class AiIntegration extends Feature
         }
     }
 
-    private function resolveToolDefinitions(\Laravel\Ai\Contracts\Agent $agent): ?string
+    private function resolveToolDefinitions(Agent $agent): ?string
     {
-        if (!$agent instanceof \Laravel\Ai\Contracts\HasTools) {
-            return null;
-        }
-
-        $tools = $agent->tools();
-        if (empty($tools)) {
+        if (!$agent instanceof HasTools) {
             return null;
         }
 
         $definitions = [];
-        foreach ($tools as $tool) {
-            if (!$tool instanceof \Laravel\Ai\Contracts\Tool) {
-                continue;
+        foreach ($agent->tools() as $tool) {
+            if ($tool instanceof Tool) {
+                $definitions[] = $this->resolveToolDefinition($tool);
             }
-
-            $definitions[] = $this->resolveToolDefinition($tool);
         }
-
         if (empty($definitions)) {
             return null;
         }
@@ -856,58 +830,51 @@ class AiIntegration extends Feature
     /**
      * @return array<string, mixed>
      */
-    private function resolveToolDefinition(\Laravel\Ai\Contracts\Tool $tool): array
+    private function resolveToolDefinition(Tool $tool): array
     {
         $name = method_exists($tool, 'name') ? $tool->name() : null;
 
-        $def = [
+        $definition = [
             'type' => 'function',
             'name' => \is_string($name) && $name !== '' ? $name : class_basename($tool),
         ];
 
-        $description = (string)$tool->description();
+        $description = (string) $tool->description();
         if ($description !== '') {
-            $def['description'] = $description;
+            $definition['description'] = $description;
         }
 
         if (method_exists($tool, 'schema') && class_exists('Illuminate\JsonSchema\JsonSchemaTypeFactory')) {
             try {
                 $factory = new \Illuminate\JsonSchema\JsonSchemaTypeFactory();
                 $properties = $tool->schema($factory);
-
                 if (!empty($properties) && \is_array($properties)) {
                     $objectType = new \Illuminate\JsonSchema\Types\ObjectType($properties);
-                    $def['parameters'] = $objectType->toArray();
+                    $definition['parameters'] = $objectType->toArray();
                 }
             } catch (\Throwable $e) {
-                // Ignore schema resolution failures
+                // Ignore schema resolution failures.
             }
         }
 
-        return $def;
-    }
-
-    private function resolveAgentInstructions(\Laravel\Ai\Contracts\Agent $agent): ?string
-    {
-        $instructions = $agent->instructions();
-        return $instructions !== null ? (string)$instructions : null;
+        return $definition;
     }
 
     /**
      * @param array<string, mixed> $data
      */
-    private function setTokenUsage(array &$data, \Laravel\Ai\Responses\Data\Usage $usage): void
+    private function setTokenUsage(array &$data, Usage $usage): void
     {
         $inputTokens = $usage->promptTokens ?? 0;
         if ($inputTokens > 0) {
             $data['gen_ai.usage.input_tokens'] = $inputTokens;
         }
-        
+
         $outputTokens = $usage->completionTokens ?? 0;
         if ($outputTokens > 0) {
             $data['gen_ai.usage.output_tokens'] = $outputTokens;
         }
-        
+
         $totalTokens = $inputTokens + $outputTokens;
         if ($totalTokens > 0) {
             $data['gen_ai.usage.total_tokens'] = $totalTokens;
@@ -1063,7 +1030,7 @@ class AiIntegration extends Feature
             if ($inputJson === false) {
                 continue;
             }
-            $entryBytes = \strlen($inputJson) + (empty($kept) ? 0 : 1); // +1 for comma separator
+            $entryBytes = \strlen($inputJson) + (empty($kept) ? 0 : 1);
 
             if ($totalBytes + $entryBytes > self::MAX_MESSAGE_BYTES) {
                 break;
@@ -1078,6 +1045,7 @@ class AiIntegration extends Feature
             if (\is_string($firstInput)) {
                 $firstInput = $this->truncateContentString($firstInput);
             }
+
             $kept = [$firstInput];
         }
 
@@ -1233,12 +1201,12 @@ class AiIntegration extends Feature
 
     private function isDataUri(string $value): bool
     {
-        return (bool)preg_match(self::DATA_URI_PATTERN, $value);
+        return (bool) preg_match(self::DATA_URI_PATTERN, $value);
     }
 
     private function isBase64String(string $value): bool
     {
-        return (bool)preg_match(self::BASE64_PATTERN, $value);
+        return (bool) preg_match(self::BASE64_PATTERN, $value);
     }
 
     /**
@@ -1268,7 +1236,7 @@ class AiInvocationMeta
     /** @var string|null */
     public $model;
 
-    /** @var string|null */
+    /** @var string */
     public $prompt;
 
     /** @var array */
@@ -1281,7 +1249,7 @@ class AiInvocationMeta
         string $agentName,
         ?string $providerName,
         ?string $model,
-        ?string $prompt,
+        string $prompt,
         array $attachments,
         ?string $toolDefinitions
     ) {
