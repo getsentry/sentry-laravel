@@ -373,6 +373,8 @@ class AiIntegrationTest extends TestCase
         $this->assertEquals('gen_ai.chat', $spans[2]->getOp());
         $this->assertEquals('gen_ai.execute_tool', $spans[3]->getOp());
         $this->assertEquals('gen_ai.chat', $spans[4]->getOp());
+        $this->assertArrayHasKey('gen_ai.tool.definitions', $spans[1]->getData());
+        $this->assertArrayHasKey('gen_ai.tool.definitions', $spans[2]->getData());
         $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
         $this->assertEquals('tool_calls', $chatSpans[0]->getData()['gen_ai.response.finish_reasons']);
         $this->assertEquals('stop', $chatSpans[1]->getData()['gen_ai.response.finish_reasons']);
@@ -476,7 +478,7 @@ class AiIntegrationTest extends TestCase
         $transaction = $this->startTransaction();
         $agent = new TestAgent();
         $provider = new TestProvider();
-        $prompt = new \Laravel\Ai\Prompts\AgentPrompt($agent, 'Compare images.', [new TestLocalImage('/tmp/photo.png', 'image/png'), new TestRemoteImage('https://example.com/photo.jpg', 'image/jpeg')], $provider, 'gpt-4o');
+        $prompt = new \Laravel\Ai\Prompts\AgentPrompt($agent, 'Compare images.', collect([new TestLocalImage('/tmp/photo.png', 'image/png'), new TestRemoteImage('https://example.com/photo.jpg', 'image/jpeg')]), $provider, 'gpt-4o');
         $step = (object)['text' => 'Done.', 'toolCalls' => [], 'toolResults' => [], 'finishReason' => (object)['value' => 'stop'],
             'usage' => new Usage(100, 20), 'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06']];
         $response = (object)['text' => 'Done.', 'toolCalls' => [], 'toolResults' => [], 'steps' => [$step],

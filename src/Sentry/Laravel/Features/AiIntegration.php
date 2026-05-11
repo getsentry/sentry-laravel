@@ -581,8 +581,8 @@ class AiIntegration extends Feature
     {
         if ($conversationId !== null) {
             $invocation = $this->invocations[$invocationId];
-            $spans = [$invocation->span, ...$invocation->toolSpans, ...$invocation->chatSpans];
-    
+            $spans = array_merge([$invocation->span], $invocation->toolSpans, $invocation->chatSpans);
+
             foreach ($spans as $span) {
                 $data = $span->getData();
                 $data['gen_ai.conversation.id'] = $conversationId;
@@ -593,7 +593,8 @@ class AiIntegration extends Feature
 
     private function resolveProviderUrlPrefix(\Laravel\Ai\Providers\Provider $provider): ?string
     {
-        $url = config("prism.providers.{$provider->driver()}.url");
+        $url = config("ai.providers.{$provider->name()}.url")
+            ?? config("prism.providers.{$provider->driver()}.url");
 
         return \is_string($url) && $url !== '' ? $url : null;
     }
@@ -836,6 +837,10 @@ class AiIntegration extends Feature
 
         $definitions = [];
         foreach ($tools as $tool) {
+            if (!$tool instanceof \Laravel\Ai\Contracts\Tool) {
+                continue;
+            }
+
             $definitions[] = $this->resolveToolDefinition($tool);
         }
 
