@@ -15,11 +15,8 @@ use Laravel\Ai\Events\InvokingTool;
 use Laravel\Ai\Events\PromptingAgent;
 use Laravel\Ai\Events\ToolInvoked;
 use Laravel\Ai\Prompts\AgentPrompt;
-use Laravel\Ai\Providers\Provider;
 use Laravel\Ai\Responses\AgentResponse;
 use Laravel\Ai\Responses\Data\Step;
-use Laravel\Ai\Responses\Data\ToolCall;
-use Laravel\Ai\Responses\Data\ToolResult;
 use Laravel\Ai\Responses\Data\Usage;
 use Laravel\Ai\Responses\TextResponse;
 use Sentry\SentrySdk;
@@ -106,7 +103,7 @@ class AiIntegration extends Feature
         }
 
         $provider = $event->prompt->provider;
-        $providerName = $provider instanceof Provider ? $provider->name() : null;
+        $providerName = is_a($provider, 'Laravel\Ai\Providers\Provider') ? $provider->name() : null;
         if (!empty($providerName)) {
             $data['gen_ai.provider.name'] = $providerName;
         }
@@ -148,7 +145,7 @@ class AiIntegration extends Feature
                 ->setOp('gen_ai.invoke_agent')
                 ->setData($data)
                 ->setOrigin('auto.ai.laravel')
-                ->setDescription('invoke_agent ' . ($model ?? 'unknown'))
+                ->setDescription('invoke_agent ' . $model)
         );
 
         $this->evictOldestIfNeeded($this->invocations);
@@ -164,7 +161,7 @@ class AiIntegration extends Feature
                 $attachments,
                 $toolDefinitions
             ),
-            $provider instanceof Provider ? $this->resolveProviderUrlPrefix($provider) : null,
+            is_a($provider, 'Laravel\Ai\Providers\Provider') ? $this->resolveProviderUrlPrefix($provider) : null,
             $isStreaming
         );
 
@@ -489,7 +486,7 @@ class AiIntegration extends Feature
         }
     }
 
-    private function resolveProviderUrlPrefix(Provider $provider): ?string
+    private function resolveProviderUrlPrefix(\Laravel\Ai\Providers\Provider $provider): ?string
     {
         // Try to get the URL from laravel AI config and then
         // from the prism config. Just using prism config here might not be enough if someone
@@ -637,7 +634,7 @@ class AiIntegration extends Feature
         }
 
         foreach ($source->toolCalls as $toolCall) {
-            if ($toolCall instanceof ToolCall) {
+            if (is_a($toolCall, 'Laravel\Ai\Responses\Data\ToolCall')) {
                 $parts[] = $this->buildToolCallPart($toolCall);
             }
         }
@@ -647,7 +644,7 @@ class AiIntegration extends Feature
         }
 
         foreach ($source->toolResults as $toolResult) {
-            if (!$toolResult instanceof ToolResult) {
+            if (!is_a($toolResult, 'Laravel\Ai\Responses\Data\ToolResult')) {
                 continue;
             }
             $result = $toolResult->result;
@@ -674,7 +671,10 @@ class AiIntegration extends Feature
         return $messages;
     }
 
-    private function buildToolCallPart(ToolCall $toolCall): array
+    /**
+     * @param \Laravel\Ai\Responses\Data\ToolCall $toolCall
+     */
+    private function buildToolCallPart(object $toolCall): array
     {
         $part = [
             'type' => 'tool_call',
