@@ -2,13 +2,19 @@
 
 namespace Sentry\Laravel\Features;
 
+use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Client\Events\ConnectionFailed;
 use Illuminate\Http\Client\Events\RequestSending;
 use Illuminate\Http\Client\Events\ResponseReceived;
+use Illuminate\JsonSchema\JsonSchemaTypeFactory;
+use Illuminate\JsonSchema\Types\ObjectType;
 use Illuminate\Support\Collection;
+use Laravel\Ai\Attributes\MaxTokens;
+use Laravel\Ai\Attributes\Temperature;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\HasTools;
+use Laravel\Ai\Contracts\Providers\TextProvider;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Events\AgentPrompted;
 use Laravel\Ai\Events\EmbeddingsGenerated;
@@ -17,10 +23,18 @@ use Laravel\Ai\Events\InvokingTool;
 use Laravel\Ai\Events\PromptingAgent;
 use Laravel\Ai\Events\ToolInvoked;
 use Laravel\Ai\Prompts\AgentPrompt;
+use Laravel\Ai\Providers\Provider;
 use Laravel\Ai\Responses\AgentResponse;
 use Laravel\Ai\Responses\Data\Step;
-use Laravel\Ai\Responses\Data\Usage;
+use Laravel\Ai\Responses\Data\ToolCall;
+use Laravel\Ai\Responses\Data\ToolResult;
 use Laravel\Ai\Responses\TextResponse;
+use Sentry\Laravel\Features\Ai\AiInvocationData;
+use Sentry\Laravel\Features\Ai\AiInvocationMeta;
+use Sentry\Laravel\Features\Ai\AiMessage;
+use Sentry\Laravel\Features\Ai\AiMessagePart;
+use Sentry\Laravel\Features\Ai\AiSpanDataBag;
+use Sentry\Laravel\Util\BoundedOrderedMap;
 use Sentry\SentrySdk;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
@@ -52,14 +66,38 @@ class AiIntegration extends Feature
     /** Maximum tracked invocations before evicting oldest (prevents memory leaks in long-running processes). */
     private const MAX_TRACKED_INVOCATIONS = 100;
 
-    /** @var array<string, AiInvocationData> Per-agent-invocation state keyed by invocation ID. */
-    private $invocations = [];
+    /** @var BoundedOrderedMap<AiInvocationData> Per-agent-invocation state keyed by invocation ID. */
+    private $invocations;
 
-    /** @var array<string, array{span: Span, parentSpan: Span|null}> Per-tool-invocation state keyed by tool invocation ID. */
-    private $toolInvocations = [];
+    /** @var BoundedOrderedMap<array{span: Span, parentSpan: Span|null}> Per-tool-invocation state keyed by tool invocation ID. */
+    private $toolInvocations;
 
-    /** @var array<string, array{span: Span, parentSpan: Span|null}> Per-embeddings-invocation state keyed by invocation ID. */
-    private $embeddingsInvocations = [];
+    /** @var BoundedOrderedMap<array{span: Span, parentSpan: Span|null}> Per-embeddings-invocation state keyed by invocation ID. */
+    private $embeddingsInvocations;
+
+    public function __construct(Container $container)
+    {
+        parent::__construct($container);
+
+        $this->invocations = new BoundedOrderedMap(self::MAX_TRACKED_INVOCATIONS, function (AiInvocationData $invocation): void {
+            if ($invocation->activeChatSpan !== null) {
+                $invocation->activeChatSpan->setStatus(SpanStatus::deadlineExceeded());
+                $invocation->activeChatSpan->finish();
+            }
+
+            $invocation->span->setStatus(SpanStatus::deadlineExceeded());
+            $invocation->span->finish();
+        });
+
+        /** @param array{span: Span, parentSpan: Span|null} $invocation */
+        $finishEvictedSpanInvocation = function (array $invocation): void {
+            $invocation['span']->setStatus(SpanStatus::deadlineExceeded());
+            $invocation['span']->finish();
+        };
+
+        $this->toolInvocations = new BoundedOrderedMap(self::MAX_TRACKED_INVOCATIONS, $finishEvictedSpanInvocation);
+        $this->embeddingsInvocations = new BoundedOrderedMap(self::MAX_TRACKED_INVOCATIONS, $finishEvictedSpanInvocation);
+    }
 
     public function isApplicable(): bool
     {
@@ -100,36 +138,28 @@ class AiIntegration extends Feature
         $model = $event->prompt->model;
         $isStreaming = is_a($event, 'Laravel\Ai\Events\StreamingAgent');
 
-        $data = [
+        $data = new AiSpanDataBag([
             'gen_ai.operation.name' => 'invoke_agent',
             'gen_ai.agent.name' => $agentName,
             'gen_ai.request.model' => $model
-        ];
+        ]);
 
         if ($isStreaming) {
-            $data['gen_ai.response.streaming'] = true;
+            $data->set('gen_ai.response.streaming', true);
         }
 
         $provider = $event->prompt->provider;
-        $providerName = is_a($provider, 'Laravel\Ai\Providers\Provider') ? $provider->name() : null;
-        if (!empty($providerName)) {
-            $data['gen_ai.provider.name'] = $providerName;
-        }
+        $providerName = is_a($provider, Provider::class) ? $provider->name() : null;
+        $data->set('gen_ai.provider.name', $providerName);
 
-        $temperature = $this->resolveAgentAttribute($event->prompt->agent, 'Laravel\Ai\Attributes\Temperature');
-        if ($temperature !== null) {
-            $data['gen_ai.request.temperature'] = $temperature;
-        }
+        $temperature = $this->resolveAgentAttribute($event->prompt->agent, Temperature::class);
+        $data->set('gen_ai.request.temperature', $temperature);
 
-        $maxTokens = $this->resolveAgentAttribute($event->prompt->agent, 'Laravel\Ai\Attributes\MaxTokens');
-        if ($maxTokens !== null) {
-            $data['gen_ai.request.max_tokens'] = $maxTokens;
-        }
+        $maxTokens = $this->resolveAgentAttribute($event->prompt->agent, MaxTokens::class);
+        $data->set('gen_ai.request.max_tokens', $maxTokens);
 
         $toolDefinitions = $this->resolveToolDefinitions($event->prompt->agent);
-        if ($toolDefinitions !== null) {
-            $data['gen_ai.tool.definitions'] = $toolDefinitions;
-        }
+        $data->set('gen_ai.tool.definitions', $toolDefinitions);
 
         $attachments = $this->resolveAttachments($event->prompt);
 
@@ -138,39 +168,36 @@ class AiIntegration extends Feature
                 $event->prompt->prompt,
                 $attachments
             );
-            if (!empty($inputMessages)) {
-                $data['gen_ai.input.messages'] = $this->truncateMessages($inputMessages);
-            }
+            $data->set('gen_ai.input.messages', $this->truncateMessages($inputMessages));
 
             $instructions = (string) $event->prompt->agent->instructions();
-            if (!empty($instructions)) {
-                $data['gen_ai.system_instructions'] = $this->truncateString($instructions);
-            }
+            $data->set('gen_ai.system_instructions', $this->truncateString($instructions));
         }
 
         $agentSpan = $parentSpan->startChild(
             SpanContext::make()
                 ->setOp('gen_ai.invoke_agent')
-                ->setData($data)
+                ->setData($data->toArray())
                 ->setOrigin('auto.ai.laravel')
                 ->setDescription('invoke_agent ' . $model)
         );
 
-        $this->evictOldestIfNeeded($this->invocations);
-
-        $this->invocations[$event->invocationId] = new AiInvocationData(
-            $agentSpan,
-            $parentSpan,
-            new AiInvocationMeta(
-                $agentName,
-                $providerName,
-                $model,
-                $event->prompt->prompt,
-                $attachments,
-                $toolDefinitions
-            ),
-            is_a($provider, 'Laravel\Ai\Providers\Provider') ? $this->resolveProviderUrlPrefix($provider) : null,
-            $isStreaming
+        $this->invocations->set(
+            $event->invocationId,
+            new AiInvocationData(
+                $agentSpan,
+                $parentSpan,
+                new AiInvocationMeta(
+                    $agentName,
+                    $providerName,
+                    $model,
+                    $event->prompt->prompt,
+                    $attachments,
+                    $toolDefinitions
+                ),
+                $this->resolveProviderUrlPrefix($provider),
+                $isStreaming
+            )
         );
 
         SentrySdk::getCurrentHub()->setSpan($agentSpan);
@@ -179,46 +206,36 @@ class AiIntegration extends Feature
     public function handleAgentPromptedForTracing(AgentPrompted $event): void
     {
         $invocationId = $event->invocationId;
-        if (!isset($this->invocations[$invocationId])) {
+        $invocation = $this->invocations->get($invocationId);
+        if ($invocation === null) {
             return;
         }
 
-        $this->finishActiveChatSpan($invocationId);
+        $invocation->finishActiveChatSpan();
 
-        $invocation = $this->invocations[$invocationId];
         $agentSpan = $invocation->span;
         $parentSpan = $invocation->parentSpan;
 
         $conversationId = $event->response->conversationId;
 
-        $this->enrichChatSpansWithStepData($invocationId, $event->response);
-        $this->setConversationIdOnSpans($invocationId, $conversationId);
+        $this->enrichChatSpansWithStepData($invocation, $event->response);
+        $invocation->setConversationIdOnSpans($conversationId);
 
-        $data = $agentSpan->getData();
-
-        $responseModel = $event->response->meta->model;
-        if ($responseModel !== null) {
-            $data['gen_ai.response.model'] = $responseModel;
-        }
-
-        $responseProvider = $event->response->meta->provider;
-        if ($responseProvider !== null && !isset($data['gen_ai.provider.name'])) {
-            $data['gen_ai.provider.name'] = $responseProvider;
-        }
-
-        $this->setTokenUsage($data, $event->response->usage);
+        $data = new AiSpanDataBag($agentSpan->getData());
+        $data->set('gen_ai.response.model', $event->response->meta->model);
+        $data->setIfNotExists('gen_ai.provider.name', $event->response->meta->provider);
+        $data->setTokenUsage($event->response->usage);
+        
         if ($this->shouldSendDefaultPii()) {
             $outputMessages = $this->buildOutputMessages($event->response);
-            if (!empty($outputMessages)) {
-                $data['gen_ai.output.messages'] = $this->truncateMessages($outputMessages);
-            }
+            $data->set('gen_ai.output.messages', $this->truncateMessages($outputMessages));
         }
 
-        $agentSpan->setData($data);
+        $agentSpan->setData($data->toArray());
         $agentSpan->setStatus(SpanStatus::ok());
         $agentSpan->finish();
 
-        unset($this->invocations[$invocationId]);
+        $this->invocations->pull($invocationId);
 
         if ($parentSpan !== null) {
             SentrySdk::getCurrentHub()->setSpan($parentSpan);
@@ -231,45 +248,32 @@ class AiIntegration extends Feature
             return;
         }
 
-        $invocationId = $this->findMatchingInvocation($event->request->url());
-        if ($invocationId === null || !isset($this->invocations[$invocationId])) {
+        $invocation = $this->findMatchingInvocation($event->request->url());
+        if ($invocation === null) {
             return;
         }
 
-        $this->finishActiveChatSpan($invocationId);
+        $invocation->finishActiveChatSpan();
 
-        $invocation = $this->invocations[$invocationId];
         $meta = $invocation->meta;
         $model = $meta->model;
 
-        $data = [
+        $data = new AiSpanDataBag([
             'gen_ai.operation.name' => 'chat',
-        ];
+        ]);
 
         if ($invocation->isStreaming) {
-            $data['gen_ai.response.streaming'] = true;
+            $data->set('gen_ai.response.streaming', true);
         }
-
-        if ($model !== null) {
-            $data['gen_ai.request.model'] = $model;
-        }
-
-        if ($meta->agentName !== null) {
-            $data['gen_ai.agent.name'] = $meta->agentName;
-        }
-
-        if ($meta->providerName !== null) {
-            $data['gen_ai.provider.name'] = $meta->providerName;
-        }
-
-        if ($meta->toolDefinitions !== null) {
-            $data['gen_ai.tool.definitions'] = $meta->toolDefinitions;
-        }
+        $data->set('gen_ai.request.model', $model);
+        $data->set('gen_ai.agent.name', $meta->agentName);
+        $data->set('gen_ai.provider.name', $meta->providerName);
+        $data->set('gen_ai.tool.definitions', $meta->toolDefinitions);
 
         $chatSpan = $invocation->span->startChild(
             SpanContext::make()
                 ->setOp('gen_ai.chat')
-                ->setData($data)
+                ->setData($data->toArray())
                 ->setOrigin('auto.ai.laravel')
                 ->setDescription('chat ' . ($model ?? 'unknown'))
         );
@@ -294,40 +298,34 @@ class AiIntegration extends Feature
         $toolDef = $this->resolveToolDefinition($event->tool);
         $agentName = class_basename($event->agent);
 
-        $data = [
+        $data = new AiSpanDataBag([
             'gen_ai.operation.name' => 'execute_tool',
             'gen_ai.tool.name' => $toolDef['name'],
             'gen_ai.tool.type' => $toolDef['type'],
             'gen_ai.agent.name' => $agentName,
-        ];
-
-        if (isset($toolDef['description'])) {
-            $data['gen_ai.tool.description'] = $toolDef['description'];
-        }
+        ]);
+        $data->set('gen_ai.tool.description', $toolDef['description'] ?? null);
 
         if ($this->shouldSendDefaultPii() && !empty($event->arguments)) {
-            $encoded = json_encode($event->arguments);
-            if ($encoded !== false) {
-                $data['gen_ai.tool.call.arguments'] = $this->truncateString($encoded);
-            }
+            $data->set('gen_ai.tool.call.arguments', $this->truncateString($this->encodeIfNotString($event->arguments)));
         }
 
         $span = $parentSpan->startChild(
             SpanContext::make()
                 ->setOp('gen_ai.execute_tool')
-                ->setData($data)
+                ->setData($data->toArray())
                 ->setOrigin('auto.ai.laravel')
                 ->setDescription('execute_tool ' . $toolDef['name'])
         );
 
-        $this->evictOldestIfNeeded($this->toolInvocations);
-        $this->toolInvocations[$event->toolInvocationId] = [
+        $this->toolInvocations->set($event->toolInvocationId, [
             'span' => $span,
             'parentSpan' => $parentSpan,
-        ];
+        ]);
 
-        if (isset($this->invocations[$event->invocationId])) {
-            $this->invocations[$event->invocationId]->toolSpans[] = $span;
+        $invocation = $this->invocations->get($event->invocationId);
+        if ($invocation !== null) {
+            $invocation->toolSpans[] = $span;
         }
 
         SentrySdk::getCurrentHub()->setSpan($span);
@@ -335,25 +333,19 @@ class AiIntegration extends Feature
 
     public function handleToolInvokedForTracing(ToolInvoked $event): void
     {
-        $toolInvocationId = $event->toolInvocationId;
-        if (!isset($this->toolInvocations[$toolInvocationId])) {
+        $invocation = $this->toolInvocations->pull($event->toolInvocationId);
+        if ($invocation === null) {
             return;
         }
 
-        $invocation = $this->toolInvocations[$toolInvocationId];
-        unset($this->toolInvocations[$toolInvocationId]);
-
         $span = $invocation['span'];
-        $data = $span->getData();
+        $data = new AiSpanDataBag($span->getData());
 
-        if ($this->shouldSendDefaultPii() && $event->result !== null) {
-            $resultString = \is_string($event->result) ? $event->result : json_encode($event->result);
-            if ($resultString !== false) {
-                $data['gen_ai.tool.call.result'] = $this->truncateString($resultString);
-            }
+        if ($this->shouldSendDefaultPii()) {
+            $data->set('gen_ai.tool.call.result', $this->truncateString($this->encodeIfNotString($event->result)));
         }
 
-        $span->setData($data);
+        $span->setData($data->toArray());
         $span->setStatus(SpanStatus::ok());
         $span->finish();
 
@@ -373,29 +365,28 @@ class AiIntegration extends Feature
             return;
         }
 
-        $data = [
+        $data = new AiSpanDataBag([
             'gen_ai.operation.name' => 'embeddings',
             'gen_ai.request.model' => $event->model,
             'gen_ai.provider.name' => $event->provider->name(),
-        ];
+        ]);
 
-        if ($this->shouldSendDefaultPii() && !empty($event->prompt->inputs)) {
-            $data['gen_ai.embeddings.input'] = $this->truncateEmbeddingInputs($event->prompt->inputs);
+        if ($this->shouldSendDefaultPii()) {
+            $data->set('gen_ai.embeddings.input', $this->truncateEmbeddingInputs($event->prompt->inputs));
         }
 
         $span = $parentSpan->startChild(
             SpanContext::make()
                 ->setOp('gen_ai.embeddings')
-                ->setData($data)
+                ->setData($data->toArray())
                 ->setOrigin('auto.ai.laravel')
                 ->setDescription('embeddings ' . $event->model)
         );
 
-        $this->evictOldestIfNeeded($this->embeddingsInvocations);
-        $this->embeddingsInvocations[$event->invocationId] = [
+        $this->embeddingsInvocations->set($event->invocationId, [
             'span' => $span,
             'parentSpan' => $parentSpan,
-        ];
+        ]);
 
         SentrySdk::getCurrentHub()->setSpan($span);
     }
@@ -403,31 +394,19 @@ class AiIntegration extends Feature
     public function handleEmbeddingsGeneratedForTracing(EmbeddingsGenerated $event): void
     {
         $invocationId = $event->invocationId;
-        if (!isset($this->embeddingsInvocations[$invocationId])) {
+        $invocation = $this->embeddingsInvocations->pull($invocationId);
+
+        if ($invocation === null) {
             return;
         }
 
-        $invocation = $this->embeddingsInvocations[$invocationId];
-        unset($this->embeddingsInvocations[$invocationId]);
-
         $span = $invocation['span'];
-        $data = $span->getData();
+        $data = new AiSpanDataBag($span->getData());
+        $data->set('gen_ai.response.model', $event->response->meta->model);
+        $data->setIfNotExists('gen_ai.provider.name', $event->response->meta->provider);
+        $data->setNonZero('gen_ai.usage.input_tokens', $event->response->tokens);
 
-        $responseModel = $event->response->meta->model;
-        if ($responseModel !== null) {
-            $data['gen_ai.response.model'] = $responseModel;
-        }
-
-        $responseProvider = $event->response->meta->provider;
-        if ($responseProvider !== null && !isset($data['gen_ai.provider.name'])) {
-            $data['gen_ai.provider.name'] = strtolower($responseProvider);
-        }
-
-        if ($event->response->tokens > 0) {
-            $data['gen_ai.usage.input_tokens'] = $event->response->tokens;
-        }
-
-        $span->setData($data);
+        $span->setData($data->toArray());
         $span->setStatus(SpanStatus::ok());
         $span->finish();
 
@@ -438,55 +417,39 @@ class AiIntegration extends Feature
 
     public function handleHttpResponseReceived(ResponseReceived $event): void
     {
-        $invocationId = $this->findMatchingInvocation($event->request->url());
-        if ($invocationId !== null) {
+        $invocation = $this->findMatchingInvocation($event->request->url());
+        if ($invocation !== null) {
             $status = SpanStatus::createFromHttpStatusCode($event->response->status());
-            $this->finishActiveChatSpan($invocationId, $status);
+            $invocation->finishActiveChatSpan($status);
         }
     }
 
     public function handleHttpConnectionFailed(ConnectionFailed $event): void
     {
-        $invocationId = $this->findMatchingInvocation($event->request->url());
-        if ($invocationId !== null) {
-            $this->finishActiveChatSpan($invocationId, SpanStatus::internalError());
+        $invocation = $this->findMatchingInvocation($event->request->url());
+        if ($invocation !== null) {
+            $invocation->finishActiveChatSpan(SpanStatus::internalError());
         }
     }
 
-    private function findMatchingInvocation(string $url): ?string
+    private function findMatchingInvocation(string $url): ?AiInvocationData
     {
-        foreach (array_reverse($this->invocations, true) as $invocationId => $invocation) {
+        foreach ($this->invocations->newestFirst() as $invocationId => $invocation) {
             if ($invocation->urlPrefix !== null && substr($url, 0, \strlen($invocation->urlPrefix)) === $invocation->urlPrefix) {
-                return $invocationId;
+                return $invocation;
             }
         }
 
         return null;
     }
 
-    private function finishActiveChatSpan(string $invocationId, ?SpanStatus $status = null): void
-    {
-        $invocation = $this->invocations[$invocationId];
-        $chatSpan = $invocation->activeChatSpan;
-        if ($chatSpan === null) {
-            return;
-        }
-
-        $invocation->activeChatSpan = null;
-
-        $chatSpan->setStatus($status ?? SpanStatus::ok());
-        $chatSpan->finish();
-
-        SentrySdk::getCurrentHub()->setSpan($invocation->span);
-    }
-
     /**
      * Enrich chat spans with step data. With steps (non-streaming), each step maps 1:1 to a chat span.
      * Without steps (streaming), response-level data is used instead.
      */
-    private function enrichChatSpansWithStepData(string $invocationId, AgentResponse $response): void
+    private function enrichChatSpansWithStepData(AiInvocationData $invocation, AgentResponse $response): void
     {
-        $chatSpans = $this->invocations[$invocationId]->chatSpans;
+        $chatSpans = $invocation->chatSpans;
         if (empty($chatSpans)) {
             return;
         }
@@ -497,34 +460,24 @@ class AiIntegration extends Feature
         $steps = $response->steps;
 
         foreach ($chatSpans as $index => $chatSpan) {
-            $data = $chatSpan->getData();
+            $data = new AiSpanDataBag($chatSpan->getData());
             $step = $steps[$index] ?? null;
 
             if ($step !== null) {
-                $model = $step->meta->model ?? null;
+                $model = $step->meta->model;
                 $usage = $step->usage;
-                $finishReason = $step->finishReason ?? null;
+                $data->set('gen_ai.response.finish_reasons', $step->finishReason->value);
             } else {
-                $model = $response->meta->model ?? null;
+                $model = $response->meta->model;
                 $usage = \count($chatSpans) === 1 ? $response->usage : null;
-                $finishReason = null;
             }
-
-            if ($model !== null) {
-                $data['gen_ai.response.model'] = $model;
-            }
-
-            if ($usage !== null) {
-                $this->setTokenUsage($data, $usage);
-            }
-
-            if ($finishReason !== null) {
-                $data['gen_ai.response.finish_reasons'] = $finishReason->value;
-            }
+            
+            $data->set('gen_ai.response.model', $model);
+            $data->setTokenUsage($usage);
 
             if ($this->shouldSendDefaultPii()) {
                 if ($index === 0) {
-                    $meta = $this->invocations[$invocationId]->meta;
+                    $meta = $invocation->meta;
                     $inputMessages = $this->buildUserInputMessageFromParts(
                         $meta->prompt,
                         $meta->attachments
@@ -535,41 +488,27 @@ class AiIntegration extends Feature
                     // Streaming without steps: use response output as input for subsequent chat spans
                     $inputMessages = $this->buildOutputMessages($response);
                 }
-
-                if (!empty($inputMessages)) {
-                    $data['gen_ai.input.messages'] = $this->truncateMessages($inputMessages);
-                }
+                
+                $data->set('gen_ai.input.messages', $this->truncateMessages($inputMessages));
 
                 $outputSource = $step ?? $response;
 
                 $outputMessages = $this->buildOutputMessages($outputSource);
-                if (!empty($outputMessages)) {
-                    $data['gen_ai.output.messages'] = $this->truncateMessages($outputMessages);
-                }
+                $data->set('gen_ai.output.messages', $this->truncateMessages($outputMessages));
             }
 
-            $chatSpan->setData($data);
+            $chatSpan->setData($data->toArray());
         }
     }
 
-    private function setConversationIdOnSpans(string $invocationId, ?string $conversationId): void
+    /**
+     * @param Provider|TextProvider $provider
+     */
+    private function resolveProviderUrlPrefix($provider): ?string
     {
-        if ($conversationId === null) {
-            return;
+        if (!$provider instanceof Provider) {
+            return null;
         }
-
-        $invocation = $this->invocations[$invocationId];
-        $spans = [$invocation->span];
-        $spans = array_merge($spans, $invocation->toolSpans, $invocation->chatSpans);
-        foreach ($spans as $span) {
-            $data = $span->getData();
-            $data['gen_ai.conversation.id'] = $conversationId;
-            $span->setData($data);
-        }
-    }
-
-    private function resolveProviderUrlPrefix(\Laravel\Ai\Providers\Provider $provider): ?string
-    {
         // Try to get the URL from laravel AI config and then
         // from the prism config. Just using prism config here might not be enough if someone
         // configures values in config/ai.php
@@ -580,7 +519,7 @@ class AiIntegration extends Feature
     }
 
     /**
-     * @return array<int, array<string, mixed>>
+     * @return AiMessagePart[]
      */
     private function resolveAttachments(AgentPrompt $prompt): array
     {
@@ -600,10 +539,7 @@ class AiIntegration extends Feature
         return $parts;
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    private function transformAttachment(object $attachment): array
+    private function transformAttachment(object $attachment): AiMessagePart
     {
         $name = method_exists($attachment, 'name') ? $attachment->name() : null;
         $mimeType = method_exists($attachment, 'mimeType')
@@ -647,30 +583,22 @@ class AiIntegration extends Feature
             $type = 'blob';
             $content = self::BLOB_SUBSTITUTE;
         }
-
-        $part = [
-            'modality' => $modality,
-            'type' => $type,
-            'content' => $content,
-        ];
-        if ($name !== null) {
-            $part['name'] = $name;
-        }
-        if ($mimeType !== null) {
-            $part['mime_type'] = $mimeType;
-        }
-
-        return $part;
+        
+        return (new AiMessagePart($type))
+            ->setModality($modality)
+            ->setContent($content)
+            ->setName($name)
+            ->setMimeType($mimeType);
     }
 
     /**
-     * @param array<int, array<string, mixed>> $attachmentParts
-     * @return array<int, array<string, mixed>>
+     * @param AiMessagePart[] $attachmentParts
+     * @return AiMessage[]
      */
     private function buildUserInputMessageFromParts(string $promptText, array $attachmentParts): array
     {
         $parts = $promptText !== ''
-            ? [['type' => 'text', 'content' => $promptText]]
+            ? [(new AiMessagePart('text'))->setContent($promptText)]
             : [];
 
         $parts = array_merge($parts, $attachmentParts);
@@ -679,14 +607,12 @@ class AiIntegration extends Feature
             return [];
         }
 
-        return [
-            ['role' => 'user', 'parts' => $parts],
-        ];
+        return [new AiMessage('user', $parts)];
     }
 
     /**
      * @param array<int, Step>|Collection<int, Step> $steps
-     * @return array<int, array<string, mixed>>
+     * @return AiMessage[]
      */
     private function buildChatInputMessages($steps, int $index): array
     {
@@ -703,73 +629,47 @@ class AiIntegration extends Feature
      * Build output messages from a TextResponse or Step.
      *
      * @param TextResponse|Step $source
-     * @return array<int, array<string, mixed>>
+     * @return AiMessage[]
      */
     private function buildOutputMessages($source): array
     {
         $messages = [];
         $parts = [];
-
-        $text = $source->text;
-        if ($text !== '') {
-            $parts[] = ['type' => 'text', 'content' => $text];
+        if ($source->text !== '') {
+            $parts[] = (new AiMessagePart('text'))->setContent($source->text);
         }
-
+        
         foreach ($source->toolCalls as $toolCall) {
-            if (is_a($toolCall, 'Laravel\Ai\Responses\Data\ToolCall')) {
-                $parts[] = $this->buildToolCallPart($toolCall);
+            if (is_a($toolCall, ToolCall::class)) {
+                $parts[] = (new AiMessagePart('tool_call'))
+                    ->setId($toolCall->id)
+                    ->setName($toolCall->name)
+                    ->setArguments($this->encodeIfNotString($toolCall->arguments));
             }
         }
-
+        
         if (!empty($parts)) {
-            $messages[] = ['role' => 'assistant', 'parts' => $parts];
+            $messages[] = new AiMessage('assistant', $parts);
         }
-
+        
         foreach ($source->toolResults as $toolResult) {
-            if (!is_a($toolResult, 'Laravel\Ai\Responses\Data\ToolResult')) {
+            if (!is_a($toolResult, ToolResult::class)) {
                 continue;
             }
-            $result = $toolResult->result;
-            if ($result === null) {
+            $resultContent = $this->encodeIfNotString($toolResult->result);
+            if ($resultContent === null) {
                 continue;
             }
-
-            $resultContent = \is_string($result) ? $result : json_encode($result);
-            if ($resultContent === false) {
-                continue;
-            }
-
-            $messages[] = [
-                'role' => 'tool',
-                'parts' => [[
-                    'type' => 'tool_call_response',
-                    'content' => $resultContent,
-                    'id' => $toolResult->id,
-                    'name' => $toolResult->name,
-                ]]
-            ];
+            
+            $messages[] = new AiMessage('tool', [
+                (new AiMessagePart('tool_call_response'))
+                    ->setContent($resultContent)
+                    ->setId($toolResult->id)
+                    ->setName($toolResult->name)
+            ]);
         }
-
+        
         return $messages;
-    }
-
-    /**
-     * @param \Laravel\Ai\Responses\Data\ToolCall $toolCall
-     */
-    private function buildToolCallPart(object $toolCall): array
-    {
-        $part = [
-            'type' => 'tool_call',
-            'id' => $toolCall->id,
-            'name' => $toolCall->name,
-        ];
-
-        $encoded = \json_encode($toolCall->arguments);
-        if ($encoded !== false) {
-            $part['arguments'] = $encoded;
-        }
-
-        return $part;
     }
 
     private function resolveToolDefinitions(Agent $agent): ?string
@@ -787,10 +687,8 @@ class AiIntegration extends Feature
         if (empty($definitions)) {
             return null;
         }
-
-        $encoded = json_encode($definitions);
-
-        return $encoded !== false ? $encoded : null;
+        
+        return $this->encodeIfNotString($definitions);
     }
 
     /**
@@ -810,17 +708,15 @@ class AiIntegration extends Feature
             $definition['description'] = $description;
         }
 
-        if (method_exists($tool, 'schema') && class_exists('Illuminate\JsonSchema\JsonSchemaTypeFactory')) {
-            try {
-                $factory = new \Illuminate\JsonSchema\JsonSchemaTypeFactory();
-                $properties = $tool->schema($factory);
-                if (!empty($properties) && \is_array($properties)) {
-                    $objectType = new \Illuminate\JsonSchema\Types\ObjectType($properties);
-                    $definition['parameters'] = $objectType->toArray();
-                }
-            } catch (\Throwable $e) {
-                // Ignore schema resolution failures.
+        try {
+            $factory = new JsonSchemaTypeFactory();
+            $properties = $tool->schema($factory);
+            if (!empty($properties)) {
+                $objectType = new ObjectType($properties);
+                $definition['parameters'] = $objectType->toArray();
             }
+        } catch (\Throwable $e) {
+            // Ignore schema resolution failures.
         }
 
         return $definition;
@@ -849,74 +745,12 @@ class AiIntegration extends Feature
         }
     }
 
-    /**
-     * @param array<string, mixed> $data
-     */
-    private function setTokenUsage(array &$data, Usage $usage): void
+    private function truncateString(?string $value, int $maxBytes = self::MAX_MESSAGE_BYTES): ?string
     {
-        $inputTokens = $usage->promptTokens ?? 0;
-        if ($inputTokens > 0) {
-            $data['gen_ai.usage.input_tokens'] = $inputTokens;
+        if ($value === null) {
+            return null;
         }
-
-        $outputTokens = $usage->completionTokens ?? 0;
-        if ($outputTokens > 0) {
-            $data['gen_ai.usage.output_tokens'] = $outputTokens;
-        }
-
-        $totalTokens = $inputTokens + $outputTokens;
-        if ($totalTokens > 0) {
-            $data['gen_ai.usage.total_tokens'] = $totalTokens;
-        }
-
-        $cachedTokens = $usage->cacheReadInputTokens ?? 0;
-        if ($cachedTokens > 0) {
-            $data['gen_ai.usage.input_tokens.cached'] = $cachedTokens;
-        }
-
-        $cacheWriteTokens = $usage->cacheWriteInputTokens ?? 0;
-        if ($cacheWriteTokens > 0) {
-            $data['gen_ai.usage.input_tokens.cache_write'] = $cacheWriteTokens;
-        }
-
-        $reasoningTokens = $usage->reasoningTokens ?? 0;
-        if ($reasoningTokens > 0) {
-            $data['gen_ai.usage.output_tokens.reasoning'] = $reasoningTokens;
-        }
-    }
-
-    /**
-     * @param array<string, mixed> $map
-     */
-    private function evictOldestIfNeeded(array &$map): void
-    {
-        while (\count($map) >= self::MAX_TRACKED_INVOCATIONS) {
-            reset($map);
-            $oldestKey = key($map);
-            if ($oldestKey === null) {
-                break;
-            }
-
-            $oldest = $map[$oldestKey];
-            if ($oldest instanceof AiInvocationData) {
-                if ($oldest->activeChatSpan !== null) {
-                    $oldest->activeChatSpan->setStatus(SpanStatus::deadlineExceeded());
-                    $oldest->activeChatSpan->finish();
-                }
-
-                $oldest->span->setStatus(SpanStatus::deadlineExceeded());
-                $oldest->span->finish();
-            } elseif (isset($oldest['span']) && $oldest['span'] instanceof Span) {
-                $oldest['span']->setStatus(SpanStatus::deadlineExceeded());
-                $oldest['span']->finish();
-            }
-
-            unset($map[$oldestKey]);
-        }
-    }
-
-    private function truncateString(string $value, int $maxBytes = self::MAX_MESSAGE_BYTES): string
-    {
+        
         if (\strlen($value) <= $maxBytes) {
             return $value;
         }
@@ -934,7 +768,7 @@ class AiIntegration extends Feature
     }
 
     /**
-     * @param array<int, array<string, mixed>> $messages
+     * @param AiMessage[] $messages
      */
     private function truncateMessages(array $messages): string
     {
@@ -942,63 +776,33 @@ class AiIntegration extends Feature
             return '[]';
         }
 
-        $messages = $this->redactBinaryInMessages($messages);
-
-        foreach ($messages as &$message) {
-            $message = $this->truncateMessageContent($message);
-        }
-        unset($message);
-
-        if (\count($messages) === 1) {
-            $encoded = json_encode($messages);
-
-            if ($encoded === false) {
-                return '[]';
+        foreach ($messages as $message) {
+            foreach ($message->getParts() as $part) {
+                if ($part->getType() === 'blob') {
+                    $part->setContent(self::BLOB_SUBSTITUTE);
+                } elseif ($part->getContent() !== null) {
+                    $part->setContent($this->redactBinaryInString($part->getContent()));
+                }
+                
+                if ($part->getContent() !== null) {
+                    $part->setContent($this->truncateContentString($part->getContent()));
+                }
+                if ($part->getArguments() !== null) {
+                    $part->setArguments($this->truncateContentString($part->getArguments()));
+                }
             }
-
-            return \strlen($encoded) <= self::MAX_MESSAGE_BYTES
-                ? $encoded
-                : $this->truncateString($encoded);
         }
 
+        // encode all messages and see if they fit into our bytes budget
         $encoded = json_encode($messages);
-
         if ($encoded !== false && \strlen($encoded) <= self::MAX_MESSAGE_BYTES) {
             return $encoded;
         }
 
+        // if they are too big then we just serialize the last message and truncate if necessary
         $lastMessage = end($messages);
-
         $encoded = json_encode([$lastMessage]);
-
-        if ($encoded === false) {
-            return '[]';
-        }
-
-        return $this->truncateString($encoded);
-    }
-
-    /**
-     * @param array<string, mixed> $message
-     * @return array<string, mixed>
-     */
-    private function truncateMessageContent(array $message): array
-    {
-        if (!isset($message['parts']) || !\is_array($message['parts'])) {
-            return $message;
-        }
-
-        foreach ($message['parts'] as &$part) {
-            if (isset($part['content']) && \is_string($part['content'])) {
-                $part['content'] = $this->truncateContentString($part['content']);
-            }
-            if (isset($part['arguments']) && \is_string($part['arguments'])) {
-                $part['arguments'] = $this->truncateContentString($part['arguments']);
-            }
-        }
-        unset($part);
-
-        return $message;
+        return $encoded !== false ? $this->truncateString($encoded) : '[]';
     }
 
     /**
@@ -1042,140 +846,9 @@ class AiIntegration extends Feature
         return $this->truncateString($encoded !== false ? $encoded : '[]');
     }
 
-    /**
-     * @param array<int, array<string, mixed>> $messages
-     * @return array<int, array<string, mixed>>
-     */
-    private function redactBinaryInMessages(array $messages): array
-    {
-        foreach ($messages as &$message) {
-            if (!isset($message['parts']) || !\is_array($message['parts'])) {
-                continue;
-            }
-
-            foreach ($message['parts'] as &$part) {
-                $part = $this->redactContentPart($part);
-            }
-            unset($part);
-        }
-        unset($message);
-
-        return $messages;
-    }
-
-    /**
-     * @param array<string, mixed> $part
-     * @return array<string, mixed>
-     */
-    private function redactContentPart(array $part): array
-    {
-        $type = $part['type'] ?? null;
-
-        if ($type === 'blob') {
-            $part['content'] = self::BLOB_SUBSTITUTE;
-            return $part;
-        }
-
-        if ($type === 'image' || $type === 'image_url') {
-            return $this->transformImagePart($part);
-        }
-
-        if (isset($part['content']) && \is_string($part['content'])) {
-            $part['content'] = $this->redactBinaryInString($part['content']);
-        }
-
-        if (isset($part['data']) && \is_string($part['data'])) {
-            if ($this->isBinaryString($part['data'])) {
-                $part['data'] = self::BLOB_SUBSTITUTE;
-            }
-        }
-
-        if (isset($part['source']) && \is_array($part['source'])) {
-            $part['source'] = $this->redactSourceField($part['source']);
-        }
-
-        return $part;
-    }
-
-    /**
-     * @param array<string, mixed> $part
-     * @return array<string, mixed>
-     */
-    private function transformImagePart(array $part): array
-    {
-        if (isset($part['image_url']) && \is_array($part['image_url'])) {
-            $url = $part['image_url']['url'] ?? '';
-            if ($this->isDataUri($url)) {
-                $metadata = $this->extractDataUriMetadata($url);
-                $part['type'] = 'blob';
-                $part['content'] = self::BLOB_SUBSTITUTE;
-                if ($metadata['mime_type'] !== null) {
-                    $part['mime_type'] = $metadata['mime_type'];
-                }
-                unset($part['image_url']);
-            } else {
-                $part['type'] = 'uri';
-                $part['content'] = $url;
-                unset($part['image_url']);
-            }
-            return $part;
-        }
-
-        if (isset($part['content']) && \is_string($part['content'])) {
-            if ($this->isBinaryString($part['content'])) {
-                $part['content'] = self::BLOB_SUBSTITUTE;
-                $part['type'] = 'blob';
-            }
-        }
-
-        if (isset($part['data']) && \is_string($part['data'])) {
-            if ($this->isBinaryString($part['data'])) {
-                $part['data'] = self::BLOB_SUBSTITUTE;
-                $part['type'] = 'blob';
-            }
-        }
-
-        if (isset($part['url']) && \is_string($part['url'])) {
-            if ($this->isDataUri($part['url'])) {
-                $metadata = $this->extractDataUriMetadata($part['url']);
-                $part['type'] = 'blob';
-                $part['content'] = self::BLOB_SUBSTITUTE;
-                if ($metadata['mime_type'] !== null) {
-                    $part['mime_type'] = $metadata['mime_type'];
-                }
-                unset($part['url']);
-            } else {
-                $part['type'] = 'uri';
-                $part['content'] = $part['url'];
-                unset($part['url']);
-            }
-        }
-
-        return $part;
-    }
-
-    /**
-     * @param array<string, mixed> $source
-     * @return array<string, mixed>
-     */
-    private function redactSourceField(array $source): array
-    {
-        $sourceType = $source['type'] ?? null;
-
-        if ($sourceType === 'base64') {
-            $source['data'] = self::BLOB_SUBSTITUTE;
-        }
-
-        if (isset($source['data']) && \is_string($source['data']) && $this->isBinaryString($source['data'])) {
-            $source['data'] = self::BLOB_SUBSTITUTE;
-        }
-
-        return $source;
-    }
-
     private function redactBinaryInString(string $value): string
     {
-        if ($this->isDataUri($value) || $this->isBase64String($value)) {
+        if ($this->isBinaryString($value)) {
             return self::BLOB_SUBSTITUTE;
         }
 
@@ -1198,84 +871,22 @@ class AiIntegration extends Feature
     }
 
     /**
-     * @return array{mime_type: string|null, encoding: string|null}
+     * Encodes arbitrary values using `json_encode` unless they are strings already, in which
+     * case the same string is returned.
+     * If `json_encode` fails, it will return null. The reason for that is that we don't distinguish
+     * a lot here between null and false, both mean that we do not want to include them as facts.
+     *
+     * @var mixed|null $data
      */
-    private function extractDataUriMetadata(string $dataUri): array
+    private function encodeIfNotString($data = null): ?string
     {
-        if (!preg_match(self::DATA_URI_PATTERN, $dataUri, $matches)) {
-            return ['mime_type' => null, 'encoding' => null];
+        if ($data === null) {
+            return null;
         }
-
-        return [
-            'mime_type' => !empty($matches[1]) ? $matches[1] : null,
-            'encoding' => !empty($matches[2]) ? $matches[2] : null,
-        ];
-    }
-}
-
-class AiInvocationData
-{
-    /** @var Span */
-    public $span;
-
-    /** @var Span|null */
-    public $parentSpan;
-
-    /** @var AiInvocationMeta */
-    public $meta;
-
-    /** @var string|null */
-    public $urlPrefix;
-
-    /** @var bool */
-    public $isStreaming;
-
-    /** @var Span|null */
-    public $activeChatSpan = null;
-
-    /** @var list<Span> */
-    public $chatSpans = [];
-
-    /** @var list<Span> */
-    public $toolSpans = [];
-
-    public function __construct(Span $span, ?Span $parentSpan, AiInvocationMeta $meta, ?string $urlPrefix, bool $isStreaming)
-    {
-        $this->span = $span;
-        $this->parentSpan = $parentSpan;
-        $this->meta = $meta;
-        $this->urlPrefix = $urlPrefix;
-        $this->isStreaming = $isStreaming;
-    }
-}
-
-class AiInvocationMeta
-{
-    /** @var string */
-    public $agentName;
-
-    /** @var string|null */
-    public $providerName;
-
-    /** @var string|null */
-    public $model;
-
-    /** @var string */
-    public $prompt;
-
-    /** @var array */
-    public $attachments;
-
-    /** @var string|null */
-    public $toolDefinitions;
-
-    public function __construct(string $agentName, ?string $providerName, ?string $model, string $prompt, array $attachments, ?string $toolDefinitions)
-    {
-        $this->agentName = $agentName;
-        $this->providerName = $providerName;
-        $this->model = $model;
-        $this->prompt = $prompt;
-        $this->attachments = $attachments;
-        $this->toolDefinitions = $toolDefinitions;
+        if (is_string($data)) {
+            return $data;
+        }
+        $encoded = \json_encode($data);
+        return $encoded !== false ? $encoded : null;
     }
 }
