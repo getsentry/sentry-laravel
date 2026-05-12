@@ -32,6 +32,7 @@ class AiMessage implements \JsonSerializable
         return $this->parts;
     }
 
+    #[\ReturnTypeWillChange]
     public function jsonSerialize()
     {
         return [
