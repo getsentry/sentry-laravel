@@ -404,7 +404,7 @@ class AiIntegration extends Feature
         $data = new AiSpanDataBag($span->getData());
         $data->set('gen_ai.response.model', $event->response->meta->model);
         $data->setIfNotExists('gen_ai.provider.name', $event->response->meta->provider);
-        $data->setNonZero('gen_ai.usage.input_tokens', $event->response->tokens ?? 0);
+        $data->setNonZero('gen_ai.usage.input_tokens', $event->response->tokens);
 
         $span->setData($data->toArray());
         $span->setStatus(SpanStatus::ok());

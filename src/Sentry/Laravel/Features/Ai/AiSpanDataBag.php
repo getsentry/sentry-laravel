@@ -33,9 +33,9 @@ class AiSpanDataBag
     }
 
 
-    public function setNonZero(string $key, int $value): void
+    public function setNonZero(string $key, ?int $value): void
     {
-        if ($value !== 0) {
+        if ($value !== null && $value !== 0) {
             $this->data[$key] = $value;
         }
     }
