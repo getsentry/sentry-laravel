@@ -21,12 +21,10 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: '8.4'
 
       - name: Install dependencies
         run: |
-          # laravel/ai: Only supported on PHP 8.4+
-          composer remove laravel/ai --dev --no-interaction --no-update
           composer update --no-progress --no-interaction --prefer-dist
 
       - name: Run script
@@ -42,12 +40,10 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: '8.4'
 
       - name: Install dependencies
         run: |
-          # laravel/ai: Only supported on PHP 8.4+
-          composer remove laravel/ai --dev --no-interaction --no-update
           composer update --no-progress --no-interaction --prefer-dist
 
       - name: Run script
