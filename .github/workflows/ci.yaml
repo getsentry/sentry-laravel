@@ -16,12 +16,45 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
+env:
+  COMPOSER_ADVISORY_LARAVEL_6_TO_9: >-
+    [
+      "PKSA-8qx3-n5y5-vvnd"
+    ]
+  COMPOSER_ADVISORY_COMMONMARK_1: >-
+    [
+      "PKSA-rqc2-tcc6-nc79",
+      "PKSA-fndg-qryc-dyc9"
+    ]
+  COMPOSER_ADVISORY_LARAVEL_6_SYMFONY: >-
+    [
+      "PKSA-365x-2zjk-pt47",
+      "PKSA-b35n-565h-rs4q",
+      "PKSA-rkkf-636k-qjb3",
+      "PKSA-wws7-mr54-jsny",
+      "PKSA-bf7t-jnpz-492k",
+      "PKSA-yc7t-91v9-99xs"
+    ]
+  COMPOSER_ADVISORY_LARAVEL_9_PHP_8_0_SYMFONY: >-
+    [
+      "PKSA-365x-2zjk-pt47",
+      "PKSA-b35n-565h-rs4q",
+      "PKSA-28rh-rzzn-djk4",
+      "PKSA-wtxr-p26d-nn42",
+      "PKSA-2n2k-66v2-bwg3",
+      "PKSA-wws7-mr54-jsny",
+      "PKSA-bf7t-jnpz-492k",
+      "PKSA-yc7t-91v9-99xs",
+      "PKSA-v5yj-8nmz-sk2q",
+      "PKSA-ft77-7h5f-p3r6",
+      "PKSA-b14r-zh1d-vdrc"
+    ]
+
 jobs:
   phpunit:
     runs-on: ubuntu-latest
     env:
       COMPOSER_NO_INTERACTION: 1
-      COMPOSER_NO_SECURITY_BLOCKING: 1
 
     strategy:
       fail-fast: false
@@ -60,7 +93,7 @@ jobs:
           coverage: pcov
           tools: composer:v2
 
-      - name: Install Composer dependencies
+      - name: Configure Composer dependencies
         run: |
           # friendsofphp/php-cs-fixer: No need for this package to run phpunit and it conflicts with older Laravel versions
           # laravel/pennant: Does not yet support Laravel 13
@@ -76,8 +109,14 @@ jobs:
             "orchestra/testbench:${{ matrix.packages.testbench }}" \
             --no-interaction --no-update
 
-          # Actually run the composer installation
-          composer install --no-interaction --prefer-dist --no-progress
+      - name: Resolve dependencies
+        run: composer update --no-progress --no-interaction --prefer-dist --no-install --no-scripts --no-audit
+
+      - name: Audit dependencies
+        run: composer audit --locked --no-interaction --format=table --abandoned=report
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Run phpunit
         run: vendor/bin/phpunit --coverage-clover=coverage.xml --coverage-filter=src/Sentry
@@ -91,7 +130,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       COMPOSER_NO_INTERACTION: 1
-      COMPOSER_NO_SECURITY_BLOCKING: 1
 
     strategy:
       fail-fast: false
@@ -170,7 +208,23 @@ jobs:
           coverage: pcov
           tools: composer:v2
 
-      - name: Install Composer dependencies
+      - name: Configure Laravel 6-9 advisory allowlist
+        if: ${{ contains(fromJSON('["^6.0","^7.0","^8.0","^9.0"]'), matrix.packages.laravel) }}
+        run: composer config --merge --json policy.advisories.ignore-id "$COMPOSER_ADVISORY_LARAVEL_6_TO_9"
+
+      - name: Configure CommonMark 1 advisory allowlist
+        if: ${{ matrix.packages.laravel == '^6.0' || matrix.packages.laravel == '^7.0' || (matrix.packages.laravel == '^8.0' && matrix.php == '7.3') }}
+        run: composer config --merge --json policy.advisories.ignore-id "$COMPOSER_ADVISORY_COMMONMARK_1"
+
+      - name: Configure Laravel 6 Symfony advisory allowlist
+        if: ${{ matrix.packages.laravel == '^6.0' }}
+        run: composer config --merge --json policy.advisories.ignore-id "$COMPOSER_ADVISORY_LARAVEL_6_SYMFONY"
+
+      - name: Configure Laravel 9 PHP 8.0 Symfony advisory allowlist
+        if: ${{ matrix.packages.laravel == '^9.0' && matrix.php == '8.0' }}
+        run: composer config --merge --json policy.advisories.ignore-id "$COMPOSER_ADVISORY_LARAVEL_9_PHP_8_0_SYMFONY"
+
+      - name: Configure Composer dependencies
         run: |
           # friendsofphp/php-cs-fixer: No need for this package to run phpunit and it conflicts with older Laravel versions
           # livewire/livewire: Only supported on Laravel 7.0 and above
@@ -187,8 +241,14 @@ jobs:
             "orchestra/testbench:${{ matrix.packages.testbench }}" \
             --no-interaction --no-update
 
-          # Actually run the composer installation
-          composer install --no-interaction --prefer-dist --no-progress
+      - name: Resolve dependencies
+        run: composer update --no-progress --no-interaction --prefer-dist --no-install --no-scripts --no-audit
+
+      - name: Audit dependencies
+        run: composer audit --locked --no-interaction --format=table --abandoned=report
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Run phpunit
         run: vendor/bin/phpunit --coverage-clover=coverage.xml --whitelist=src/Sentry
