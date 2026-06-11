@@ -1,5 +1,23 @@
 # Changelog
 
+## 4.26.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.26.0.
+
+### Features
+
+- Add support for overriding the monitor schedule used by `sentryMonitor`. [(#1136)](https://github.com/getsentry/sentry-laravel/pull/1136)
+
+### Bug Fixes
+
+- Update `sql_bindings` default values. [(#1135)](https://github.com/getsentry/sentry-laravel/pull/1135)
+- Preserve the first Livewire component as the transaction root when multiple Livewire components are handled in the same transaction. [(#1138)](https://github.com/getsentry/sentry-laravel/pull/1138)
+
+### Misc
+
+- Exclude additional development-only files from Composer distribution archives. [(#1139)](https://github.com/getsentry/sentry-laravel/pull/1139), [(#1140)](https://github.com/getsentry/sentry-laravel/pull/1140)
+- Bump the PHP SDK to version `4.28.0` [(#1144)](https://github.com/getsentry/sentry-laravel/pull/1144)
+
 ## 4.25.1
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.25.1.
