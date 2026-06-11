@@ -75,6 +75,13 @@
         }
     },
     "config": {
+        "policy": {
+            "advisiories": {
+                "ignore-id": {
+                    "PKSA-mdq4-51ck-6kdq": "SDK does not use the affected features at all"
+                }
+            }
+        },
         "sort-packages": true
     },
     "minimum-stability": "dev",
