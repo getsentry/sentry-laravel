@@ -5,5 +5,5 @@ namespace Sentry\Laravel;
 final class Version
 {
     public const SDK_IDENTIFIER = 'sentry.php.laravel';
-    public const SDK_VERSION = '4.25.1';
+    public const SDK_VERSION = '4.26.0';
 }
