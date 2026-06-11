@@ -76,9 +76,8 @@
     },
     "config": {
         "policy": {
-            "advisiories": {
+            "advisories": {
                 "ignore-id": ["PKSA-mdq4-51ck-6kdq"]
-                }
             }
         },
         "sort-packages": true
