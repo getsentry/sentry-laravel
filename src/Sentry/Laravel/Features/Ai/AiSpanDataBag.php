@@ -40,24 +40,6 @@ class AiSpanDataBag
         }
     }
 
-    public function setJsonEncoded(string $key, $value, int $maxLength): void
-    {
-        $encoded = \json_encode($value);
-        if ($encoded !== false) {
-            $this->setWithTruncation($key, $encoded, $maxLength);
-        }
-    }
-
-    public function setWithTruncation(string $key, ?string $value, int $maxLength): void
-    {
-        $this->set($key, $this->truncateString($value, $maxLength));
-    }
-
-    public function contains(string $key): bool
-    {
-        return isset($this->data[$key]);
-    }
-
     public function setTokenUsage(?Usage $usage): void
     {
         if ($usage === null) {
@@ -79,14 +61,5 @@ class AiSpanDataBag
     public function toArray(): array
     {
         return $this->data;
-    }
-
-    private function truncateString(string $value, int $maxBytes): string
-    {
-        if (\strlen($value) <= $maxBytes) {
-            return $value;
-        }
-
-        return substr($value, 0, $maxBytes) . '...(truncated)';
     }
 }
