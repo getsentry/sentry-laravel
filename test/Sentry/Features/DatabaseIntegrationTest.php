@@ -41,6 +41,32 @@ class DatabaseIntegrationTest extends TestCase
         ]);
     }
 
+    protected function usesPostgreSQL($app): void
+    {
+        $app['config']->set('database.default', 'pgsql');
+        $app['config']->set('database.connections.pgsql', [
+            'driver' => 'pgsql',
+            'host' => 'host-pgsql',
+            'port' => 5432,
+            'username' => 'user-pgsql',
+            'password' => 'password',
+            'database' => 'db-pgsql',
+        ]);
+    }
+
+    protected function usesSqlServer($app): void
+    {
+        $app['config']->set('database.default', 'sqlsrv');
+        $app['config']->set('database.connections.sqlsrv', [
+            'driver' => 'sqlsrv',
+            'host' => 'host-sqlsrv',
+            'port' => 1433,
+            'username' => 'user-sqlsrv',
+            'password' => 'password',
+            'database' => 'db-sqlsrv',
+        ]);
+    }
+
     /**
      * @define-env usesMySQL
      */
@@ -55,6 +81,7 @@ class DatabaseIntegrationTest extends TestCase
         $this->assertEquals('db.sql.query', $span->getOp());
         $this->assertEquals('host-mysql', $span->getData()['server.address']);
         $this->assertEquals(3306, $span->getData()['server.port']);
+        $this->assertEquals('mysql', $span->getData()['db.system']);
     }
 
     /**
@@ -87,6 +114,29 @@ class DatabaseIntegrationTest extends TestCase
         $this->assertEquals('db.sql.query', $span->getOp());
         $this->assertNull($span->getData()['server.address']);
         $this->assertNull($span->getData()['server.port']);
+        $this->assertEquals('sqlite', $span->getData()['db.system']);
+    }
+
+    /**
+     * @define-env usesPostgreSQL
+     */
+    #[DefineEnvironment('usesPostgreSQL')]
+    public function testSpanDbSystemIsMappedToOpenTelemetryValueForPostgres(): void
+    {
+        $span = $this->executeQueryAndRetrieveSpan('SELECT "pgsql"');
+
+        $this->assertEquals('postgresql', $span->getData()['db.system']);
+    }
+
+    /**
+     * @define-env usesSqlServer
+     */
+    #[DefineEnvironment('usesSqlServer')]
+    public function testSpanDbSystemIsMappedToOpenTelemetryValueForSqlServer(): void
+    {
+        $span = $this->executeQueryAndRetrieveSpan('SELECT "sqlsrv"');
+
+        $this->assertEquals('microsoft.sql_server', $span->getData()['db.system']);
     }
 
     public function testSqlBindingsAreRecordedWhenEnabled(): void
