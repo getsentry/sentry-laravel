@@ -19,7 +19,14 @@ concurrency:
 env:
   COMPOSER_ADVISORY_LARAVEL_6_TO_9: >-
     [
-      "PKSA-8qx3-n5y5-vvnd"
+      "PKSA-8qx3-n5y5-vvnd",
+      "PKSA-m5cs-t1y6-qpcs",
+      "PKSA-3r5d-mb8f-1qw9"
+    ]
+  COMPOSER_ADVISORY_LARAVEL_10_TO_11: >-
+    [
+      "PKSA-m5cs-t1y6-qpcs",
+      "PKSA-3r5d-mb8f-1qw9"
     ]
   COMPOSER_ADVISORY_COMMONMARK_1: >-
     [
@@ -93,6 +100,10 @@ jobs:
           coverage: pcov
           tools: composer:v2
 
+      - name: Configure Laravel 10-11 advisory allowlist
+        if: ${{ contains(fromJSON('["^10.0","^11.0"]'), matrix.packages.laravel) }}
+        run: composer config --merge --json policy.advisories.ignore-id "$COMPOSER_ADVISORY_LARAVEL_10_TO_11"
+
       - name: Configure Composer dependencies
         run: |
           # friendsofphp/php-cs-fixer: No need for this package to run phpunit and it conflicts with older Laravel versions
@@ -116,8 +127,6 @@ jobs:
             composer require "laravel/ai:^0.1.5" --dev --no-interaction --no-update
           fi
 
-          # Actually run the composer installation
-          composer install --no-interaction --prefer-dist --no-progress
       - name: Resolve dependencies
         run: composer update --no-progress --no-interaction --prefer-dist --no-install --no-scripts --no-audit
 

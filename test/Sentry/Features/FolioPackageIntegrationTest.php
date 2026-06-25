@@ -9,6 +9,7 @@ use Sentry\Laravel\Integration;
 use Illuminate\Config\Repository;
 use Sentry\Laravel\Tests\TestCase;
 use Illuminate\Database\Eloquent\Model;
+use Laravel\Folio\FolioServiceProvider;
 
 class FolioPackageIntegrationTest extends TestCase
 {
@@ -19,6 +20,13 @@ class FolioPackageIntegrationTest extends TestCase
         }
 
         parent::setUp();
+    }
+
+    protected function getPackageProviders($app): array
+    {
+        return array_merge(parent::getPackageProviders($app), [
+            FolioServiceProvider::class,
+        ]);
     }
 
     protected function defineRoutes($router): void
