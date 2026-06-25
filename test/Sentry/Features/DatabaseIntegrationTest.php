@@ -119,6 +119,23 @@ class DatabaseIntegrationTest extends TestCase
         $this->assertFalse(isset($span->getData()['db.sql.bindings']));
     }
 
+    public function testSqlBindingsAreNotRecordedWhenConfigKeyIsMissing(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing' => [
+                'sql_queries' => true,
+            ],
+        ]);
+
+        $span = $this->executeQueryAndRetrieveSpan(
+            $query = 'SELECT %',
+            ['1']
+        );
+
+        $this->assertEquals($query, $span->getDescription());
+        $this->assertFalse(isset($span->getData()['db.sql.bindings']));
+    }
+
     public function testSqlOriginIsResolvedWhenEnabledAndOverTreshold(): void
     {
         $this->resetApplicationWithConfig([

@@ -5,6 +5,7 @@ namespace Sentry\Laravel\Tests\Laravel;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use RuntimeException;
 use Sentry\Integration\IntegrationInterface;
+use Sentry\Integration\OTLPIntegration;
 use Sentry\Integration\ErrorListenerIntegration;
 use Sentry\Integration\ExceptionListenerIntegration;
 use Sentry\Integration\FatalErrorListenerIntegration;
@@ -41,6 +42,17 @@ class LaravelIntegrationsConfigOptionTest extends TestCase
         ]);
 
         $this->assertNotNull($this->getSentryClientFromContainer()->getIntegration(IntegrationsOptionTestIntegrationStub::class));
+    }
+
+    public function testOtlpIntegrationClassIsRegisteredFromIntegrationsConfig(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.integrations' => [
+                OTLPIntegration::class,
+            ],
+        ]);
+
+        $this->assertNotNull($this->getSentryClientFromContainer()->getIntegration(OTLPIntegration::class));
     }
 
     public function testCustomIntegrationByInstance(): void

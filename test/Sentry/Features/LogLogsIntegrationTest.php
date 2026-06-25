@@ -6,6 +6,7 @@ use Illuminate\Config\Repository;
 use Illuminate\Support\Facades\Log;
 use Orchestra\Testbench\Attributes\DefineEnvironment;
 use Sentry\Laravel\Tests\TestCase;
+use Sentry\EventType;
 use Sentry\Logs\LogLevel;
 use function Sentry\logger;
 
@@ -94,6 +95,53 @@ class LogLogsIntegrationTest extends TestCase
         $this->assertEquals(LogLevel::error(), $log->getLevel());
         $this->assertEquals('Sentry Laravel error log message', $log->getBody());
         $this->assertNull($log->attributes()->get('exception'));
+    }
+
+    public function testLogChannelFlushesImmediatelyWhenThresholdIsReached(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.log_flush_threshold' => 2,
+        ]);
+
+        $logger = Log::channel('sentry_logs');
+
+        $logger->warning('Sentry Laravel warning log message');
+        $logger->error('Sentry Laravel error log message');
+
+        $this->assertCount(0, logger()->aggregator()->all());
+
+        $logEvents = array_values(array_filter($this->getCapturedSentryEvents(), static function (array $event): bool {
+            return $event[0]->getType() === EventType::logs();
+        }));
+
+        $this->assertCount(1, $logEvents);
+        $this->assertCount(2, $logEvents[0][0]->getLogs());
+        $this->assertEquals('Sentry Laravel warning log message', $logEvents[0][0]->getLogs()[0]->getBody());
+        $this->assertEquals('Sentry Laravel error log message', $logEvents[0][0]->getLogs()[1]->getBody());
+    }
+
+    public function testLogChannelDoesNotFlushImmediatelyWhenThresholdIsNull(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.log_flush_threshold' => null,
+        ]);
+
+        $logger = Log::channel('sentry_logs');
+
+        $logger->warning('Sentry Laravel warning log message');
+        $logger->error('Sentry Laravel error log message');
+
+        $bufferedLogs = logger()->aggregator()->all();
+
+        $this->assertCount(2, $bufferedLogs);
+
+        $logEvents = array_values(array_filter($this->getCapturedSentryEvents(), static function (array $event): bool {
+            return $event[0]->getType() === EventType::logs();
+        }));
+
+        $this->assertCount(0, $logEvents);
+
+        logger()->aggregator()->flush();
     }
 
     public function testLogChannelAddsContextAsAttributes(): void

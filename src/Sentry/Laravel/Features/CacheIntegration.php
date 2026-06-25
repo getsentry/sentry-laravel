@@ -24,6 +24,13 @@ class CacheIntegration extends Feature
     use WorksWithSpans, TracksPushedScopesAndSpans, ResolvesEventOrigin;
 
     /**
+     * Indicates whether the cache integration is currently trying to detect the session key.
+     *
+     * @var bool
+     */
+    private $isDetectingSessionKey = false;
+
+    /**
      * Indicates whether to attempt to detect the session key when running in the console.
      *
      * @internal this is mainly intended for testing purposes.
@@ -280,21 +287,72 @@ class CacheIntegration extends Feature
                 return null;
             }
 
-            /** @var Session $sessionStore */
-            $sessionStore = $this->container()->make('session.store');
+            if ($this->isDetectingSessionKey) {
+                return null;
+            }
 
-            // It is safe for us to get the session ID here without checking if the session is started
-            // because getting the session ID does not start the session. In addition we need the ID before
-            // the session is started because the cache will retrieve the session ID from the cache before the session
-            // is considered started. So if we wait for the session to be started, we will not be able to replace the
-            // session key in the cache operation that is being executed to retrieve the session data from the cache.
-            return $sessionStore->getId();
-        } catch (\Exception $e) {
+            $this->isDetectingSessionKey = true;
+
+            try {
+                if ($container->resolved('session.store')) {
+                    /** @var Session $sessionStore */
+                    $sessionStore = $this->container()->make('session.store');
+
+                    return $sessionStore->getId();
+                }
+
+                $sessionKey = $this->getSessionKeyFromCurrentRequest();
+
+                if ($sessionKey !== null) {
+                    return $sessionKey;
+                }
+
+                /** @var Session $sessionStore */
+                $sessionStore = $this->container()->make('session.store');
+
+                // It is safe for us to get the session ID here without checking if the session is started
+                // because getting the session ID does not start the session. In addition we need the ID before
+                // the session is started because the cache will retrieve the session ID from the cache before the session
+                // is considered started. So if we wait for the session to be started, we will not be able to replace the
+                // session key in the cache operation that is being executed to retrieve the session data from the cache.
+                return $sessionStore->getId();
+            } finally {
+                $this->isDetectingSessionKey = false;
+            }
+        } catch (\Throwable $e) {
             // We can assume the session store is not available here so there is no session key to retrieve
             // We capture a generic exception to avoid breaking the application because some code paths can
             // result in an exception other than the expected `Illuminate\Contracts\Container\BindingResolutionException`
             return null;
         }
+    }
+
+    /**
+     * Retrieve the session key from the current request cookie if available.
+     */
+    private function getSessionKeyFromCurrentRequest(): ?string
+    {
+        $container = $this->container();
+
+        if (!$container->bound('config') || !$container->bound('request')) {
+            return null;
+        }
+
+        $sessionCookieName = $container->make('config')->get('session.cookie');
+
+        if (!is_string($sessionCookieName) || $sessionCookieName === '') {
+            return null;
+        }
+
+        $request = $container->make('request');
+
+        if (!isset($request->cookies) || !method_exists($request->cookies, 'get')) {
+            return null;
+        }
+
+        $sessionKey = $request->cookies->get($sessionCookieName);
+
+        return is_string($sessionKey) && $sessionKey !== '' ? $sessionKey : null;
     }
 
     /**
