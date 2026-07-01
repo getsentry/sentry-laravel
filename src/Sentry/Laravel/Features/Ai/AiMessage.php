@@ -4,7 +4,6 @@ namespace Sentry\Laravel\Features\Ai;
 
 class AiMessage implements \JsonSerializable
 {
-
     /**
      * @var string
      */

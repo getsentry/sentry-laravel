@@ -102,19 +102,19 @@ class AiIntegration extends Feature
     public function isApplicable(): bool
     {
         return $this->isTracingFeatureEnabled(self::FEATURE_KEY)
-            && class_exists('Laravel\Ai\Events\PromptingAgent');
+            && class_exists(Laravel\Ai\Events\PromptingAgent::class);
     }
 
     public function onBoot(Dispatcher $events): void
     {
-        $events->listen('Laravel\Ai\Events\PromptingAgent', [$this, 'handlePromptingAgentForTracing']);
-        $events->listen('Laravel\Ai\Events\AgentPrompted', [$this, 'handleAgentPromptedForTracing']);
-        $events->listen('Laravel\Ai\Events\StreamingAgent', [$this, 'handlePromptingAgentForTracing']);
-        $events->listen('Laravel\Ai\Events\AgentStreamed', [$this, 'handleAgentPromptedForTracing']);
-        $events->listen('Laravel\Ai\Events\InvokingTool', [$this, 'handleInvokingToolForTracing']);
-        $events->listen('Laravel\Ai\Events\ToolInvoked', [$this, 'handleToolInvokedForTracing']);
-        $events->listen('Laravel\Ai\Events\GeneratingEmbeddings', [$this, 'handleGeneratingEmbeddingsForTracing']);
-        $events->listen('Laravel\Ai\Events\EmbeddingsGenerated', [$this, 'handleEmbeddingsGeneratedForTracing']);
+        $events->listen(Laravel\Ai\Events\PromptingAgent::class, [$this, 'handlePromptingAgentForTracing']);
+        $events->listen(Laravel\Ai\Events\AgentPrompted::class, [$this, 'handleAgentPromptedForTracing']);
+        $events->listen(Laravel\Ai\Events\StreamingAgent::class, [$this, 'handlePromptingAgentForTracing']);
+        $events->listen(Laravel\Ai\Events\AgentStreamed::class, [$this, 'handleAgentPromptedForTracing']);
+        $events->listen(Laravel\Ai\Events\InvokingTool::class, [$this, 'handleInvokingToolForTracing']);
+        $events->listen(Laravel\Ai\Events\ToolInvoked::class, [$this, 'handleToolInvokedForTracing']);
+        $events->listen(Laravel\Ai\Events\GeneratingEmbeddings::class, [$this, 'handleGeneratingEmbeddingsForTracing']);
+        $events->listen(Laravel\Ai\Events\EmbeddingsGenerated::class, [$this, 'handleEmbeddingsGeneratedForTracing']);
 
         if (class_exists(RequestSending::class)) {
             $events->listen(RequestSending::class, [$this, 'handleHttpRequestSending']);
@@ -546,35 +546,35 @@ class AiIntegration extends Feature
             ? $attachment->mimeType()
             : null;
 
-        if (is_a($attachment, 'Laravel\Ai\Files\RemoteImage')) {
+        if (is_a($attachment, Laravel\Ai\Files\RemoteImage::class)) {
             $modality = 'image';
             $type = 'uri';
             $content = $attachment->url ?? null;
-        } elseif (is_a($attachment, 'Laravel\Ai\Files\RemoteDocument')) {
+        } elseif (is_a($attachment, Laravel\Ai\Files\RemoteDocument::class)) {
             $modality = 'document';
             $type = 'uri';
             $content = $attachment->url ?? null;
-        } elseif (is_a($attachment, 'Laravel\Ai\Files\RemoteAudio')) {
+        } elseif (is_a($attachment, Laravel\Ai\Files\RemoteAudio::class)) {
             $modality = 'audio';
             $type = 'uri';
             $content = $attachment->url ?? null;
-        } elseif (is_a($attachment, 'Laravel\Ai\Files\ProviderImage')) {
+        } elseif (is_a($attachment, Laravel\Ai\Files\ProviderImage::class)) {
             $modality = 'image';
             $type = 'file_id';
             $content = $attachment->id ?? null;
-        } elseif (is_a($attachment, 'Laravel\Ai\Files\ProviderDocument')) {
+        } elseif (is_a($attachment, Laravel\Ai\Files\ProviderDocument::class)) {
             $modality = 'document';
             $type = 'file_id';
             $content = $attachment->id ?? null;
         } else {
             $class = \get_class($attachment);
-            if (is_a($attachment, 'Laravel\Ai\Files\Image', true)
+            if (is_a($attachment, Laravel\Ai\Files\Image::class, true)
                 || strpos($class, 'Image') !== false) {
                 $modality = 'image';
-            } elseif (is_a($attachment, 'Laravel\Ai\Files\Document', true)
+            } elseif (is_a($attachment, Laravel\Ai\Files\Document::class, true)
                 || strpos($class, 'Document') !== false) {
                 $modality = 'document';
-            } elseif (is_a($attachment, 'Laravel\Ai\Files\Audio', true)
+            } elseif (is_a($attachment, Laravel\Ai\Files\Audio::class, true)
                 || strpos($class, 'Audio') !== false) {
                 $modality = 'audio';
             } else {
