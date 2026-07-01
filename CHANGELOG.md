@@ -1,5 +1,14 @@
 # Changelog
 
+## 4.27.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.27.0.
+
+### Features
+
+- Add support for tracing Laravel AI agent interactions, chats, tool executions, and embeddings when `laravel/ai` is installed. [(#1147)](https://github.com/getsentry/sentry-laravel/pull/1147)
+- Add the `enable_metrics` config option and `SENTRY_ENABLE_METRICS` environment variable to toggle metrics. [(#1148)](https://github.com/getsentry/sentry-laravel/pull/1148)
+
 ## 4.26.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.26.0.
