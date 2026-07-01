@@ -78,6 +78,7 @@ class ServiceProvider extends BaseServiceProvider
         Features\PennantPackageIntegration::class,
         Features\LivewirePackageIntegration::class,
         Features\ConsoleSchedulingIntegration::class,
+        Features\AiIntegration::class,
     ];
 
     /**
