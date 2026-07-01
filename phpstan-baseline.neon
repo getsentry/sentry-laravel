@@ -26,6 +26,16 @@ parameters:
 			path: src/Sentry/Laravel/ServiceProvider.php
 
 		-
+			message: "#^Class Laravel\\\\Ai\\\\Files\\\\Image not found\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: "#^Class Laravel\\\\Ai\\\\Files\\\\Document not found\\.$#"
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
 			message: "#^Class GraphQL\\\\Language\\\\AST\\\\DocumentNode not found\\.$#"
 			count: 1
 			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php

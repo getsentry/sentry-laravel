@@ -19,7 +19,14 @@ concurrency:
 env:
   COMPOSER_ADVISORY_LARAVEL_6_TO_9: >-
     [
-      "PKSA-8qx3-n5y5-vvnd"
+      "PKSA-8qx3-n5y5-vvnd",
+      "PKSA-m5cs-t1y6-qpcs",
+      "PKSA-3r5d-mb8f-1qw9"
+    ]
+  COMPOSER_ADVISORY_LARAVEL_10_TO_11: >-
+    [
+      "PKSA-m5cs-t1y6-qpcs",
+      "PKSA-3r5d-mb8f-1qw9"
     ]
   COMPOSER_ADVISORY_COMMONMARK_1: >-
     [
@@ -93,12 +100,18 @@ jobs:
           coverage: pcov
           tools: composer:v2
 
+      - name: Configure Laravel 10-11 advisory allowlist
+        if: ${{ contains(fromJSON('["^10.0","^11.0"]'), matrix.packages.laravel) }}
+        run: composer config --merge --json policy.advisories.ignore-id "$COMPOSER_ADVISORY_LARAVEL_10_TO_11"
+
       - name: Configure Composer dependencies
         run: |
           # friendsofphp/php-cs-fixer: No need for this package to run phpunit and it conflicts with older Laravel versions
+          # laravel/ai: Only supports PHP 8.4+ and Laravel 12, remove globally and re-add below where supported
+          composer remove friendsofphp/php-cs-fixer laravel/ai --dev --no-interaction --no-update
+
           # laravel/pennant: Does not yet support Laravel 13
           # laravel/octane: Does not yet support Laravel 13
-          composer remove friendsofphp/php-cs-fixer --dev --no-interaction --no-update
           [[ "${{ matrix.packages.laravel }}" == "^13.0" ]] && composer remove laravel/pennant laravel/octane --dev --no-interaction --no-update || true
 
           # Require the correct versions we want to run phpunit for
@@ -108,6 +121,11 @@ jobs:
             "phpunit/phpunit:${{ matrix.packages.phpunit }}" \
             "orchestra/testbench:${{ matrix.packages.testbench }}" \
             --no-interaction --no-update
+
+          # Re-require laravel/ai for supported combinations (PHP 8.4+ and Laravel 12)
+          if [ "${{ matrix.packages.laravel }}" == "^12.0" ] && ([ "${{ matrix.php }}" == "8.4" ] || [ "${{ matrix.php }}" == "8.5" ]); then
+            composer require "laravel/ai:^0.1.5" --dev --no-interaction --no-update
+          fi
 
       - name: Resolve dependencies
         run: composer update --no-progress --no-interaction --prefer-dist --no-install --no-scripts --no-audit
@@ -120,6 +138,10 @@ jobs:
 
       - name: Run phpunit
         run: vendor/bin/phpunit --coverage-clover=coverage.xml --coverage-filter=src/Sentry
+
+      - name: Run AI integration tests
+        if: matrix.packages.laravel == '^12.0' && (matrix.php == '8.4' || matrix.php == '8.5')
+        run: vendor/bin/phpunit test/Sentry/Features/AiIntegrationTest.php
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
@@ -231,7 +253,8 @@ jobs:
           # laravel/folio: Only supported on PHP 8.1 + Laravel 10.0 and above
           # laravel/pennant: Only supported on PHP 8.1 + Laravel 10.0 and above
           # laravel/octane: Only supported on PHP 8.1 + Laravel 10.10.1 and above
-          composer remove friendsofphp/php-cs-fixer livewire/livewire laravel/folio laravel/pennant laravel/octane --dev --no-interaction --no-update
+          # laravel/ai: Only supported on PHP 8.4+ and Laravel 12
+          composer remove friendsofphp/php-cs-fixer livewire/livewire laravel/folio laravel/pennant laravel/octane laravel/ai --dev --no-interaction --no-update
 
           # Require the correct versions we want to run phpunit for
           composer require \
