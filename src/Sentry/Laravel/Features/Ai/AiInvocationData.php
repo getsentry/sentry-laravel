@@ -11,43 +11,43 @@ use Sentry\Tracing\SpanStatus;
  */
 class AiInvocationData
 {
-    /** 
-     * @var Span 
+    /**
+     * @var Span
      */
     public $span;
 
     /**
-     * @var Span|null 
+     * @var Span|null
      */
     public $parentSpan;
 
-    /** 
-     * @var AiInvocationMeta 
+    /**
+     * @var AiInvocationMeta
      */
     public $meta;
 
-    /** 
-     * @var string|null 
+    /**
+     * @var string|null
      */
     public $urlPrefix;
 
-    /** 
-     * @var bool 
+    /**
+     * @var bool
      */
     public $isStreaming;
 
-    /** 
-     * @var Span|null 
+    /**
+     * @var Span|null
      */
     public $activeChatSpan = null;
 
     /**
-     * @var list<Span> 
+     * @var list<Span>
      */
     public $chatSpans = [];
 
-    /** 
-     * @var list<Span> 
+    /**
+     * @var list<Span>
      */
     public $toolSpans = [];
 
