@@ -63,6 +63,20 @@ class AiIntegration extends Feature
     /** Regex pattern to detect standalone base64-encoded strings (100+ chars). */
     private const BASE64_PATTERN = '/^[A-Za-z0-9+\/]{100,}={0,2}$/';
 
+    /** Default base URLs for known AI provider drivers, used when no URL is configured. */
+    private const KNOWN_PROVIDER_URLS = [
+        'anthropic' => 'https://api.anthropic.com/v1',
+        'deepseek' => 'https://api.deepseek.com/v1',
+        'gemini' => 'https://generativelanguage.googleapis.com/v1beta/',
+        'groq' => 'https://api.groq.com/openai/v1',
+        'mistral' => 'https://api.mistral.ai/v1',
+        'ollama' => 'http://localhost:11434',
+        'openai' => 'https://api.openai.com/v1',
+        'openrouter' => 'https://openrouter.ai/api/v1',
+        'voyageai' => 'https://api.voyageai.com/v1',
+        'xai' => 'https://api.x.ai/v1',
+    ];
+
     /** Maximum tracked invocations before evicting oldest (prevents memory leaks in long-running processes). */
     private const MAX_TRACKED_INVOCATIONS = 100;
 
@@ -513,7 +527,8 @@ class AiIntegration extends Feature
         // from the prism config. Just using prism config here might not be enough if someone
         // configures values in config/ai.php
         $url = config("ai.providers.{$provider->name()}.url")
-            ?? config("prism.providers.{$provider->driver()}.url");
+            ?? config("prism.providers.{$provider->driver()}.url")
+            ?? self::KNOWN_PROVIDER_URLS[$provider->driver()] ?? null;
 
         return \is_string($url) && $url !== '' ? $url : null;
     }
