@@ -355,6 +355,27 @@ class AiIntegrationTest extends TestCase
         $this->assertEquals('conv-abc-123', $data['gen_ai.conversation.id']);
     }
 
+    public function testHttpClientSpanIsNestedWithinChatSpan(): void
+    {
+        $this->resetApplicationWithConfig(['sentry.tracing.http_client_requests' => true, 'prism.providers.openai.url' => self::PROVIDER_URL]);
+
+        $transaction = $this->startTransaction();
+        [$prompt, $response] = $this->makePromptAndResponse();
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-hierarchy', $prompt));
+        $this->dispatchLlmRequestSending();
+
+        $agentSpan = $this->findSpanByOp($transaction, 'gen_ai.invoke_agent');
+        $chatSpan = $this->findSpanByOp($transaction, 'gen_ai.chat');
+        $httpSpan = $this->findSpanByOp($transaction, 'http.client');
+
+        $this->assertEquals($chatSpan->getSpanId(), $httpSpan->getParentSpanId());
+
+        $this->dispatchLlmResponseReceived();
+        $this->assertSame($agentSpan, $this->getSentryHubFromContainer()->getSpan());
+
+        $this->dispatchLaravelEvent(new AgentPrompted('inv-hierarchy', $prompt, $this->wrapResponse($response)));
+    }
+
     public function testMultiStepFlowWithToolCalls(): void
     {
         $transaction = $this->startTransaction();
@@ -532,6 +553,23 @@ class AiIntegrationTest extends TestCase
         $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
         $this->assertCount(1, $chatSpans);
         $this->assertEquals(SpanStatus::internalError(), $chatSpans[0]->getStatus());
+    }
+
+    public function testConnectionFailureRestoresAgentSpan(): void
+    {
+        $this->resetApplicationWithConfig(['sentry.tracing.http_client_requests' => true, 'prism.providers.openai.url' => self::PROVIDER_URL]);
+
+        $transaction = $this->startTransaction();
+        [$prompt] = $this->makePromptAndResponse();
+        $this->dispatchLaravelEvent(new PromptingAgent('inv-fh', $prompt));
+        $this->dispatchLlmRequestSending();
+
+        $httpRequest = new HttpRequest(new \GuzzleHttp\Psr7\Request('POST', self::PROVIDER_URL . '/responses', [], '{}'));
+        $this->dispatchLaravelEvent(new ConnectionFailed($httpRequest, new \Illuminate\Http\Client\ConnectionException('timeout')));
+
+        $agentSpan = $this->findSpanByOp($transaction, 'gen_ai.invoke_agent');
+
+        $this->assertSame($agentSpan, $this->getSentryHubFromContainer()->getSpan());
     }
 
     // ---- Helpers ----
