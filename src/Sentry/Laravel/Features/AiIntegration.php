@@ -131,7 +131,6 @@ class AiIntegration extends Feature
         $events->listen(\Laravel\Ai\Events\EmbeddingsGenerated::class, [$this, 'handleEmbeddingsGeneratedForTracing']);
 
         if (class_exists(RequestSending::class)) {
-            $events->listen(RequestSending::class, [$this, 'handleHttpRequestSending']);
             $events->listen(ResponseReceived::class, [$this, 'handleHttpResponseReceived']);
             $events->listen(ConnectionFailed::class, [$this, 'handleHttpConnectionFailed']);
         }
