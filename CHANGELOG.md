@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.28.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.28.0.
+
+### Misc
+
+- Bump the PHP SDK to version `4.31.0` [(#1155)](https://github.com/getsentry/sentry-laravel/pull/1155)
+
 ## 4.27.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.27.0.
