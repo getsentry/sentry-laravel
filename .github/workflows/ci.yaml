@@ -31,7 +31,11 @@ env:
   COMPOSER_ADVISORY_COMMONMARK_1: >-
     [
       "PKSA-rqc2-tcc6-nc79",
-      "PKSA-fndg-qryc-dyc9"
+      "PKSA-fndg-qryc-dyc9",
+      "PKSA-1q6p-sqkj-8mmj",
+      "PKSA-mc58-w91n-f5gv",
+      "PKSA-t21r-vtr5-3mdz",
+      "PKSA-scnn-p8mm-jbft"
     ]
   COMPOSER_ADVISORY_LARAVEL_6_SYMFONY: >-
     [
