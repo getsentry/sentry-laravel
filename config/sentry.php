@@ -159,4 +159,25 @@ return [
         'default_integrations' => env('SENTRY_TRACE_DEFAULT_INTEGRATIONS_ENABLED', true),
     ],
 
+    // Attach extra tags and structured context scoped to the currently processing queue job
+    'job_context' => [
+        // Attach PHP memory usage at job start, at capture time, and peak usage (bytes) plus the configured memory_limit
+        'memory_usage' => env('SENTRY_JOB_CONTEXT_MEMORY_USAGE_ENABLED', false),
+
+        // Attach the queue name, queue connection, and resolved job class as searchable tags
+        'queue_name' => env('SENTRY_JOB_CONTEXT_QUEUE_NAME_ENABLED', false),
+
+        // Attach the default database connection and the connections actually queried during the job
+        'database' => env('SENTRY_JOB_CONTEXT_DATABASE_ENABLED', false),
+
+        // Attach the wall-clock time (in milliseconds) from the start of the job until the event is captured
+        'execution_time' => env('SENTRY_JOB_CONTEXT_EXECUTION_TIME_ENABLED', false),
+
+        // Attach the current job attempt number as a searchable tag
+        'attempts' => env('SENTRY_JOB_CONTEXT_ATTEMPTS_ENABLED', false),
+
+        // Attach Laravel Horizon job metadata (tags, type, displayName, supervisor) when the job was queued through Horizon
+        'horizon' => env('SENTRY_JOB_CONTEXT_HORIZON_ENABLED', false),
+    ],
+
 ];

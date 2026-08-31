@@ -13,6 +13,7 @@ use Illuminate\Queue\Events\JobQueueing;
 use Illuminate\Queue\Events\WorkerStopping;
 use Illuminate\Queue\Queue;
 use Sentry\Breadcrumb;
+use Sentry\Laravel\Features\Concerns\AppliesJobContext;
 use Sentry\Laravel\Features\Concerns\TracksPushedScopesAndSpans;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
@@ -32,6 +33,7 @@ class QueueIntegration extends Feature
     use TracksPushedScopesAndSpans {
         pushScope as private pushScopeTrait;
     }
+    use AppliesJobContext;
 
     private const QUEUE_SPAN_OP_QUEUE_PUBLISH = 'queue.publish';
 
@@ -47,7 +49,8 @@ class QueueIntegration extends Feature
 
         return $this->isBreadcrumbFeatureEnabled('queue_info')
             || $this->isTracingFeatureEnabled('queue_jobs')
-            || $this->isTracingFeatureEnabled('queue_job_transactions');
+            || $this->isTracingFeatureEnabled('queue_job_transactions')
+            || $this->isAnyJobContextFeatureEnabled();
     }
 
     public function onBoot(Dispatcher $events): void
@@ -59,6 +62,8 @@ class QueueIntegration extends Feature
         $events->listen(JobProcessing::class, [$this, 'handleJobProcessingQueueEvent']);
         $events->listen(WorkerStopping::class, [$this, 'handleWorkerStoppingQueueEvent']);
         $events->listen(JobExceptionOccurred::class, [$this, 'handleJobExceptionOccurredQueueEvent']);
+
+        $this->registerJobContextDatabaseListener($events);
 
         if ($this->isTracingFeatureEnabled('queue_jobs') || $this->isTracingFeatureEnabled('queue_job_transactions')) {
             Queue::createPayloadUsing(function (?string $connection, ?string $queue, ?array $payload): ?array {
@@ -117,6 +122,8 @@ class QueueIntegration extends Feature
 
     public function handleJobProcessedQueueEvent(JobProcessed $event): void
     {
+        $this->finalizeJobContext();
+
         $this->maybeFinishSpan(SpanStatus::ok());
 
         $this->maybePopScope();
@@ -126,7 +133,11 @@ class QueueIntegration extends Feature
     {
         $this->maybePopScope();
 
+        $this->resetJobContext();
+
         $this->pushScope();
+
+        $this->captureJobContext($event);
 
         if ($this->isBreadcrumbFeatureEnabled('queue_info')) {
             $job = [
@@ -222,6 +233,8 @@ class QueueIntegration extends Feature
 
     public function handleJobExceptionOccurredQueueEvent(JobExceptionOccurred $event): void
     {
+        $this->finalizeJobContext();
+
         $this->maybeFinishSpan(SpanStatus::internalError());
 
         Integration::flushEvents();
