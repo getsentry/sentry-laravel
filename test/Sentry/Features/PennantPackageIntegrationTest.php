@@ -57,6 +57,26 @@ class PennantPackageIntegrationTest extends TestCase
         ], $flags);
     }
 
+    public function testPennantClassBasedFeatureIsRecordedWithNormalizedName(): void
+    {
+        Feature::active(PennantClassBasedFeature::class);
+
+        $scope = $this->getCurrentSentryScope();
+
+        $event = $scope->applyToEvent(Event::createEvent());
+
+        $this->assertArrayHasKey('flags', $event->getContexts());
+
+        $flags = $event->getContexts()['flags']['values'];
+
+        $this->assertEquals([
+            [
+                'flag' => 'Sentry.Laravel.Tests.Features.PennantClassBasedFeature',
+                'result' => true,
+            ]
+        ], $flags);
+    }
+
     public function testPennantRichFeatureIsRecordedAsActive(): void
     {
         Feature::define('dashboard-version', static function () {
@@ -103,5 +123,13 @@ class PennantPackageIntegrationTest extends TestCase
                 'result' => false,
             ]
         ], $flags);
+    }
+}
+
+class PennantClassBasedFeature
+{
+    public function resolve(): bool
+    {
+        return true;
     }
 }
