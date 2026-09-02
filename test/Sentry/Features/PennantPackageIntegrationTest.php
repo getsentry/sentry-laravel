@@ -57,6 +57,30 @@ class PennantPackageIntegrationTest extends TestCase
         ], $flags);
     }
 
+    public function testPennantFeatureWithLeadingNamespaceSeparatorIsRecordedWithNormalizedName(): void
+    {
+        Feature::define('\\App\\Features\\NewApi', static function () {
+            return true;
+        });
+
+        Feature::active('\\App\\Features\\NewApi');
+
+        $scope = $this->getCurrentSentryScope();
+
+        $event = $scope->applyToEvent(Event::createEvent());
+
+        $this->assertArrayHasKey('flags', $event->getContexts());
+
+        $flags = $event->getContexts()['flags']['values'];
+
+        $this->assertEquals([
+            [
+                'flag' => 'App.Features.NewApi',
+                'result' => true,
+            ]
+        ], $flags);
+    }
+
     public function testPennantClassBasedFeatureIsRecordedWithNormalizedName(): void
     {
         Feature::active(PennantClassBasedFeature::class);
