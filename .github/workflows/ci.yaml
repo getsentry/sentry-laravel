@@ -35,7 +35,10 @@ env:
       "PKSA-1q6p-sqkj-8mmj",
       "PKSA-mc58-w91n-f5gv",
       "PKSA-t21r-vtr5-3mdz",
-      "PKSA-scnn-p8mm-jbft"
+      "PKSA-scnn-p8mm-jbft",
+      "PKSA-zyf5-hrxv-hrd7",
+      "PKSA-nv44-1b4d-6gjg",
+      "PKSA-9q1p-3s19-bp1q"
     ]
   COMPOSER_ADVISORY_LARAVEL_6_SYMFONY: >-
     [
