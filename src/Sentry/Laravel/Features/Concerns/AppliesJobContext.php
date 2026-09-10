@@ -64,6 +64,29 @@ trait AppliesJobContext
     private $jobContextHorizonData;
 
     /**
+     * Stack of snapshots of the "currently processing job" fields above, one entry per
+     * job that has started but not finished yet. Nested inline dispatches (e.g. jobs
+     * dispatched via the `sync` driver or `dispatchSync()` from inside another job)
+     * push a new snapshot when they start and pop it when they finish, so the parent
+     * job's measurements are preserved across the child's lifetime and its database
+     * tracking is resumed after the child returns.
+     *
+     * @var array<int, array<string, mixed>>
+     */
+    private $jobContextSnapshots = [];
+
+    /**
+     * Number of queue jobs that have fired `JobProcessing` but not yet `JobProcessed`
+     * or `JobExceptionOccurred`. Kept in lockstep with the snapshot stack but tracked
+     * independently so it stays accurate even when every job-context feature is
+     * disabled and captureJobContext() returns early. Consumers use it to detect
+     * "am I nested inside another job?" without depending on the feature flags.
+     *
+     * @var int
+     */
+    private $jobContextInProgressCount = 0;
+
+    /**
      * Register the listener used to track database connections used during a job.
      *
      * This is a no-op if it has already been registered or if the `database` job
@@ -94,11 +117,35 @@ trait AppliesJobContext
      */
     protected function captureJobContext(JobProcessing $event): void
     {
+        // Increment before the feature-flag early return so hasParentJobInProgress()
+        // is reliable even when every job-context feature is disabled but the queue
+        // integration still relies on it to preserve scopes across nested dispatches.
+        ++$this->jobContextInProgressCount;
+
         if (!$this->isAnyJobContextFeatureEnabled()) {
             return;
         }
 
         $job = $event->job;
+
+        // Save the currently-tracked job (if any) so a nested inline dispatch
+        // (`sync` / `dispatchSync` from inside another job) does not clobber the
+        // parent's measurements. The snapshot is restored by finalizeJobContext().
+        $this->jobContextSnapshots[] = [
+            'start_time' => $this->jobContextStartTime,
+            'start_memory' => $this->jobContextStartMemory,
+            'connections_used' => $this->jobContextConnectionsUsed,
+            'tracking_database' => $this->jobContextTrackingDatabase,
+            'horizon_data' => $this->jobContextHorizonData,
+        ];
+
+        // Start with a clean slate so unmeasured features from the previous frame do
+        // not leak into this job.
+        $this->jobContextStartTime = null;
+        $this->jobContextStartMemory = null;
+        $this->jobContextConnectionsUsed = [];
+        $this->jobContextTrackingDatabase = false;
+        $this->jobContextHorizonData = null;
 
         if ($this->isJobContextFeatureEnabled('execution_time')) {
             $this->jobContextStartTime = microtime(true);
@@ -109,14 +156,14 @@ trait AppliesJobContext
 
             // Reset the peak memory marker so `memory_get_peak_usage()` reflects only this
             // job on long-running workers. Not available before PHP 8.2, and skipped for the
-            // `sync` connection since that runs inline in the current (HTTP/console) process.
+            // `sync` connection since that runs inline in the current (HTTP/console) process
+            // and would clobber the outer request/parent-job peak.
             if ($event->connectionName !== 'sync' && function_exists('memory_reset_peak_usage')) {
                 memory_reset_peak_usage();
             }
         }
 
         if ($this->isJobContextFeatureEnabled('database')) {
-            $this->jobContextConnectionsUsed = [];
             $this->jobContextTrackingDatabase = true;
         }
 
@@ -150,48 +197,96 @@ trait AppliesJobContext
 
     /**
      * Merge the collected job context measurements onto the currently active span (if any)
-     * that was pushed for the job that just finished.
+     * that was pushed for the job that just finished, then restore the parent job's
+     * context (if this call was for a nested inline dispatch).
      */
     protected function finalizeJobContext(): void
     {
+        // Symmetric with the increment in captureJobContext(). Clamped defensively
+        // in case finalize is somehow called without a matching capture.
+        if ($this->jobContextInProgressCount > 0) {
+            --$this->jobContextInProgressCount;
+        }
+
+        // Stop recording new queries against this job. When this is the outermost
+        // job the current fields intentionally remain populated so that a follow-up
+        // report()/captureException() fired while the job's scope is still on the
+        // hub (as Laravel's worker does for failed jobs) can still attach the
+        // `laravel.job` context we just built. For nested inline dispatches the
+        // fields are restored from the snapshot below and the parent's own
+        // tracking flag comes back with them.
         $this->jobContextTrackingDatabase = false;
 
         if (!$this->isAnyJobContextFeatureEnabled()) {
             return;
         }
 
-        // Only attach job context to a span if this job actually pushed one onto the hub.
-        // Otherwise (e.g. queue tracing disabled) the "current" span could belong to an
-        // unrelated parent transaction (like an HTTP request running the `sync` driver).
-        if (!$this->hasPushedSpan()) {
-            return;
-        }
+        try {
+            // Only attach job context to a span if this job actually pushed one onto the hub.
+            // Otherwise (e.g. queue tracing disabled) the "current" span could belong to an
+            // unrelated parent transaction (like an HTTP request running the `sync` driver).
+            if (!$this->hasPushedSpan()) {
+                return;
+            }
 
-        $span = SentrySdk::getCurrentHub()->getSpan();
+            $span = SentrySdk::getCurrentHub()->getSpan();
 
-        if ($span === null) {
-            return;
-        }
+            if ($span === null) {
+                return;
+            }
 
-        // Existing `messaging.*` span data (queue name, connection, retry count, etc.) is
-        // preserved
-        $data = $this->buildJobContextForSpan();
+            // Existing `messaging.*` span data (queue name, connection, retry count, etc.) is
+            // preserved
+            $data = $this->buildJobContextForSpan();
 
-        if (!empty($data)) {
-            $span->setData($data);
+            if (!empty($data)) {
+                $span->setData($data);
+            }
+        } finally {
+            $this->restoreParentJobContext();
         }
     }
 
     /**
-     * Reset any state left over from a previous job (used before starting a new job).
+     * True when at least one job is currently being processed (JobProcessing has
+     * fired but neither JobProcessed nor JobExceptionOccurred has yet fired for
+     * it). The queue integration uses this to decide whether a `JobProcessing`
+     * event for a nested inline dispatch (sync/dispatchSync) must preserve the
+     * outer job's scope rather than pop it as leftover state.
      */
-    protected function resetJobContext(): void
+    protected function hasParentJobInProgress(): bool
     {
-        $this->jobContextStartTime = null;
-        $this->jobContextStartMemory = null;
-        $this->jobContextConnectionsUsed = [];
-        $this->jobContextTrackingDatabase = false;
-        $this->jobContextHorizonData = null;
+        return $this->jobContextInProgressCount > 0;
+    }
+
+    /**
+     * Pop the snapshot pushed by the matching captureJobContext() call. If a parent
+     * job is still in progress underneath (a nested inline `sync`/`dispatchSync`),
+     * its measurements are restored so it can resume tracking. Otherwise the
+     * current fields are left in place on purpose so that captures against the
+     * still-active job scope (e.g. `report($e)` after JobExceptionOccurred) can
+     * continue to attach the `laravel.job` context that was just finalized.
+     */
+    private function restoreParentJobContext(): void
+    {
+        if (empty($this->jobContextSnapshots)) {
+            return;
+        }
+
+        $snapshot = array_pop($this->jobContextSnapshots);
+
+        // Empty snapshot stack means the finished job was outermost. Preserve
+        // the current fields for post-finalize captures on the still-active
+        // scope; they'll be overwritten the next time captureJobContext() runs.
+        if (empty($this->jobContextSnapshots)) {
+            return;
+        }
+
+        $this->jobContextStartTime = $snapshot['start_time'];
+        $this->jobContextStartMemory = $snapshot['start_memory'];
+        $this->jobContextConnectionsUsed = $snapshot['connections_used'];
+        $this->jobContextTrackingDatabase = $snapshot['tracking_database'];
+        $this->jobContextHorizonData = $snapshot['horizon_data'];
     }
 
     /**

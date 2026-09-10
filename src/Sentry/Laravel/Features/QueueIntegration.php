@@ -69,7 +69,13 @@ class QueueIntegration extends Feature
             Queue::createPayloadUsing(function (?string $connection, ?string $queue, ?array $payload): ?array {
                 $parentSpan = SentrySdk::getCurrentHub()->getSpan();
 
-                if ($parentSpan !== null && $parentSpan->getSampled()) {
+                // The `sync` driver runs jobs inline and does not fire the
+                // `JobQueueing`/`JobQueued` events that would close a `queue.publish`
+                // span; opening one here would leak on the span stack for the
+                // entire child job's execution and beyond. It is also semantically
+                // wrong: nothing is actually published, the child job runs in the
+                // same process.
+                if ($connection !== 'sync' && $parentSpan !== null && $parentSpan->getSampled()) {
                     $context = (new SpanContext)
                         ->setOp(self::QUEUE_SPAN_OP_QUEUE_PUBLISH)
                         ->setData([
@@ -131,12 +137,20 @@ class QueueIntegration extends Feature
 
     public function handleJobProcessingQueueEvent(JobProcessing $event): void
     {
-        $this->maybePopScope();
-
-        $this->resetJobContext();
+        // When a parent job is still in progress (nested inline dispatch via the
+        // `sync` driver or `dispatchSync()`), keep its scope on the hub so its
+        // tags, breadcrumbs, event processor and any active tracing span survive
+        // the child's execution. Otherwise pop any leftover scope from a
+        // previously-failed job that never popped its own.
+        if (!$this->hasParentJobInProgress()) {
+            $this->maybePopScope();
+        }
 
         $this->pushScope();
 
+        // captureJobContext() snapshots the parent job's context (if any) so a
+        // nested inline dispatch (`sync` / `dispatchSync`) does not clobber it,
+        // and finalizeJobContext() restores it once this job finishes.
         $this->captureJobContext($event);
 
         if ($this->isBreadcrumbFeatureEnabled('queue_info')) {
