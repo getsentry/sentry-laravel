@@ -151,4 +151,88 @@ class HttpClientIntegrationTest extends TestCase
             return !$request->hasHeader('baggage') && !$request->hasHeader('sentry-trace');
         });
     }
+
+    public function testHttpClientOriginIsResolvedWhenEnabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.http_client_requests_origin' => true,
+            'sentry.tracing.http_client_requests_origin_threshold_ms' => 0,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        $client = Http::fake();
+
+        $client->get('https://example.com');
+
+        /** @var \Sentry\Tracing\Span $span */
+        $span = last($transaction->getSpanRecorder()->getSpans());
+
+        $this->assertArrayHasKey('code.filepath', $span->getData());
+        $this->assertArrayHasKey('code.lineno', $span->getData());
+    }
+
+    public function testHttpClientOriginIsNotResolvedWhenDisabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.http_client_requests_origin' => false,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        $client = Http::fake();
+
+        $client->get('https://example.com');
+
+        /** @var \Sentry\Tracing\Span $span */
+        $span = last($transaction->getSpanRecorder()->getSpans());
+
+        $this->assertArrayNotHasKey('code.filepath', $span->getData());
+        $this->assertArrayNotHasKey('code.lineno', $span->getData());
+    }
+
+    public function testHttpClientOriginIsResolvedWhenOverThreshold(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.http_client_requests_origin' => true,
+            'sentry.tracing.http_client_requests_origin_threshold_ms' => 10,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        $client = Http::fake([
+            'slow.example.com' => function () {
+                usleep(20000); // 20ms delay
+                return Http::response('OK');
+            },
+        ]);
+
+        $client->get('https://slow.example.com');
+
+        /** @var \Sentry\Tracing\Span $span */
+        $span = last($transaction->getSpanRecorder()->getSpans());
+
+        $this->assertArrayHasKey('code.filepath', $span->getData());
+        $this->assertArrayHasKey('code.lineno', $span->getData());
+    }
+
+    public function testHttpClientOriginIsNotResolvedWhenUnderThreshold(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.http_client_requests_origin' => true,
+            'sentry.tracing.http_client_requests_origin_threshold_ms' => 1000,
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        $client = Http::fake();
+
+        $client->get('https://example.com');
+
+        /** @var \Sentry\Tracing\Span $span */
+        $span = last($transaction->getSpanRecorder()->getSpans());
+
+        $this->assertArrayNotHasKey('code.filepath', $span->getData());
+        $this->assertArrayNotHasKey('code.lineno', $span->getData());
+    }
 }
