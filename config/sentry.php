@@ -58,6 +58,7 @@ return [
 
     // 'data_collection' => [
     //     'cookies' => ['mode' => 'denyList', 'terms' => ['private-cookie']],
+    //     'database_query_data' => true,
     //     'http_bodies' => ['incomingRequest', 'incomingResponse', 'outgoingRequest', 'outgoingResponse'],
     //     'http_headers' => [
     //         'request' => ['mode' => 'denyList', 'terms' => ['x-private-header']],
@@ -66,6 +67,7 @@ return [
     //     'url_query_params' => ['mode' => 'denyList', 'terms' => ['private-param']],
     // ],
     // Use 'http_headers' => ['mode' => ..., 'terms' => [...]] to apply the same policy to both directions.
+    // A non-null data_collection configuration uses database_query_data instead of the legacy sql_bindings options.
 
     // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#ignore_exceptions
     // 'ignore_exceptions' => [],
@@ -90,7 +92,7 @@ return [
         // Capture SQL queries as breadcrumbs
         'sql_queries' => env('SENTRY_BREADCRUMBS_SQL_QUERIES_ENABLED', true),
 
-        // Capture SQL query bindings (parameters) in SQL query breadcrumbs
+        // Capture SQL query bindings (parameters) in SQL query breadcrumbs (legacy data_collection mode only)
         'sql_bindings' => env('SENTRY_BREADCRUMBS_SQL_BINDINGS_ENABLED', false),
 
         // Capture queue job information as breadcrumbs
@@ -117,7 +119,7 @@ return [
         // Capture SQL queries as spans
         'sql_queries' => env('SENTRY_TRACE_SQL_QUERIES_ENABLED', true),
 
-        // Capture SQL query bindings (parameters) in SQL query spans
+        // Capture SQL query bindings (parameters) in SQL query spans (legacy data_collection mode only)
         'sql_bindings' => env('SENTRY_TRACE_SQL_BINDINGS_ENABLED', false),
 
         // Capture where the SQL query originated from on the SQL query spans

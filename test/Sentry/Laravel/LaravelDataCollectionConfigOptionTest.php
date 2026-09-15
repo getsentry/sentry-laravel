@@ -46,6 +46,22 @@ class LaravelDataCollectionConfigOptionTest extends TestCase
         $this->assertSame($httpBodies, $this->getDataCollection()->getHttpBodies());
     }
 
+    public function testDatabaseQueryConfigurationUsesSharedDefault(): void
+    {
+        $this->resetApplicationWithConfig(['sentry.data_collection' => []]);
+
+        $this->assertTrue($this->getDataCollection()->shouldCollectDatabaseQueryData());
+    }
+
+    public function testDatabaseQueryConfigurationIsForwardedToThePhpSdk(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.data_collection' => ['database_query_data' => false],
+        ]);
+
+        $this->assertFalse($this->getDataCollection()->shouldCollectDatabaseQueryData());
+    }
+
     public function testUrlQueryConfigurationUsesSharedDefaults(): void
     {
         $this->resetApplicationWithConfig(['sentry.data_collection' => []]);
