@@ -261,6 +261,10 @@ class HttpHeaderCollectionTest extends TestCase
      */
     private function tracingConfig(?array $dataCollection): array
     {
+        if ($dataCollection !== null) {
+            $dataCollection += ['cookies' => ['mode' => 'off']];
+        }
+
         return [
             'sentry.traces_sample_rate' => 1.0,
             'sentry.tracing.continue_after_response' => false,

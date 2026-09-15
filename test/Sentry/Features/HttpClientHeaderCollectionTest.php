@@ -34,7 +34,9 @@ class HttpClientHeaderCollectionTest extends TestCase
 
     public function testRequestAndResponseHeadersAreCollectedOnSpanAndBreadcrumb(): void
     {
-        $this->resetApplicationWithConfig(['sentry.data_collection' => []]);
+        $this->resetApplicationWithConfig([
+            'sentry.data_collection' => ['cookies' => ['mode' => 'off']],
+        ]);
         $transaction = $this->startTransaction();
         list($request, $response) = $this->httpExchange();
 
@@ -72,7 +74,7 @@ class HttpClientHeaderCollectionTest extends TestCase
         $this->assertArrayNotHasKey('http.response.header.x-response-id', $metadata);
     }
 
-    public function testLegacyNullAndOffConfigurationDoNotAcquireHeaders(): void
+    public function testLegacyNullAndDisabledHttpDataDoNotAcquireHeaders(): void
     {
         list($request, $response) = $this->guardedHttpExchange();
         $this->dispatchLaravelEvent(new ResponseReceived($request, $response));
@@ -88,7 +90,10 @@ class HttpClientHeaderCollectionTest extends TestCase
         $this->assertSame(0, $response->getHeadersCallCount());
 
         $this->resetApplicationWithConfig([
-            'sentry.data_collection' => ['http_headers' => ['mode' => 'off']],
+            'sentry.data_collection' => [
+                'cookies' => ['mode' => 'off'],
+                'http_headers' => ['mode' => 'off'],
+            ],
         ]);
         list($request, $response) = $this->guardedHttpExchange();
         $this->dispatchLaravelEvent(new ResponseReceived($request, $response));
