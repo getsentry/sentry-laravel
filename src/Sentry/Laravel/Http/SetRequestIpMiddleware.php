@@ -5,6 +5,7 @@ namespace Sentry\Laravel\Http;
 use Closure;
 use Illuminate\Container\Container;
 use Illuminate\Http\Request;
+use Sentry\DataCollection\DataCollectionPolicy;
 use Sentry\State\HubInterface;
 use Sentry\State\Scope;
 
@@ -31,9 +32,7 @@ class SetRequestIpMiddleware
             /** @var \Sentry\State\HubInterface $sentry */
             $sentry = $container->make(HubInterface::class);
 
-            $client = $sentry->getClient();
-
-            if ($client !== null && $client->getOptions()->shouldSendDefaultPii()) {
+            if (DataCollectionPolicy::fromHub($sentry)->shouldCollectUserInfo()) {
                 $sentry->configureScope(static function (Scope $scope) use ($request): void {
                     $scope->setUser([
                         'ip_address' => $request->ip(),

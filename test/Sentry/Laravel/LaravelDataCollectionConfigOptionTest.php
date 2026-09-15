@@ -46,6 +46,24 @@ class LaravelDataCollectionConfigOptionTest extends TestCase
         $this->assertSame($httpBodies, $this->getDataCollection()->getHttpBodies());
     }
 
+    public function testUrlQueryConfigurationUsesSharedDefaults(): void
+    {
+        $this->resetApplicationWithConfig(['sentry.data_collection' => []]);
+
+        $this->assertSame(['mode' => 'denyList', 'terms' => []], $this->getDataCollection()->getUrlQueryParams());
+    }
+
+    public function testUrlQueryConfigurationIsForwardedToThePhpSdk(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.data_collection' => [
+                'url_query_params' => ['mode' => 'allowList', 'terms' => ['page']],
+            ],
+        ]);
+
+        $this->assertSame(['mode' => 'allowList', 'terms' => ['page']], $this->getDataCollection()->getUrlQueryParams());
+    }
+
     public function testCookieConfigurationUsesSharedDefaults(): void
     {
         $this->resetApplicationWithConfig(['sentry.data_collection' => []]);

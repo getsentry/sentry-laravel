@@ -63,6 +63,7 @@ return [
     //         'request' => ['mode' => 'denyList', 'terms' => ['x-private-header']],
     //         'response' => ['mode' => 'allowList', 'terms' => ['content-type']],
     //     ],
+    //     'url_query_params' => ['mode' => 'denyList', 'terms' => ['private-param']],
     // ],
     // Use 'http_headers' => ['mode' => ..., 'terms' => [...]] to apply the same policy to both directions.
 

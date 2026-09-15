@@ -81,7 +81,6 @@ class HttpClientIntegration extends Feature
         $data = [
             'url' => $partialUri,
             // See: https://develop.sentry.dev/sdk/performance/span-data-conventions/#http
-            'http.query' => $fullUri->getQuery(),
             'http.fragment' => $fullUri->getFragment(),
             'http.request.method' => $event->request->method(),
             'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
@@ -135,7 +134,6 @@ class HttpClientIntegration extends Feature
         $data = [
             'url' => $this->getPartialUri($fullUri),
             // See: https://develop.sentry.dev/sdk/performance/span-data-conventions/#http
-            'http.query' => $fullUri->getQuery(),
             'http.fragment' => $fullUri->getFragment(),
             'http.request.method' => $event->request->method(),
             'http.response.status_code' => $event->response->status(),
@@ -161,7 +159,6 @@ class HttpClientIntegration extends Feature
         $data = [
             'url' => $this->getPartialUri($fullUri),
             // See: https://develop.sentry.dev/sdk/performance/span-data-conventions/#http
-            'http.query' => $fullUri->getQuery(),
             'http.fragment' => $fullUri->getFragment(),
             'http.request.method' => $event->request->method(),
             'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
@@ -184,8 +181,12 @@ class HttpClientIntegration extends Feature
     {
         $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
         $request = $request->toPsrRequest();
+        $queryData = $policy->isLegacyMode()
+            ? ['http.query' => $request->getUri()->getQuery()]
+            : HttpDataCollector::collectQueryData($policy, $request->getUri()->getQuery());
 
-        return HttpDataCollector::collectPsr7RequestData($policy, $request)
+        return $queryData
+            + HttpDataCollector::collectPsr7RequestData($policy, $request)
             + HttpDataCollector::collectPsr7BodyData($policy, DataCollectionOptions::HTTP_BODY_OUTGOING_REQUEST, $request);
     }
 

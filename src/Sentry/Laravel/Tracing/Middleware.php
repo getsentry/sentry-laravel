@@ -201,14 +201,17 @@ class Middleware
         $dataCollection = $policy->getDataCollection();
 
         if ($dataCollection !== null) {
-            $collectedData = [];
+            $queryString = $request->server('QUERY_STRING', '');
+            $collectedData = is_string($queryString)
+                ? HttpDataCollector::collectQueryData($policy, $queryString)
+                : [];
 
             if (HttpDataCollector::shouldCollectRequestHeadersOrCookies($policy)) {
                 $headers = HttpHeaderNormalizer::normalize($request->headers->getIterator()->getArrayCopy());
                 $cookies = $dataCollection->getCookies()['mode'] === 'off'
                     ? []
                     : CookieValueFilter::filter($request->cookies->all());
-                $collectedData = HttpDataCollector::collectRequestData($policy, $headers, $cookies);
+                $collectedData += HttpDataCollector::collectRequestData($policy, $headers, $cookies);
             }
 
             $collectedData += $this->collectRequestBodyData($request, $policy);

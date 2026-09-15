@@ -17,6 +17,7 @@ use Laravel\Octane\Events as Octane;
 use Laravel\Sanctum\Events as Sanctum;
 use RuntimeException;
 use Sentry\Breadcrumb;
+use Sentry\DataCollection\DataCollectionPolicy;
 use Sentry\Laravel\Tracing\Middleware;
 use Sentry\SentrySdk;
 use Sentry\State\Scope;
@@ -258,6 +259,10 @@ class EventHandler
 
     protected function sanctumTokenAuthenticatedHandler(Sanctum\TokenAuthenticated $event): void
     {
+        if (!DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub())->shouldCollectUserInfo()) {
+            return;
+        }
+
         $this->configureUserScopeFromModel($event->token->tokenable);
     }
 
@@ -270,6 +275,10 @@ class EventHandler
      */
     private function configureUserScopeFromModel($authUser): void
     {
+        if (!DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub())->shouldCollectUserInfo()) {
+            return;
+        }
+
         $userData = [];
 
         // If the user is a Laravel Eloquent model we try to extract some common fields from it

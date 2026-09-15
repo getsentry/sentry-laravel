@@ -4,8 +4,10 @@ namespace Sentry\Laravel\Http;
 
 use Illuminate\Container\Container;
 use Psr\Http\Message\ServerRequestInterface;
+use Sentry\DataCollection\DataCollectionPolicy;
 use Sentry\Integration\RequestFetcher;
 use Sentry\Integration\RequestFetcherInterface;
+use Sentry\SentrySdk;
 
 class LaravelRequestFetcher implements RequestFetcherInterface
 {
@@ -33,6 +35,15 @@ class LaravelRequestFetcher implements RequestFetcherInterface
 
         if ($request === null) {
             return null;
+        }
+
+        if (!DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub())->isLegacyMode()) {
+            $serverParams = $request->getServerParams();
+            $queryString = $serverParams['QUERY_STRING'] ?? null;
+
+            if (is_string($queryString)) {
+                $request = $request->withUri($request->getUri()->withQuery($queryString), true);
+            }
         }
 
         return $request->withCookieParams(CookieValueFilter::filter($request->getCookieParams()));

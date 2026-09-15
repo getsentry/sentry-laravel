@@ -165,9 +165,7 @@ class ServiceProvider extends BaseServiceProvider
                 $handler->subscribeOctaneEvents($dispatcher);
             }
 
-            if (isset($userConfig['send_default_pii']) && $userConfig['send_default_pii'] !== false) {
-                $handler->subscribeAuthEvents($dispatcher);
-            }
+            $handler->subscribeAuthEvents($dispatcher);
 
             if (isset($userConfig['enable_logs']) && $userConfig['enable_logs'] === true && method_exists($this->app, 'terminating')) {
                 // Listen to the terminating event to flush the logs before the application ends
