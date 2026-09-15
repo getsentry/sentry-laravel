@@ -26,6 +26,26 @@ class LaravelDataCollectionConfigOptionTest extends TestCase
         $this->assertSame('denyList', $dataCollection->getHttpHeaders()['response']['mode']);
     }
 
+    public function testHttpBodyConfigurationUsesSharedDefaults(): void
+    {
+        $this->resetApplicationWithConfig(['sentry.data_collection' => []]);
+
+        $this->assertSame(DataCollectionOptions::HTTP_BODY_TYPES, $this->getDataCollection()->getHttpBodies());
+    }
+
+    public function testHttpBodyConfigurationIsForwardedToThePhpSdk(): void
+    {
+        $httpBodies = [
+            DataCollectionOptions::HTTP_BODY_INCOMING_REQUEST,
+            DataCollectionOptions::HTTP_BODY_OUTGOING_RESPONSE,
+        ];
+        $this->resetApplicationWithConfig([
+            'sentry.data_collection' => ['http_bodies' => $httpBodies],
+        ]);
+
+        $this->assertSame($httpBodies, $this->getDataCollection()->getHttpBodies());
+    }
+
     public function testCookieConfigurationUsesSharedDefaults(): void
     {
         $this->resetApplicationWithConfig(['sentry.data_collection' => []]);

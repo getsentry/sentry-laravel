@@ -35,7 +35,10 @@ class HttpClientHeaderCollectionTest extends TestCase
     public function testRequestAndResponseHeadersAreCollectedOnSpanAndBreadcrumb(): void
     {
         $this->resetApplicationWithConfig([
-            'sentry.data_collection' => ['cookies' => ['mode' => 'off']],
+            'sentry.data_collection' => [
+                'cookies' => ['mode' => 'off'],
+                'http_bodies' => [],
+            ],
         ]);
         $transaction = $this->startTransaction();
         list($request, $response) = $this->httpExchange();

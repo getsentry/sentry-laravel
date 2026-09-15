@@ -13,9 +13,9 @@ use Illuminate\Http\Client\Response;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\UriInterface;
 use Sentry\Breadcrumb;
+use Sentry\DataCollection\DataCollectionOptions;
 use Sentry\DataCollection\DataCollectionPolicy;
 use Sentry\DataCollection\HttpDataCollector;
-use Sentry\DataCollection\HttpHeaderNormalizer;
 use Sentry\Laravel\Features\Concerns\TracksPushedScopesAndSpans;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
@@ -183,16 +183,10 @@ class HttpClientIntegration extends Feature
     private function collectRequestData(Request $request): array
     {
         $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
-        $dataCollection = $policy->getDataCollection();
+        $request = $request->toPsrRequest();
 
-        if ($dataCollection === null || ($dataCollection->getHttpHeaders()['request']['mode'] === 'off' && $dataCollection->getCookies()['mode'] === 'off')) {
-            return [];
-        }
-
-        return HttpDataCollector::collectRequestData(
-            $policy,
-            HttpHeaderNormalizer::normalize($request->headers())
-        );
+        return HttpDataCollector::collectPsr7RequestData($policy, $request)
+            + HttpDataCollector::collectPsr7BodyData($policy, DataCollectionOptions::HTTP_BODY_OUTGOING_REQUEST, $request);
     }
 
     /**
@@ -201,16 +195,10 @@ class HttpClientIntegration extends Feature
     private function collectResponseData(Response $response): array
     {
         $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
-        $dataCollection = $policy->getDataCollection();
+        $response = $response->toPsrResponse();
 
-        if ($dataCollection === null || ($dataCollection->getHttpHeaders()['response']['mode'] === 'off' && $dataCollection->getCookies()['mode'] === 'off')) {
-            return [];
-        }
-
-        return HttpDataCollector::collectResponseData(
-            $policy,
-            HttpHeaderNormalizer::normalize($response->headers())
-        );
+        return HttpDataCollector::collectPsr7ResponseData($policy, $response)
+            + HttpDataCollector::collectPsr7BodyData($policy, DataCollectionOptions::HTTP_BODY_INCOMING_RESPONSE, $response);
     }
 
     /**

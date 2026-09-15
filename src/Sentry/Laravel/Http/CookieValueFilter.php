@@ -3,6 +3,7 @@
 namespace Sentry\Laravel\Http;
 
 use Illuminate\Support\Str;
+use Sentry\DataCollection\KeyValueDataFilter;
 
 /**
  * Filters cookie values that Laravel considers too sensitive to collect.
@@ -37,7 +38,7 @@ final class CookieValueFilter
     public static function filterValue(string $name, $value)
     {
         if (Str::is([config('session.cookie'), 'remember_*', 'XSRF-TOKEN'], $name)) {
-            return '[Filtered]';
+            return KeyValueDataFilter::FILTERED_VALUE;
         }
 
         return $value;

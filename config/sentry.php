@@ -58,6 +58,7 @@ return [
 
     // 'data_collection' => [
     //     'cookies' => ['mode' => 'denyList', 'terms' => ['private-cookie']],
+    //     'http_bodies' => ['incomingRequest', 'incomingResponse', 'outgoingRequest', 'outgoingResponse'],
     //     'http_headers' => [
     //         'request' => ['mode' => 'denyList', 'terms' => ['x-private-header']],
     //         'response' => ['mode' => 'allowList', 'terms' => ['content-type']],

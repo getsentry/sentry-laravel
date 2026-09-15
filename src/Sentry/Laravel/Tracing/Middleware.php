@@ -5,7 +5,9 @@ namespace Sentry\Laravel\Tracing;
 use Closure;
 use Illuminate\Http\Request;
 use Laravel\Lumen\Application as LumenApplication;
+use Sentry\DataCollection\DataCollectionOptions;
 use Sentry\DataCollection\DataCollectionPolicy;
+use Sentry\DataCollection\HttpBodyCollector;
 use Sentry\DataCollection\HttpDataCollector;
 use Sentry\DataCollection\HttpHeaderNormalizer;
 use Sentry\Laravel\Http\CookieValueFilter;
@@ -198,13 +200,18 @@ class Middleware
         $policy = DataCollectionPolicy::fromHub($hub);
         $dataCollection = $policy->getDataCollection();
 
-        if ($dataCollection !== null && ($dataCollection->getHttpHeaders()['request']['mode'] !== 'off' || $dataCollection->getCookies()['mode'] !== 'off')) {
-            $headers = HttpHeaderNormalizer::normalize($request->headers->getIterator()->getArrayCopy());
-            $cookies = $dataCollection->getCookies()['mode'] === 'off'
-                ? []
-                : CookieValueFilter::filter($request->cookies->all());
-            $collectedData = HttpDataCollector::collectRequestData($policy, $headers, $cookies);
+        if ($dataCollection !== null) {
+            $collectedData = [];
 
+            if (HttpDataCollector::shouldCollectRequestHeadersOrCookies($policy)) {
+                $headers = HttpHeaderNormalizer::normalize($request->headers->getIterator()->getArrayCopy());
+                $cookies = $dataCollection->getCookies()['mode'] === 'off'
+                    ? []
+                    : CookieValueFilter::filter($request->cookies->all());
+                $collectedData = HttpDataCollector::collectRequestData($policy, $headers, $cookies);
+            }
+
+            $collectedData += $this->collectRequestBodyData($request, $policy);
             $transaction->setData(array_diff_key($collectedData, $transaction->getData()));
         }
 
@@ -270,6 +277,33 @@ class Middleware
         );
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    private function collectRequestBodyData(Request $request, DataCollectionPolicy $policy): array
+    {
+        if (array_key_exists('http.request.body.data', $this->transaction->getData())) {
+            return [];
+        }
+
+        $limit = HttpBodyCollector::getMaxBodyLength($policy, DataCollectionOptions::HTTP_BODY_INCOMING_REQUEST);
+        if ($limit === 0 || (float) $request->headers->get('Content-Length', '0') > $limit) {
+            return [];
+        }
+
+        $body = $request->request->all();
+        if ($body === []) {
+            $body = $request->getContent();
+        }
+
+        return HttpDataCollector::collectBodyData(
+            $policy,
+            DataCollectionOptions::HTTP_BODY_INCOMING_REQUEST,
+            $body,
+            (string) $request->headers->get('Content-Type', '')
+        );
+    }
+
     private function hydrateResponseData(SymfonyResponse $response): void
     {
         $this->transaction->setHttpStatus($response->getStatusCode());
@@ -280,20 +314,38 @@ class Middleware
         $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
         $dataCollection = $policy->getDataCollection();
 
-        if ($dataCollection === null || ($dataCollection->getHttpHeaders()['response']['mode'] === 'off' && $dataCollection->getCookies()['mode'] === 'off')) {
+        if ($dataCollection === null) {
             return;
         }
 
-        $headers = HttpHeaderNormalizer::normalize($response->headers->getIterator()->getArrayCopy());
-        $cookies = [];
+        $collectedData = [];
+        if (HttpDataCollector::shouldCollectResponseHeadersOrCookies($policy)) {
+            $headers = HttpHeaderNormalizer::normalize($response->headers->getIterator()->getArrayCopy());
+            $cookies = [];
 
-        if ($dataCollection->getCookies()['mode'] !== 'off') {
-            foreach ($response->headers->getCookies() as $cookie) {
-                $cookies[] = [$cookie->getName(), CookieValueFilter::filterValue($cookie->getName(), $cookie->getValue())];
+            if ($dataCollection->getCookies()['mode'] !== 'off') {
+                foreach ($response->headers->getCookies() as $cookie) {
+                    $cookies[] = [$cookie->getName(), CookieValueFilter::filterValue($cookie->getName(), $cookie->getValue())];
+                }
             }
+
+            $collectedData = HttpDataCollector::collectResponseData($policy, $headers, $cookies);
         }
 
-        $collectedData = HttpDataCollector::collectResponseData($policy, $headers, $cookies);
+        if (!array_key_exists('http.response.body.data', $this->transaction->getData())) {
+            $limit = HttpBodyCollector::getMaxBodyLength($policy, DataCollectionOptions::HTTP_BODY_OUTGOING_RESPONSE);
+            if ($limit !== 0) {
+                $body = $response->getContent();
+                if ($body !== false) {
+                    $collectedData += HttpDataCollector::collectBodyData(
+                        $policy,
+                        DataCollectionOptions::HTTP_BODY_OUTGOING_RESPONSE,
+                        $body,
+                        (string) $response->headers->get('Content-Type', '')
+                    );
+                }
+            }
+        }
 
         $this->transaction->setData(array_diff_key($collectedData, $this->transaction->getData()));
     }
