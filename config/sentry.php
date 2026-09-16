@@ -60,6 +60,7 @@ return [
     //     'cookies' => ['mode' => 'denyList', 'terms' => ['private-cookie']],
     //     'database_query_data' => true,
     //     'http_bodies' => ['incomingRequest', 'incomingResponse', 'outgoingRequest', 'outgoingResponse'],
+    //     'queues' => true,
     //     'http_headers' => [
     //         'request' => ['mode' => 'denyList', 'terms' => ['x-private-header']],
     //         'response' => ['mode' => 'allowList', 'terms' => ['content-type']],

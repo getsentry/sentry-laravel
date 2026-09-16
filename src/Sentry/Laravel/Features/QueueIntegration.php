@@ -13,6 +13,7 @@ use Illuminate\Queue\Events\JobQueueing;
 use Illuminate\Queue\Events\WorkerStopping;
 use Illuminate\Queue\Queue;
 use Sentry\Breadcrumb;
+use Sentry\DataCollection\DataCollectionPolicy;
 use Sentry\Laravel\Features\Concerns\TracksPushedScopesAndSpans;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
@@ -38,6 +39,7 @@ class QueueIntegration extends Feature
     private const QUEUE_PAYLOAD_BAGGAGE_DATA = 'sentry_baggage_data';
     private const QUEUE_PAYLOAD_TRACE_PARENT_DATA = 'sentry_trace_parent_data';
     private const QUEUE_PAYLOAD_PUBLISH_TIME = 'sentry_publish_time';
+    private const QUEUE_PAYLOAD_DATA_ATTRIBUTE = 'messaging.message.body.data';
 
     public function isApplicable(): bool
     {
@@ -65,14 +67,20 @@ class QueueIntegration extends Feature
                 $parentSpan = SentrySdk::getCurrentHub()->getSpan();
 
                 if ($parentSpan !== null && $parentSpan->getSampled()) {
+                    $data = [
+                        'messaging.system' => 'laravel',
+                        'messaging.message.id' => $payload['uuid'] ?? null,
+                        'messaging.destination.name' => $this->normalizeQueueName($queue),
+                        'messaging.destination.connection' => $connection,
+                    ];
+
+                    if (DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub())->shouldCollectQueues()) {
+                        $data[self::QUEUE_PAYLOAD_DATA_ATTRIBUTE] = $payload['data'] ?? [];
+                    }
+
                     $context = (new SpanContext)
                         ->setOp(self::QUEUE_SPAN_OP_QUEUE_PUBLISH)
-                        ->setData([
-                            'messaging.system' => 'laravel',
-                            'messaging.message.id' => $payload['uuid'] ?? null,
-                            'messaging.destination.name' => $this->normalizeQueueName($queue),
-                            'messaging.destination.connection' => $connection,
-                        ])
+                        ->setData($data)
                         ->setDescription($queue);
 
                     $this->pushSpan($parentSpan->startChild($context));
@@ -128,6 +136,9 @@ class QueueIntegration extends Feature
 
         $this->pushScope();
 
+        $jobPayload = $event->job->payload();
+        $collectQueueData = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub())->shouldCollectQueues();
+
         if ($this->isBreadcrumbFeatureEnabled('queue_info')) {
             $job = [
                 'job' => $event->job->getName(),
@@ -135,6 +146,10 @@ class QueueIntegration extends Feature
                 'attempts' => $event->job->attempts(),
                 'connection' => $event->connectionName,
             ];
+
+            if ($collectQueueData) {
+                $job[self::QUEUE_PAYLOAD_DATA_ATTRIBUTE] = $jobPayload['data'] ?? [];
+            }
 
             // Resolve name exists only from Laravel 5.3+
             if (method_exists($event->job, 'resolveName')) {
@@ -161,8 +176,6 @@ class QueueIntegration extends Feature
         if ($parentSpan !== null && (!$parentSpan->getSampled() || !$this->isTracingFeatureEnabled('queue_jobs'))) {
             return;
         }
-
-        $jobPayload = $event->job->payload();
 
         if ($parentSpan === null) {
             $baggage = $jobPayload[self::QUEUE_PAYLOAD_BAGGAGE_DATA] ?? null;
@@ -194,6 +207,10 @@ class QueueIntegration extends Feature
             'messaging.message.retry.count' => $event->job->attempts() - 1,
             'messaging.message.receive.latency' => $jobPublishedAt !== null ? microtime(true) - $jobPublishedAt : null,
         ];
+
+        if ($collectQueueData) {
+            $job[self::QUEUE_PAYLOAD_DATA_ATTRIBUTE] = $jobPayload['data'] ?? [];
+        }
 
         if ($context instanceof TransactionContext) {
             $context->setName($resolvedJobName);
