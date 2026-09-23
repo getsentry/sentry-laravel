@@ -4,6 +4,11 @@
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.28.0.
 
+### Bug Fixes
+
+- Normalize class-based Laravel Pennant feature flag names so Relay accepts them. [(#1159)](https://github.com/getsentry/sentry-laravel/pull/1159)
+- Support token usage properties in `laravel/ai` 1.0 when tracing agents and embeddings. [(#1165)](https://github.com/getsentry/sentry-laravel/pull/1165)
+
 ### Misc
 
 - Bump the PHP SDK to version `4.31.0` [(#1155)](https://github.com/getsentry/sentry-laravel/pull/1155)
