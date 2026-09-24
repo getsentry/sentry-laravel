@@ -117,10 +117,6 @@ jobs:
           # laravel/ai: Added below only for relevant and supported cases
           composer remove friendsofphp/php-cs-fixer --dev --no-interaction --no-update
 
-          # laravel/pennant: Does not yet support Laravel 13
-          # laravel/octane: Does not yet support Laravel 13
-          [[ "${{ matrix.packages.laravel }}" == "^13.0" ]] && composer remove laravel/pennant laravel/octane --dev --no-interaction --no-update || true
-
           # Require the correct versions we want to run phpunit for
           composer require \
             "laravel/framework:${{ matrix.packages.laravel }}" \
