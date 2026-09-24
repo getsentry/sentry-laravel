@@ -73,7 +73,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: [ "8.5", "8.4", "8.3", "8.2", "8.1" ]
+        php: [ "8.6", "8.5", "8.4", "8.3", "8.2", "8.1" ]
         packages:
           # All versions below only support PHP ^8.1 (Laravel requirement)
           - { laravel: ^10.0,  testbench: ^8.0, phpunit: 9.6.* }
@@ -138,7 +138,7 @@ jobs:
         run: vendor/bin/phpunit --coverage-clover=coverage.xml --coverage-filter=src/Sentry
 
       - name: Run AI integration tests
-        if: (matrix.packages.laravel == '^12.0' || matrix.packages.laravel == '^13.0') && (matrix.php == '8.4' || matrix.php == '8.5')
+        if: (matrix.packages.laravel == '^12.0' || matrix.packages.laravel == '^13.0') && (matrix.php == '8.4' || matrix.php == '8.5' || matrix.php == '8.6')
         run: |
           composer require "laravel/ai:^1.0" --dev --no-interaction --no-update
           vendor/bin/phpunit test/Sentry/Features/AiIntegrationTest.php
