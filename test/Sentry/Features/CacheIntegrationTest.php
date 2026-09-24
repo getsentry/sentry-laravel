@@ -3,9 +3,12 @@
 namespace Sentry\Laravel\Tests\Features;
 
 use Illuminate\Cache\Events\RetrievingKey;
+use Illuminate\Redis\Connections\Connection;
+use Illuminate\Redis\Events\CommandExecuted;
 use Illuminate\Session\NullSessionHandler;
 use Illuminate\Session\Store;
 use Illuminate\Support\Facades\Cache;
+use Mockery;
 use Sentry\Laravel\Tests\TestCase;
 use Sentry\Tracing\Span;
 use Sentry\Laravel\Features\CacheIntegration;
@@ -289,6 +292,68 @@ class CacheIntegrationTest extends TestCase
 
         // And the key should not be replaced
         $this->assertEquals('some-key', $span->getDescription());
+    }
+
+    public function testRedisParametersAreRecordedWhenPIIShouldBeSent(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.redis_commands' => true,
+            'sentry.send_default_pii' => true,
+        ]);
+
+        $span = $this->executeRedisCommandAndReturnSpan();
+
+        $this->assertSame('SET foo', $span->getDescription());
+        $this->assertSame(['foo', 'bar'], $span->getData()['db.redis.parameters']);
+    }
+
+    public function testRedisParametersAreNotRecordedWhenPIIShouldNotBeSent(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.redis_commands' => true,
+            'sentry.send_default_pii' => false,
+        ]);
+
+        $span = $this->executeRedisCommandAndReturnSpan();
+
+        $this->assertArrayNotHasKey('db.redis.parameters', $span->getData());
+    }
+
+    public function testRedisParametersAreRecordedWithDataCollection(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.redis_commands' => true,
+            'sentry.send_default_pii' => false,
+            'sentry.data_collection' => [],
+        ]);
+
+        $span = $this->executeRedisCommandAndReturnSpan();
+
+        $this->assertSame(['foo', 'bar'], $span->getData()['db.redis.parameters']);
+    }
+
+    public function testRedisParametersAreNotRecordedWhenDatabaseQueryDataIsDisabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.redis_commands' => true,
+            'sentry.send_default_pii' => true,
+            'sentry.data_collection' => [
+                'database_query_data' => false,
+            ],
+        ]);
+
+        $span = $this->executeRedisCommandAndReturnSpan();
+
+        $this->assertArrayNotHasKey('db.redis.parameters', $span->getData());
+    }
+
+    private function executeRedisCommandAndReturnSpan(): Span
+    {
+        return $this->executeAndReturnMostRecentSpan(function () {
+            $this->dispatchLaravelEvent(new CommandExecuted('set', ['foo', 'bar'], 1.0, Mockery::mock(Connection::class, [
+                'getName' => 'default',
+            ])));
+        });
     }
 
     private function markSkippedIfTracingEventsNotAvailable(): void
