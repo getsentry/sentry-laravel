@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Laravel\Lumen\Application as Lumen;
 use RuntimeException;
 use Sentry\ClientBuilder;
+use Sentry\DataCollection\DataCollectionPolicy;
 use Sentry\Event;
 use Sentry\EventHint;
 use Sentry\Integration as SdkIntegration;
@@ -165,7 +166,7 @@ class ServiceProvider extends BaseServiceProvider
                 $handler->subscribeOctaneEvents($dispatcher);
             }
 
-            if (isset($userConfig['send_default_pii']) && $userConfig['send_default_pii'] !== false) {
+            if (DataCollectionPolicy::fromHub($this->app->make(HubInterface::class))->shouldCollectUserInfo()) {
                 $handler->subscribeAuthEvents($dispatcher);
             }
 
