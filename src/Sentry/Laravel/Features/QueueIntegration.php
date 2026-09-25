@@ -13,9 +13,13 @@ use Illuminate\Queue\Events\JobQueueing;
 use Illuminate\Queue\Events\WorkerStopping;
 use Illuminate\Queue\Queue;
 use Sentry\Breadcrumb;
+use Sentry\DataCollection\DataCollectionPolicy;
+use Sentry\DataCollection\KeyValueCollectionBehavior;
+use Sentry\DataCollection\KeyValueDataFilter;
 use Sentry\Laravel\Features\Concerns\TracksPushedScopesAndSpans;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
+use Sentry\Serializer\Serializer;
 use Sentry\State\Scope;
 use Sentry\Tracing\PropagationContext;
 use Sentry\Tracing\SpanContext;
@@ -38,6 +42,8 @@ class QueueIntegration extends Feature
     private const QUEUE_PAYLOAD_BAGGAGE_DATA = 'sentry_baggage_data';
     private const QUEUE_PAYLOAD_TRACE_PARENT_DATA = 'sentry_trace_parent_data';
     private const QUEUE_PAYLOAD_PUBLISH_TIME = 'sentry_publish_time';
+
+    private const QUEUE_SPAN_DATA_ARGUMENTS = 'messaging.message.body.data';
 
     public function isApplicable(): bool
     {
@@ -67,12 +73,12 @@ class QueueIntegration extends Feature
                 if ($parentSpan !== null && $parentSpan->getSampled()) {
                     $context = (new SpanContext)
                         ->setOp(self::QUEUE_SPAN_OP_QUEUE_PUBLISH)
-                        ->setData([
+                        ->setData(array_merge([
                             'messaging.system' => 'laravel',
                             'messaging.message.id' => $payload['uuid'] ?? null,
                             'messaging.destination.name' => $this->normalizeQueueName($queue),
                             'messaging.destination.connection' => $connection,
-                        ])
+                        ], $this->collectPayloadArguments($payload)))
                         ->setDescription($queue);
 
                     $this->pushSpan($parentSpan->startChild($context));
@@ -201,7 +207,7 @@ class QueueIntegration extends Feature
         }
 
         $context->setOp('queue.process');
-        $context->setData($job);
+        $context->setData(array_merge($job, $this->collectPayloadArguments($jobPayload)));
         $context->setOrigin('auto.queue');
         $context->setStartTimestamp(microtime(true));
 
@@ -225,6 +231,34 @@ class QueueIntegration extends Feature
         $this->maybeFinishSpan(SpanStatus::internalError());
 
         Integration::flushEvents();
+    }
+
+    /**
+     * @param array<array-key, mixed>|null $payload
+     *
+     * @return array<string, mixed>
+     */
+    private function collectPayloadArguments(?array $payload): array
+    {
+        $data = $payload['data'] ?? null;
+
+        if (!is_array($data) || $data === [] || isset($data['commandName'], $data['command'])) {
+            return [];
+        }
+
+        $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
+        $dataCollection = $policy->getDataCollection();
+
+        // The legacy options never collected the arguments passed to queued jobs
+        if ($dataCollection === null || !$dataCollection->shouldCollectQueues()) {
+            return [];
+        }
+
+        $filter = new KeyValueDataFilter(KeyValueCollectionBehavior::denyList());
+
+        return [
+            self::QUEUE_SPAN_DATA_ARGUMENTS => $filter->filterKeyValueData($data, [new Serializer($policy->getOptions()), 'serialize']),
+        ];
     }
 
     private function normalizeQueueName(?string $queue): string
