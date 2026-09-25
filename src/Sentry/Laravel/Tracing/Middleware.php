@@ -5,6 +5,9 @@ namespace Sentry\Laravel\Tracing;
 use Closure;
 use Illuminate\Http\Request;
 use Laravel\Lumen\Application as LumenApplication;
+use Sentry\DataCollection\DataCollectionPolicy;
+use Sentry\DataCollection\HttpDataCollector;
+use Sentry\DataCollection\HttpHeaderNormalizer;
 use Sentry\SentrySdk;
 use Sentry\State\HubInterface;
 use Sentry\Tracing\Span;
@@ -191,6 +194,16 @@ class Middleware
 
         $this->transaction = $transaction;
 
+        $policy = DataCollectionPolicy::fromHub($hub);
+        $dataCollection = $policy->getDataCollection();
+
+        if ($dataCollection !== null && $dataCollection->getHttpHeaders()['request']['mode'] !== 'off') {
+            $headers = HttpHeaderNormalizer::normalize($request->headers->getIterator()->getArrayCopy());
+            $collectedHeaders = HttpDataCollector::collectRequestHeaders($dataCollection, $headers);
+
+            $transaction->setData(array_diff_key($collectedHeaders, $transaction->getData()));
+        }
+
         $bootstrapSpan = $this->addAppBootstrapSpan();
 
         $this->appSpan = $this->transaction->startChild(
@@ -259,6 +272,18 @@ class Middleware
         $this->transaction->setData([
             'http.response.status_code' => $response->getStatusCode(),
         ]);
+
+        $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
+        $dataCollection = $policy->getDataCollection();
+
+        if ($dataCollection === null || $dataCollection->getHttpHeaders()['response']['mode'] === 'off') {
+            return;
+        }
+
+        $headers = HttpHeaderNormalizer::normalize($response->headers->getIterator()->getArrayCopy());
+        $collectedHeaders = HttpDataCollector::collectResponseHeaders($dataCollection, $headers);
+
+        $this->transaction->setData(array_diff_key($collectedHeaders, $this->transaction->getData()));
     }
 
     public function finishTransaction(): void
