@@ -26,6 +26,35 @@ class LaravelDataCollectionConfigOptionTest extends TestCase
         $this->assertSame('denyList', $dataCollection->getHttpHeaders()['response']['mode']);
     }
 
+    public function testCookieConfigurationUsesSharedDefaults(): void
+    {
+        $this->resetApplicationWithConfig(['sentry.data_collection' => []]);
+
+        $this->assertSame(['mode' => 'denyList', 'terms' => []], $this->getDataCollection()->getCookies());
+    }
+
+    public function testCookieConfigurationIsForwardedToThePhpSdk(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.data_collection' => [
+                'cookies' => ['mode' => 'allowList', 'terms' => ['theme']],
+            ],
+        ]);
+
+        $this->assertSame(['mode' => 'allowList', 'terms' => ['theme']], $this->getDataCollection()->getCookies());
+    }
+
+    public function testInvalidCookieConfigurationUsesSharedResolverFallbacks(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.data_collection' => [
+                'cookies' => ['mode' => 'invalid', 'terms' => 'invalid'],
+            ],
+        ]);
+
+        $this->assertSame(['mode' => 'denyList', 'terms' => []], $this->getDataCollection()->getCookies());
+    }
+
     public function testPartialConfigurationRetainsDefaultsForOtherDirection(): void
     {
         $this->resetApplicationWithConfig([
