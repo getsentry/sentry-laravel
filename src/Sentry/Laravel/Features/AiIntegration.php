@@ -16,6 +16,7 @@ use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\HasTools;
 use Laravel\Ai\Contracts\Providers\TextProvider;
 use Laravel\Ai\Contracts\Tool;
+use Laravel\Ai\Events\AgentFailed;
 use Laravel\Ai\Events\AgentPrompted;
 use Laravel\Ai\Events\EmbeddingsGenerated;
 use Laravel\Ai\Events\GeneratingEmbeddings;
@@ -123,6 +124,7 @@ class AiIntegration extends Feature
     {
         $events->listen(\Laravel\Ai\Events\PromptingAgent::class, [$this, 'handlePromptingAgentForTracing']);
         $events->listen(\Laravel\Ai\Events\AgentPrompted::class, [$this, 'handleAgentPromptedForTracing']);
+        $events->listen(\Laravel\Ai\Events\AgentFailed::class, [$this, 'handleAgentFailedForTracing']);
         $events->listen(\Laravel\Ai\Events\StreamingAgent::class, [$this, 'handlePromptingAgentForTracing']);
         $events->listen(\Laravel\Ai\Events\AgentStreamed::class, [$this, 'handleAgentPromptedForTracing']);
         $events->listen(\Laravel\Ai\Events\InvokingTool::class, [$this, 'handleInvokingToolForTracing']);
@@ -252,6 +254,22 @@ class AiIntegration extends Feature
 
         if ($parentSpan !== null) {
             SentrySdk::getCurrentHub()->setSpan($parentSpan);
+        }
+    }
+
+    public function handleAgentFailedForTracing(AgentFailed $event): void
+    {
+        $invocation = $this->invocations->pull($event->invocationId);
+        if ($invocation === null) {
+            return;
+        }
+
+        try {
+            $invocation->finishActiveChatSpan(SpanStatus::internalError());
+            $invocation->span->setStatus(SpanStatus::internalError());
+            $invocation->span->finish();
+        } finally {
+            SentrySdk::getCurrentHub()->setSpan($invocation->parentSpan);
         }
     }
 
