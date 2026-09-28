@@ -45,12 +45,17 @@ class AiSpanDataBag
         if ($usage === null) {
             return;
         }
-        $this->setNonZero('gen_ai.usage.input_tokens', $usage->promptTokens);
-        $this->setNonZero('gen_ai.usage.output_tokens', $usage->completionTokens);
-        $this->setNonZero('gen_ai.usage.total_tokens', $usage->promptTokens + $usage->completionTokens);
-        $this->setNonZero('gen_ai.usage.input_tokens.cached', $usage->cacheReadInputTokens);
-        $this->setNonZero('gen_ai.usage.input_tokens.cache_write', $usage->cacheWriteInputTokens);
-        $this->setNonZero('gen_ai.usage.output_tokens.reasoning', $usage->reasoningTokens);
+        // laravel/ai 1.0 renamed `promptTokens` / `completionTokens` to `inputTokens` / `outputTokens`
+        // and moved the cache and reasoning counts onto the `TextUsage` subclass, where they are nullable
+        $inputTokens = $usage->inputTokens ?? $usage->promptTokens ?? 0;
+        $outputTokens = $usage->outputTokens ?? $usage->completionTokens ?? 0;
+
+        $this->setNonZero('gen_ai.usage.input_tokens', $inputTokens);
+        $this->setNonZero('gen_ai.usage.output_tokens', $outputTokens);
+        $this->setNonZero('gen_ai.usage.total_tokens', $inputTokens + $outputTokens);
+        $this->setNonZero('gen_ai.usage.input_tokens.cached', $usage->cacheReadInputTokens ?? null);
+        $this->setNonZero('gen_ai.usage.input_tokens.cache_write', $usage->cacheWriteInputTokens ?? null);
+        $this->setNonZero('gen_ai.usage.output_tokens.reasoning', $usage->reasoningTokens ?? null);
     }
 
     public function get(string $key)
