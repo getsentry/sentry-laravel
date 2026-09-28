@@ -63,6 +63,13 @@ env:
       "PKSA-ft77-7h5f-p3r6",
       "PKSA-b14r-zh1d-vdrc"
     ]
+  # zbateson/mail-mime-parser is a test-only dependency (orchestra/testbench 6 -> spatie/laravel-ray).
+  # Its fixes need PHP 8.0+, so the Laravel 8 lanes on PHP 7.3/7.4 can only install the vulnerable 2.x.
+  COMPOSER_ADVISORY_MAIL_MIME_PARSER_PHP_7: >-
+    [
+      "PKSA-f3bq-hwxm-x4yf",
+      "PKSA-r8x8-972m-nrc1"
+    ]
 
 jobs:
   phpunit:
@@ -252,6 +259,10 @@ jobs:
       - name: Configure Laravel 9 PHP 8.0 Symfony advisory allowlist
         if: ${{ matrix.packages.laravel == '^9.0' && matrix.php == '8.0' }}
         run: composer config --merge --json policy.advisories.ignore-id "$COMPOSER_ADVISORY_LARAVEL_9_PHP_8_0_SYMFONY"
+
+      - name: Configure mail-mime-parser PHP 7 advisory allowlist
+        if: ${{ matrix.packages.laravel == '^8.0' && (matrix.php == '7.3' || matrix.php == '7.4') }}
+        run: composer config --merge --json policy.advisories.ignore-id "$COMPOSER_ADVISORY_MAIL_MIME_PARSER_PHP_7"
 
       - name: Configure Composer dependencies
         run: |
