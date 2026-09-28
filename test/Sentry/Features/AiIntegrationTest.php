@@ -6,15 +6,13 @@ use Laravel\Ai\Attributes\MaxTokens;
 use Laravel\Ai\Attributes\Temperature;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\HasTools;
-use Laravel\Ai\Contracts\Providers\EmbeddingProvider;
-use Laravel\Ai\Contracts\Providers\TextProvider;
 use Laravel\Ai\Contracts\Tool;
-use Laravel\Ai\Responses\AgentResponse;
-use Laravel\Ai\Responses\QueuedAgentResponse;
-use Laravel\Ai\Responses\StreamableAgentResponse;
+use Laravel\Ai\Promptable;
 
 class TestAgent implements Agent, HasTools
 {
+    use Promptable;
+
     public function instructions(): string
     {
         return 'You are a helpful assistant.';
@@ -22,42 +20,6 @@ class TestAgent implements Agent, HasTools
     public function tools(): array
     {
         return [new WeatherLookup()];
-    }
-    public function prompt(string $prompt, array $attachments = [], $provider = null, ?string $model = null): AgentResponse
-    {
-        return new AgentResponse();
-    }
-    public function stream(string $prompt, array $attachments = [], $provider = null, ?string $model = null): StreamableAgentResponse
-    {
-        return new StreamableAgentResponse();
-    }
-    public function queue(string $prompt, array $attachments = [], $provider = null, ?string $model = null): QueuedAgentResponse
-    {
-        return new QueuedAgentResponse();
-    }
-    public function respond(...$args)
-    {
-        return null;
-    }
-    public function streamRespond(...$args)
-    {
-        return null;
-    }
-    public function queueRespond(...$args)
-    {
-        return null;
-    }
-    public function broadcast(string $prompt, $channels, array $attachments = [], bool $now = false, $provider = null, ?string $model = null): StreamableAgentResponse
-    {
-        return new StreamableAgentResponse();
-    }
-    public function broadcastNow(string $prompt, $channels, array $attachments = [], $provider = null, ?string $model = null): StreamableAgentResponse
-    {
-        return new StreamableAgentResponse();
-    }
-    public function broadcastOnQueue(string $prompt, $channels, array $attachments = [], $provider = null, ?string $model = null): QueuedAgentResponse
-    {
-        return new QueuedAgentResponse();
     }
 }
 
@@ -96,95 +58,6 @@ class WeatherLookup implements Tool
     }
 }
 
-class TestProvider extends \Laravel\Ai\Providers\Provider implements TextProvider, EmbeddingProvider
-{
-    public function __construct()
-    {
-        // Override parent constructor to allow no-arg instantiation
-    }
-
-    public function driver(): string
-    {
-        return 'openai';
-    }
-    public function name(): string
-    {
-        return 'openai';
-    }
-    public function prompt(\Laravel\Ai\Prompts\AgentPrompt $prompt): \Laravel\Ai\Responses\AgentResponse
-    {
-        return new \Laravel\Ai\Responses\AgentResponse();
-    }
-    public function stream(\Laravel\Ai\Prompts\AgentPrompt $prompt): \Laravel\Ai\Responses\StreamableAgentResponse
-    {
-        return new \Laravel\Ai\Responses\StreamableAgentResponse();
-    }
-    public function textGateway(): \Laravel\Ai\Contracts\Gateway\TextGateway
-    {
-        return new \Laravel\Ai\Contracts\Gateway\StubTextGateway();
-    }
-    public function chat(...$args)
-    {
-        return null;
-    }
-    public function promptStreamed(...$args)
-    {
-        return null;
-    }
-    public function chatStreamed(...$args)
-    {
-        return null;
-    }
-    public function textModel()
-    {
-        return null;
-    }
-    public function useTextGateway(\Laravel\Ai\Contracts\Gateway\TextGateway $gateway): self
-    {
-        return $this;
-    }
-    public function defaultTextModel(): string
-    {
-        return 'gpt-4o';
-    }
-    public function cheapestTextModel(): string
-    {
-        return 'gpt-4o-mini';
-    }
-    public function smartestTextModel(): string
-    {
-        return 'gpt-4o';
-    }
-    public function embeddings(array $inputs, ?int $dimensions = null, ?string $model = null): \Laravel\Ai\Responses\EmbeddingsResponse
-    {
-        return new \Laravel\Ai\Responses\EmbeddingsResponse();
-    }
-    public function embeddingGateway(): \Laravel\Ai\Contracts\Gateway\EmbeddingGateway
-    {
-        return new \Laravel\Ai\Contracts\Gateway\StubEmbeddingGateway();
-    }
-    public function useEmbeddingGateway($gateway): self
-    {
-        return $this;
-    }
-    public function defaultEmbeddingModel(): string
-    {
-        return 'text-embedding-3-small';
-    }
-    public function cheapestEmbeddingModel(): string
-    {
-        return 'text-embedding-3-small';
-    }
-    public function defaultEmbeddingsDimensions(): int
-    {
-        return 1536;
-    }
-    public function defaultEmbeddingsModel(): string
-    {
-        return 'text-embedding-3-small';
-    }
-}
-
 class TestToolCall
 {
     public $name;
@@ -209,34 +82,6 @@ class TestToolResult
     }
 }
 
-class TestLocalImage extends \Laravel\Ai\Files\Image
-{
-    public $path;
-    public $mime;
-
-    public function __construct($path, $mime = null)
-    {
-        $this->path = $path;
-        $this->mime = $mime;
-    }
-    public function mimeType(): ?string
-    {
-        return $this->mime;
-    }
-    public function name(): ?string
-    {
-        return $this->name ?? basename($this->path);
-    }
-    public function toArray(): array
-    {
-        return ['type' => 'local-image', 'name' => $this->name(), 'path' => $this->path, 'mime' => $this->mime];
-    }
-}
-
-class TestRemoteImage extends \Laravel\Ai\Files\RemoteImage
-{
-}
-
 namespace Sentry\Laravel\Tests\Features;
 
 use Illuminate\Http\Client\Events\ConnectionFailed;
@@ -254,13 +99,11 @@ use Laravel\Ai\Events\GeneratingEmbeddings;
 use Laravel\Ai\Events\EmbeddingsGenerated;
 use Sentry\Laravel\Tests\Features\AiStubs\TestAgent;
 use Sentry\Laravel\Tests\Features\AiStubs\TestAgentWithConfig;
-use Sentry\Laravel\Tests\Features\AiStubs\TestProvider;
 use Sentry\Laravel\Tests\Features\AiStubs\TestToolCall;
 use Sentry\Laravel\Tests\Features\AiStubs\TestToolResult;
+use Laravel\Ai\Responses\Data\TextUsage;
 use Laravel\Ai\Responses\Data\Usage;
 use Sentry\Laravel\Tests\Features\AiStubs\WeatherLookup;
-use Sentry\Laravel\Tests\Features\AiStubs\TestLocalImage;
-use Sentry\Laravel\Tests\Features\AiStubs\TestRemoteImage;
 use Sentry\Laravel\Tests\TestCase;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanStatus;
@@ -385,7 +228,7 @@ class AiIntegrationTest extends TestCase
         $this->dispatchLaravelEvent(new PromptingAgent('inv-m', $prompt));
         $this->dispatchLlmHttpEvents();
         $this->dispatchLaravelEvent(new InvokingTool('inv-m', 'tool-1', $agent, $tool, ['city' => 'Paris']));
-        $this->dispatchLaravelEvent(new ToolInvoked('inv-m', 'tool-1', $agent, $tool, ['city' => 'Paris'], 'Sunny, 22C'));
+        $this->dispatchLaravelEvent(new ToolInvoked('inv-m', 'tool-1', $agent, $tool, ['city' => 'Paris'], 'Sunny, 22C', 0.0));
         $this->dispatchLlmHttpEvents();
         $this->dispatchLaravelEvent(new AgentPrompted('inv-m', $prompt, $this->wrapResponse($response)));
         $spans = $transaction->getSpanRecorder()->getSpans();
@@ -412,7 +255,7 @@ class AiIntegrationTest extends TestCase
         $this->dispatchLaravelEvent(new PromptingAgent('inv-t1', $prompt));
         $this->dispatchLlmHttpEvents();
         $this->dispatchLaravelEvent(new InvokingTool('inv-t1', 'tool-1', $agent, $tool, ['query' => 'weather in Paris']));
-        $this->dispatchLaravelEvent(new ToolInvoked('inv-t1', 'tool-1', $agent, $tool, ['query' => 'weather in Paris'], 'Sunny, 22C'));
+        $this->dispatchLaravelEvent(new ToolInvoked('inv-t1', 'tool-1', $agent, $tool, ['query' => 'weather in Paris'], 'Sunny, 22C', 0.0));
         $this->dispatchLlmHttpEvents();
         $this->dispatchLaravelEvent(new AgentPrompted('inv-t1', $prompt, $this->wrapResponse($response)));
         $toolSpan = $this->findSpanByOp($transaction, 'gen_ai.execute_tool');
@@ -430,7 +273,7 @@ class AiIntegrationTest extends TestCase
         $this->dispatchLaravelEvent(new PromptingAgent('inv-t2', $prompt));
         $this->dispatchLlmHttpEvents();
         $this->dispatchLaravelEvent(new InvokingTool('inv-t2', 'tool-2', $agent, $tool, ['q' => 'secret']));
-        $this->dispatchLaravelEvent(new ToolInvoked('inv-t2', 'tool-2', $agent, $tool, ['q' => 'secret'], 'secret'));
+        $this->dispatchLaravelEvent(new ToolInvoked('inv-t2', 'tool-2', $agent, $tool, ['q' => 'secret'], 'secret', 0.0));
         $this->dispatchLlmHttpEvents();
         $this->dispatchLaravelEvent(new AgentPrompted('inv-t2', $prompt, $this->wrapResponse($response)));
         $data = $this->findSpanByOp($transaction, 'gen_ai.execute_tool')->getData();
@@ -498,12 +341,12 @@ class AiIntegrationTest extends TestCase
         $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'prism.providers.openai.url' => self::PROVIDER_URL]);
         $transaction = $this->startTransaction();
         $agent = new TestAgent();
-        $provider = new TestProvider();
-        $prompt = new \Laravel\Ai\Prompts\AgentPrompt($agent, 'Compare images.', collect([new TestLocalImage('/tmp/photo.png', 'image/png'), new TestRemoteImage('https://example.com/photo.jpg', 'image/jpeg')]), $provider, 'gpt-4o');
+        $provider = $this->makeProvider();
+        $prompt = new \Laravel\Ai\Prompts\AgentPrompt($agent, 'Compare images.', collect([new \Laravel\Ai\Files\LocalImage('/tmp/photo.png', 'image/png'), new \Laravel\Ai\Files\RemoteImage('https://example.com/photo.jpg', 'image/jpeg')]), $provider, 'gpt-4o');
         $step = (object)['text' => 'Done.', 'toolCalls' => [], 'toolResults' => [], 'finishReason' => (object)['value' => 'stop'],
-            'usage' => new Usage(100, 20), 'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06']];
+            'usage' => $this->makeUsage(100, 20), 'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06']];
         $response = (object)['text' => 'Done.', 'toolCalls' => [], 'toolResults' => [], 'steps' => [$step],
-            'usage' => new Usage(100, 20), 'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'], 'conversationId' => 'conv-img'];
+            'usage' => $this->makeUsage(100, 20), 'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'], 'conversationId' => 'conv-img'];
         $this->dispatchAgentFlow('inv-a', $prompt, $response);
         $parts = json_decode($this->findSpanByOp($transaction, 'gen_ai.invoke_agent')->getData()['gen_ai.input.messages'], true)[0]['parts'];
         $this->assertCount(3, $parts); // text + local blob + remote uri
@@ -541,7 +384,7 @@ class AiIntegrationTest extends TestCase
         $transaction = $this->startTransaction();
         [$prompt, $response] = $this->makePromptAndResponse();
         $this->dispatchLaravelEvent(new AgentPrompted('inv-orphan', $prompt, $this->wrapResponse($response)));
-        $this->dispatchLaravelEvent(new ToolInvoked('inv-orphan', 'tool-orphan', new TestAgent(), new WeatherLookup(), [], 'result'));
+        $this->dispatchLaravelEvent(new ToolInvoked('inv-orphan', 'tool-orphan', new TestAgent(), new WeatherLookup(), [], 'result', 0.0));
         $this->assertCount(1, $transaction->getSpanRecorder()->getSpans());
         // Connection failure finishes chat span with error
         $transaction = $this->startTransaction();
@@ -574,6 +417,29 @@ class AiIntegrationTest extends TestCase
 
     // ---- Helpers ----
 
+    private function makeProvider(): \Laravel\Ai\Providers\OpenAiProvider
+    {
+        return new \Laravel\Ai\Providers\OpenAiProvider(
+            \Mockery::mock(\Laravel\Ai\Contracts\Gateway\Gateway::class),
+            ['name' => 'openai', 'driver' => 'openai', 'key' => 'test-key'],
+            $this->app['events']
+        );
+    }
+
+    /**
+     * laravel/ai 1.0 renamed the usage fields and moved the cache and reasoning counts onto `TextUsage`.
+     *
+     * @return Usage
+     */
+    private function makeUsage(int $inputTokens, int $outputTokens, int $cacheReadInputTokens = 0, int $reasoningTokens = 0)
+    {
+        if (class_exists(TextUsage::class)) {
+            return new TextUsage($inputTokens, $outputTokens, $cacheReadInputTokens, 0, $reasoningTokens);
+        }
+
+        return new Usage($inputTokens, $outputTokens, 0, $cacheReadInputTokens, $reasoningTokens);
+    }
+
     private function runAgentFlow(array $pr, string $id = 'inv-x'): array
     {
         $t = $this->startTransaction();
@@ -593,13 +459,6 @@ class AiIntegrationTest extends TestCase
         if ($response instanceof \Laravel\Ai\Responses\AgentResponse) {
             return $response;
         }
-        $usage = new Usage(
-            $response->usage->promptTokens ?? 0,
-            $response->usage->completionTokens ?? 0,
-            $response->usage->cacheWriteInputTokens ?? 0,
-            $response->usage->cacheReadInputTokens ?? 0,
-            $response->usage->reasoningTokens ?? 0
-        );
         $meta = new \Laravel\Ai\Responses\Data\Meta(
             $response->meta->provider ?? null,
             $response->meta->model ?? null
@@ -607,7 +466,7 @@ class AiIntegrationTest extends TestCase
         $wrapped = new \Laravel\Ai\Responses\AgentResponse(
             $response->conversationId ?? 'test-inv',
             $response->text ?? '',
-            $usage,
+            $response->usage,
             $meta
         );
         $wrapped->conversationId = $response->conversationId ?? null;
@@ -629,17 +488,20 @@ class AiIntegrationTest extends TestCase
             $response->meta->provider ?? null,
             $response->meta->model ?? null
         );
+        // laravel/ai 1.0 replaced the `tokens` count with a `Usage` object
+        $tokens = class_exists(TextUsage::class) ? new Usage($response->tokens ?? 0) : ($response->tokens ?? 0);
+
         return new \Laravel\Ai\Responses\EmbeddingsResponse(
             $response->embeddings ?? [],
-            $response->tokens ?? 0,
+            $tokens,
             $meta
         );
     }
     private function makePromptAndResponse(int $promptTokens = 60, int $completionTokens = 130, int $cacheReadInputTokens = 0, int $reasoningTokens = 0, string $agentClass = TestAgent::class, string $promptText = 'Analyze this transcript'): array
     {
         $agent = new $agentClass();
-        $provider = new TestProvider();
-        $usage = new Usage($promptTokens, $completionTokens, 0, $cacheReadInputTokens, $reasoningTokens);
+        $provider = $this->makeProvider();
+        $usage = $this->makeUsage($promptTokens, $completionTokens, $cacheReadInputTokens, $reasoningTokens);
         $meta = (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'];
         $prompt = new \Laravel\Ai\Prompts\AgentPrompt($agent, $promptText, [], $provider, 'gpt-4o');
         $step = (object)['text' => 'The analysis shows positive trends.', 'toolCalls' => [], 'toolResults' => [], 'finishReason' => (object)['value' => 'stop'], 'usage' => $usage, 'meta' => $meta];
@@ -650,29 +512,29 @@ class AiIntegrationTest extends TestCase
     private function makeMultiStepPromptAndResponse(): array
     {
         $agent = new TestAgent();
-        $provider = new TestProvider();
+        $provider = $this->makeProvider();
         $meta = (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'];
         $prompt = new \Laravel\Ai\Prompts\AgentPrompt($agent, 'What is the weather in Paris?', [], $provider, 'gpt-4o');
         $tc = new TestToolCall('WeatherLookup', ['city' => 'Paris']);
         $tr = new TestToolResult('WeatherLookup', 'Sunny, 22C');
-        $step1 = (object)['text' => '', 'toolCalls' => [$tc], 'toolResults' => [$tr], 'finishReason' => (object)['value' => 'tool_calls'], 'usage' => new Usage(60, 20), 'meta' => $meta];
-        $step2 = (object)['text' => 'Sunny and 22 degrees.', 'toolCalls' => [], 'toolResults' => [], 'finishReason' => (object)['value' => 'stop'], 'usage' => new Usage(80, 30), 'meta' => $meta];
-        $response = (object)['text' => 'Sunny and 22 degrees.', 'toolCalls' => [$tc], 'toolResults' => [$tr], 'steps' => [$step1, $step2], 'usage' => new Usage(140, 50), 'meta' => $meta, 'conversationId' => 'conv-abc-123'];
+        $step1 = (object)['text' => '', 'toolCalls' => [$tc], 'toolResults' => [$tr], 'finishReason' => (object)['value' => 'tool_calls'], 'usage' => $this->makeUsage(60, 20), 'meta' => $meta];
+        $step2 = (object)['text' => 'Sunny and 22 degrees.', 'toolCalls' => [], 'toolResults' => [], 'finishReason' => (object)['value' => 'stop'], 'usage' => $this->makeUsage(80, 30), 'meta' => $meta];
+        $response = (object)['text' => 'Sunny and 22 degrees.', 'toolCalls' => [$tc], 'toolResults' => [$tr], 'steps' => [$step1, $step2], 'usage' => $this->makeUsage(140, 50), 'meta' => $meta, 'conversationId' => 'conv-abc-123'];
         return [$prompt, $response];
     }
 
     private function makeStreamingPromptAndResponse(): array
     {
         $agent = new TestAgent();
-        $provider = new TestProvider();
+        $provider = $this->makeProvider();
         $prompt = new \Laravel\Ai\Prompts\AgentPrompt($agent, 'Analyze this transcript', [], $provider, 'gpt-4o');
-        $response = (object)['text' => 'Streamed analysis.', 'toolCalls' => [], 'toolResults' => [], 'steps' => [], 'usage' => new Usage(60, 130), 'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'], 'conversationId' => 'conv-stream-123'];
+        $response = (object)['text' => 'Streamed analysis.', 'toolCalls' => [], 'toolResults' => [], 'steps' => [], 'usage' => $this->makeUsage(60, 130), 'meta' => (object)['provider' => 'openai', 'model' => 'gpt-4o-2024-08-06'], 'conversationId' => 'conv-stream-123'];
         return [$prompt, $response];
     }
 
     private function makeEmbeddingsPromptAndResponse(): array
     {
-        $p = new TestProvider();
+        $p = $this->makeProvider();
         $prompt = new \Laravel\Ai\Prompts\EmbeddingsPrompt(['Napa Valley has great wine.', 'Laravel is a PHP framework.'], 1536, $p, 'text-embedding-3-small');
         $response = (object)['embeddings' => [[0.1, 0.2], [0.4, 0.5]], 'tokens' => 25, 'meta' => (object)['provider' => 'openai', 'model' => 'text-embedding-3-small-2024']];
         return [$p, $prompt, $response];
