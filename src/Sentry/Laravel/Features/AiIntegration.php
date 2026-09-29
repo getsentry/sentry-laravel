@@ -251,6 +251,12 @@ class AiIntegration extends Feature
             return;
         }
 
+        // Requests sent by a classification belong to its `gen_ai.evaluate` span, even if the agent's provider shares the host
+        $currentSpan = SentrySdk::getCurrentHub()->getSpan();
+        if ($currentSpan !== null && $currentSpan->getOp() === 'gen_ai.evaluate') {
+            return;
+        }
+
         $invocation = $this->findMatchingInvocation($event->request->url());
         if ($invocation === null) {
             return;

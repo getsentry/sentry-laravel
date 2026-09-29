@@ -51,6 +51,27 @@ class AiProviderUrlResolverTest extends TestCase
         $this->assertNull(AiProviderUrlResolver::baseUrl(new \stdClass()));
     }
 
+    public function testHostIsTakenFromTheConfiguredUrl(): void
+    {
+        $this->assertSame('proxy.test', AiProviderUrlResolver::host($this->makeProvider(['url' => 'https://Proxy.test/v1'])));
+    }
+
+    public function testHostFallsBackToTheDefaultUrl(): void
+    {
+        $this->assertSame('api.typesafe.ai', AiProviderUrlResolver::host($this->makeProvider(['driver' => 'typesafe'])));
+    }
+
+    public function testConfiguredUrlWithoutSchemeHasNoHost(): void
+    {
+        // The broken configured URL is still the one requests go to, so the default must not be used instead
+        $this->assertNull(AiProviderUrlResolver::host($this->makeProvider(['driver' => 'typesafe', 'url' => 'api.typesafe.ai/v1'])));
+    }
+
+    public function testUnknownDriverHasNoHost(): void
+    {
+        $this->assertNull(AiProviderUrlResolver::host($this->makeProvider(['driver' => 'custom'])));
+    }
+
     private function makeProvider(array $config = []): OpenAiProvider
     {
         return new OpenAiProvider(

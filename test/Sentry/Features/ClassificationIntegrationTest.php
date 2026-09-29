@@ -2,13 +2,23 @@
 
 namespace Sentry\Laravel\Tests\Features;
 
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
+use Laravel\Ai\AiManager;
 use Laravel\Ai\AiServiceProvider;
 use Laravel\Ai\Classification;
 use Laravel\Ai\Classification\Boolean;
 use Laravel\Ai\Classification\Choice;
 use Laravel\Ai\Classification\Score;
+use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Events\Classifying;
+use Laravel\Ai\Events\PromptingAgent;
+use Laravel\Ai\Exceptions\ProviderConnectionException;
+use Laravel\Ai\Exceptions\RateLimitedException;
+use Laravel\Ai\Promptable;
+use Laravel\Ai\Prompts\AgentPrompt;
+use Laravel\Ai\Prompts\ClassificationPrompt;
+use Laravel\Ai\Providers\TypeSafeProvider;
 use Laravel\Ai\Responses\ClassificationResponse;
 use Sentry\Laravel\Tests\TestCase;
 use Sentry\Tracing\Span;
@@ -167,6 +177,283 @@ class ClassificationIntegrationTest extends TestCase
         $this->assertNull($this->findEvaluateSpan($transaction));
     }
 
+    public function testErrorResponseFinishesSpanWithHttpStatus(): void
+    {
+        Http::fake([self::TYPESAFE_URL => Http::response(['error' => 'invalid API key'], 401)]);
+
+        $transaction = $this->startTransaction();
+
+        $this->assertInstanceOf(RequestException::class, $this->classifyExpectingFailure());
+
+        $span = $this->findEvaluateSpan($transaction);
+
+        $this->assertEquals(SpanStatus::unauthenticated(), $span->getStatus());
+        $this->assertNotNull($span->getEndTimestamp());
+        $this->assertSame($transaction, $this->getSentryHubFromContainer()->getSpan());
+    }
+
+    public function testServerErrorFinishesSpanAfterHttpClientSpan(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.http_client_requests' => true,
+        ]);
+
+        Http::fake([self::TYPESAFE_URL => Http::response(['error' => 'internal error'], 500)]);
+
+        $transaction = $this->startTransaction();
+
+        $this->assertInstanceOf(RequestException::class, $this->classifyExpectingFailure());
+
+        $evaluateSpan = $this->findEvaluateSpan($transaction);
+        $httpSpan = $this->findSpanByOp($transaction, 'http.client');
+
+        $this->assertEquals(SpanStatus::internalError(), $evaluateSpan->getStatus());
+        $this->assertNotNull($evaluateSpan->getEndTimestamp());
+        $this->assertSame($evaluateSpan->getSpanId(), $httpSpan->getParentSpanId());
+        $this->assertNotNull($httpSpan->getEndTimestamp());
+        $this->assertSame($transaction, $this->getSentryHubFromContainer()->getSpan());
+    }
+
+    public function testConnectionFailureFinishesSpan(): void
+    {
+        Http::fake([self::TYPESAFE_URL => Http::failedConnection()]);
+
+        $transaction = $this->startTransaction();
+
+        // Call the provider directly, which dispatches no `ProviderFailedOver` event for the failure
+        try {
+            $this->app->make(AiManager::class)
+                ->classificationProvider('typesafe')
+                ->classify('Stripe connect keeps failing', $this->questions());
+
+            $this->fail('Expected the classification to fail.');
+        } catch (ProviderConnectionException $exception) {
+            // Expected
+        }
+
+        $span = $this->findEvaluateSpan($transaction);
+
+        $this->assertEquals(SpanStatus::internalError(), $span->getStatus());
+        $this->assertNotNull($span->getEndTimestamp());
+        $this->assertSame($transaction, $this->getSentryHubFromContainer()->getSpan());
+    }
+
+    public function testConnectionFailureForMisconfiguredProviderUrlFinishesSpan(): void
+    {
+        // Without a scheme the URL has no host, and the HTTP client fails before sending anything
+        config(['ai.providers.typesafe.url' => 'api.typesafe.ai/v1']);
+
+        $transaction = $this->startTransaction();
+
+        try {
+            $this->app->make(AiManager::class)
+                ->classificationProvider('typesafe')
+                ->classify('Stripe connect keeps failing', $this->questions());
+
+            $this->fail('Expected the classification to fail.');
+        } catch (ProviderConnectionException $exception) {
+            // Expected
+        }
+
+        $span = $this->findEvaluateSpan($transaction);
+
+        $this->assertEquals(SpanStatus::internalError(), $span->getStatus());
+        $this->assertNotNull($span->getEndTimestamp());
+        $this->assertSame($transaction, $this->getSentryHubFromContainer()->getSpan());
+    }
+
+    public function testFailoverRecordsASpanPerProvider(): void
+    {
+        config(['ai.providers.typesafe_backup' => [
+            'driver' => 'typesafe',
+            'key' => 'test-key',
+            'url' => 'https://backup.typesafe.test/v1',
+        ]]);
+
+        Http::fake([
+            self::TYPESAFE_URL => Http::response(['error' => 'rate limited'], 429),
+            'https://backup.typesafe.test/v1/systemone' => Http::response($this->typeSafeResponse()),
+        ]);
+
+        $transaction = $this->startTransaction();
+
+        $this->classify(null, ['typesafe' => 'jev-latest', 'typesafe_backup' => 'jev-latest']);
+
+        $spans = $this->findEvaluateSpans($transaction);
+
+        $this->assertCount(2, $spans);
+        $this->assertSame('typesafe', $spans[0]->getData()['gen_ai.provider.name']);
+        $this->assertEquals(SpanStatus::resourceExhausted(), $spans[0]->getStatus());
+        $this->assertNotNull($spans[0]->getEndTimestamp());
+        $this->assertSame('typesafe_backup', $spans[1]->getData()['gen_ai.provider.name']);
+        $this->assertEquals(SpanStatus::ok(), $spans[1]->getStatus());
+        $this->assertSame($transaction->getSpanId(), $spans[0]->getParentSpanId());
+        $this->assertSame($transaction->getSpanId(), $spans[1]->getParentSpanId());
+        $this->assertSame($transaction, $this->getSentryHubFromContainer()->getSpan());
+    }
+
+    public function testFailoverWithoutHttpResponseFinishesSpan(): void
+    {
+        $attempts = 0;
+        Classification::fake(function () use (&$attempts) {
+            if ($attempts++ === 0) {
+                throw RateLimitedException::forProvider('typesafe');
+            }
+
+            return [];
+        });
+
+        $transaction = $this->startTransaction();
+
+        $this->classify(null, ['typesafe' => 'jev-latest', 'openrouter' => 'jev-latest']);
+
+        $spans = $this->findEvaluateSpans($transaction);
+
+        $this->assertCount(2, $spans);
+        $this->assertEquals(SpanStatus::internalError(), $spans[0]->getStatus());
+        $this->assertNotNull($spans[0]->getEndTimestamp());
+        $this->assertEquals(SpanStatus::ok(), $spans[1]->getStatus());
+        $this->assertSame($transaction->getSpanId(), $spans[1]->getParentSpanId());
+        $this->assertSame($transaction, $this->getSentryHubFromContainer()->getSpan());
+    }
+
+    public function testOpenRouterErrorResponseIsMatched(): void
+    {
+        config(['ai.providers.openrouter.key' => 'test-key']);
+
+        Http::fake(['https://openrouter.ai/api/alpha/decisions' => Http::response(['error' => 'invalid request'], 422)]);
+
+        $transaction = $this->startTransaction();
+
+        $this->assertInstanceOf(RequestException::class, $this->classifyExpectingFailure('openrouter'));
+
+        $span = $this->findEvaluateSpan($transaction);
+
+        $this->assertSame('openrouter', $span->getData()['gen_ai.provider.name']);
+        $this->assertEquals(SpanStatus::invalidArgument(), $span->getStatus());
+        $this->assertNotNull($span->getEndTimestamp());
+        $this->assertSame($transaction, $this->getSentryHubFromContainer()->getSpan());
+    }
+
+    public function testConfiguredProviderUrlIsMatched(): void
+    {
+        // OpenRouter classifications go to `/alpha/decisions` below the configured URL
+        config(['ai.providers.openrouter' => [
+            'driver' => 'openrouter',
+            'key' => 'test-key',
+            'url' => 'https://proxy.test',
+        ]]);
+
+        Http::fake(['https://proxy.test/alpha/decisions' => Http::response(['error' => 'invalid request'], 422)]);
+
+        $transaction = $this->startTransaction();
+
+        $this->assertInstanceOf(RequestException::class, $this->classifyExpectingFailure('openrouter'));
+
+        $span = $this->findEvaluateSpan($transaction);
+
+        $this->assertEquals(SpanStatus::invalidArgument(), $span->getStatus());
+        $this->assertNotNull($span->getEndTimestamp());
+        $this->assertSame($transaction, $this->getSentryHubFromContainer()->getSpan());
+    }
+
+    public function testCustomProviderErrorResponseIsMatched(): void
+    {
+        // A driver we don't know the host of, so only the current span identifies its response
+        $this->app->make(AiManager::class)->extend('custom-classifier', function ($app, array $config) {
+            return new TypeSafeProvider($config, $app['events']);
+        });
+        config(['ai.providers.custom' => ['driver' => 'custom-classifier', 'key' => 'test-key']]);
+
+        Http::fake([self::TYPESAFE_URL => Http::response(['error' => 'invalid request'], 422)]);
+
+        $transaction = $this->startTransaction();
+
+        $this->assertInstanceOf(RequestException::class, $this->classifyExpectingFailure('custom'));
+
+        $span = $this->findEvaluateSpan($transaction);
+
+        $this->assertEquals(SpanStatus::invalidArgument(), $span->getStatus());
+        $this->assertNotNull($span->getEndTimestamp());
+        $this->assertSame($transaction, $this->getSentryHubFromContainer()->getSpan());
+    }
+
+    public function testRequestToAnotherHostIsNotClaimed(): void
+    {
+        Http::fake([
+            'https://hooks.example.test/*' => Http::response('unavailable', 500),
+            self::TYPESAFE_URL => Http::response($this->typeSafeResponse()),
+        ]);
+
+        // Runs after our listener, so its request is sent while the evaluate span is current
+        $this->app['events']->listen(Classifying::class, function (): void {
+            Http::post('https://hooks.example.test/classifying');
+        });
+
+        $transaction = $this->startTransaction();
+
+        $this->classify();
+
+        $span = $this->findEvaluateSpan($transaction);
+
+        $this->assertEquals(SpanStatus::ok(), $span->getStatus());
+        $this->assertSame('jev-1.13.0', $span->getData()['gen_ai.response.model']);
+        $this->assertSame($transaction, $this->getSentryHubFromContainer()->getSpan());
+    }
+
+    public function testErrorResponseIsOnlyClaimedWhileTheEvaluateSpanIsCurrent(): void
+    {
+        Http::fake([self::TYPESAFE_URL => Http::response(['error' => 'internal error'], 500)]);
+
+        $transaction = $this->startTransaction();
+
+        $provider = $this->app->make(AiManager::class)->classificationProvider('typesafe');
+        $prompt = new ClassificationPrompt('Stripe connect keeps failing', $this->questions(), $provider, 'jev-latest');
+        $this->dispatchLaravelEvent(new Classifying('invocation', $provider, 'jev-latest', $prompt));
+
+        // Another span takes over while the classification is still open
+        $this->getSentryHubFromContainer()->setSpan($transaction);
+
+        Http::post(self::TYPESAFE_URL);
+
+        $this->assertNull($this->findEvaluateSpan($transaction)->getEndTimestamp());
+    }
+
+    public function testClassificationInsideAnAgentIsNotRecordedAsChat(): void
+    {
+        // The agent's chat requests and the classification share the proxy host
+        config(['ai.providers.openrouter' => [
+            'driver' => 'openrouter',
+            'key' => 'test-key',
+            'url' => 'https://proxy.test',
+        ]]);
+
+        Http::fake(['https://proxy.test/alpha/decisions' => Http::response($this->typeSafeResponse())]);
+
+        $transaction = $this->startTransaction();
+
+        $agent = new class implements Agent {
+            use Promptable;
+
+            public function instructions(): string
+            {
+                return '';
+            }
+        };
+        $provider = $this->app->make(AiManager::class)->textProvider('openrouter');
+        $this->dispatchLaravelEvent(new PromptingAgent('agent-invocation', new AgentPrompt($agent, 'Triage this ticket', [], $provider, 'gpt-4o')));
+
+        $agentSpan = $this->findSpanByOp($transaction, 'gen_ai.invoke_agent');
+        $toolSpan = $agentSpan->startChild(SpanContext::make()->setOp('gen_ai.execute_tool'));
+        $this->getSentryHubFromContainer()->setSpan($toolSpan);
+
+        $this->classify(null, 'openrouter');
+
+        $this->assertNull($this->findSpanByOp($transaction, 'gen_ai.chat'));
+        $this->assertSame($toolSpan->getSpanId(), $this->findEvaluateSpan($transaction)->getParentSpanId());
+        $this->assertSame($toolSpan, $this->getSentryHubFromContainer()->getSpan());
+    }
+
     private function classifyWithTypeSafe(?string $model = null): ClassificationResponse
     {
         $this->fakeTypeSafe();
@@ -174,51 +461,83 @@ class ClassificationIntegrationTest extends TestCase
         return $this->classify($model);
     }
 
-    private function classify(?string $model = null): ClassificationResponse
+    /**
+     * @param string|array<string, string> $provider
+     */
+    private function classify(?string $model = null, $provider = 'typesafe'): ClassificationResponse
     {
         return Classification::of('Stripe connect keeps failing, losing sales, help ASAP')
-            ->questions([
-                'is_urgent' => new Boolean('Does this message convey urgency?'),
-                'department' => new Choice('Which team should handle this?', [
-                    'billing' => 'Payments, invoicing, refunds',
-                    'technical' => 'Bugs, outages, integrations',
-                ]),
-                'frustration' => new Score('How frustrated is the customer?', [
-                    'Calm', 'Frustrated but civil', 'Very angry',
-                ]),
-            ])
-            ->classify('typesafe', $model);
+            ->questions($this->questions())
+            ->classify($provider, $model);
+    }
+
+    private function questions(): array
+    {
+        return [
+            'is_urgent' => new Boolean('Does this message convey urgency?'),
+            'department' => new Choice('Which team should handle this?', [
+                'billing' => 'Payments, invoicing, refunds',
+                'technical' => 'Bugs, outages, integrations',
+            ]),
+            'frustration' => new Score('How frustrated is the customer?', [
+                'Calm', 'Frustrated but civil', 'Very angry',
+            ]),
+        ];
+    }
+
+    private function classifyExpectingFailure(string $provider = 'typesafe'): \Throwable
+    {
+        try {
+            $this->classify(null, $provider);
+        } catch (\Throwable $exception) {
+            return $exception;
+        }
+
+        $this->fail('Expected the classification to fail.');
     }
 
     private function fakeTypeSafe(): void
     {
-        Http::fake([
-            self::TYPESAFE_URL => Http::response([
-                'model' => 'jev-1.13.0',
-                'answers' => [
-                    'is_urgent' => ['type' => 'noul', 'noul' => 0.92],
-                    'department' => [
-                        'type' => 'choice',
-                        'choice' => 'technical',
-                        'probabilities' => ['billing' => 0.15, 'technical' => 0.85],
-                        'confidence' => 0.82,
-                    ],
-                    'frustration' => [
-                        'type' => 'score',
-                        'score' => 1.6,
-                        'legend' => ['0' => 'Calm', '1' => 'Frustrated but civil', '2' => 'Very angry'],
-                        'probabilities' => ['0' => 0.05, '1' => 0.3, '2' => 0.65],
-                        'confidence' => 0.78,
-                    ],
+        Http::fake([self::TYPESAFE_URL => Http::response($this->typeSafeResponse())]);
+    }
+
+    private function typeSafeResponse(): array
+    {
+        return [
+            'model' => 'jev-1.13.0',
+            'answers' => [
+                'is_urgent' => ['type' => 'noul', 'noul' => 0.92],
+                'department' => [
+                    'type' => 'choice',
+                    'choice' => 'technical',
+                    'probabilities' => ['billing' => 0.15, 'technical' => 0.85],
+                    'confidence' => 0.82,
                 ],
-                'usage' => ['input_tokens' => 312, 'output_tokens' => 48],
-            ]),
-        ]);
+                'frustration' => [
+                    'type' => 'score',
+                    'score' => 1.6,
+                    'legend' => ['0' => 'Calm', '1' => 'Frustrated but civil', '2' => 'Very angry'],
+                    'probabilities' => ['0' => 0.05, '1' => 0.3, '2' => 0.65],
+                    'confidence' => 0.78,
+                ],
+            ],
+            'usage' => ['input_tokens' => 312, 'output_tokens' => 48],
+        ];
     }
 
     private function findEvaluateSpan(Transaction $transaction): ?Span
     {
         return $this->findSpanByOp($transaction, 'gen_ai.evaluate');
+    }
+
+    /**
+     * @return Span[]
+     */
+    private function findEvaluateSpans(Transaction $transaction): array
+    {
+        return array_values(array_filter($transaction->getSpanRecorder()->getSpans(), function (Span $span): bool {
+            return $span->getOp() === 'gen_ai.evaluate';
+        }));
     }
 
     private function findSpanByOp(Transaction $transaction, string $op): ?Span
