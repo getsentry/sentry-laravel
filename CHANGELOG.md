@@ -1,5 +1,188 @@
 # Changelog
 
+## 4.28.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.28.0.
+
+### Bug Fixes
+
+- Normalize class-based Laravel Pennant feature flag names so Relay accepts them. [(#1159)](https://github.com/getsentry/sentry-laravel/pull/1159)
+- Support token usage properties in `laravel/ai` 1.0 when tracing agents and embeddings. [(#1165)](https://github.com/getsentry/sentry-laravel/pull/1165)
+
+### Misc
+
+- Bump the PHP SDK to version `4.31.0` [(#1155)](https://github.com/getsentry/sentry-laravel/pull/1155)
+
+## 4.27.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.27.0.
+
+### Features
+
+- Add support for tracing Laravel AI agent interactions, chats, tool executions, and embeddings when `laravel/ai` is installed. [(#1147)](https://github.com/getsentry/sentry-laravel/pull/1147)
+- Add the `enable_metrics` config option and `SENTRY_ENABLE_METRICS` environment variable to toggle metrics. [(#1148)](https://github.com/getsentry/sentry-laravel/pull/1148)
+
+## 4.26.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.26.0.
+
+### Features
+
+- Add support for overriding the monitor schedule used by `sentryMonitor`. [(#1136)](https://github.com/getsentry/sentry-laravel/pull/1136)
+
+### Bug Fixes
+
+- Update `sql_bindings` default values. [(#1135)](https://github.com/getsentry/sentry-laravel/pull/1135)
+- Preserve the first Livewire component as the transaction root when multiple Livewire components are handled in the same transaction. [(#1138)](https://github.com/getsentry/sentry-laravel/pull/1138)
+
+### Misc
+
+- Exclude additional development-only files from Composer distribution archives. [(#1139)](https://github.com/getsentry/sentry-laravel/pull/1139), [(#1140)](https://github.com/getsentry/sentry-laravel/pull/1140)
+- Bump the PHP SDK to version `4.28.0` [(#1144)](https://github.com/getsentry/sentry-laravel/pull/1144)
+
+## 4.25.1
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.25.1.
+
+### Bug Fixes
+
+- Fix a recursive loop when detecting the session key for cache instrumentation. [(#1128)](https://github.com/getsentry/sentry-laravel/pull/1128)
+
+## 4.25.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.25.0.
+
+### Features
+
+- Add support for the PHP SDK's `OTLPIntegration`. [(#1122)](https://github.com/getsentry/sentry-laravel/pull/1122)
+- Add `SentryTracesSampleRate` job middleware to control trace sampling for individual jobs. [(#1114)](https://github.com/getsentry/sentry-laravel/pull/1114)
+
+### Bug Fixes
+
+- Preserve scope tags and context configured in `withExceptions(..)` callbacks for unhandled console exceptions. [(#1125)](https://github.com/getsentry/sentry-laravel/pull/1125)
+
+## 4.24.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.24.0.
+
+### Features
+
+- Add `log_flush_threshold` to automatically flush buffered logs after a configured number of log records. [(#1116)](https://github.com/getsentry/sentry-laravel/pull/1116)
+
+### Misc
+
+- Bump the PHP SDK to version `4.23.0` [(#1116)](https://github.com/getsentry/sentry-laravel/pull/1116)
+
+## 4.23.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.23.0.
+
+### Features
+
+- Add `strict_trace_continuation` support to only continue incoming traces when the upstream baggage `org_id` matches the SDK org ID. [(#1106)](https://github.com/getsentry/sentry-laravel/pull/1106)
+
+### Bug Fixes
+
+- Cast authenticated user email attributes to strings when populating the Sentry user scope [(#1101)](https://github.com/getsentry/sentry-laravel/pull/1101)
+
+### Misc
+
+- Bump the PHP SDK to version `4.22.0` [(#1106)](https://github.com/getsentry/sentry-laravel/pull/1106)
+
+## 4.22.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.22.0.
+
+### Features
+
+- Add support for Laravel 13 [(#1102)](https://github.com/getsentry/sentry-laravel/pull/1102)
+
+### Bug Fixes
+
+- Reset the transaction name between Octane requests [(#1103)](https://github.com/getsentry/sentry-laravel/pull/1103)
+
+## 4.21.1
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.21.1.
+
+### Bug Fixes
+
+- Fix view engine decorator decorating itself [(#1098)](https://github.com/getsentry/sentry-laravel/pull/1098)
+
+## 4.21.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.21.0.
+
+### Features
+
+- Use Laravel Context to pass check-in IDs between processes [(#1084)](https://github.com/getsentry/sentry-laravel/pull/1084)
+
+### Bug Fixes
+
+- Explicitly escape `sentry-trace` and `baggage` headers [(#1091)](https://github.com/getsentry/sentry-laravel/pull/1091)
+- Add `preg_quote` for environment variables [(#1093)](https://github.com/getsentry/sentry-laravel/pull/1093)
+
+### Misc
+
+- Bump the PHP SDK to version `4.21.0` [(#1095)](https://github.com/getsentry/sentry-laravel/pull/1095)
+
+## 4.20.1
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.20.1.
+
+### Misc
+
+- Allow newer versions of `symfony/psr-http-message-bridge` dependency [(#1076)](https://github.com/getsentry/sentry-laravel/pull/1076)
+
+## 4.20.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.20.0.
+
+### Features
+
+- Add support for Sentry metrics. [(#1072)](https://github.com/getsentry/sentry-laravel/pull/1072)
+```php
+// Counter metric
+\Sentry\trace_metrics()->count('test-counter', 10, ['my-attribute' => 'foo']);
+
+// Gauge metric
+\Sentry\trace_metrics()->gauge('test-gauge', 50.0, ['my-attribute' => 'foo'], \Sentry\Unit::millisecond());
+
+// Distribution metric
+\Sentry\trace_metrics()->distribution('test-distribution', 20.0, ['my-attribute' => 'foo'], \Sentry\Unit::kilobyte());
+```
+
+### Misc
+
+- Simplify usage of E_ALL [(#1067)](https://github.com/getsentry/sentry-laravel/pull/1067)
+
+## 4.19.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.19.0.
+
+### Features
+
+- Add Laravel Pennant feature flags [(#1061)](https://github.com/getsentry/sentry-laravel/pull/1061)
+
+  The SDK will now automatically capture feature flags resolved using [Laravel Pennant](https://laravel.com/docs/12.x/pennant) and attach them to events and spans.
+
+### Bug Fixes
+
+- Do not try to detect the session key on the CLI [(#1058)](https://github.com/getsentry/sentry-laravel/pull/1058)
+
+## 4.18.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.18.0.
+
+### Bug Fixes
+
+- Ensure we flush logs when the application unexpectedly terminates [(#1052)](https://github.com/getsentry/sentry-laravel/pull/1052)
+
+### Misc
+
+- Use `SENTRY_LOG_LEVEL` environment variable instead of `SENTRY_LOGS_LEVEL` to be more consistent (`SENTRY_LOGS_LEVEL` will keep working as an alias for backward compatibility). [(#1051)](https://github.com/getsentry/sentry-laravel/pull/1051)
+- Bump the PHP SDK to version `4.16.0` [(#1053)](https://github.com/getsentry/sentry-laravel/pull/1053)
+
 ## 4.17.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.17.0.

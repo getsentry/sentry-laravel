@@ -29,13 +29,13 @@ jobs:
           app-id: ${{ vars.SENTRY_RELEASE_BOT_CLIENT_ID }}
           private-key: ${{ secrets.SENTRY_RELEASE_BOT_PRIVATE_KEY }}
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
         with:
           token: ${{ steps.token.outputs.token }}
           fetch-depth: 0
 
       - name: Prepare release
-        uses: getsentry/action-prepare-release@v1
+        uses: getsentry/craft@c6e2f04939b6ee67030588afbb5af76b127d8203
         env:
           GITHUB_TOKEN: ${{ steps.token.outputs.token }}
         with:

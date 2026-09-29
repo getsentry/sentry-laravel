@@ -9,8 +9,9 @@ use Illuminate\Console\Events\ScheduledTaskFinished;
 use Illuminate\Console\Events\ScheduledTaskStarting;
 use Illuminate\Console\Scheduling\Event as SchedulingEvent;
 use Illuminate\Contracts\Cache\Factory as Cache;
-use Illuminate\Contracts\Cache\Repository;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Log\Context\Repository as ContextRepository;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Sentry\CheckIn;
@@ -49,7 +50,8 @@ class ConsoleSchedulingIntegration extends Feature
             ?int $maxRuntime,
             bool $updateMonitorConfig,
             ?int $failureIssueThreshold,
-            ?int $recoveryThreshold
+            ?int $recoveryThreshold,
+            ?string $schedule
         ) {
             $this->startCheckIn(
                 $slug,
@@ -58,7 +60,8 @@ class ConsoleSchedulingIntegration extends Feature
                 $maxRuntime,
                 $updateMonitorConfig,
                 $failureIssueThreshold,
-                $recoveryThreshold
+                $recoveryThreshold,
+                $schedule
             );
         };
         $finishCheckIn = function (?string $slug, SchedulingEvent $scheduled, CheckInStatus $status) {
@@ -71,7 +74,8 @@ class ConsoleSchedulingIntegration extends Feature
             ?int $maxRuntime = null,
             bool $updateMonitorConfig = true,
             ?int $failureIssueThreshold = null,
-            ?int $recoveryThreshold = null
+            ?int $recoveryThreshold = null,
+            ?string $schedule = null
         ) use ($startCheckIn, $finishCheckIn) {
             /** @var SchedulingEvent $this */
             if ($monitorSlug === null && empty($this->command) && empty($this->description)) {
@@ -86,7 +90,8 @@ class ConsoleSchedulingIntegration extends Feature
                     $maxRuntime,
                     $updateMonitorConfig,
                     $failureIssueThreshold,
-                    $recoveryThreshold
+                    $recoveryThreshold,
+                    $schedule
                 ) {
                     /** @var SchedulingEvent $this */
                     $startCheckIn(
@@ -96,7 +101,8 @@ class ConsoleSchedulingIntegration extends Feature
                         $maxRuntime,
                         $updateMonitorConfig,
                         $failureIssueThreshold,
-                        $recoveryThreshold
+                        $recoveryThreshold,
+                        $schedule
                     );
                 })
                 ->onSuccess(function () use ($finishCheckIn, $monitorSlug) {
@@ -176,7 +182,8 @@ class ConsoleSchedulingIntegration extends Feature
         ?int $maxRuntime,
         bool $updateMonitorConfig,
         ?int $failureIssueThreshold,
-        ?int $recoveryThreshold
+        ?int $recoveryThreshold,
+        ?string $schedule
     ): void {
         if (!$this->shouldHandleCheckIn) {
             return;
@@ -194,7 +201,7 @@ class ConsoleSchedulingIntegration extends Feature
             }
 
             $checkIn->setMonitorConfig(new MonitorConfig(
-                MonitorSchedule::crontab($scheduled->getExpression()),
+                MonitorSchedule::crontab($schedule ?? $scheduled->getExpression()),
                 $checkInMargin,
                 $maxRuntime,
                 $timezone,
@@ -208,7 +215,7 @@ class ConsoleSchedulingIntegration extends Feature
         $this->checkInStore[$cacheKey] = $checkIn;
 
         if ($scheduled->runInBackground) {
-            $this->resolveCache()->put($cacheKey, $checkIn->getId(), $scheduled->expiresAt * 60);
+            $this->storeCheckInIdInCache($cacheKey, $checkIn->getId(), $scheduled->expiresAt * 60);
         }
 
         $this->sendCheckIn($checkIn);
@@ -220,16 +227,14 @@ class ConsoleSchedulingIntegration extends Feature
             return;
         }
 
-        $mutex = $scheduled->mutexName();
-
         $checkInSlug = $slug ?? $this->makeSlugForScheduled($scheduled);
 
-        $cacheKey = $this->buildCacheKey($mutex, $checkInSlug);
+        $cacheKey = $this->buildCacheKey($scheduled->mutexName(), $checkInSlug);
 
         $checkIn = $this->checkInStore[$cacheKey] ?? null;
 
         if ($checkIn === null && $scheduled->runInBackground) {
-            $checkInId = $this->resolveCache()->get($cacheKey);
+            $checkInId = $this->getCheckInIdFromCache($cacheKey);
 
             if ($checkInId !== null) {
                 $checkIn = $this->createCheckIn($checkInSlug, $status, $checkInId);
@@ -242,10 +247,10 @@ class ConsoleSchedulingIntegration extends Feature
         }
 
         // We don't need to keep the checkIn ID stored since we finished executing the command
-        unset($this->checkInStore[$mutex]);
+        unset($this->checkInStore[$cacheKey]);
 
         if ($scheduled->runInBackground) {
-            $this->resolveCache()->forget($cacheKey);
+            $this->forgetCheckInIdFromCache($cacheKey);
         }
 
         $checkIn->setStatus($status);
@@ -320,8 +325,49 @@ class ConsoleSchedulingIntegration extends Feature
         );
     }
 
-    private function resolveCache(): Repository
+    /** @return CacheRepository|ContextRepository */
+    private function resolveCache()
     {
+        // Context is available since Laravel 11 but the hidden context is only
+        // passed to child processes since Laravel 12.40.2 which is required
+        // for this feature to work correctly for background scheduled tasks.
+        if (class_exists(ContextRepository::class) && version_compare(app()->version(), '12.40.2', '>=')) {
+            return $this->container()->make(ContextRepository::class);
+        }
+
         return $this->container()->make(Cache::class)->store($this->cacheStore);
+    }
+
+    private function getCheckInIdFromCache(string $cacheKey): ?string
+    {
+        $cache = $this->resolveCache();
+
+        if ($cache instanceof CacheRepository) {
+            return $cache->get($cacheKey);
+        }
+
+        return $cache->getHidden($cacheKey);
+    }
+
+    private function storeCheckInIdInCache(string $cacheKey, string $checkInId, int $expiration): void
+    {
+        $cache = $this->resolveCache();
+
+        if ($cache instanceof CacheRepository) {
+            $cache->put($cacheKey, $checkInId, $expiration);
+        } else {
+            $cache->addHidden($cacheKey, $checkInId);
+        }
+    }
+
+    private function forgetCheckInIdFromCache(string $cacheKey): void
+    {
+        $cache = $this->resolveCache();
+
+        if ($cache instanceof CacheRepository) {
+            $cache->forget($cacheKey);
+        } else {
+            $cache->forgetHidden($cacheKey);
+        }
     }
 }

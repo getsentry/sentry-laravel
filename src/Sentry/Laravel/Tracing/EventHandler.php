@@ -96,7 +96,7 @@ class EventHandler
     public function __construct(array $config)
     {
         $this->traceSqlQueries = ($config['sql_queries'] ?? true) === true;
-        $this->traceSqlBindings = ($config['sql_bindings'] ?? true) === true;
+        $this->traceSqlBindings = ($config['sql_bindings'] ?? false) === true;
         $this->traceSqlQueryOrigin = ($config['sql_origin'] ?? true) === true;
         $this->traceSqlQueryOriginTreshHoldMs = $config['sql_origin_threshold_ms'] ?? 100;
 

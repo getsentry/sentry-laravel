@@ -278,12 +278,20 @@ class EventHandler
 
             if ($this->modelHasAttribute($authUser, 'email')) {
                 $email = $authUser->getAttribute('email');
+
+                if ($email !== null) {
+                    $email = (string) $email;
+                }
             } elseif ($this->modelHasAttribute($authUser, 'mail')) {
                 $email = $authUser->getAttribute('mail');
+
+                if ($email !== null) {
+                    $email = (string) $email;
+                }
             }
 
             $username = $this->modelHasAttribute($authUser, 'username')
-                ? (string)$authUser->getAttribute('username')
+                ? (string) $authUser->getAttribute('username')
                 : null;
 
             $userData = [
@@ -435,6 +443,7 @@ class EventHandler
     private function afterTaskWithinLongRunningProcess(): void
     {
         Integration::flushEvents();
+        Integration::setTransaction(null);
     }
 
     /**

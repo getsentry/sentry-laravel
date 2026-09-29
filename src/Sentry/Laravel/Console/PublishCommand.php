@@ -101,7 +101,7 @@ COMMAND;
         if (count($values) > 0) {
             foreach ($values as $envKey => $envValue) {
                 if ($this->isEnvKeySet($envKey, $envFileContents)) {
-                    $envFileContents = preg_replace("/^{$envKey}=\"?.*?\"?(\s|$)/m", "{$envKey}={$envValue}\n", $envFileContents);
+                    $envFileContents = preg_replace($this->getEnvKeyPattern($envKey), "{$envKey}={$envValue}\n", $envFileContents);
 
                     $this->info("Updated {$envKey} with new value in your `.env` file.");
                 } else {
@@ -129,7 +129,12 @@ COMMAND;
     {
         $envFileContents = $envFileContents ?? file_get_contents(app()->environmentFilePath());
 
-        return (bool)preg_match("/^{$envKey}=\"?.*?\"?(\s|$)/m", $envFileContents);
+        return (bool)preg_match($this->getEnvKeyPattern($envKey), $envFileContents);
+    }
+
+    private function getEnvKeyPattern(string $envKey): string
+    {
+        return '/^' . preg_quote($envKey, '/') . '="?.*?"?(\s|$)/m';
     }
 
     private function askForDsnInput(): string
