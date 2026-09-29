@@ -12,6 +12,7 @@ use Laravel\Ai\Events\ProviderFailedOver;
 use Sentry\Laravel\Features\Ai\AiProviderUrlResolver;
 use Sentry\Laravel\Features\Ai\AiSpanDataBag;
 use Sentry\Laravel\Features\Classification\ClassificationInvocationData;
+use Sentry\Laravel\Features\Classification\ClassificationMessageFormatter;
 use Sentry\Laravel\Util\BoundedOrderedMap;
 use Sentry\SentrySdk;
 use Sentry\Tracing\SpanContext;
@@ -75,6 +76,10 @@ class ClassificationIntegration extends Feature
             'gen_ai.provider.name' => $event->provider->name(),
         ]);
 
+        if ($this->shouldSendDefaultPii()) {
+            $data->set('gen_ai.input.messages', ClassificationMessageFormatter::formatInputMessages($event->prompt->state, $event->prompt->questions));
+        }
+
         $span = $parentSpan->startChild(
             SpanContext::make()
                 ->setOp('gen_ai.evaluate')
@@ -105,6 +110,10 @@ class ClassificationIntegration extends Feature
         $data = new AiSpanDataBag($classification->span->getData());
         $data->set('gen_ai.response.model', $event->response->meta->model);
         $data->setTokenUsage($event->response->usage);
+
+        if ($this->shouldSendDefaultPii()) {
+            $data->set('gen_ai.output.messages', ClassificationMessageFormatter::formatOutputMessages($event->response->answers));
+        }
 
         $classification->span->setData($data->toArray());
         $classification->finishSpan(SpanStatus::ok());

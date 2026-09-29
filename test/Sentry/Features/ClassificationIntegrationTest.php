@@ -11,6 +11,7 @@ use Laravel\Ai\Classification\Boolean;
 use Laravel\Ai\Classification\Choice;
 use Laravel\Ai\Classification\Score;
 use Laravel\Ai\Contracts\Agent;
+use Laravel\Ai\Contracts\Question;
 use Laravel\Ai\Events\Classifying;
 use Laravel\Ai\Events\PromptingAgent;
 use Laravel\Ai\Exceptions\ProviderConnectionException;
@@ -452,6 +453,186 @@ class ClassificationIntegrationTest extends TestCase
         $this->assertNull($this->findSpanByOp($transaction, 'gen_ai.chat'));
         $this->assertSame($toolSpan->getSpanId(), $this->findEvaluateSpan($transaction)->getParentSpanId());
         $this->assertSame($toolSpan, $this->getSentryHubFromContainer()->getSpan());
+    }
+
+    public function testMessagesAreRecordedInTheTypeSafeFormat(): void
+    {
+        $this->resetApplicationWithConfig(['sentry.send_default_pii' => true]);
+
+        $transaction = $this->startTransaction();
+
+        $this->classifyWithTypeSafe();
+
+        $data = $this->findEvaluateSpan($transaction)->getData();
+
+        $this->assertSame([[
+            'type' => 'evaluation',
+            'state' => 'Stripe connect keeps failing, losing sales, help ASAP',
+            'questions' => [
+                'is_urgent' => ['type' => 'noul', 'instructions' => 'Does this message convey urgency?'],
+                'department' => [
+                    'type' => 'choice',
+                    'instructions' => 'Which team should handle this?',
+                    'criteria' => ['billing' => 'Payments, invoicing, refunds', 'technical' => 'Bugs, outages, integrations'],
+                ],
+                'frustration' => [
+                    'type' => 'score',
+                    'instructions' => 'How frustrated is the customer?',
+                    'criteria' => ['Calm', 'Frustrated but civil', 'Very angry'],
+                ],
+            ],
+        ]], json_decode($data['gen_ai.input.messages'], true));
+
+        $this->assertEquals([[
+            'type' => 'evaluation',
+            'answers' => [
+                'is_urgent' => ['type' => 'noul', 'noul' => 0.92],
+                'department' => [
+                    'type' => 'choice',
+                    'choice' => 'technical',
+                    'probabilities' => ['billing' => 0.15, 'technical' => 0.85],
+                    'confidence' => 0.82,
+                ],
+                'frustration' => [
+                    'type' => 'score',
+                    'score' => 1.6,
+                    'probabilities' => [0 => 0.05, 1 => 0.3, 2 => 0.65],
+                    'legend' => [0 => 'Calm', 1 => 'Frustrated but civil', 2 => 'Very angry'],
+                    'confidence' => 0.78,
+                ],
+            ],
+        ]], json_decode($data['gen_ai.output.messages'], true));
+
+        // Score levels are keyed by number but must still be JSON objects, like in the JavaScript and Python SDKs
+        $this->assertStringContainsString('"probabilities":{"0":0.05,"1":0.3,"2":0.65}', $data['gen_ai.output.messages']);
+        $this->assertStringContainsString('"legend":{"0":"Calm","1":"Frustrated but civil","2":"Very angry"}', $data['gen_ai.output.messages']);
+    }
+
+    public function testZeroValuesAreKeptAndMissingConfidenceIsLeftOut(): void
+    {
+        $this->resetApplicationWithConfig(['sentry.send_default_pii' => true]);
+
+        Http::fake([self::TYPESAFE_URL => Http::response([
+            'model' => 'jev-1.13.0',
+            'answers' => [
+                'is_urgent' => ['type' => 'noul', 'noul' => 0.0],
+                // No confidence in the response
+                'department' => ['type' => 'choice', 'choice' => 'billing', 'probabilities' => ['billing' => 1.0, 'technical' => 0.0]],
+                'frustration' => [
+                    'type' => 'score',
+                    'score' => 0.0,
+                    'legend' => ['0' => 'Calm', '1' => 'Frustrated but civil', '2' => 'Very angry'],
+                    'probabilities' => ['0' => 1.0, '1' => 0.0, '2' => 0.0],
+                    'confidence' => 0.0,
+                ],
+            ],
+            'usage' => ['input_tokens' => 312, 'output_tokens' => 48],
+        ])]);
+
+        $transaction = $this->startTransaction();
+
+        $this->classify();
+
+        $answers = json_decode($this->findEvaluateSpan($transaction)->getData()['gen_ai.output.messages'], true)[0]['answers'];
+
+        $this->assertEquals(0, $answers['is_urgent']['noul']);
+        $this->assertArrayNotHasKey('confidence', $answers['department']);
+        $this->assertEquals(['billing' => 1, 'technical' => 0], $answers['department']['probabilities']);
+        $this->assertEquals(0, $answers['frustration']['score']);
+        $this->assertArrayHasKey('confidence', $answers['frustration']);
+        $this->assertEquals(0, $answers['frustration']['confidence']);
+        $this->assertEquals([0 => 1, 1 => 0, 2 => 0], $answers['frustration']['probabilities']);
+    }
+
+    public function testFailedClassificationOnlyRecordsInputMessages(): void
+    {
+        $this->resetApplicationWithConfig(['sentry.send_default_pii' => true]);
+
+        Http::fake([self::TYPESAFE_URL => Http::response(['error' => 'invalid API key'], 401)]);
+
+        $transaction = $this->startTransaction();
+
+        $this->classifyExpectingFailure();
+
+        $data = $this->findEvaluateSpan($transaction)->getData();
+
+        $this->assertArrayHasKey('gen_ai.input.messages', $data);
+        $this->assertArrayNotHasKey('gen_ai.output.messages', $data);
+    }
+
+    public function testNoMessagesAreRecordedWithoutPii(): void
+    {
+        $transaction = $this->startTransaction();
+
+        $this->classifyWithTypeSafe();
+
+        $this->assertSpanDataContainsNoClassificationContent($this->findEvaluateSpan($transaction)->getData());
+    }
+
+    public function testNoMessagesAreRecordedOnFailedSpansWithoutPii(): void
+    {
+        Http::fake([self::TYPESAFE_URL => Http::response(['error' => 'invalid API key'], 401)]);
+
+        $transaction = $this->startTransaction();
+
+        $this->classifyExpectingFailure();
+
+        $this->assertSpanDataContainsNoClassificationContent($this->findEvaluateSpan($transaction)->getData());
+    }
+
+    public function testLongStateIsTruncated(): void
+    {
+        $this->resetApplicationWithConfig(['sentry.send_default_pii' => true]);
+
+        $this->fakeTypeSafe();
+
+        $transaction = $this->startTransaction();
+
+        // Text with spaces, as a long run of letters would be redacted as a base64 blob instead
+        Classification::of(str_repeat('word ', 3000))
+            ->questions($this->questions())
+            ->classify('typesafe');
+
+        $input = json_decode($this->findEvaluateSpan($transaction)->getData()['gen_ai.input.messages'], true);
+
+        $this->assertSame(substr(str_repeat('word ', 3000), 0, 10000) . '...', $input[0]['state']);
+    }
+
+    public function testCustomQuestionIsRecordedAsItsArray(): void
+    {
+        $this->resetApplicationWithConfig(['sentry.send_default_pii' => true]);
+
+        $this->fakeTypeSafe();
+
+        $transaction = $this->startTransaction();
+
+        Classification::of('Stripe connect keeps failing')
+            ->questions(['custom' => new class implements Question {
+                public function toArray(): array
+                {
+                    return ['type' => 'noul', 'instructions' => 'Is this a custom question?', 'criteria' => ['true' => 'Yes']];
+                }
+            }])
+            ->classify('typesafe');
+
+        $input = json_decode($this->findEvaluateSpan($transaction)->getData()['gen_ai.input.messages'], true);
+
+        $this->assertSame(
+            ['type' => 'noul', 'instructions' => 'Is this a custom question?', 'criteria' => ['true' => 'Yes']],
+            $input[0]['questions']['custom']
+        );
+    }
+
+    private function assertSpanDataContainsNoClassificationContent(array $data): void
+    {
+        $this->assertArrayNotHasKey('gen_ai.input.messages', $data);
+        $this->assertArrayNotHasKey('gen_ai.output.messages', $data);
+
+        // The state, questions and answers must not reach the span through any other attribute either
+        $encoded = json_encode($data);
+        foreach (['Stripe connect', 'convey urgency', 'Payments, invoicing', 'Frustrated but civil', 'probabilities', 'technical'] as $content) {
+            $this->assertStringNotContainsString($content, $encoded);
+        }
     }
 
     private function classifyWithTypeSafe(?string $model = null): ClassificationResponse
