@@ -103,6 +103,12 @@ abstract class TestCase extends LaravelTestCase
         $this->setupConfig = $config;
 
         $this->refreshApplication();
+
+        // Testbench 4 and 5 do not restore routes when refreshing the application.
+        $setUpApplicationRoutes = new ReflectionMethod($this, 'setUpApplicationRoutes');
+        if ($setUpApplicationRoutes->getNumberOfRequiredParameters() === 0) {
+            $this->setUpApplicationRoutes();
+        }
     }
 
     protected function dispatchLaravelEvent($event, array $payload = []): void
@@ -125,8 +131,7 @@ abstract class TestCase extends LaravelTestCase
         $hub = $this->getSentryHubFromContainer();
 
         $method = new ReflectionMethod($hub, 'getScope');
-        if (\PHP_VERSION_ID < 80100)
-        {
+        if (\PHP_VERSION_ID < 80100) {
             // This method is no-op starting from PHP 8.1; see also https://wiki.php.net/rfc/deprecations_php_8_5#deprecate_reflectionsetaccessible
             $method->setAccessible(true);
         }
@@ -140,8 +145,7 @@ abstract class TestCase extends LaravelTestCase
         $scope = $this->getCurrentSentryScope();
 
         $property = new ReflectionProperty($scope, 'breadcrumbs');
-        if (\PHP_VERSION_ID < 80100)
-        {
+        if (\PHP_VERSION_ID < 80100) {
             // This method is no-op starting from PHP 8.1; see also https://wiki.php.net/rfc/deprecations_php_8_5#deprecate_reflectionsetaccessible
             $property->setAccessible(true);
         }

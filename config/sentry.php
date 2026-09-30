@@ -53,6 +53,17 @@ return [
     // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#send_default_pii
     'send_default_pii' => env('SENTRY_SEND_DEFAULT_PII', false),
 
+    // Configure which application data is collected. Leaving this as `null` preserves the legacy behavior.
+    'data_collection' => null,
+
+    // 'data_collection' => [
+    //     'http_headers' => [
+    //         'request' => ['mode' => 'denyList', 'terms' => ['x-private-header']],
+    //         'response' => ['mode' => 'allowList', 'terms' => ['content-type']],
+    //     ],
+    // ],
+    // Use 'http_headers' => ['mode' => ..., 'terms' => [...]] to apply the same policy to both directions.
+
     // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#ignore_exceptions
     // 'ignore_exceptions' => [],
 

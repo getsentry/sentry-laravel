@@ -8,9 +8,14 @@ use Illuminate\Http\Client\Events\ConnectionFailed;
 use Illuminate\Http\Client\Events\RequestSending;
 use Illuminate\Http\Client\Events\ResponseReceived;
 use Illuminate\Http\Client\Factory;
+use Illuminate\Http\Client\Request;
+use Illuminate\Http\Client\Response;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\UriInterface;
 use Sentry\Breadcrumb;
+use Sentry\DataCollection\DataCollectionPolicy;
+use Sentry\DataCollection\HttpDataCollector;
+use Sentry\DataCollection\HttpHeaderNormalizer;
 use Sentry\Laravel\Features\Concerns\TracksPushedScopesAndSpans;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
@@ -73,18 +78,21 @@ class HttpClientIntegration extends Feature
         $fullUri = $this->getFullUri($event->request->url());
         $partialUri = $this->getPartialUri($fullUri);
 
+        $data = [
+            'url' => $partialUri,
+            // See: https://develop.sentry.dev/sdk/performance/span-data-conventions/#http
+            'http.query' => $fullUri->getQuery(),
+            'http.fragment' => $fullUri->getFragment(),
+            'http.request.method' => $event->request->method(),
+            'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
+        ];
+        $data += $this->collectRequestHeaders($event->request);
+
         $this->pushSpan(
             $parentSpan->startChild(
                 SpanContext::make()
                     ->setOp('http.client')
-                    ->setData([
-                        'url' => $partialUri,
-                        // See: https://develop.sentry.dev/sdk/performance/span-data-conventions/#http
-                        'http.query' => $fullUri->getQuery(),
-                        'http.fragment' => $fullUri->getFragment(),
-                        'http.request.method' => $event->request->method(),
-                        'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
-                    ])
+                    ->setData($data)
                     ->setOrigin('auto.http.client')
                     ->setDescription($event->request->method() . ' ' . $partialUri)
             )
@@ -101,6 +109,7 @@ class HttpClientIntegration extends Feature
                 'http.response.status_code' => $event->response->status(),
                 'http.response.body.size' => $event->response->toPsrResponse()->getBody()->getSize(),
             ]));
+            $span->setData(array_diff_key($this->collectResponseHeaders($event->response), $span->getData()));
             $span->setHttpStatus($event->response->status());
             $span->finish();
         }
@@ -123,21 +132,25 @@ class HttpClientIntegration extends Feature
 
         $fullUri = $this->getFullUri($event->request->url());
 
+        $data = [
+            'url' => $this->getPartialUri($fullUri),
+            // See: https://develop.sentry.dev/sdk/performance/span-data-conventions/#http
+            'http.query' => $fullUri->getQuery(),
+            'http.fragment' => $fullUri->getFragment(),
+            'http.request.method' => $event->request->method(),
+            'http.response.status_code' => $event->response->status(),
+            'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
+            'http.response.body.size' => $event->response->toPsrResponse()->getBody()->getSize(),
+        ];
+        $data += $this->collectRequestHeaders($event->request);
+        $data += $this->collectResponseHeaders($event->response);
+
         Integration::addBreadcrumb(new Breadcrumb(
             $level,
             Breadcrumb::TYPE_HTTP,
             'http',
             null,
-            [
-                'url' => $this->getPartialUri($fullUri),
-                // See: https://develop.sentry.dev/sdk/performance/span-data-conventions/#http
-                'http.query' => $fullUri->getQuery(),
-                'http.fragment' => $fullUri->getFragment(),
-                'http.request.method' => $event->request->method(),
-                'http.response.status_code' => $event->response->status(),
-                'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
-                'http.response.body.size' => $event->response->toPsrResponse()->getBody()->getSize(),
-            ]
+            $data
         ));
     }
 
@@ -145,20 +158,59 @@ class HttpClientIntegration extends Feature
     {
         $fullUri = $this->getFullUri($event->request->url());
 
+        $data = [
+            'url' => $this->getPartialUri($fullUri),
+            // See: https://develop.sentry.dev/sdk/performance/span-data-conventions/#http
+            'http.query' => $fullUri->getQuery(),
+            'http.fragment' => $fullUri->getFragment(),
+            'http.request.method' => $event->request->method(),
+            'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
+        ];
+        $data += $this->collectRequestHeaders($event->request);
+
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_ERROR,
             Breadcrumb::TYPE_HTTP,
             'http',
             null,
-            [
-                'url' => $this->getPartialUri($fullUri),
-                // See: https://develop.sentry.dev/sdk/performance/span-data-conventions/#http
-                'http.query' => $fullUri->getQuery(),
-                'http.fragment' => $fullUri->getFragment(),
-                'http.request.method' => $event->request->method(),
-                'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
-            ]
+            $data
         ));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function collectRequestHeaders(Request $request): array
+    {
+        $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
+        $dataCollection = $policy->getDataCollection();
+
+        if ($dataCollection === null || $dataCollection->getHttpHeaders()['request']['mode'] === 'off') {
+            return [];
+        }
+
+        return HttpDataCollector::collectRequestHeaders(
+            $dataCollection,
+            HttpHeaderNormalizer::normalize($request->headers())
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function collectResponseHeaders(Response $response): array
+    {
+        $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
+        $dataCollection = $policy->getDataCollection();
+
+        if ($dataCollection === null || $dataCollection->getHttpHeaders()['response']['mode'] === 'off') {
+            return [];
+        }
+
+        return HttpDataCollector::collectResponseHeaders(
+            $dataCollection,
+            HttpHeaderNormalizer::normalize($response->headers())
+        );
     }
 
     /**
