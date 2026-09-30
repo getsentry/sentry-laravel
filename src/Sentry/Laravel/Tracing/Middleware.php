@@ -8,6 +8,7 @@ use Laravel\Lumen\Application as LumenApplication;
 use Sentry\DataCollection\DataCollectionPolicy;
 use Sentry\DataCollection\HttpDataCollector;
 use Sentry\DataCollection\HttpHeaderNormalizer;
+use Sentry\Laravel\Http\CookieValueFilter;
 use Sentry\SentrySdk;
 use Sentry\State\HubInterface;
 use Sentry\Tracing\Span;
@@ -197,11 +198,14 @@ class Middleware
         $policy = DataCollectionPolicy::fromHub($hub);
         $dataCollection = $policy->getDataCollection();
 
-        if ($dataCollection !== null && $dataCollection->getHttpHeaders()['request']['mode'] !== 'off') {
+        if ($dataCollection !== null && ($dataCollection->getHttpHeaders()['request']['mode'] !== 'off' || $dataCollection->getCookies()['mode'] !== 'off')) {
             $headers = HttpHeaderNormalizer::normalize($request->headers->getIterator()->getArrayCopy());
-            $collectedHeaders = HttpDataCollector::collectRequestHeaders($dataCollection, $headers);
+            $cookies = $dataCollection->getCookies()['mode'] === 'off'
+                ? []
+                : CookieValueFilter::filter($request->cookies->all());
+            $collectedData = HttpDataCollector::collectRequestData($policy, $headers, $cookies);
 
-            $transaction->setData(array_diff_key($collectedHeaders, $transaction->getData()));
+            $transaction->setData(array_diff_key($collectedData, $transaction->getData()));
         }
 
         $bootstrapSpan = $this->addAppBootstrapSpan();
@@ -276,14 +280,22 @@ class Middleware
         $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
         $dataCollection = $policy->getDataCollection();
 
-        if ($dataCollection === null || $dataCollection->getHttpHeaders()['response']['mode'] === 'off') {
+        if ($dataCollection === null || ($dataCollection->getHttpHeaders()['response']['mode'] === 'off' && $dataCollection->getCookies()['mode'] === 'off')) {
             return;
         }
 
         $headers = HttpHeaderNormalizer::normalize($response->headers->getIterator()->getArrayCopy());
-        $collectedHeaders = HttpDataCollector::collectResponseHeaders($dataCollection, $headers);
+        $cookies = [];
 
-        $this->transaction->setData(array_diff_key($collectedHeaders, $this->transaction->getData()));
+        if ($dataCollection->getCookies()['mode'] !== 'off') {
+            foreach ($response->headers->getCookies() as $cookie) {
+                $cookies[] = [$cookie->getName(), CookieValueFilter::filterValue($cookie->getName(), $cookie->getValue())];
+            }
+        }
+
+        $collectedData = HttpDataCollector::collectResponseData($policy, $headers, $cookies);
+
+        $this->transaction->setData(array_diff_key($collectedData, $this->transaction->getData()));
     }
 
     public function finishTransaction(): void

@@ -86,7 +86,7 @@ class HttpClientIntegration extends Feature
             'http.request.method' => $event->request->method(),
             'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
         ];
-        $data += $this->collectRequestHeaders($event->request);
+        $data += $this->collectRequestData($event->request);
 
         $this->pushSpan(
             $parentSpan->startChild(
@@ -109,7 +109,7 @@ class HttpClientIntegration extends Feature
                 'http.response.status_code' => $event->response->status(),
                 'http.response.body.size' => $event->response->toPsrResponse()->getBody()->getSize(),
             ]));
-            $span->setData(array_diff_key($this->collectResponseHeaders($event->response), $span->getData()));
+            $span->setData(array_diff_key($this->collectResponseData($event->response), $span->getData()));
             $span->setHttpStatus($event->response->status());
             $span->finish();
         }
@@ -142,8 +142,8 @@ class HttpClientIntegration extends Feature
             'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
             'http.response.body.size' => $event->response->toPsrResponse()->getBody()->getSize(),
         ];
-        $data += $this->collectRequestHeaders($event->request);
-        $data += $this->collectResponseHeaders($event->response);
+        $data += $this->collectRequestData($event->request);
+        $data += $this->collectResponseData($event->response);
 
         Integration::addBreadcrumb(new Breadcrumb(
             $level,
@@ -166,7 +166,7 @@ class HttpClientIntegration extends Feature
             'http.request.method' => $event->request->method(),
             'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
         ];
-        $data += $this->collectRequestHeaders($event->request);
+        $data += $this->collectRequestData($event->request);
 
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_ERROR,
@@ -180,17 +180,17 @@ class HttpClientIntegration extends Feature
     /**
      * @return array<string, mixed>
      */
-    private function collectRequestHeaders(Request $request): array
+    private function collectRequestData(Request $request): array
     {
         $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
         $dataCollection = $policy->getDataCollection();
 
-        if ($dataCollection === null || $dataCollection->getHttpHeaders()['request']['mode'] === 'off') {
+        if ($dataCollection === null || ($dataCollection->getHttpHeaders()['request']['mode'] === 'off' && $dataCollection->getCookies()['mode'] === 'off')) {
             return [];
         }
 
-        return HttpDataCollector::collectRequestHeaders(
-            $dataCollection,
+        return HttpDataCollector::collectRequestData(
+            $policy,
             HttpHeaderNormalizer::normalize($request->headers())
         );
     }
@@ -198,17 +198,17 @@ class HttpClientIntegration extends Feature
     /**
      * @return array<string, mixed>
      */
-    private function collectResponseHeaders(Response $response): array
+    private function collectResponseData(Response $response): array
     {
         $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
         $dataCollection = $policy->getDataCollection();
 
-        if ($dataCollection === null || $dataCollection->getHttpHeaders()['response']['mode'] === 'off') {
+        if ($dataCollection === null || ($dataCollection->getHttpHeaders()['response']['mode'] === 'off' && $dataCollection->getCookies()['mode'] === 'off')) {
             return [];
         }
 
-        return HttpDataCollector::collectResponseHeaders(
-            $dataCollection,
+        return HttpDataCollector::collectResponseData(
+            $policy,
             HttpHeaderNormalizer::normalize($response->headers())
         );
     }
