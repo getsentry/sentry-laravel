@@ -21,12 +21,14 @@ env:
     [
       "PKSA-8qx3-n5y5-vvnd",
       "PKSA-m5cs-t1y6-qpcs",
-      "PKSA-3r5d-mb8f-1qw9"
+      "PKSA-3r5d-mb8f-1qw9",
+      "PKSA-d5tc-s1qs-h781"
     ]
   COMPOSER_ADVISORY_LARAVEL_10_TO_11: >-
     [
       "PKSA-m5cs-t1y6-qpcs",
-      "PKSA-3r5d-mb8f-1qw9"
+      "PKSA-3r5d-mb8f-1qw9",
+      "PKSA-d5tc-s1qs-h781"
     ]
   COMPOSER_ADVISORY_COMMONMARK_1: >-
     [
@@ -69,6 +71,12 @@ env:
     [
       "PKSA-f3bq-hwxm-x4yf",
       "PKSA-r8x8-972m-nrc1"
+    ]
+  # league/flysystem is pulled in by laravel/framework. Laravel 6-8 require Flysystem 1.x, which is EOL,
+  # while the fix only landed in 3.35.3.
+  COMPOSER_ADVISORY_FLYSYSTEM_1: >-
+    [
+      "PKSA-w9tt-7782-78jx"
     ]
 
 jobs:
@@ -259,6 +267,10 @@ jobs:
       - name: Configure Laravel 9 PHP 8.0 Symfony advisory allowlist
         if: ${{ matrix.packages.laravel == '^9.0' && matrix.php == '8.0' }}
         run: composer config --merge --json policy.advisories.ignore-id "$COMPOSER_ADVISORY_LARAVEL_9_PHP_8_0_SYMFONY"
+
+      - name: Configure Flysystem 1 advisory allowlist
+        if: ${{ contains(fromJSON('["^6.0","^7.0","^8.0"]'), matrix.packages.laravel) }}
+        run: composer config --merge --json policy.advisories.ignore-id "$COMPOSER_ADVISORY_FLYSYSTEM_1"
 
       - name: Configure mail-mime-parser PHP 7 advisory allowlist
         if: ${{ matrix.packages.laravel == '^8.0' && (matrix.php == '7.3' || matrix.php == '7.4') }}
