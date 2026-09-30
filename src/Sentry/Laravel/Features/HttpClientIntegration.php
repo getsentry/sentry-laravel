@@ -15,6 +15,7 @@ use Sentry\Laravel\Features\Concerns\ResolvesEventOrigin;
 use Sentry\Laravel\Features\Concerns\TracksPushedScopesAndSpans;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
+use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\SpanStatus;
 use function Sentry\getBaggage;
@@ -118,17 +119,7 @@ class HttpClientIntegration extends Feature
                 'http.response.body.size' => $event->response->toPsrResponse()->getBody()->getSize(),
             ]));
 
-            if ($this->shouldTraceHttpClientRequestsOrigin()) {
-                $duration = ($span->getEndTimestamp() ?? microtime(true)) - $span->getStartTimestamp();
-                $durationMs = $duration * 1000;
-
-                if ($durationMs >= $this->getHttpClientRequestsOriginThresholdMs()) {
-                    $requestOrigin = $this->resolveEventOrigin();
-                    if ($requestOrigin !== null) {
-                        $span->setData(array_merge($span->getData(), $requestOrigin));
-                    }
-                }
-            }
+            $this->maybeAddRequestOriginToSpan($span);
 
             $span->setHttpStatus($event->response->status());
             $span->finish();
@@ -137,7 +128,14 @@ class HttpClientIntegration extends Feature
 
     public function handleConnectionFailedHandlerForTracing(ConnectionFailed $event): void
     {
-        $this->maybeFinishSpan(SpanStatus::internalError());
+        $span = $this->maybePopSpan();
+
+        if ($span !== null) {
+            $this->maybeAddRequestOriginToSpan($span);
+
+            $span->setStatus(SpanStatus::internalError());
+            $span->finish();
+        }
     }
 
     public function handleResponseReceivedHandlerForBreadcrumb(ResponseReceived $event): void
@@ -234,6 +232,29 @@ class HttpClientIntegration extends Feature
     }
 
     /**
+     * Add the code location that made the HTTP client request to the span if the request was slower than the threshold.
+     */
+    private function maybeAddRequestOriginToSpan(Span $span): void
+    {
+        if (!$this->shouldTraceHttpClientRequestsOrigin()) {
+            return;
+        }
+
+        $duration = ($span->getEndTimestamp() ?? microtime(true)) - $span->getStartTimestamp();
+        $durationMs = $duration * 1000;
+
+        if ($durationMs < $this->getHttpClientRequestsOriginThresholdMs()) {
+            return;
+        }
+
+        $requestOrigin = $this->resolveEventOrigin();
+
+        if ($requestOrigin !== null) {
+            $span->setData(array_merge($span->getData(), $requestOrigin));
+        }
+    }
+
+    /**
      * Indicates if we should trace the origin of the HTTP client requests.
      */
     private function shouldTraceHttpClientRequestsOrigin(): bool
@@ -255,7 +276,9 @@ class HttpClientIntegration extends Feature
         if ($this->traceHttpClientRequestsOriginThresholdMs === null) {
             $tracingConfig = $this->getUserConfig()['tracing'] ?? [];
 
-            $this->traceHttpClientRequestsOriginThresholdMs = $tracingConfig['http_client_requests_origin_threshold_ms'] ?? 250;
+            $thresholdMs = $tracingConfig['http_client_requests_origin_threshold_ms'] ?? null;
+
+            $this->traceHttpClientRequestsOriginThresholdMs = is_numeric($thresholdMs) ? (int)$thresholdMs : 250;
         }
 
         return $this->traceHttpClientRequestsOriginThresholdMs;
