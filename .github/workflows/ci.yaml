@@ -40,7 +40,8 @@ env:
       "PKSA-scnn-p8mm-jbft",
       "PKSA-zyf5-hrxv-hrd7",
       "PKSA-nv44-1b4d-6gjg",
-      "PKSA-9q1p-3s19-bp1q"
+      "PKSA-9q1p-3s19-bp1q",
+      "PKSA-m2dq-1fhr-29b1"
     ]
   COMPOSER_ADVISORY_LARAVEL_6_SYMFONY: >-
     [
