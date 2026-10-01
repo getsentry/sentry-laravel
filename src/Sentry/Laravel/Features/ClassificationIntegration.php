@@ -88,6 +88,8 @@ class ClassificationIntegration extends Feature
                 ->setDescription('evaluate ' . $event->model)
         );
 
+        $this->container()->make(AiIntegration::class)->attachSpanToConversation($span);
+
         $this->classifications->set($event->invocationId, new ClassificationInvocationData(
             $span,
             $parentSpan,

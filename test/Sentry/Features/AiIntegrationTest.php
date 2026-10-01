@@ -307,6 +307,16 @@ class AiIntegrationTest extends TestCase
         $this->assertEquals(25, $data['gen_ai.usage.input_tokens']);
     }
 
+    public function testEmbeddingsAfterAnAgentGetTheConversationId(): void
+    {
+        $transaction = $this->startTransaction();
+        $this->dispatchAgentFlow('inv-x', ...$this->makePromptAndResponse());
+        [$provider, $prompt, $response] = $this->makeEmbeddingsPromptAndResponse();
+        $this->dispatchLaravelEvent(new GeneratingEmbeddings('emb-1', $provider, 'text-embedding-3-small', $prompt));
+        $this->dispatchLaravelEvent(new EmbeddingsGenerated('emb-1', $provider, 'text-embedding-3-small', $prompt, $this->wrapEmbeddingsResponse($response)));
+        $this->assertEquals('conv-abc-123', $this->findSpanByOp($transaction, 'gen_ai.embeddings')->getData()['gen_ai.conversation.id']);
+    }
+
     public function testEmbeddingsPiiControl(): void
     {
         // With PII: inputs captured
