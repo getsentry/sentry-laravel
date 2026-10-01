@@ -47,6 +47,29 @@ class LaravelRequestFetcherTest extends TestCase
         $this->assertSame(['foo' => 'bar'], $this->fetchRequest($request)->getParsedBody());
     }
 
+    public function testParsedBodyIsDroppedForRequestsThatAreNotFormsWithDataCollection(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.data_collection' => [],
+        ]);
+
+        // Laravel 8 and older use the query parameters as the parsed body of GET requests
+        $request = (new ServerRequest('GET', 'http://localhost/?token=secret'))->withParsedBody(['token' => 'secret']);
+
+        $this->assertNull($this->fetchRequest($request)->getParsedBody());
+    }
+
+    public function testParsedBodyIsKeptForFormsWithDataCollection(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.data_collection' => [],
+        ]);
+
+        $request = (new ServerRequest('POST', 'http://localhost/', ['Content-Type' => 'application/x-www-form-urlencoded']))->withParsedBody(['foo' => 'bar']);
+
+        $this->assertSame(['foo' => 'bar'], $this->fetchRequest($request)->getParsedBody());
+    }
+
     public function testRawQueryStringIsUsedWithDataCollection(): void
     {
         $this->resetApplicationWithConfig([

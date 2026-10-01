@@ -39,9 +39,10 @@ class LaravelRequestFetcher implements RequestFetcherInterface
             return null;
         }
 
-        $request = $this->withoutEmptyParsedBody($request);
-
-        if (!DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub())->isLegacyMode()) {
+        if (DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub())->isLegacyMode()) {
+            $request = $this->withoutEmptyParsedBody($request);
+        } else {
+            $request = $this->withoutParsedBodyForNonFormRequests($request);
             $request = $this->withRawQueryString($request);
         }
 
@@ -68,6 +69,19 @@ class LaravelRequestFetcher implements RequestFetcherInterface
     private function withoutEmptyParsedBody(ServerRequestInterface $request): ServerRequestInterface
     {
         if ($request->getParsedBody() !== [] || $this->isFormRequest($request)) {
+            return $request;
+        }
+
+        return $request->withParsedBody(null);
+    }
+
+    /**
+     * Only form requests have a parsed body that was read from the request body. Laravel 8 and older
+     * use the query parameters as the parsed body of GET requests, so all other bodies are read raw.
+     */
+    private function withoutParsedBodyForNonFormRequests(ServerRequestInterface $request): ServerRequestInterface
+    {
+        if ($this->isFormRequest($request)) {
             return $request;
         }
 
