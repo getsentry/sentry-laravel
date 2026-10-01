@@ -174,7 +174,7 @@ class EventHandler
             ->setOp('db.sql.query')
             ->setData([
                 'db.name' => $query->connection->getDatabaseName(),
-                'db.system' => $query->connection->getDriverName(),
+                'db.system' => $this->normalizeDatabaseSystemName($query->connection->getDriverName()),
                 'server.address' => $query->connection->getConfig('host'),
                 'server.port' => $query->connection->getConfig('port'),
             ])
@@ -199,6 +199,20 @@ class EventHandler
         }
 
         $parentSpan->startChild($context);
+    }
+
+    private function normalizeDatabaseSystemName(string $driverName): string
+    {
+        // Sentry's "Queries" insights filter spans by their OpenTelemetry `db.system`
+        // value, which doesn't recognize Laravel driver names like `pgsql` or `sqlsrv`.
+        switch ($driverName) {
+            case 'pgsql':
+                return 'postgresql';
+            case 'sqlsrv':
+                return 'microsoft.sql_server';
+            default:
+                return $driverName;
+        }
     }
 
     protected function responsePreparedHandler(RoutingEvents\ResponsePrepared $event): void
