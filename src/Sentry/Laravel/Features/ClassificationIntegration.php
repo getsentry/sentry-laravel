@@ -4,8 +4,12 @@ namespace Sentry\Laravel\Features;
 
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Http\Client\Events\ConnectionFailed;
+use Illuminate\Http\Client\Events\ResponseReceived;
 use Laravel\Ai\Events\Classified;
 use Laravel\Ai\Events\Classifying;
+use Laravel\Ai\Events\ProviderFailedOver;
+use Sentry\Laravel\Features\Ai\AiProviderUrlResolver;
 use Sentry\Laravel\Features\Ai\AiSpanDataBag;
 use Sentry\Laravel\Features\Classification\ClassificationInvocationData;
 use Sentry\Laravel\Util\BoundedOrderedMap;
@@ -46,6 +50,12 @@ class ClassificationIntegration extends Feature
     {
         $events->listen(Classifying::class, [$this, 'handleClassifyingForTracing']);
         $events->listen(Classified::class, [$this, 'handleClassifiedForTracing']);
+
+        // laravel/ai dispatches no event for a failed classification, so detect failures from the provider's HTTP response.
+        // These run after the HTTP client integration's listeners, which restore the evaluate span as the current span.
+        $events->listen(ResponseReceived::class, [$this, 'handleHttpResponseReceived']);
+        $events->listen(ConnectionFailed::class, [$this, 'handleHttpConnectionFailed']);
+        $events->listen(ProviderFailedOver::class, [$this, 'handleProviderFailedOver']);
     }
 
     public function handleClassifyingForTracing(Classifying $event): void
@@ -73,7 +83,13 @@ class ClassificationIntegration extends Feature
                 ->setDescription('evaluate ' . $event->model)
         );
 
-        $this->classifications->set($event->invocationId, new ClassificationInvocationData($span, $parentSpan));
+        $this->classifications->set($event->invocationId, new ClassificationInvocationData(
+            $span,
+            $parentSpan,
+            $event->provider->name(),
+            $event->model,
+            AiProviderUrlResolver::host($event->provider)
+        ));
 
         SentrySdk::getCurrentHub()->setSpan($span);
     }
@@ -93,5 +109,77 @@ class ClassificationIntegration extends Feature
         $classification->span->setData($data->toArray());
         $classification->finishSpan(SpanStatus::ok());
         $classification->restoreParentSpan();
+    }
+
+    public function handleHttpResponseReceived(ResponseReceived $event): void
+    {
+        $status = $event->response->status();
+        if ($status < 400) {
+            return;
+        }
+
+        $invocationId = $this->findClassificationForRequest($event->request->url());
+        if ($invocationId === null) {
+            return;
+        }
+
+        $this->finishFailedClassification($invocationId, SpanStatus::createFromHttpStatusCode($status));
+    }
+
+    public function handleHttpConnectionFailed(ConnectionFailed $event): void
+    {
+        $invocationId = $this->findClassificationForRequest($event->request->url());
+        if ($invocationId === null) {
+            return;
+        }
+
+        $this->finishFailedClassification($invocationId, SpanStatus::internalError());
+    }
+
+    public function handleProviderFailedOver(ProviderFailedOver $event): void
+    {
+        foreach ($this->classifications->newestFirst() as $invocationId => $classification) {
+            if ($classification->providerName === $event->provider->name() && $classification->model === $event->model) {
+                $this->finishFailedClassification($invocationId, SpanStatus::internalError());
+
+                return;
+            }
+        }
+    }
+
+    private function finishFailedClassification(string $invocationId, SpanStatus $status): void
+    {
+        $classification = $this->classifications->pull($invocationId);
+        if ($classification === null) {
+            return;
+        }
+
+        $classification->finishSpan($status);
+        $classification->restoreParentSpan();
+    }
+
+    private function findClassificationForRequest(string $url): ?string
+    {
+        $currentSpan = SentrySdk::getCurrentHub()->getSpan();
+        if ($currentSpan === null) {
+            return null;
+        }
+
+        $host = parse_url($url, PHP_URL_HOST);
+        $host = \is_string($host) ? strtolower($host) : null;
+
+        foreach ($this->classifications->newestFirst() as $invocationId => $classification) {
+            if ($classification->span !== $currentSpan) {
+                continue;
+            }
+
+            if ($classification->providerHost !== null && $host !== $classification->providerHost) {
+                return null;
+            }
+
+            return $invocationId;
+        }
+
+        return null;
     }
 }

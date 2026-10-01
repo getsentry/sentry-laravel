@@ -21,10 +21,30 @@ class ClassificationInvocationData
      */
     public $parentSpan;
 
-    public function __construct(Span $span, Span $parentSpan)
+    /**
+     * @var string
+     */
+    public $providerName;
+
+    /**
+     * @var string
+     */
+    public $model;
+
+    /**
+     * The host the provider sends requests to, or null when it is unknown.
+     *
+     * @var string|null
+     */
+    public $providerHost;
+
+    public function __construct(Span $span, Span $parentSpan, string $providerName, string $model, ?string $providerHost)
     {
         $this->span = $span;
         $this->parentSpan = $parentSpan;
+        $this->providerName = $providerName;
+        $this->model = $model;
+        $this->providerHost = $providerHost;
     }
 
     public function finishSpan(SpanStatus $status): void
