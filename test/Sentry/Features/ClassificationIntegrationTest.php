@@ -2,6 +2,7 @@
 
 namespace Sentry\Laravel\Tests\Features;
 
+use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Laravel\Ai\AiManager;
@@ -10,17 +11,28 @@ use Laravel\Ai\Classification;
 use Laravel\Ai\Classification\Boolean;
 use Laravel\Ai\Classification\Choice;
 use Laravel\Ai\Classification\Score;
+use Laravel\Ai\Concerns\RemembersConversations;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Question;
+use Laravel\Ai\Contracts\RemembersConversations as RemembersConversationsContract;
+use Laravel\Ai\Contracts\Tool;
+use Laravel\Ai\Events\AgentFailed;
+use Laravel\Ai\Events\AgentPrompted;
 use Laravel\Ai\Events\Classifying;
+use Laravel\Ai\Events\InvokingTool;
 use Laravel\Ai\Events\PromptingAgent;
+use Laravel\Ai\Events\ToolInvoked;
 use Laravel\Ai\Exceptions\ProviderConnectionException;
 use Laravel\Ai\Exceptions\RateLimitedException;
 use Laravel\Ai\Promptable;
 use Laravel\Ai\Prompts\AgentPrompt;
 use Laravel\Ai\Prompts\ClassificationPrompt;
 use Laravel\Ai\Providers\TypeSafeProvider;
+use Laravel\Ai\Responses\AgentResponse;
 use Laravel\Ai\Responses\ClassificationResponse;
+use Laravel\Ai\Responses\Data\Meta;
+use Laravel\Ai\Responses\Data\TextUsage;
+use Laravel\Ai\Tools\Request as ToolRequest;
 use Sentry\Laravel\Tests\TestCase;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
@@ -30,6 +42,8 @@ use Sentry\Tracing\Transaction;
 class ClassificationIntegrationTest extends TestCase
 {
     private const TYPESAFE_URL = 'https://api.typesafe.ai/v1/systemone';
+
+    private const AGENT_INVOCATION_ID = 'agent-invocation';
 
     protected $defaultSetupConfig = [
         'sentry.tracing.http_client_requests' => false,
@@ -74,6 +88,7 @@ class ClassificationIntegrationTest extends TestCase
         $this->assertSame(312, $data['gen_ai.usage.input_tokens']);
         $this->assertSame(48, $data['gen_ai.usage.output_tokens']);
         $this->assertSame(360, $data['gen_ai.usage.total_tokens']);
+        $this->assertArrayNotHasKey('gen_ai.conversation.id', $data);
     }
 
     public function testRequestModelFallsBackToTheProviderDefault(): void
@@ -455,6 +470,59 @@ class ClassificationIntegrationTest extends TestCase
         $this->assertSame($toolSpan, $this->getSentryHubFromContainer()->getSpan());
     }
 
+    public function testEvaluateSpanInsideAnAgentGetsTheNewConversationId(): void
+    {
+        $transaction = $this->startTransaction();
+
+        $prompt = $this->classifyInsideAgentTool($this->conversationalAgent()->forUser(new \stdClass()));
+
+        $this->dispatchLaravelEvent(new AgentPrompted(self::AGENT_INVOCATION_ID, $prompt, $this->agentResponse('conv-new')));
+
+        $this->assertSame('conv-new', $this->findEvaluateSpan($transaction)->getData()['gen_ai.conversation.id']);
+    }
+
+    public function testEvaluateSpanInsideAFailedAgentGetsTheConversationId(): void
+    {
+        $transaction = $this->startTransaction();
+
+        $user = new \stdClass();
+        $agent = $this->conversationalAgent()->forUser($user);
+
+        $prompt = $this->classifyInsideAgentTool($agent);
+
+        $agent->continue('conv-failed', $user);
+        $this->dispatchLaravelEvent(new AgentFailed(self::AGENT_INVOCATION_ID, $prompt, new \RuntimeException('The provider failed.')));
+
+        $this->assertSame('conv-failed', $this->findEvaluateSpan($transaction)->getData()['gen_ai.conversation.id']);
+    }
+
+    public function testEvaluateSpanAfterAnAgentGetsTheLatestConversationId(): void
+    {
+        $transaction = $this->startTransaction();
+
+        $this->promptAgent($this->conversationalAgent()->continue('conv-first', new \stdClass()));
+        $this->classifyWithTypeSafe();
+
+        $this->promptAgent($this->conversationalAgent()->continue('conv-second', new \stdClass()));
+        $this->classifyWithTypeSafe();
+
+        $evaluateSpans = $this->findEvaluateSpans($transaction);
+
+        $this->assertSame('conv-first', $evaluateSpans[0]->getData()['gen_ai.conversation.id']);
+        $this->assertSame('conv-second', $evaluateSpans[1]->getData()['gen_ai.conversation.id']);
+    }
+
+    public function testEvaluateSpanInAnotherTraceHasNoConversationId(): void
+    {
+        $this->startTransaction();
+        $this->promptAgent($this->conversationalAgent()->continue('conv-first', new \stdClass()));
+
+        $transaction = $this->startTransaction();
+        $this->classifyWithTypeSafe();
+
+        $this->assertArrayNotHasKey('gen_ai.conversation.id', $this->findEvaluateSpan($transaction)->getData());
+    }
+
     public function testMessagesAreRecordedInTheTypeSafeFormat(): void
     {
         $this->resetApplicationWithConfig(['sentry.send_default_pii' => true]);
@@ -633,6 +701,84 @@ class ClassificationIntegrationTest extends TestCase
         foreach (['Stripe connect', 'convey urgency', 'Payments, invoicing', 'Frustrated but civil', 'probabilities', 'technical'] as $content) {
             $this->assertStringNotContainsString($content, $encoded);
         }
+    }
+
+    /**
+     * Run a classification from a tool of the given agent, the way a tool would classify the conversation.
+     */
+    private function classifyInsideAgentTool(Agent $agent): AgentPrompt
+    {
+        $prompt = $this->agentPrompt($agent);
+        $tool = $this->triageTool();
+
+        $this->dispatchLaravelEvent(new PromptingAgent(self::AGENT_INVOCATION_ID, $prompt));
+        $this->dispatchLaravelEvent(new InvokingTool(self::AGENT_INVOCATION_ID, 'tool-invocation', $agent, $tool, []));
+
+        $this->classifyWithTypeSafe();
+
+        $this->dispatchLaravelEvent(new ToolInvoked(self::AGENT_INVOCATION_ID, 'tool-invocation', $agent, $tool, [], 'technical', 0.1));
+
+        return $prompt;
+    }
+
+    /**
+     * @param Agent&RemembersConversationsContract $agent
+     */
+    private function promptAgent(Agent $agent): void
+    {
+        $prompt = $this->agentPrompt($agent);
+
+        $this->dispatchLaravelEvent(new PromptingAgent(self::AGENT_INVOCATION_ID, $prompt));
+        $this->dispatchLaravelEvent(new AgentPrompted(self::AGENT_INVOCATION_ID, $prompt, $this->agentResponse($agent->currentConversation())));
+    }
+
+    private function agentPrompt(Agent $agent): AgentPrompt
+    {
+        config(['ai.providers.openai.key' => 'test-key']);
+
+        return new AgentPrompt($agent, 'Triage this ticket', [], $this->app->make(AiManager::class)->textProvider('openai'), 'gpt-4o');
+    }
+
+    private function agentResponse(string $conversationId): AgentResponse
+    {
+        return (new AgentResponse(self::AGENT_INVOCATION_ID, 'Routed to the technical team', new TextUsage(), new Meta('openai', 'gpt-4o')))
+            ->withinConversation($conversationId);
+    }
+
+    /**
+     * @return Agent&RemembersConversationsContract
+     */
+    private function conversationalAgent(): Agent
+    {
+        return new class implements Agent, RemembersConversationsContract {
+            use Promptable;
+            use RemembersConversations;
+
+            public function instructions(): string
+            {
+                return '';
+            }
+        };
+    }
+
+    private function triageTool(): Tool
+    {
+        return new class implements Tool {
+            public function description(): string
+            {
+                return 'Routes the ticket to a team.';
+            }
+
+            public function handle(ToolRequest $request): string
+            {
+                return 'technical';
+            }
+
+            public function schema(JsonSchema $schema): array
+            {
+                return [];
+            }
+        };
     }
 
     private function classifyWithTypeSafe(?string $model = null): ClassificationResponse
