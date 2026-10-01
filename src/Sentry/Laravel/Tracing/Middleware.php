@@ -296,7 +296,7 @@ class Middleware
         if (\is_array($cookies)) {
             foreach ($cookies as $name => $value) {
                 $data['http.response.header.set_cookie.' . $name] = $value;
-            }    
+            }
         }
 
         // Streamed and file responses have no content we can collect
