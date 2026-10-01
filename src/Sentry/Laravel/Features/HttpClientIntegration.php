@@ -11,9 +11,11 @@ use Illuminate\Http\Client\Factory;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\UriInterface;
 use Sentry\Breadcrumb;
+use Sentry\Laravel\Features\Concerns\ResolvesEventOrigin;
 use Sentry\Laravel\Features\Concerns\TracksPushedScopesAndSpans;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
+use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\SpanStatus;
 use function Sentry\getBaggage;
@@ -21,9 +23,24 @@ use function Sentry\getTraceparent;
 
 class HttpClientIntegration extends Feature
 {
+    use ResolvesEventOrigin;
     use TracksPushedScopesAndSpans;
 
     private const FEATURE_KEY = 'http_client_requests';
+
+    /**
+     * Indicates if we should trace the origin of the HTTP client requests.
+     *
+     * @var bool|null
+     */
+    private $traceHttpClientRequestsOrigin;
+
+    /**
+     * The threshold in milliseconds for HTTP client requests to resolve their origin.
+     *
+     * @var int|null
+     */
+    private $traceHttpClientRequestsOriginThresholdMs;
 
     public function isApplicable(): bool
     {
@@ -101,6 +118,9 @@ class HttpClientIntegration extends Feature
                 'http.response.status_code' => $event->response->status(),
                 'http.response.body.size' => $event->response->toPsrResponse()->getBody()->getSize(),
             ]));
+
+            $this->maybeAddRequestOriginToSpan($span);
+
             $span->setHttpStatus($event->response->status());
             $span->finish();
         }
@@ -108,7 +128,14 @@ class HttpClientIntegration extends Feature
 
     public function handleConnectionFailedHandlerForTracing(ConnectionFailed $event): void
     {
-        $this->maybeFinishSpan(SpanStatus::internalError());
+        $span = $this->maybePopSpan();
+
+        if ($span !== null) {
+            $this->maybeAddRequestOriginToSpan($span);
+
+            $span->setStatus(SpanStatus::internalError());
+            $span->finish();
+        }
     }
 
     public function handleResponseReceivedHandlerForBreadcrumb(ResponseReceived $event): void
@@ -202,5 +229,58 @@ class HttpClientIntegration extends Feature
         // Check if the request destination is allow listed in the trace_propagation_targets option.
         return $sdkOptions->getTracePropagationTargets() === null
             || in_array($request->getUri()->getHost(), $sdkOptions->getTracePropagationTargets());
+    }
+
+    /**
+     * Add the code location that made the HTTP client request to the span if the request was slower than the threshold.
+     */
+    private function maybeAddRequestOriginToSpan(Span $span): void
+    {
+        if (!$this->shouldTraceHttpClientRequestsOrigin()) {
+            return;
+        }
+
+        $duration = ($span->getEndTimestamp() ?? microtime(true)) - $span->getStartTimestamp();
+        $durationMs = $duration * 1000;
+
+        if ($durationMs < $this->getHttpClientRequestsOriginThresholdMs()) {
+            return;
+        }
+
+        $requestOrigin = $this->resolveEventOrigin();
+
+        if ($requestOrigin !== null) {
+            $span->setData(array_merge($span->getData(), $requestOrigin));
+        }
+    }
+
+    /**
+     * Indicates if we should trace the origin of the HTTP client requests.
+     */
+    private function shouldTraceHttpClientRequestsOrigin(): bool
+    {
+        if ($this->traceHttpClientRequestsOrigin === null) {
+            $tracingConfig = $this->getUserConfig()['tracing'] ?? [];
+
+            $this->traceHttpClientRequestsOrigin = ($tracingConfig['http_client_requests_origin'] ?? true) === true;
+        }
+
+        return $this->traceHttpClientRequestsOrigin;
+    }
+
+    /**
+     * Get the threshold in milliseconds for HTTP client requests to resolve their origin.
+     */
+    private function getHttpClientRequestsOriginThresholdMs(): int
+    {
+        if ($this->traceHttpClientRequestsOriginThresholdMs === null) {
+            $tracingConfig = $this->getUserConfig()['tracing'] ?? [];
+
+            $thresholdMs = $tracingConfig['http_client_requests_origin_threshold_ms'] ?? null;
+
+            $this->traceHttpClientRequestsOriginThresholdMs = is_numeric($thresholdMs) ? (int)$thresholdMs : 250;
+        }
+
+        return $this->traceHttpClientRequestsOriginThresholdMs;
     }
 }

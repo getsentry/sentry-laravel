@@ -21,12 +21,14 @@ env:
     [
       "PKSA-8qx3-n5y5-vvnd",
       "PKSA-m5cs-t1y6-qpcs",
-      "PKSA-3r5d-mb8f-1qw9"
+      "PKSA-3r5d-mb8f-1qw9",
+      "PKSA-d5tc-s1qs-h781"
     ]
   COMPOSER_ADVISORY_LARAVEL_10_TO_11: >-
     [
       "PKSA-m5cs-t1y6-qpcs",
-      "PKSA-3r5d-mb8f-1qw9"
+      "PKSA-3r5d-mb8f-1qw9",
+      "PKSA-d5tc-s1qs-h781"
     ]
   COMPOSER_ADVISORY_COMMONMARK_1: >-
     [
@@ -62,6 +64,19 @@ env:
       "PKSA-v5yj-8nmz-sk2q",
       "PKSA-ft77-7h5f-p3r6",
       "PKSA-b14r-zh1d-vdrc"
+    ]
+  # zbateson/mail-mime-parser is a test-only dependency (orchestra/testbench 6 -> spatie/laravel-ray).
+  # Its fixes need PHP 8.0+, so the Laravel 8 lanes on PHP 7.3/7.4 can only install the vulnerable 2.x.
+  COMPOSER_ADVISORY_MAIL_MIME_PARSER_PHP_7: >-
+    [
+      "PKSA-f3bq-hwxm-x4yf",
+      "PKSA-r8x8-972m-nrc1"
+    ]
+  # league/flysystem is pulled in by laravel/framework. Laravel 6-8 require Flysystem 1.x, which is EOL,
+  # while the fix only landed in 3.35.3.
+  COMPOSER_ADVISORY_FLYSYSTEM_1: >-
+    [
+      "PKSA-w9tt-7782-78jx"
     ]
 
 jobs:
@@ -114,7 +129,6 @@ jobs:
       - name: Configure Composer dependencies
         run: |
           # friendsofphp/php-cs-fixer: No need for this package to run phpunit and it conflicts with older Laravel versions
-          # laravel/ai: Only supports PHP 8.4+ and Laravel 12, remove globally and re-add below where supported
           composer remove friendsofphp/php-cs-fixer laravel/ai --dev --no-interaction --no-update
 
           # laravel/pennant: Does not yet support Laravel 13
@@ -129,9 +143,10 @@ jobs:
             "orchestra/testbench:${{ matrix.packages.testbench }}" \
             --no-interaction --no-update
 
-          # Re-require laravel/ai for supported combinations (PHP 8.4+ and Laravel 12)
           if [ "${{ matrix.packages.laravel }}" == "^12.0" ] && ([ "${{ matrix.php }}" == "8.4" ] || [ "${{ matrix.php }}" == "8.5" ]); then
             composer require "laravel/ai:^0.1.5" --dev --no-interaction --no-update
+          elif [ "${{ matrix.packages.laravel }}" == "^13.0" ]; then
+            composer require "laravel/ai:^0.11.2" --dev --no-interaction --no-update
           fi
 
       - name: Resolve dependencies
@@ -253,6 +268,14 @@ jobs:
         if: ${{ matrix.packages.laravel == '^9.0' && matrix.php == '8.0' }}
         run: composer config --merge --json policy.advisories.ignore-id "$COMPOSER_ADVISORY_LARAVEL_9_PHP_8_0_SYMFONY"
 
+      - name: Configure Flysystem 1 advisory allowlist
+        if: ${{ contains(fromJSON('["^6.0","^7.0","^8.0"]'), matrix.packages.laravel) }}
+        run: composer config --merge --json policy.advisories.ignore-id "$COMPOSER_ADVISORY_FLYSYSTEM_1"
+
+      - name: Configure mail-mime-parser PHP 7 advisory allowlist
+        if: ${{ matrix.packages.laravel == '^8.0' && (matrix.php == '7.3' || matrix.php == '7.4') }}
+        run: composer config --merge --json policy.advisories.ignore-id "$COMPOSER_ADVISORY_MAIL_MIME_PARSER_PHP_7"
+
       - name: Configure Composer dependencies
         run: |
           # friendsofphp/php-cs-fixer: No need for this package to run phpunit and it conflicts with older Laravel versions
@@ -260,7 +283,6 @@ jobs:
           # laravel/folio: Only supported on PHP 8.1 + Laravel 10.0 and above
           # laravel/pennant: Only supported on PHP 8.1 + Laravel 10.0 and above
           # laravel/octane: Only supported on PHP 8.1 + Laravel 10.10.1 and above
-          # laravel/ai: Only supported on PHP 8.4+ and Laravel 12
           composer remove friendsofphp/php-cs-fixer livewire/livewire laravel/folio laravel/pennant laravel/octane laravel/ai --dev --no-interaction --no-update
 
           # Require the correct versions we want to run phpunit for
