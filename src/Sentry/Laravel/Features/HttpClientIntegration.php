@@ -13,6 +13,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\UriInterface;
 use Sentry\Breadcrumb;
 use Sentry\DataCollection\DataCollectionPolicy;
+use Sentry\DataCollection\HttpBodyCollector;
 use Sentry\DataCollection\HttpCookieCollector;
 use Sentry\DataCollection\HttpHeaderCollector;
 use Sentry\DataCollection\HttpMessageType;
@@ -108,7 +109,7 @@ class HttpClientIntegration extends Feature
                         'http.fragment' => $fullUri->getFragment(),
                         'http.request.method' => $event->request->method(),
                         'http.request.body.size' => $request->getBody()->getSize(),
-                    ], $this->collectUrlData($policy, $fullUri), $this->collectRequestHeaderData($policy, $request)))
+                    ], $this->collectUrlData($policy, $fullUri), $this->collectRequestData($policy, $request)))
                     ->setOrigin('auto.http.client')
                     ->setDescription($event->request->method() . ' ' . $partialUri)
             )
@@ -127,7 +128,7 @@ class HttpClientIntegration extends Feature
                 // See: https://develop.sentry.dev/sdk/performance/span-data-conventions/#http
                 'http.response.status_code' => $event->response->status(),
                 'http.response.body.size' => $response->getBody()->getSize(),
-            ], $this->collectResponseHeaderData($policy, $response)));
+            ], $this->collectResponseData($policy, $response)));
 
             $this->maybeAddRequestOriginToSpan($span);
 
@@ -224,27 +225,41 @@ class HttpClientIntegration extends Feature
     /**
      * @return array<string, mixed>
      */
-    private function collectRequestHeaderData(DataCollectionPolicy $policy, RequestInterface $request): array
+    private function collectRequestData(DataCollectionPolicy $policy, RequestInterface $request): array
     {
-        return $this->getHeaderData(
+        $data = $this->getHeaderData(
             'http.request.header',
             HttpHeaderCollector::collect($policy, HttpMessageType::outgoingRequest(), $request->getHeaders()),
             'http.request.header.cookie',
             HttpCookieCollector::collectPsr7Request($policy, HttpMessageType::outgoingRequest(), $request)
         );
+
+        $body = HttpBodyCollector::collectPsr7Message($policy, HttpMessageType::outgoingRequest(), $request);
+        if ($body !== null) {
+            $data['http.request.body.data'] = $body;
+        }
+
+        return $data;
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function collectResponseHeaderData(DataCollectionPolicy $policy, ResponseInterface $response): array
+    private function collectResponseData(DataCollectionPolicy $policy, ResponseInterface $response): array
     {
-        return $this->getHeaderData(
+        $data = $this->getHeaderData(
             'http.response.header',
             HttpHeaderCollector::collect($policy, HttpMessageType::incomingResponse(), $response->getHeaders()),
             'http.response.header.set_cookie',
             HttpCookieCollector::collectPsr7Response($policy, HttpMessageType::incomingResponse(), $response)
         );
+
+        $body = HttpBodyCollector::collectPsr7Message($policy, HttpMessageType::incomingResponse(), $response);
+        if ($body !== null) {
+            $data['http.response.body.data'] = $body;
+        }
+
+        return $data;
     }
 
     /**
