@@ -30,6 +30,7 @@ use Laravel\Ai\Responses\Data\Step;
 use Laravel\Ai\Responses\Data\ToolCall;
 use Laravel\Ai\Responses\Data\ToolResult;
 use Laravel\Ai\Responses\TextResponse;
+use Sentry\DataCollection\DataCollectionPolicy;
 use Sentry\Laravel\Features\Ai\AiInvocationData;
 use Sentry\Laravel\Features\Ai\AiInvocationMeta;
 use Sentry\Laravel\Features\Ai\AiMessage;
@@ -173,12 +174,14 @@ class AiIntegration extends Feature
         $maxTokens = $this->resolveAgentAttribute($event->prompt->agent, MaxTokens::class);
         $data->set('gen_ai.request.max_tokens', $maxTokens);
 
-        $toolDefinitions = $this->resolveToolDefinitions($event->prompt->agent);
+        $toolDefinitions = $this->shouldCollectToolDefinitions()
+            ? $this->resolveToolDefinitions($event->prompt->agent)
+            : null;
         $data->set('gen_ai.tool.definitions', $toolDefinitions);
 
         $attachments = $this->resolveAttachments($event->prompt);
 
-        if ($this->shouldSendDefaultPii()) {
+        if ($this->shouldCollectGenAiInputs()) {
             $inputMessages = $this->buildUserInputMessageFromParts(
                 $event->prompt->prompt,
                 $attachments
@@ -241,7 +244,7 @@ class AiIntegration extends Feature
         $data->setIfNotExists('gen_ai.provider.name', $event->response->meta->provider);
         $data->setTokenUsage($event->response->usage);
         
-        if ($this->shouldSendDefaultPii()) {
+        if ($this->shouldCollectGenAiOutputs()) {
             $outputMessages = $this->buildOutputMessages($event->response);
             $data->set('gen_ai.output.messages', $this->truncateMessages($outputMessages));
         }
@@ -337,7 +340,7 @@ class AiIntegration extends Feature
         ]);
         $data->set('gen_ai.tool.description', $toolDef['description'] ?? null);
 
-        if ($this->shouldSendDefaultPii() && !empty($event->arguments)) {
+        if ($this->shouldCollectGenAiInputs() && !empty($event->arguments)) {
             $data->set('gen_ai.tool.call.arguments', $this->truncateString($this->encodeIfNotString($event->arguments)));
         }
 
@@ -372,7 +375,7 @@ class AiIntegration extends Feature
         $span = $invocation['span'];
         $data = new AiSpanDataBag($span->getData());
 
-        if ($this->shouldSendDefaultPii()) {
+        if ($this->shouldCollectGenAiOutputs()) {
             $data->set('gen_ai.tool.call.result', $this->truncateString($this->encodeIfNotString($event->result)));
         }
 
@@ -402,7 +405,7 @@ class AiIntegration extends Feature
             'gen_ai.provider.name' => $event->provider->name(),
         ]);
 
-        if ($this->shouldSendDefaultPii()) {
+        if ($this->shouldCollectGenAiInputs()) {
             $data->set('gen_ai.embeddings.input', $this->truncateEmbeddingInputs($event->prompt->inputs));
         }
 
@@ -509,7 +512,7 @@ class AiIntegration extends Feature
             $data->set('gen_ai.response.model', $model);
             $data->setTokenUsage($usage);
 
-            if ($this->shouldSendDefaultPii()) {
+            if ($this->shouldCollectGenAiInputs()) {
                 if ($index === 0) {
                     $meta = $invocation->meta;
                     $inputMessages = $this->buildUserInputMessageFromParts(
@@ -524,7 +527,9 @@ class AiIntegration extends Feature
                 }
                 
                 $data->set('gen_ai.input.messages', $this->truncateMessages($inputMessages));
+            }
 
+            if ($this->shouldCollectGenAiOutputs()) {
                 $outputSource = $step ?? $response;
 
                 $outputMessages = $this->buildOutputMessages($outputSource);
@@ -705,6 +710,14 @@ class AiIntegration extends Feature
         }
         
         return $messages;
+    }
+
+    /**
+     * The legacy options always collected the tool definitions, the data collection options treat them as inputs.
+     */
+    private function shouldCollectToolDefinitions(): bool
+    {
+        return DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub())->isLegacyMode() || $this->shouldCollectGenAiInputs();
     }
 
     private function resolveToolDefinitions(Agent $agent): ?string
