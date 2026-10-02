@@ -43,6 +43,16 @@ class AiConversationTracker
     }
 
     /**
+     * Forget the current conversation, so gen_ai spans started from now on get no conversation ID.
+     */
+    public function end(): void
+    {
+        $this->traceId = null;
+        $this->conversationId = null;
+        $this->pendingSpans = [];
+    }
+
+    /**
      * Set the ID of the new conversation on the spans started without it, or switch to another conversation.
      */
     public function resolve(Span $span, string $conversationId): void
@@ -66,9 +76,7 @@ class AiConversationTracker
     {
         if (!$this->isCurrentTrace($span)) {
             // Forget a conversation of an earlier trace
-            $this->traceId = null;
-            $this->conversationId = null;
-            $this->pendingSpans = [];
+            $this->end();
 
             return;
         }
