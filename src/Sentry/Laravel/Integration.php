@@ -112,9 +112,9 @@ class Integration implements IntegrationInterface
     }
 
     /**
-     * Set the conversation ID here if using integrations that do not provide it automatically, 
+     * Set the conversation ID here if using integrations that do not provide it automatically,
      * such as the ClassificationIntegration.
-     * 
+     *
      * This can also be useful if AI calls are proxied so the conversation ID has to persist
      * multiple requests.
      */
