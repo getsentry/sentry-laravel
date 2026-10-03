@@ -10,6 +10,7 @@ use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
 use Illuminate\Foundation\Application as Laravel;
 use Illuminate\Foundation\Console\AboutCommand;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
+use Illuminate\Http\Client\Response as HttpClientResponse;
 use Illuminate\Http\Request;
 use Laravel\Lumen\Application as Lumen;
 use RuntimeException;
@@ -277,6 +278,31 @@ class ServiceProvider extends BaseServiceProvider
     /**
      * Configure and register the Sentry client with the container.
      */
+    /**
+     * Get the class serializers the Laravel SDK registers by default.
+     *
+     * @return array<class-string, callable(object): (array<array-key, mixed>|null)>
+     */
+    protected function getDefaultClassSerializers(): array
+    {
+        $serializers = [];
+
+        // The `Illuminate\Http\Client\Response` class was introduced together with the HTTP
+        // client in later Laravel versions, so we guard this with a `class_exists` check instead
+        // of assuming it is always available.
+        if (class_exists(HttpClientResponse::class)) {
+            $serializers[HttpClientResponse::class] = static function (HttpClientResponse $response): array {
+                return [
+                    'status' => $response->status(),
+                    'headers' => $response->headers(),
+                    'body' => $response->body(),
+                ];
+            };
+        }
+
+        return $serializers;
+    }
+
     protected function configureAndRegisterClient(): void
     {
         $this->app->bind(ClientBuilder::class, function () {
@@ -296,6 +322,15 @@ class ServiceProvider extends BaseServiceProvider
                     ],
                 ],
                 $userConfig
+            );
+
+            // Merge our built-in class serializers with any the user configured themselves, so an
+            // object like `Illuminate\Http\Client\Response` shows useful information (status, headers,
+            // body) in stack traces and other serialized context instead of a raw object dump. A user
+            // provided serializer for the same class takes precedence over our default.
+            $options['class_serializers'] = \array_merge(
+                $this->getDefaultClassSerializers(),
+                $options['class_serializers'] ?? []
             );
 
             // When we get no environment from the (user) configuration we default to the Laravel environment
