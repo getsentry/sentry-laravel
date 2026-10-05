@@ -30,14 +30,15 @@ class HttpClientDataCollectionTest extends TestCase
         $this->assertSame('https://[Filtered]:[Filtered]@example.com/path?token=[Filtered]&page=5', $data['url.full']);
         $this->assertSame('token=[Filtered]&page=5', $data['http.query']);
 
-        $this->assertSame(['[Filtered]'], $data['http.request.header.authorization']);
-        $this->assertSame(['bar'], $data['http.request.header.x-request-id']);
+        $this->assertSame('[Filtered]', $data['http.request.header.authorization']);
+        $this->assertSame('bar', $data['http.request.header.x-request-id']);
         $this->assertArrayNotHasKey('http.request.header.cookie', $data);
         $this->assertSame('dark', $data['http.request.header.cookie.theme']);
         $this->assertSame('[Filtered]', $data['http.request.header.cookie.session_id']);
 
-        $this->assertSame(['baz'], $data['http.response.header.x-request-id']);
-        $this->assertSame(['[Filtered]'], $data['http.response.header.x-api-key']);
+        $this->assertSame('baz', $data['http.response.header.x-request-id']);
+        $this->assertSame('[Filtered]', $data['http.response.header.x-api-key']);
+        $this->assertSame('web-1, web-2', $data['http.response.header.x-served-by']);
         $this->assertArrayNotHasKey('http.response.header.set-cookie', $data);
         $this->assertSame('light', $data['http.response.header.set_cookie.theme']);
         $this->assertSame('[Filtered]', $data['http.response.header.set_cookie.session_id']);
@@ -128,6 +129,7 @@ class HttpClientDataCollectionTest extends TestCase
             'example.com/*' => Http::response('', 200, [
                 'X-Request-Id' => 'baz',
                 'X-Api-Key' => 'secret',
+                'X-Served-By' => ['web-1', 'web-2'],
                 'Set-Cookie' => ['theme=light; Path=/', 'session_id=foo; HttpOnly'],
             ]),
         ]);

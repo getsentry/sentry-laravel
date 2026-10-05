@@ -258,7 +258,7 @@ class HttpClientIntegration extends Feature
         $data = [];
 
         foreach ($headers ?? [] as $name => $values) {
-            $data[$headerPrefix . '.' . strtolower((string)$name)] = $values;
+            $data[$headerPrefix . '.' . strtolower((string)$name)] = implode(', ', $values);
         }
 
         if (is_string($cookies)) {
