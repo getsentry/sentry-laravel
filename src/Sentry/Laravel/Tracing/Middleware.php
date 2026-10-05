@@ -327,7 +327,7 @@ class Middleware
         $data = [];
 
         foreach (HttpHeaderCollector::collect($policy, HttpMessageType::outgoingResponse(), $response->headers->all()) ?? [] as $name => $values) {
-            $data['http.response.header.' . $name] = $values;
+            $data['http.response.header.' . $name] = implode(', ', $values);
         }
 
         $cookies = [];

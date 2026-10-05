@@ -22,6 +22,7 @@ class ResponseDataCollectionTest extends TestCase
             $response = new JsonResponse(['username' => 'jane', 'password' => 'secret'], 200, [
                 'X-Request-Id' => 'bar',
                 'X-Api-Key' => 'secret',
+                'X-Served-By' => ['web-1', 'web-2'],
             ]);
 
             $response->headers->setCookie(Cookie::create('theme', 'dark'));
@@ -31,9 +32,10 @@ class ResponseDataCollectionTest extends TestCase
             return $response;
         });
 
-        $this->assertSame(['application/json'], $data['http.response.header.content-type']);
-        $this->assertSame(['bar'], $data['http.response.header.x-request-id']);
-        $this->assertSame(['[Filtered]'], $data['http.response.header.x-api-key']);
+        $this->assertSame('application/json', $data['http.response.header.content-type']);
+        $this->assertSame('bar', $data['http.response.header.x-request-id']);
+        $this->assertSame('[Filtered]', $data['http.response.header.x-api-key']);
+        $this->assertSame('web-1, web-2', $data['http.response.header.x-served-by']);
         $this->assertArrayNotHasKey('http.response.header.set-cookie', $data);
         $this->assertSame('dark', $data['http.response.header.set_cookie.theme']);
         $this->assertSame('[Filtered]', $data['http.response.header.set_cookie.laravel_session']);
