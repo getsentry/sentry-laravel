@@ -18,6 +18,7 @@ use Sentry\DataCollection\HttpCookieCollector;
 use Sentry\DataCollection\HttpHeaderCollector;
 use Sentry\DataCollection\HttpMessageType;
 use Sentry\DataCollection\HttpUrlCollector;
+use Sentry\DataCollection\KeyValueDataFilter;
 use Sentry\Laravel\Features\Concerns\ResolvesEventOrigin;
 use Sentry\Laravel\Features\Concerns\TracksPushedScopesAndSpans;
 use Sentry\Laravel\Integration;
@@ -235,6 +236,10 @@ class HttpClientIntegration extends Feature
         );
 
         $body = HttpBodyCollector::collectPsr7Message($policy, HttpMessageType::outgoingRequest(), $request);
+        if (\is_array($body)) {
+            $body = json_encode($body) ?: KeyValueDataFilter::FILTERED_VALUE;
+        }
+
         if ($body !== null) {
             $data['http.request.body.data'] = $body;
         }
@@ -255,6 +260,10 @@ class HttpClientIntegration extends Feature
         );
 
         $body = HttpBodyCollector::collectPsr7Message($policy, HttpMessageType::incomingResponse(), $response);
+        if (\is_array($body)) {
+            $body = json_encode($body) ?: KeyValueDataFilter::FILTERED_VALUE;
+        }
+
         if ($body !== null) {
             $data['http.response.body.data'] = $body;
         }

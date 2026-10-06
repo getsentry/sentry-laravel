@@ -126,8 +126,8 @@ class HttpClientDataCollectionTest extends TestCase
             ])->post('https://example.com/login', ['username' => 'jane', 'password' => 'secret']);
         })->getData();
 
-        $this->assertSame(['username' => 'jane', 'password' => '[Filtered]'], $data['http.request.body.data']);
-        $this->assertSame(['token' => '[Filtered]', 'id' => 1], $data['http.response.body.data']);
+        $this->assertSame('{"username":"jane","password":"[Filtered]"}', $data['http.request.body.data']);
+        $this->assertSame('{"token":"[Filtered]","id":1}', $data['http.response.body.data']);
     }
 
     public function testSpanFormBodyIsFiltered(): void
@@ -140,7 +140,7 @@ class HttpClientDataCollectionTest extends TestCase
             Http::fake()->asForm()->post('https://example.com/login', ['username' => 'jane', 'password' => 'secret']);
         })->getData();
 
-        $this->assertSame(['username' => 'jane', 'password' => '[Filtered]'], $data['http.request.body.data']);
+        $this->assertSame('{"username":"jane","password":"[Filtered]"}', $data['http.request.body.data']);
     }
 
     public function testSpanRawBodiesAreReplaced(): void
@@ -173,8 +173,8 @@ class HttpClientDataCollectionTest extends TestCase
             $this->dispatchLaravelEvent(new ResponseReceived(new Request($request), new Response($response)));
         })->getData();
 
-        $this->assertSame(['username' => 'jane'], $data['http.request.body.data']);
-        $this->assertSame(['id' => 1], $data['http.response.body.data']);
+        $this->assertSame('{"username":"jane"}', $data['http.request.body.data']);
+        $this->assertSame('{"id":1}', $data['http.response.body.data']);
         $this->assertSame('{"username":"jane"}', $request->getBody()->getContents());
         $this->assertSame('{"id":1}', $response->getBody()->getContents());
     }
@@ -193,7 +193,7 @@ class HttpClientDataCollectionTest extends TestCase
         })->getData();
 
         $this->assertArrayNotHasKey('http.request.body.data', $data);
-        $this->assertSame(['id' => 1], $data['http.response.body.data']);
+        $this->assertSame('{"id":1}', $data['http.response.body.data']);
     }
 
     public function testSpanBodiesAreNotCollectedWhenDisabled(): void
