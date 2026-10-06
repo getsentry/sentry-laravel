@@ -255,9 +255,10 @@ class QueueIntegration extends Feature
         }
 
         $filter = new KeyValueDataFilter(KeyValueCollectionBehavior::denyList());
+        $filtered = $filter->filterKeyValueData($data, [new Serializer($policy->getOptions()), 'serialize']);
 
         return [
-            self::QUEUE_SPAN_DATA_ARGUMENTS => $filter->filterKeyValueData($data, [new Serializer($policy->getOptions()), 'serialize']),
+            self::QUEUE_SPAN_DATA_ARGUMENTS => json_encode($filtered) ?: KeyValueDataFilter::FILTERED_VALUE,
         ];
     }
 

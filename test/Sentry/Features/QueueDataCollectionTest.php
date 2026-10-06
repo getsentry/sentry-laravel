@@ -26,8 +26,8 @@ class QueueDataCollectionTest extends TestCase
 
         $transaction = $this->pushJob(QueueDataCollectionTestHandler::class, ['user_id' => 1, 'password' => 'secret']);
 
-        $this->assertSame(['user_id' => 1, 'password' => '[Filtered]'], $this->getSpanData($transaction, 'queue.publish')['messaging.message.body.data']);
-        $this->assertSame(['user_id' => 1, 'password' => '[Filtered]'], $this->getSpanData($transaction, 'queue.process')['messaging.message.body.data']);
+        $this->assertSame('{"user_id":1,"password":"[Filtered]"}', $this->getSpanData($transaction, 'queue.publish')['messaging.message.body.data']);
+        $this->assertSame('{"user_id":1,"password":"[Filtered]"}', $this->getSpanData($transaction, 'queue.process')['messaging.message.body.data']);
     }
 
     public function testSerializedJobIsNotCollected(): void
