@@ -48,6 +48,14 @@ trait TracksPushedScopesAndSpans
         ++$this->pushedScopeCount;
     }
 
+    /**
+     * Indicates whether a span was pushed onto the hub that has not been popped/finished yet.
+     */
+    protected function hasPushedSpan(): bool
+    {
+        return count($this->currentSpanStack) > 0;
+    }
+
     protected function maybePopSpan(): ?Span
     {
         if (count($this->currentSpanStack) === 0) {

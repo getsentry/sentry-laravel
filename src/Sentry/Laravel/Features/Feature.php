@@ -35,6 +35,13 @@ abstract class Feature
     private $isBreadcrumbFeatureEnabled = [];
 
     /**
+     * In-memory cache for the job context feature flag.
+     *
+     * @var array<string, bool>
+     */
+    private $isJobContextFeatureEnabled = [];
+
+    /**
      * @param Container $container The Laravel application container.
      */
     public function __construct(Container $container)
@@ -143,6 +150,32 @@ abstract class Feature
         }
 
         return $this->isBreadcrumbFeatureEnabled[$feature];
+    }
+
+    /**
+     * Indicates if the given feature is enabled for job context.
+     */
+    protected function isJobContextFeatureEnabled(string $feature, bool $default = false): bool
+    {
+        if (!array_key_exists($feature, $this->isJobContextFeatureEnabled)) {
+            $this->isJobContextFeatureEnabled[$feature] = $this->isFeatureEnabled('job_context', $feature, $default);
+        }
+
+        return $this->isJobContextFeatureEnabled[$feature];
+    }
+
+    /**
+     * Indicates if any job context feature is enabled.
+     */
+    protected function isAnyJobContextFeatureEnabled(): bool
+    {
+        foreach (array_keys($this->getUserConfig()['job_context'] ?? []) as $feature) {
+            if ($this->isJobContextFeatureEnabled($feature)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
