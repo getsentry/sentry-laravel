@@ -346,6 +346,9 @@ class Middleware
         $content = $response->getContent();
         if (is_string($content)) {
             $body = HttpBodyCollector::collect($policy, HttpMessageType::outgoingResponse(), $content, (string) $response->headers->get('Content-Type', ''));
+            if (\is_array($body)) {
+                $body = json_encode($body) ?: KeyValueDataFilter::FILTERED_VALUE;
+            }
 
             if ($body !== null) {
                 $data['http.response.body.data'] = $body;

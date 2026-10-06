@@ -40,7 +40,7 @@ class ResponseDataCollectionTest extends TestCase
         $this->assertSame('dark', $data['http.response.header.set_cookie.theme']);
         $this->assertSame('[Filtered]', $data['http.response.header.set_cookie.laravel_session']);
         $this->assertSame('[Filtered]', $data['http.response.header.set_cookie.remember_web_59ba36addc2b2f9401580f014c7f58ea4e30989d']);
-        $this->assertSame(['username' => 'jane', 'password' => '[Filtered]'], $data['http.response.body.data']);
+        $this->assertSame('{"username":"jane","password":"[Filtered]"}', $data['http.response.body.data']);
     }
 
     public function testRawResponseBodyIsReplaced(): void
