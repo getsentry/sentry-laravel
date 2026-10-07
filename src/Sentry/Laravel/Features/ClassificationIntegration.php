@@ -76,7 +76,7 @@ class ClassificationIntegration extends Feature
             'gen_ai.provider.name' => $event->provider->name(),
         ]);
 
-        if ($this->shouldSendDefaultPii()) {
+        if ($this->shouldCollectGenAiInputs()) {
             $data->set('gen_ai.input.messages', ClassificationMessageFormatter::formatInputMessages($event->prompt->state, $event->prompt->questions));
         }
 
@@ -113,7 +113,7 @@ class ClassificationIntegration extends Feature
         $data->set('gen_ai.response.model', $event->response->meta->model);
         $data->setTokenUsage($event->response->usage);
 
-        if ($this->shouldSendDefaultPii()) {
+        if ($this->shouldCollectGenAiOutputs()) {
             $data->set('gen_ai.output.messages', ClassificationMessageFormatter::formatOutputMessages($event->response->answers));
         }
 

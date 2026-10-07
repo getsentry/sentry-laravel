@@ -665,6 +665,48 @@ class ClassificationIntegrationTest extends TestCase
         $this->assertSpanDataContainsNoClassificationContent($this->findEvaluateSpan($transaction)->getData());
     }
 
+    public function testDataCollectionRecordsMessagesByDefault(): void
+    {
+        $this->resetApplicationWithConfig(['sentry.send_default_pii' => false, 'sentry.data_collection' => []]);
+
+        $transaction = $this->startTransaction();
+
+        $this->classifyWithTypeSafe();
+
+        $data = $this->findEvaluateSpan($transaction)->getData();
+
+        $this->assertArrayHasKey('gen_ai.input.messages', $data);
+        $this->assertArrayHasKey('gen_ai.output.messages', $data);
+    }
+
+    public function testDataCollectionGenAiInputsCanBeDisabled(): void
+    {
+        $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'sentry.data_collection' => ['gen_ai' => ['inputs' => false]]]);
+
+        $transaction = $this->startTransaction();
+
+        $this->classifyWithTypeSafe();
+
+        $data = $this->findEvaluateSpan($transaction)->getData();
+
+        $this->assertArrayNotHasKey('gen_ai.input.messages', $data);
+        $this->assertArrayHasKey('gen_ai.output.messages', $data);
+    }
+
+    public function testDataCollectionGenAiOutputsCanBeDisabled(): void
+    {
+        $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'sentry.data_collection' => ['gen_ai' => ['outputs' => false]]]);
+
+        $transaction = $this->startTransaction();
+
+        $this->classifyWithTypeSafe();
+
+        $data = $this->findEvaluateSpan($transaction)->getData();
+
+        $this->assertArrayHasKey('gen_ai.input.messages', $data);
+        $this->assertArrayNotHasKey('gen_ai.output.messages', $data);
+    }
+
     public function testLongStateIsTruncated(): void
     {
         $this->resetApplicationWithConfig(['sentry.send_default_pii' => true]);
