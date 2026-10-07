@@ -309,16 +309,10 @@ class Middleware
             $cookies[] = [$cookie->getName(), SensitiveCookieFilter::filterValue($cookie->getName(), $cookie->getValue())];
         }
 
-        $data = HttpSpanDataCollector::collectHeaders($policy, $type, $response->headers->all())
-            + HttpSpanDataCollector::collectCookiePairs($policy, $type, $cookies);
-
-        // Streamed and file responses have no content we can collect
-        $content = $response->getContent();
-        if (is_string($content)) {
-            $data += HttpSpanDataCollector::collectBody($policy, $type, $content, (string) $response->headers->get('Content-Type', ''));
-        }
-
-        return $data;
+        // Streamed and file responses have no content (`false`), which the collector skips
+        return HttpSpanDataCollector::collectHeaders($policy, $type, $response->headers->all())
+            + HttpSpanDataCollector::collectCookiePairs($policy, $type, $cookies)
+            + HttpSpanDataCollector::collectBody($policy, $type, $response->getContent(), (string) $response->headers->get('Content-Type', ''));
     }
 
     public function finishTransaction(): void
