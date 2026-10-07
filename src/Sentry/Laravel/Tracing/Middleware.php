@@ -12,6 +12,7 @@ use Sentry\DataCollection\HttpHeaderCollector;
 use Sentry\DataCollection\HttpMessageType;
 use Sentry\DataCollection\KeyValueDataFilter;
 use Sentry\Laravel\Http\LaravelRequestFetcher;
+use Sentry\Laravel\Http\SensitiveCookieFilter;
 use Sentry\SentrySdk;
 use Sentry\State\HubInterface;
 use Sentry\Tracing\Span;
@@ -307,6 +308,54 @@ class Middleware
         $this->transaction->setData([
             'http.response.status_code' => $response->getStatusCode(),
         ]);
+
+        $this->transaction->setData($this->collectResponseData($response));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function collectResponseData(SymfonyResponse $response): array
+    {
+        $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
+
+        // The legacy options never collected any response data
+        if ($policy->isLegacyMode()) {
+            return [];
+        }
+
+        $data = [];
+
+        foreach (HttpHeaderCollector::collect($policy, HttpMessageType::outgoingResponse(), $response->headers->all()) ?? [] as $name => $values) {
+            $data['http.response.header.' . $name] = implode(', ', $values);
+        }
+
+        $cookies = [];
+        foreach ($response->headers->getCookies() as $cookie) {
+            $cookies[] = [$cookie->getName(), SensitiveCookieFilter::filterValue($cookie->getName(), $cookie->getValue())];
+        }
+
+        $cookies = HttpCookieCollector::collectGroupedPairs($policy, HttpMessageType::outgoingResponse(), $cookies);
+        if (\is_array($cookies)) {
+            foreach ($cookies as $name => $value) {
+                $data['http.response.header.set_cookie.' . $name] = $value;
+            }
+        }
+
+        // Streamed and file responses have no content we can collect
+        $content = $response->getContent();
+        if (is_string($content)) {
+            $body = HttpBodyCollector::collect($policy, HttpMessageType::outgoingResponse(), $content, (string) $response->headers->get('Content-Type', ''));
+            if (\is_array($body)) {
+                $body = json_encode($body) ?: KeyValueDataFilter::FILTERED_VALUE;
+            }
+
+            if ($body !== null) {
+                $data['http.response.body.data'] = $body;
+            }
+        }
+
+        return $data;
     }
 
     public function finishTransaction(): void
