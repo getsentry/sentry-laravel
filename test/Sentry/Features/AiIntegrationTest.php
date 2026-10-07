@@ -572,7 +572,76 @@ class AiIntegrationTest extends TestCase
         $this->assertSame($agentSpan, $this->getSentryHubFromContainer()->getSpan());
     }
 
+    public function testDataCollectionCollectsInputsAndOutputsByDefault(): void
+    {
+        $this->resetApplicationWithConfig(['sentry.send_default_pii' => false, 'sentry.data_collection' => [], 'prism.providers.openai.url' => self::PROVIDER_URL]);
+        $this->assertGenAiContent($this->runToolFlow('inv-dc1'), true, true);
+    }
+
+    public function testDataCollectionGenAiInputsCanBeDisabled(): void
+    {
+        $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'sentry.data_collection' => ['gen_ai' => ['inputs' => false]], 'prism.providers.openai.url' => self::PROVIDER_URL]);
+        $this->assertGenAiContent($this->runToolFlow('inv-dc2'), false, true);
+    }
+
+    public function testDataCollectionGenAiOutputsCanBeDisabled(): void
+    {
+        $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'sentry.data_collection' => ['gen_ai' => ['outputs' => false]], 'prism.providers.openai.url' => self::PROVIDER_URL]);
+        $this->assertGenAiContent($this->runToolFlow('inv-dc3'), true, false);
+    }
+
+    public function testDataCollectionGenAiInputsControlEmbeddings(): void
+    {
+        $this->resetApplicationWithConfig(['sentry.send_default_pii' => false, 'sentry.data_collection' => [], 'prism.providers.openai.url' => self::PROVIDER_URL]);
+        $this->assertArrayHasKey('gen_ai.embeddings.input', $this->runEmbeddingsFlow('emb-dc1')->getData());
+        $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'sentry.data_collection' => ['gen_ai' => ['inputs' => false]], 'prism.providers.openai.url' => self::PROVIDER_URL]);
+        $this->assertArrayNotHasKey('gen_ai.embeddings.input', $this->runEmbeddingsFlow('emb-dc2')->getData());
+    }
+
     // ---- Helpers ----
+
+    private function runToolFlow(string $id): object
+    {
+        $transaction = $this->startTransaction();
+        [$prompt, $response] = $this->makeMultiStepPromptAndResponse();
+        $agent = new TestAgent();
+        $tool = new WeatherLookup();
+        $this->dispatchLaravelEvent(new PromptingAgent($id, $prompt));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new InvokingTool($id, 'tool-1', $agent, $tool, ['city' => 'Paris']));
+        $this->dispatchLaravelEvent(new ToolInvoked($id, 'tool-1', $agent, $tool, ['city' => 'Paris'], 'Sunny, 22C'));
+        $this->dispatchLlmHttpEvents();
+        $this->dispatchLaravelEvent(new AgentPrompted($id, $prompt, $this->wrapResponse($response)));
+        return $transaction;
+    }
+
+    private function runEmbeddingsFlow(string $id): Span
+    {
+        $transaction = $this->startTransaction();
+        [$provider, $prompt, $response] = $this->makeEmbeddingsPromptAndResponse();
+        $this->dispatchLaravelEvent(new GeneratingEmbeddings($id, $provider, 'text-embedding-3-small', $prompt));
+        $this->dispatchLaravelEvent(new EmbeddingsGenerated($id, $provider, 'text-embedding-3-small', $prompt, $this->wrapEmbeddingsResponse($response)));
+        return $this->findSpanByOp($transaction, 'gen_ai.embeddings');
+    }
+
+    private function assertGenAiContent(object $transaction, bool $inputs, bool $outputs): void
+    {
+        $agentData = $this->findSpanByOp($transaction, 'gen_ai.invoke_agent')->getData();
+        // With the stubbed tool calls only the first chat span has input messages and only the last one output messages
+        $chatSpans = $this->findAllSpansByOp($transaction, 'gen_ai.chat');
+        $firstChatData = $chatSpans[0]->getData();
+        $lastChatData = end($chatSpans)->getData();
+        $toolData = $this->findSpanByOp($transaction, 'gen_ai.execute_tool')->getData();
+        $this->assertSame($inputs, isset($agentData['gen_ai.input.messages']));
+        $this->assertSame($inputs, isset($agentData['gen_ai.system_instructions']));
+        $this->assertSame($inputs, isset($agentData['gen_ai.tool.definitions']));
+        $this->assertSame($inputs, isset($firstChatData['gen_ai.input.messages']));
+        $this->assertSame($inputs, isset($firstChatData['gen_ai.tool.definitions']));
+        $this->assertSame($inputs, isset($toolData['gen_ai.tool.call.arguments']));
+        $this->assertSame($outputs, isset($agentData['gen_ai.output.messages']));
+        $this->assertSame($outputs, isset($lastChatData['gen_ai.output.messages']));
+        $this->assertSame($outputs, isset($toolData['gen_ai.tool.call.result']));
+    }
 
     private function runAgentFlow(array $pr, string $id = 'inv-x'): array
     {
