@@ -10,6 +10,7 @@ use Illuminate\Redis\Events as RedisEvents;
 use Illuminate\Redis\RedisManager;
 use Illuminate\Support\Str;
 use Sentry\Breadcrumb;
+use Sentry\DataCollection\DataCollectionPolicy;
 use Sentry\Laravel\Features\Concerns\ResolvesEventOrigin;
 use Sentry\Laravel\Features\Concerns\TracksPushedScopesAndSpans;
 use Sentry\Laravel\Features\Concerns\WorksWithSpans;
@@ -214,7 +215,13 @@ class CacheIntegration extends Feature
             'db.redis.connection' => $event->connectionName,
         ];
 
-        if ($this->shouldSendDefaultPii()) {
+        $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
+
+        $shouldCollectParameters = $policy->isLegacyMode()
+            ? $this->shouldSendDefaultPii()
+            : $policy->shouldCollectDatabaseQueryData();
+
+        if ($shouldCollectParameters) {
             $data['db.redis.parameters'] = $this->replaceSessionKeys($event->parameters);
         }
 
