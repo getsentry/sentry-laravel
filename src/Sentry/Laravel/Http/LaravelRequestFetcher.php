@@ -6,8 +6,10 @@ use Illuminate\Container\Container;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Psr\Http\Message\ServerRequestInterface;
+use Sentry\DataCollection\DataCollectionPolicy;
 use Sentry\Integration\RequestFetcher;
 use Sentry\Integration\RequestFetcherInterface;
+use Sentry\SentrySdk;
 
 class LaravelRequestFetcher implements RequestFetcherInterface
 {
@@ -37,6 +39,13 @@ class LaravelRequestFetcher implements RequestFetcherInterface
             return null;
         }
 
+        if (DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub())->isLegacyMode()) {
+            $request = $this->withoutEmptyParsedBody($request);
+        } else {
+            $request = $this->withoutParsedBodyForNonFormRequests($request);
+            $request = $this->withRawQueryString($request);
+        }
+
         $cookies = new Collection($request->getCookieParams());
 
         // We need to filter out the cookies that are not allowed to be sent to Sentry because they are very sensitive
@@ -51,5 +60,53 @@ class LaravelRequestFetcher implements RequestFetcherInterface
                 return $value;
             })->all()
         );
+    }
+
+    /**
+     * The PSR-7 request has an empty parsed body for all requests that are not forms, which would
+     * hide the raw body from being read.
+     */
+    private function withoutEmptyParsedBody(ServerRequestInterface $request): ServerRequestInterface
+    {
+        if ($request->getParsedBody() !== [] || $this->isFormRequest($request)) {
+            return $request;
+        }
+
+        return $request->withParsedBody(null);
+    }
+
+    /**
+     * Only form requests have a parsed body that was read from the request body. Laravel 8 and older
+     * use the query parameters as the parsed body of GET requests, so all other bodies are read raw.
+     */
+    private function withoutParsedBodyForNonFormRequests(ServerRequestInterface $request): ServerRequestInterface
+    {
+        if ($this->isFormRequest($request)) {
+            return $request;
+        }
+
+        return $request->withParsedBody(null);
+    }
+
+    private function isFormRequest(ServerRequestInterface $request): bool
+    {
+        $mediaType = strtolower(trim(explode(';', $request->getHeaderLine('Content-Type'), 2)[0]));
+
+        return $mediaType === 'application/x-www-form-urlencoded' || $mediaType === 'multipart/form-data';
+    }
+
+    /**
+     * Older versions of the PSR-7 bridge build the URI from the normalized query string, but the
+     * query string has to be collected as it was received.
+     */
+    private function withRawQueryString(ServerRequestInterface $request): ServerRequestInterface
+    {
+        $queryString = $request->getServerParams()['QUERY_STRING'] ?? null;
+
+        if (!is_string($queryString) || $queryString === $request->getUri()->getQuery()) {
+            return $request;
+        }
+
+        return $request->withUri($request->getUri()->withQuery($queryString), true);
     }
 }

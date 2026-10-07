@@ -5,6 +5,13 @@ namespace Sentry\Laravel\Tracing;
 use Closure;
 use Illuminate\Http\Request;
 use Laravel\Lumen\Application as LumenApplication;
+use Sentry\DataCollection\DataCollectionPolicy;
+use Sentry\DataCollection\HttpBodyCollector;
+use Sentry\DataCollection\HttpCookieCollector;
+use Sentry\DataCollection\HttpHeaderCollector;
+use Sentry\DataCollection\HttpMessageType;
+use Sentry\DataCollection\KeyValueDataFilter;
+use Sentry\Laravel\Http\LaravelRequestFetcher;
 use Sentry\SentrySdk;
 use Sentry\State\HubInterface;
 use Sentry\Tracing\Span;
@@ -104,6 +111,8 @@ class Middleware
             $this->appSpan->finish();
             $this->appSpan = null;
         }
+
+        $this->transaction->setData($this->collectRequestData());
 
         if ($response instanceof SymfonyResponse) {
             $this->hydrateResponseData($response);
@@ -251,6 +260,45 @@ class Middleware
                 ->setStartTimestamp($this->transaction->getStartTimestamp())
                 ->setEndTimestamp(SENTRY_AUTOLOAD)
         );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function collectRequestData(): array
+    {
+        $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
+
+        // The legacy options only collected the request data on the event
+        if ($policy->isLegacyMode()) {
+            return [];
+        }
+
+        $request = (new LaravelRequestFetcher)->fetchRequest();
+        if ($request === null) {
+            return [];
+        }
+
+        $data = [];
+
+        foreach (HttpHeaderCollector::collect($policy, HttpMessageType::incomingRequest(), $request->getHeaders()) ?? [] as $name => $values) {
+            $data['http.request.header.' . strtolower((string) $name)] = implode(', ', $values);
+        }
+
+        foreach (HttpCookieCollector::collect($policy, HttpMessageType::incomingRequest(), $request->getCookieParams()) ?? [] as $name => $value) {
+            $data['http.request.header.cookie.' . $name] = $value;
+        }
+
+        $body = HttpBodyCollector::collectServerRequest($policy, $request);
+        if (\is_array($body)) {
+            $body = json_encode($body) ?: KeyValueDataFilter::FILTERED_VALUE;
+        }
+
+        if ($body !== null) {
+            $data['http.request.body.data'] = $body;
+        }
+
+        return $data;
     }
 
     private function hydrateResponseData(SymfonyResponse $response): void
