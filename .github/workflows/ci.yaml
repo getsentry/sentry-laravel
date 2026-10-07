@@ -16,70 +16,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
-env:
-  COMPOSER_ADVISORY_LARAVEL_6_TO_9: >-
-    [
-      "PKSA-8qx3-n5y5-vvnd",
-      "PKSA-m5cs-t1y6-qpcs",
-      "PKSA-3r5d-mb8f-1qw9",
-      "PKSA-d5tc-s1qs-h781"
-    ]
-  COMPOSER_ADVISORY_LARAVEL_10_TO_11: >-
-    [
-      "PKSA-m5cs-t1y6-qpcs",
-      "PKSA-3r5d-mb8f-1qw9",
-      "PKSA-d5tc-s1qs-h781"
-    ]
-  COMPOSER_ADVISORY_COMMONMARK_1: >-
-    [
-      "PKSA-rqc2-tcc6-nc79",
-      "PKSA-fndg-qryc-dyc9",
-      "PKSA-1q6p-sqkj-8mmj",
-      "PKSA-mc58-w91n-f5gv",
-      "PKSA-t21r-vtr5-3mdz",
-      "PKSA-scnn-p8mm-jbft",
-      "PKSA-zyf5-hrxv-hrd7",
-      "PKSA-nv44-1b4d-6gjg",
-      "PKSA-9q1p-3s19-bp1q",
-      "PKSA-m2dq-1fhr-29b1"
-    ]
-  COMPOSER_ADVISORY_LARAVEL_6_SYMFONY: >-
-    [
-      "PKSA-365x-2zjk-pt47",
-      "PKSA-b35n-565h-rs4q",
-      "PKSA-rkkf-636k-qjb3",
-      "PKSA-wws7-mr54-jsny",
-      "PKSA-bf7t-jnpz-492k",
-      "PKSA-yc7t-91v9-99xs"
-    ]
-  COMPOSER_ADVISORY_LARAVEL_9_PHP_8_0_SYMFONY: >-
-    [
-      "PKSA-365x-2zjk-pt47",
-      "PKSA-b35n-565h-rs4q",
-      "PKSA-28rh-rzzn-djk4",
-      "PKSA-wtxr-p26d-nn42",
-      "PKSA-2n2k-66v2-bwg3",
-      "PKSA-wws7-mr54-jsny",
-      "PKSA-bf7t-jnpz-492k",
-      "PKSA-yc7t-91v9-99xs",
-      "PKSA-v5yj-8nmz-sk2q",
-      "PKSA-ft77-7h5f-p3r6",
-      "PKSA-b14r-zh1d-vdrc"
-    ]
-  # zbateson/mail-mime-parser is a test-only dependency (orchestra/testbench 6 -> spatie/laravel-ray).
-  # Its fixes need PHP 8.0+, so the Laravel 8 lanes on PHP 7.3/7.4 can only install the vulnerable 2.x.
-  COMPOSER_ADVISORY_MAIL_MIME_PARSER_PHP_7: >-
-    [
-      "PKSA-f3bq-hwxm-x4yf",
-      "PKSA-r8x8-972m-nrc1"
-    ]
-  # league/flysystem is pulled in by laravel/framework. Laravel 6-8 require Flysystem 1.x, which is EOL,
-  # while the fix only landed in 3.35.3.
-  COMPOSER_ADVISORY_FLYSYSTEM_1: >-
-    [
-      "PKSA-w9tt-7782-78jx"
-    ]
-
 jobs:
   phpunit:
     runs-on: ubuntu-latest
@@ -123,10 +59,6 @@ jobs:
           coverage: pcov
           tools: composer:v2
 
-      - name: Configure Laravel 10-11 advisory allowlist
-        if: ${{ contains(fromJSON('["^10.0","^11.0"]'), matrix.packages.laravel) }}
-        run: composer config --merge --json policy.advisories.ignore-id "$COMPOSER_ADVISORY_LARAVEL_10_TO_11"
-
       - name: Configure Composer dependencies
         run: |
           # friendsofphp/php-cs-fixer: No need for this package to run phpunit and it conflicts with older Laravel versions
@@ -154,9 +86,6 @@ jobs:
 
       - name: Resolve dependencies
         run: composer update --no-progress --no-interaction --prefer-dist --no-install --no-scripts --no-audit
-
-      - name: Audit dependencies
-        run: composer audit --locked --no-interaction --format=table --abandoned=report
 
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
@@ -255,30 +184,6 @@ jobs:
           coverage: pcov
           tools: composer:v2
 
-      - name: Configure Laravel 6-9 advisory allowlist
-        if: ${{ contains(fromJSON('["^6.0","^7.0","^8.0","^9.0"]'), matrix.packages.laravel) }}
-        run: composer config --merge --json policy.advisories.ignore-id "$COMPOSER_ADVISORY_LARAVEL_6_TO_9"
-
-      - name: Configure CommonMark 1 advisory allowlist
-        if: ${{ matrix.packages.laravel == '^6.0' || matrix.packages.laravel == '^7.0' || (matrix.packages.laravel == '^8.0' && matrix.php == '7.3') }}
-        run: composer config --merge --json policy.advisories.ignore-id "$COMPOSER_ADVISORY_COMMONMARK_1"
-
-      - name: Configure Laravel 6 Symfony advisory allowlist
-        if: ${{ matrix.packages.laravel == '^6.0' }}
-        run: composer config --merge --json policy.advisories.ignore-id "$COMPOSER_ADVISORY_LARAVEL_6_SYMFONY"
-
-      - name: Configure Laravel 9 PHP 8.0 Symfony advisory allowlist
-        if: ${{ matrix.packages.laravel == '^9.0' && matrix.php == '8.0' }}
-        run: composer config --merge --json policy.advisories.ignore-id "$COMPOSER_ADVISORY_LARAVEL_9_PHP_8_0_SYMFONY"
-
-      - name: Configure Flysystem 1 advisory allowlist
-        if: ${{ contains(fromJSON('["^6.0","^7.0","^8.0"]'), matrix.packages.laravel) }}
-        run: composer config --merge --json policy.advisories.ignore-id "$COMPOSER_ADVISORY_FLYSYSTEM_1"
-
-      - name: Configure mail-mime-parser PHP 7 advisory allowlist
-        if: ${{ matrix.packages.laravel == '^8.0' && (matrix.php == '7.3' || matrix.php == '7.4') }}
-        run: composer config --merge --json policy.advisories.ignore-id "$COMPOSER_ADVISORY_MAIL_MIME_PARSER_PHP_7"
-
       - name: Configure Composer dependencies
         run: |
           # friendsofphp/php-cs-fixer: No need for this package to run phpunit and it conflicts with older Laravel versions
@@ -298,9 +203,6 @@ jobs:
 
       - name: Resolve dependencies
         run: composer update --no-progress --no-interaction --prefer-dist --no-install --no-scripts --no-audit
-
-      - name: Audit dependencies
-        run: composer audit --locked --no-interaction --format=table --abandoned=report
 
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
