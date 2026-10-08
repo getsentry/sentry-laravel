@@ -28,10 +28,11 @@ class RequestDataCollectionTest extends TestCase
         $this->assertSame('application/json', $data['http.request.header.content-type']);
         $this->assertSame('bar', $data['http.request.header.x-request-id']);
         $this->assertSame('[Filtered]', $data['http.request.header.authorization']);
-        $this->assertArrayNotHasKey('http.request.header.cookie', $data);
-        $this->assertSame('dark', $data['http.request.header.cookie.theme']);
-        $this->assertSame('[Filtered]', $data['http.request.header.cookie.laravel_session']);
-        $this->assertSame('[Filtered]', $data['http.request.header.cookie.remember_web_59ba36addc2b2f9401580f014c7f58ea4e30989d']);
+        $this->assertSame([
+            'theme=dark',
+            'laravel_session=[Filtered]',
+            'remember_web_59ba36addc2b2f9401580f014c7f58ea4e30989d=[Filtered]',
+        ], $data['http.request.header.cookie']);
         $this->assertSame('{"username":"jane","password":"[Filtered]"}', $data['http.request.body.data']);
     }
 

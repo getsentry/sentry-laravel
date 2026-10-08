@@ -37,16 +37,12 @@ class HttpClientDataCollectionTest extends TestCase
 
         $this->assertSame('[Filtered]', $data['http.request.header.authorization']);
         $this->assertSame('bar', $data['http.request.header.x-request-id']);
-        $this->assertArrayNotHasKey('http.request.header.cookie', $data);
-        $this->assertSame('dark', $data['http.request.header.cookie.theme']);
-        $this->assertSame('[Filtered]', $data['http.request.header.cookie.session_id']);
+        $this->assertSame(['theme=dark', 'session_id=[Filtered]'], $data['http.request.header.cookie']);
 
         $this->assertSame('baz', $data['http.response.header.x-request-id']);
         $this->assertSame('[Filtered]', $data['http.response.header.x-api-key']);
         $this->assertSame('web-1, web-2', $data['http.response.header.x-served-by']);
-        $this->assertArrayNotHasKey('http.response.header.set-cookie', $data);
-        $this->assertSame('light', $data['http.response.header.set_cookie.theme']);
-        $this->assertSame('[Filtered]', $data['http.response.header.set_cookie.session_id']);
+        $this->assertSame(['theme=light', 'session_id=[Filtered]'], $data['http.response.header.set-cookie']);
     }
 
     public function testBreadcrumbUrlIsFiltered(): void

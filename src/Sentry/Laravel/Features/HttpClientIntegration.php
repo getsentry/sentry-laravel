@@ -9,16 +9,12 @@ use Illuminate\Http\Client\Events\RequestSending;
 use Illuminate\Http\Client\Events\ResponseReceived;
 use Illuminate\Http\Client\Factory;
 use Psr\Http\Message\RequestInterface;
-use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\UriInterface;
 use Sentry\Breadcrumb;
 use Sentry\DataCollection\DataCollectionPolicy;
-use Sentry\DataCollection\HttpBodyCollector;
-use Sentry\DataCollection\HttpCookieCollector;
-use Sentry\DataCollection\HttpHeaderCollector;
 use Sentry\DataCollection\HttpMessageType;
+use Sentry\DataCollection\HttpSpanDataCollector;
 use Sentry\DataCollection\HttpUrlCollector;
-use Sentry\DataCollection\KeyValueDataFilter;
 use Sentry\Laravel\Features\Concerns\ResolvesEventOrigin;
 use Sentry\Laravel\Features\Concerns\TracksPushedScopesAndSpans;
 use Sentry\Laravel\Integration;
@@ -110,7 +106,7 @@ class HttpClientIntegration extends Feature
                         'http.fragment' => $fullUri->getFragment(),
                         'http.request.method' => $event->request->method(),
                         'http.request.body.size' => $request->getBody()->getSize(),
-                    ], $this->collectUrlData($policy, $fullUri), $this->collectRequestData($policy, $request)))
+                    ], $this->collectUrlData($policy, $fullUri), HttpSpanDataCollector::collectPsr7Request($policy, HttpMessageType::outgoingRequest(), $request)))
                     ->setOrigin('auto.http.client')
                     ->setDescription($event->request->method() . ' ' . $partialUri)
             )
@@ -129,7 +125,7 @@ class HttpClientIntegration extends Feature
                 // See: https://develop.sentry.dev/sdk/performance/span-data-conventions/#http
                 'http.response.status_code' => $event->response->status(),
                 'http.response.body.size' => $response->getBody()->getSize(),
-            ], $this->collectResponseData($policy, $response)));
+            ], HttpSpanDataCollector::collectPsr7Response($policy, HttpMessageType::incomingResponse(), $response)));
 
             $this->maybeAddRequestOriginToSpan($span);
 
@@ -218,79 +214,6 @@ class HttpClientIntegration extends Feature
         $fullUrl = HttpUrlCollector::collect($policy, HttpMessageType::outgoingRequest(), $uri);
         if ($fullUrl !== null) {
             $data['url.full'] = $fullUrl;
-        }
-
-        return $data;
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function collectRequestData(DataCollectionPolicy $policy, RequestInterface $request): array
-    {
-        $data = $this->getHeaderData(
-            'http.request.header',
-            HttpHeaderCollector::collect($policy, HttpMessageType::outgoingRequest(), $request->getHeaders()),
-            'http.request.header.cookie',
-            HttpCookieCollector::collectPsr7Request($policy, HttpMessageType::outgoingRequest(), $request)
-        );
-
-        $body = HttpBodyCollector::collectPsr7Message($policy, HttpMessageType::outgoingRequest(), $request);
-        if (\is_array($body)) {
-            $body = json_encode($body) ?: KeyValueDataFilter::FILTERED_VALUE;
-        }
-
-        if ($body !== null) {
-            $data['http.request.body.data'] = $body;
-        }
-
-        return $data;
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function collectResponseData(DataCollectionPolicy $policy, ResponseInterface $response): array
-    {
-        $data = $this->getHeaderData(
-            'http.response.header',
-            HttpHeaderCollector::collect($policy, HttpMessageType::incomingResponse(), $response->getHeaders()),
-            'http.response.header.set_cookie',
-            HttpCookieCollector::collectPsr7Response($policy, HttpMessageType::incomingResponse(), $response)
-        );
-
-        $body = HttpBodyCollector::collectPsr7Message($policy, HttpMessageType::incomingResponse(), $response);
-        if (\is_array($body)) {
-            $body = json_encode($body) ?: KeyValueDataFilter::FILTERED_VALUE;
-        }
-
-        if ($body !== null) {
-            $data['http.response.body.data'] = $body;
-        }
-
-        return $data;
-    }
-
-    /**
-     * @param array<array-key, string[]>|null     $headers
-     * @param array<array-key, mixed>|string|null $cookies Cookies grouped by name, or `[Filtered]` if they could not be parsed
-     *
-     * @return array<string, mixed>
-     */
-    private function getHeaderData(string $headerPrefix, ?array $headers, string $cookiePrefix, $cookies): array
-    {
-        $data = [];
-
-        foreach ($headers ?? [] as $name => $values) {
-            $data[$headerPrefix . '.' . strtolower((string)$name)] = implode(', ', $values);
-        }
-
-        if (is_string($cookies)) {
-            $data[$cookiePrefix] = $cookies;
-        } elseif (is_array($cookies)) {
-            foreach ($cookies as $name => $value) {
-                $data[$cookiePrefix . '.' . $name] = $value;
-            }
         }
 
         return $data;
