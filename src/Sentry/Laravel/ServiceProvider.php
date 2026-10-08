@@ -81,6 +81,7 @@ class ServiceProvider extends BaseServiceProvider
         Features\LivewirePackageIntegration::class,
         Features\ConsoleSchedulingIntegration::class,
         Features\AiIntegration::class,
+        Features\ClassificationIntegration::class,
     ];
 
     /**

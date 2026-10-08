@@ -166,6 +166,9 @@ return [
         // Capture AI embeddings spans
         'gen_ai_embeddings' => env('SENTRY_TRACE_GEN_AI_EMBEDDINGS_ENABLED', true),
 
+        // Capture AI evaluate spans for classifications (requires laravel/ai 1.0+)
+        'gen_ai_evaluate' => env('SENTRY_TRACE_GEN_AI_EVALUATE_ENABLED', true),
+
         // Enable the tracing integrations supplied by Sentry (recommended)
         'default_integrations' => env('SENTRY_TRACE_DEFAULT_INTEGRATIONS_ENABLED', true),
     ],
