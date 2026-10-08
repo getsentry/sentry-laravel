@@ -9,11 +9,21 @@ use Illuminate\Http\Client\Events\RequestSending;
 use Illuminate\Http\Client\Events\ResponseReceived;
 use Illuminate\Http\Client\Factory;
 use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\UriInterface;
 use Sentry\Breadcrumb;
+use Sentry\DataCollection\DataCollectionPolicy;
+use Sentry\DataCollection\HttpBodyCollector;
+use Sentry\DataCollection\HttpCookieCollector;
+use Sentry\DataCollection\HttpHeaderCollector;
+use Sentry\DataCollection\HttpMessageType;
+use Sentry\DataCollection\HttpUrlCollector;
+use Sentry\DataCollection\KeyValueDataFilter;
+use Sentry\Laravel\Features\Concerns\ResolvesEventOrigin;
 use Sentry\Laravel\Features\Concerns\TracksPushedScopesAndSpans;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
+use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\SpanStatus;
 use function Sentry\getBaggage;
@@ -21,9 +31,24 @@ use function Sentry\getTraceparent;
 
 class HttpClientIntegration extends Feature
 {
+    use ResolvesEventOrigin;
     use TracksPushedScopesAndSpans;
 
     private const FEATURE_KEY = 'http_client_requests';
+
+    /**
+     * Indicates if we should trace the origin of the HTTP client requests.
+     *
+     * @var bool|null
+     */
+    private $traceHttpClientRequestsOrigin;
+
+    /**
+     * The threshold in milliseconds for HTTP client requests to resolve their origin.
+     *
+     * @var int|null
+     */
+    private $traceHttpClientRequestsOriginThresholdMs;
 
     public function isApplicable(): bool
     {
@@ -70,6 +95,8 @@ class HttpClientIntegration extends Feature
             return;
         }
 
+        $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
+        $request = $event->request->toPsrRequest();
         $fullUri = $this->getFullUri($event->request->url());
         $partialUri = $this->getPartialUri($fullUri);
 
@@ -77,14 +104,13 @@ class HttpClientIntegration extends Feature
             $parentSpan->startChild(
                 SpanContext::make()
                     ->setOp('http.client')
-                    ->setData([
+                    ->setData(array_merge([
                         'url' => $partialUri,
                         // See: https://develop.sentry.dev/sdk/performance/span-data-conventions/#http
-                        'http.query' => $fullUri->getQuery(),
                         'http.fragment' => $fullUri->getFragment(),
                         'http.request.method' => $event->request->method(),
-                        'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
-                    ])
+                        'http.request.body.size' => $request->getBody()->getSize(),
+                    ], $this->collectUrlData($policy, $fullUri), $this->collectRequestData($policy, $request)))
                     ->setOrigin('auto.http.client')
                     ->setDescription($event->request->method() . ' ' . $partialUri)
             )
@@ -96,11 +122,17 @@ class HttpClientIntegration extends Feature
         $span = $this->maybePopSpan();
 
         if ($span !== null) {
+            $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
+            $response = $event->response->toPsrResponse();
+
             $span->setData(array_merge($span->getData(), [
                 // See: https://develop.sentry.dev/sdk/performance/span-data-conventions/#http
                 'http.response.status_code' => $event->response->status(),
-                'http.response.body.size' => $event->response->toPsrResponse()->getBody()->getSize(),
-            ]));
+                'http.response.body.size' => $response->getBody()->getSize(),
+            ], $this->collectResponseData($policy, $response)));
+
+            $this->maybeAddRequestOriginToSpan($span);
+
             $span->setHttpStatus($event->response->status());
             $span->finish();
         }
@@ -108,7 +140,14 @@ class HttpClientIntegration extends Feature
 
     public function handleConnectionFailedHandlerForTracing(ConnectionFailed $event): void
     {
-        $this->maybeFinishSpan(SpanStatus::internalError());
+        $span = $this->maybePopSpan();
+
+        if ($span !== null) {
+            $this->maybeAddRequestOriginToSpan($span);
+
+            $span->setStatus(SpanStatus::internalError());
+            $span->finish();
+        }
     }
 
     public function handleResponseReceivedHandlerForBreadcrumb(ResponseReceived $event): void
@@ -128,16 +167,15 @@ class HttpClientIntegration extends Feature
             Breadcrumb::TYPE_HTTP,
             'http',
             null,
-            [
+            array_merge([
                 'url' => $this->getPartialUri($fullUri),
                 // See: https://develop.sentry.dev/sdk/performance/span-data-conventions/#http
-                'http.query' => $fullUri->getQuery(),
                 'http.fragment' => $fullUri->getFragment(),
                 'http.request.method' => $event->request->method(),
                 'http.response.status_code' => $event->response->status(),
                 'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
                 'http.response.body.size' => $event->response->toPsrResponse()->getBody()->getSize(),
-            ]
+            ], $this->collectUrlData(DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub()), $fullUri))
         ));
     }
 
@@ -150,15 +188,112 @@ class HttpClientIntegration extends Feature
             Breadcrumb::TYPE_HTTP,
             'http',
             null,
-            [
+            array_merge([
                 'url' => $this->getPartialUri($fullUri),
                 // See: https://develop.sentry.dev/sdk/performance/span-data-conventions/#http
-                'http.query' => $fullUri->getQuery(),
                 'http.fragment' => $fullUri->getFragment(),
                 'http.request.method' => $event->request->method(),
                 'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
-            ]
+            ], $this->collectUrlData(DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub()), $fullUri))
         ));
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function collectUrlData(DataCollectionPolicy $policy, UriInterface $uri): array
+    {
+        // The legacy options always collected the query string, even when it is empty
+        if ($policy->isLegacyMode()) {
+            return ['http.query' => $uri->getQuery()];
+        }
+
+        $data = [];
+
+        $queryString = HttpUrlCollector::collectQueryString($policy, $uri->getQuery());
+        if ($queryString !== null) {
+            $data['http.query'] = $queryString;
+        }
+
+        $fullUrl = HttpUrlCollector::collect($policy, HttpMessageType::outgoingRequest(), $uri);
+        if ($fullUrl !== null) {
+            $data['url.full'] = $fullUrl;
+        }
+
+        return $data;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function collectRequestData(DataCollectionPolicy $policy, RequestInterface $request): array
+    {
+        $data = $this->getHeaderData(
+            'http.request.header',
+            HttpHeaderCollector::collect($policy, HttpMessageType::outgoingRequest(), $request->getHeaders()),
+            'http.request.header.cookie',
+            HttpCookieCollector::collectPsr7Request($policy, HttpMessageType::outgoingRequest(), $request)
+        );
+
+        $body = HttpBodyCollector::collectPsr7Message($policy, HttpMessageType::outgoingRequest(), $request);
+        if (\is_array($body)) {
+            $body = json_encode($body) ?: KeyValueDataFilter::FILTERED_VALUE;
+        }
+
+        if ($body !== null) {
+            $data['http.request.body.data'] = $body;
+        }
+
+        return $data;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function collectResponseData(DataCollectionPolicy $policy, ResponseInterface $response): array
+    {
+        $data = $this->getHeaderData(
+            'http.response.header',
+            HttpHeaderCollector::collect($policy, HttpMessageType::incomingResponse(), $response->getHeaders()),
+            'http.response.header.set_cookie',
+            HttpCookieCollector::collectPsr7Response($policy, HttpMessageType::incomingResponse(), $response)
+        );
+
+        $body = HttpBodyCollector::collectPsr7Message($policy, HttpMessageType::incomingResponse(), $response);
+        if (\is_array($body)) {
+            $body = json_encode($body) ?: KeyValueDataFilter::FILTERED_VALUE;
+        }
+
+        if ($body !== null) {
+            $data['http.response.body.data'] = $body;
+        }
+
+        return $data;
+    }
+
+    /**
+     * @param array<array-key, string[]>|null     $headers
+     * @param array<array-key, mixed>|string|null $cookies Cookies grouped by name, or `[Filtered]` if they could not be parsed
+     *
+     * @return array<string, mixed>
+     */
+    private function getHeaderData(string $headerPrefix, ?array $headers, string $cookiePrefix, $cookies): array
+    {
+        $data = [];
+
+        foreach ($headers ?? [] as $name => $values) {
+            $data[$headerPrefix . '.' . strtolower((string)$name)] = implode(', ', $values);
+        }
+
+        if (is_string($cookies)) {
+            $data[$cookiePrefix] = $cookies;
+        } elseif (is_array($cookies)) {
+            foreach ($cookies as $name => $value) {
+                $data[$cookiePrefix . '.' . $name] = $value;
+            }
+        }
+
+        return $data;
     }
 
     /**
@@ -202,5 +337,58 @@ class HttpClientIntegration extends Feature
         // Check if the request destination is allow listed in the trace_propagation_targets option.
         return $sdkOptions->getTracePropagationTargets() === null
             || in_array($request->getUri()->getHost(), $sdkOptions->getTracePropagationTargets());
+    }
+
+    /**
+     * Add the code location that made the HTTP client request to the span if the request was slower than the threshold.
+     */
+    private function maybeAddRequestOriginToSpan(Span $span): void
+    {
+        if (!$this->shouldTraceHttpClientRequestsOrigin()) {
+            return;
+        }
+
+        $duration = ($span->getEndTimestamp() ?? microtime(true)) - $span->getStartTimestamp();
+        $durationMs = $duration * 1000;
+
+        if ($durationMs < $this->getHttpClientRequestsOriginThresholdMs()) {
+            return;
+        }
+
+        $requestOrigin = $this->resolveEventOrigin();
+
+        if ($requestOrigin !== null) {
+            $span->setData(array_merge($span->getData(), $requestOrigin));
+        }
+    }
+
+    /**
+     * Indicates if we should trace the origin of the HTTP client requests.
+     */
+    private function shouldTraceHttpClientRequestsOrigin(): bool
+    {
+        if ($this->traceHttpClientRequestsOrigin === null) {
+            $tracingConfig = $this->getUserConfig()['tracing'] ?? [];
+
+            $this->traceHttpClientRequestsOrigin = ($tracingConfig['http_client_requests_origin'] ?? true) === true;
+        }
+
+        return $this->traceHttpClientRequestsOrigin;
+    }
+
+    /**
+     * Get the threshold in milliseconds for HTTP client requests to resolve their origin.
+     */
+    private function getHttpClientRequestsOriginThresholdMs(): int
+    {
+        if ($this->traceHttpClientRequestsOriginThresholdMs === null) {
+            $tracingConfig = $this->getUserConfig()['tracing'] ?? [];
+
+            $thresholdMs = $tracingConfig['http_client_requests_origin_threshold_ms'] ?? null;
+
+            $this->traceHttpClientRequestsOriginThresholdMs = is_numeric($thresholdMs) ? (int)$thresholdMs : 250;
+        }
+
+        return $this->traceHttpClientRequestsOriginThresholdMs;
     }
 }

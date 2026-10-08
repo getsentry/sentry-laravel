@@ -182,6 +182,11 @@ class LivewirePackageIntegration extends Feature
             return;
         }
 
+        // Keep the first Livewire component as the transaction root.
+        if (strpos($transaction->getName(), 'livewire?component=') === 0) {
+            return;
+        }
+
         $transactionName = "livewire?component={$componentName}";
 
         $transaction->setName($transactionName);

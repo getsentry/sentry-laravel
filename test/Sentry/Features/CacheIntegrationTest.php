@@ -3,12 +3,17 @@
 namespace Sentry\Laravel\Tests\Features;
 
 use Illuminate\Cache\Events\RetrievingKey;
+use Illuminate\Redis\Connections\Connection;
+use Illuminate\Redis\Events\CommandExecuted;
 use Illuminate\Session\CacheBasedSessionHandler;
+use Illuminate\Session\NullSessionHandler;
 use Illuminate\Session\Store;
 use Illuminate\Support\Facades\Cache;
+use Mockery;
 use Sentry\Laravel\Tests\TestCase;
 use Sentry\Tracing\Span;
 use Sentry\Laravel\Features\CacheIntegration;
+use RuntimeException;
 
 class CacheIntegrationTest extends TestCase
 {
@@ -315,6 +320,58 @@ class CacheIntegrationTest extends TestCase
         $this->assertFalse(isset($span->getData()['session.key']));
     }
 
+    public function testCacheBreadcrumbReplacesSessionKeyFromRequestCookieWithoutResolvingSessionStore(): void
+    {
+        $sessionId = str_repeat('a', 40);
+
+        $this->app['request']->cookies->set($this->app['config']->get('session.cookie'), $sessionId);
+
+        CacheIntegrationCacheAccessingSessionStore::$constructionCount = 0;
+
+        $this->app->singleton('session.store', static function () {
+            CacheIntegrationCacheAccessingSessionStore::$constructionCount++;
+
+            throw new RuntimeException('The session store should not be resolved when the request cookie is available.');
+        });
+
+        Cache::get($sessionId);
+
+        $this->assertSame(0, CacheIntegrationCacheAccessingSessionStore::$constructionCount);
+        $this->assertEquals('Missed: {sessionKey}', $this->getLastSentryBreadcrumb()->getMessage());
+    }
+
+    public function testCacheBreadcrumbUsesResolvedSessionStoreBeforeRequestCookie(): void
+    {
+        $cookieSessionId = str_repeat('a', 40);
+
+        $this->app['request']->cookies->set($this->app['config']->get('session.cookie'), $cookieSessionId);
+
+        $this->startSession();
+
+        $sessionStoreSessionId = $this->app['session.store']->getId();
+
+        $this->assertNotSame($cookieSessionId, $sessionStoreSessionId);
+
+        Cache::get($sessionStoreSessionId);
+
+        $this->assertEquals('Missed: {sessionKey}', $this->getLastSentryBreadcrumb()->getMessage());
+    }
+
+    public function testCacheSessionKeyDetectionDoesNotReenterSessionStoreConstruction(): void
+    {
+        CacheIntegrationCacheAccessingSessionStore::$cacheKey = 'browser-detect-like-cache-key';
+        CacheIntegrationCacheAccessingSessionStore::$constructionCount = 0;
+
+        $this->app->singleton('session.store', static function () {
+            return new CacheIntegrationCacheAccessingSessionStore();
+        });
+
+        Cache::get('outer-cache-key');
+
+        $this->assertSame(1, CacheIntegrationCacheAccessingSessionStore::$constructionCount);
+        $this->assertEquals('Missed: outer-cache-key', $this->getLastSentryBreadcrumb()->getMessage());
+    }
+
     public function testCacheOperationDoesNotStartSessionPrematurely(): void
     {
         $this->markSkippedIfTracingEventsNotAvailable();
@@ -330,6 +387,68 @@ class CacheIntegrationTest extends TestCase
 
         // And the key should not be replaced
         $this->assertEquals('some-key', $span->getDescription());
+    }
+
+    public function testRedisParametersAreRecordedWhenPIIShouldBeSent(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.redis_commands' => true,
+            'sentry.send_default_pii' => true,
+        ]);
+
+        $span = $this->executeRedisCommandAndReturnSpan();
+
+        $this->assertSame('SET foo', $span->getDescription());
+        $this->assertSame(['foo', 'bar'], $span->getData()['db.redis.parameters']);
+    }
+
+    public function testRedisParametersAreNotRecordedWhenPIIShouldNotBeSent(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.redis_commands' => true,
+            'sentry.send_default_pii' => false,
+        ]);
+
+        $span = $this->executeRedisCommandAndReturnSpan();
+
+        $this->assertArrayNotHasKey('db.redis.parameters', $span->getData());
+    }
+
+    public function testRedisParametersAreRecordedWithDataCollection(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.redis_commands' => true,
+            'sentry.send_default_pii' => false,
+            'sentry.data_collection' => [],
+        ]);
+
+        $span = $this->executeRedisCommandAndReturnSpan();
+
+        $this->assertSame(['foo', 'bar'], $span->getData()['db.redis.parameters']);
+    }
+
+    public function testRedisParametersAreNotRecordedWhenDatabaseQueryDataIsDisabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.redis_commands' => true,
+            'sentry.send_default_pii' => true,
+            'sentry.data_collection' => [
+                'database_query_data' => false,
+            ],
+        ]);
+
+        $span = $this->executeRedisCommandAndReturnSpan();
+
+        $this->assertArrayNotHasKey('db.redis.parameters', $span->getData());
+    }
+
+    private function executeRedisCommandAndReturnSpan(): Span
+    {
+        return $this->executeAndReturnMostRecentSpan(function () {
+            $this->dispatchLaravelEvent(new CommandExecuted('set', ['foo', 'bar'], 1.0, Mockery::mock(Connection::class, [
+                'getName' => 'default',
+            ])));
+        });
     }
 
     private function markSkippedIfTracingEventsNotAvailable(): void
@@ -370,5 +489,29 @@ class CacheIntegrationTest extends TestCase
         $session->setId($sessionId);
 
         return $session;
+    }
+}
+
+class CacheIntegrationCacheAccessingSessionStore extends Store
+{
+    /** @var int */
+    public static $constructionCount = 0;
+
+    /** @var string */
+    public static $cacheKey = 'browser-detect-like-cache-key';
+
+    public function __construct()
+    {
+        self::$constructionCount++;
+
+        if (self::$constructionCount > 3) {
+            throw new RuntimeException('Session store construction re-entered too many times.');
+        }
+
+        Cache::remember(self::$cacheKey, 60, static function () {
+            return 'bot-detection-result';
+        });
+
+        parent::__construct('laravel_session', new NullSessionHandler);
     }
 }

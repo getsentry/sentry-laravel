@@ -41,6 +41,9 @@ return [
     // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#enable_logs
     'enable_logs' => env('SENTRY_ENABLE_LOGS', false),
 
+    // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#enable_metrics
+    'enable_metrics' => env('SENTRY_ENABLE_METRICS', true),
+
     // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#log_flush_threshold
     'log_flush_threshold' => env('SENTRY_LOG_FLUSH_THRESHOLD') === null ? null : (int) env('SENTRY_LOG_FLUSH_THRESHOLD'),
 
@@ -49,6 +52,9 @@ return [
 
     // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#send_default_pii
     'send_default_pii' => env('SENTRY_SEND_DEFAULT_PII', false),
+
+    // Configures which data is collected automatically, `null` keeps collecting data based on `send_default_pii`
+    'data_collection' => null,
 
     // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#ignore_exceptions
     // 'ignore_exceptions' => [],
@@ -73,7 +79,8 @@ return [
         // Capture SQL queries as breadcrumbs
         'sql_queries' => env('SENTRY_BREADCRUMBS_SQL_QUERIES_ENABLED', true),
 
-        // Capture SQL query bindings (parameters) in SQL query breadcrumbs
+        // Capture SQL query bindings (parameters) in SQL query breadcrumbs, ignored when `data_collection` is set
+        // This option will be migrated to `data_collection.database_query_data` in the next major version
         'sql_bindings' => env('SENTRY_BREADCRUMBS_SQL_BINDINGS_ENABLED', false),
 
         // Capture queue job information as breadcrumbs
@@ -100,7 +107,8 @@ return [
         // Capture SQL queries as spans
         'sql_queries' => env('SENTRY_TRACE_SQL_QUERIES_ENABLED', true),
 
-        // Capture SQL query bindings (parameters) in SQL query spans
+        // Capture SQL query bindings (parameters) in SQL query spans, ignored when `data_collection` is set
+        // This option will be migrated to `data_collection.database_query_data` in the next major version
         'sql_bindings' => env('SENTRY_TRACE_SQL_BINDINGS_ENABLED', false),
 
         // Capture where the SQL query originated from on the SQL query spans
@@ -117,6 +125,12 @@ return [
 
         // Capture HTTP client requests as spans
         'http_client_requests' => env('SENTRY_TRACE_HTTP_CLIENT_REQUESTS_ENABLED', true),
+
+        // Capture where the HTTP client request originated from on the HTTP client request spans
+        'http_client_requests_origin' => env('SENTRY_TRACE_HTTP_CLIENT_REQUESTS_ORIGIN_ENABLED', true),
+
+        // Define a threshold in milliseconds for HTTP client requests to resolve their origin
+        'http_client_requests_origin_threshold_ms' => env('SENTRY_TRACE_HTTP_CLIENT_REQUESTS_ORIGIN_THRESHOLD_MS', 250),
 
         // Capture Laravel cache events (hits, writes etc.) as spans
         'cache' => env('SENTRY_TRACE_CACHE_ENABLED', true),
@@ -136,6 +150,21 @@ return [
         // Configures if the performance trace should continue after the response has been sent to the user until the application terminates
         // This is required to capture any spans that are created after the response has been sent like queue jobs dispatched using `dispatch(...)->afterResponse()` for example
         'continue_after_response' => env('SENTRY_TRACE_CONTINUE_AFTER_RESPONSE', true),
+
+        // Capture AI agent interactions as spans (requires laravel/ai)
+        'gen_ai' => env('SENTRY_TRACE_GEN_AI_ENABLED', true),
+
+        // Capture AI invoke_agent spans
+        'gen_ai_invoke_agent' => env('SENTRY_TRACE_GEN_AI_INVOKE_AGENT_ENABLED', true),
+
+        // Capture AI chat spans
+        'gen_ai_chat' => env('SENTRY_TRACE_GEN_AI_CHAT_ENABLED', true),
+
+        // Capture AI execute_tool spans
+        'gen_ai_execute_tool' => env('SENTRY_TRACE_GEN_AI_EXECUTE_TOOL_ENABLED', true),
+
+        // Capture AI embeddings spans
+        'gen_ai_embeddings' => env('SENTRY_TRACE_GEN_AI_EMBEDDINGS_ENABLED', true),
 
         // Enable the tracing integrations supplied by Sentry (recommended)
         'default_integrations' => env('SENTRY_TRACE_DEFAULT_INTEGRATIONS_ENABLED', true),

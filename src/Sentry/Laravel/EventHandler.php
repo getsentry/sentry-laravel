@@ -17,6 +17,8 @@ use Laravel\Octane\Events as Octane;
 use Laravel\Sanctum\Events as Sanctum;
 use RuntimeException;
 use Sentry\Breadcrumb;
+use Sentry\DataCollection\DatabaseDataCollector;
+use Sentry\DataCollection\DataCollectionPolicy;
 use Sentry\Laravel\Tracing\Middleware;
 use Sentry\SentrySdk;
 use Sentry\State\Scope;
@@ -216,9 +218,14 @@ class EventHandler
             $data['executionTimeMs'] = $query->time;
         }
 
-        if ($this->recordSqlBindings) {
+        $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
+
+        // The data collection options replace the `sql_bindings` option
+        if ($this->recordSqlBindings && $policy->isLegacyMode()) {
             $data['bindings'] = $query->bindings;
         }
+
+        $data += DatabaseDataCollector::collectQueryData($policy, $query->bindings);
 
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,

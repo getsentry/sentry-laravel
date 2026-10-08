@@ -3,6 +3,7 @@
 namespace Sentry\Laravel\Features;
 
 use Illuminate\Contracts\Container\Container;
+use Sentry\DataCollection\DataCollectionPolicy;
 use Sentry\Laravel\BaseServiceProvider;
 use Sentry\SentrySdk;
 use Throwable;
@@ -119,6 +120,31 @@ abstract class Feature
         }
 
         return $client->getOptions()->shouldSendDefaultPii();
+    }
+
+    protected function shouldCollectGenAiInputs(): bool
+    {
+        return $this->shouldCollectGenAi('inputs');
+    }
+
+    protected function shouldCollectGenAiOutputs(): bool
+    {
+        return $this->shouldCollectGenAi('outputs');
+    }
+
+    /**
+     * @param 'inputs'|'outputs' $type
+     */
+    private function shouldCollectGenAi(string $type): bool
+    {
+        $dataCollection = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub())->getDataCollection();
+
+        // The legacy options collect both the inputs and outputs based on `send_default_pii`
+        if ($dataCollection === null) {
+            return $this->shouldSendDefaultPii();
+        }
+
+        return $dataCollection->getGenAi()[$type];
     }
 
     /**
