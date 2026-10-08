@@ -33,6 +33,7 @@ use Laravel\Ai\Responses\ClassificationResponse;
 use Laravel\Ai\Responses\Data\Meta;
 use Laravel\Ai\Responses\Data\TextUsage;
 use Laravel\Ai\Tools\Request as ToolRequest;
+use Sentry\Laravel\Integration;
 use Sentry\Laravel\Tests\TestCase;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
@@ -510,6 +511,22 @@ class ClassificationIntegrationTest extends TestCase
 
         $this->assertSame('conv-first', $evaluateSpans[0]->getData()['gen_ai.conversation.id']);
         $this->assertSame('conv-second', $evaluateSpans[1]->getData()['gen_ai.conversation.id']);
+    }
+
+    public function testEvaluateSpanGetsAManuallySetConversationId(): void
+    {
+        $transaction = $this->startTransaction();
+
+        Integration::setConversationId('conv-manual');
+        $this->classifyWithTypeSafe();
+
+        Integration::setConversationId(null);
+        $this->classifyWithTypeSafe();
+
+        $evaluateSpans = $this->findEvaluateSpans($transaction);
+
+        $this->assertSame('conv-manual', $evaluateSpans[0]->getData()['gen_ai.conversation.id']);
+        $this->assertArrayNotHasKey('gen_ai.conversation.id', $evaluateSpans[1]->getData());
     }
 
     public function testEvaluateSpanInAnotherTraceHasNoConversationId(): void

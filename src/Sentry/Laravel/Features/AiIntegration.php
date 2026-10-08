@@ -474,6 +474,26 @@ class AiIntegration extends Feature
     }
 
     /**
+     * Set the conversation of the gen_ai spans started from now on in the current trace, replacing the current one.
+     * Passing null forgets the current conversation.
+     */
+    public function setCurrentConversationId(?string $conversationId): void
+    {
+        if ($conversationId === null) {
+            $this->conversations->end();
+
+            return;
+        }
+
+        $span = SentrySdk::getCurrentHub()->getSpan();
+
+        // Without a span there is no trace whose gen_ai spans could get the conversation ID
+        if ($span !== null) {
+            $this->conversations->start($span, $conversationId);
+        }
+    }
+
+    /**
      * Start the conversation of an agent that remembers it, replacing the current one. A new conversation gets its ID once the first turn ends.
      */
     private function startConversation(Agent $agent, Span $agentSpan): void
