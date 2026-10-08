@@ -6,11 +6,8 @@ use Closure;
 use Illuminate\Http\Request;
 use Laravel\Lumen\Application as LumenApplication;
 use Sentry\DataCollection\DataCollectionPolicy;
-use Sentry\DataCollection\HttpBodyCollector;
-use Sentry\DataCollection\HttpCookieCollector;
-use Sentry\DataCollection\HttpHeaderCollector;
 use Sentry\DataCollection\HttpMessageType;
-use Sentry\DataCollection\KeyValueDataFilter;
+use Sentry\DataCollection\HttpSpanDataCollector;
 use Sentry\Laravel\Http\LaravelRequestFetcher;
 use Sentry\Laravel\Http\SensitiveCookieFilter;
 use Sentry\SentrySdk;
@@ -280,26 +277,7 @@ class Middleware
             return [];
         }
 
-        $data = [];
-
-        foreach (HttpHeaderCollector::collect($policy, HttpMessageType::incomingRequest(), $request->getHeaders()) ?? [] as $name => $values) {
-            $data['http.request.header.' . strtolower((string) $name)] = implode(', ', $values);
-        }
-
-        foreach (HttpCookieCollector::collect($policy, HttpMessageType::incomingRequest(), $request->getCookieParams()) ?? [] as $name => $value) {
-            $data['http.request.header.cookie.' . $name] = $value;
-        }
-
-        $body = HttpBodyCollector::collectServerRequest($policy, $request);
-        if (\is_array($body)) {
-            $body = json_encode($body) ?: KeyValueDataFilter::FILTERED_VALUE;
-        }
-
-        if ($body !== null) {
-            $data['http.request.body.data'] = $body;
-        }
-
-        return $data;
+        return HttpSpanDataCollector::collectServerRequest($policy, $request);
     }
 
     private function hydrateResponseData(SymfonyResponse $response): void
@@ -324,38 +302,17 @@ class Middleware
             return [];
         }
 
-        $data = [];
-
-        foreach (HttpHeaderCollector::collect($policy, HttpMessageType::outgoingResponse(), $response->headers->all()) ?? [] as $name => $values) {
-            $data['http.response.header.' . $name] = implode(', ', $values);
-        }
+        $type = HttpMessageType::outgoingResponse();
 
         $cookies = [];
         foreach ($response->headers->getCookies() as $cookie) {
             $cookies[] = [$cookie->getName(), SensitiveCookieFilter::filterValue($cookie->getName(), $cookie->getValue())];
         }
 
-        $cookies = HttpCookieCollector::collectGroupedPairs($policy, HttpMessageType::outgoingResponse(), $cookies);
-        if (\is_array($cookies)) {
-            foreach ($cookies as $name => $value) {
-                $data['http.response.header.set_cookie.' . $name] = $value;
-            }
-        }
-
-        // Streamed and file responses have no content we can collect
-        $content = $response->getContent();
-        if (is_string($content)) {
-            $body = HttpBodyCollector::collect($policy, HttpMessageType::outgoingResponse(), $content, (string) $response->headers->get('Content-Type', ''));
-            if (\is_array($body)) {
-                $body = json_encode($body) ?: KeyValueDataFilter::FILTERED_VALUE;
-            }
-
-            if ($body !== null) {
-                $data['http.response.body.data'] = $body;
-            }
-        }
-
-        return $data;
+        // Streamed and file responses have no content (`false`), which the collector skips
+        return HttpSpanDataCollector::collectHeaders($policy, $type, $response->headers->all())
+            + HttpSpanDataCollector::collectCookiePairs($policy, $type, $cookies)
+            + HttpSpanDataCollector::collectBody($policy, $type, $response->getContent(), (string) $response->headers->get('Content-Type', ''));
     }
 
     public function finishTransaction(): void

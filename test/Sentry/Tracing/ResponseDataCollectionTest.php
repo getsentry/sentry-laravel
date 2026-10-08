@@ -36,10 +36,11 @@ class ResponseDataCollectionTest extends TestCase
         $this->assertSame('bar', $data['http.response.header.x-request-id']);
         $this->assertSame('[Filtered]', $data['http.response.header.x-api-key']);
         $this->assertSame('web-1, web-2', $data['http.response.header.x-served-by']);
-        $this->assertArrayNotHasKey('http.response.header.set-cookie', $data);
-        $this->assertSame('dark', $data['http.response.header.set_cookie.theme']);
-        $this->assertSame('[Filtered]', $data['http.response.header.set_cookie.laravel_session']);
-        $this->assertSame('[Filtered]', $data['http.response.header.set_cookie.remember_web_59ba36addc2b2f9401580f014c7f58ea4e30989d']);
+        $this->assertSame([
+            'theme=dark',
+            'laravel_session=[Filtered]',
+            'remember_web_59ba36addc2b2f9401580f014c7f58ea4e30989d=[Filtered]',
+        ], $data['http.response.header.set-cookie']);
         $this->assertSame('{"username":"jane","password":"[Filtered]"}', $data['http.response.body.data']);
     }
 
