@@ -30,6 +30,7 @@ use Laravel\Ai\Responses\Data\ToolCall;
 use Laravel\Ai\Responses\Data\ToolResult;
 use Laravel\Ai\Responses\TextResponse;
 use Sentry\DataCollection\DataCollectionPolicy;
+use Sentry\Laravel\Features\Ai\AiConversationTracker;
 use Sentry\Laravel\Features\Ai\AiDataSanitizer;
 use Sentry\Laravel\Features\Ai\AiInvocationData;
 use Sentry\Laravel\Features\Ai\AiInvocationMeta;
@@ -63,9 +64,14 @@ class AiIntegration extends Feature
     /** @var BoundedOrderedMap<array{span: Span, parentSpan: Span|null}> Per-embeddings-invocation state keyed by invocation ID. */
     private $embeddingsInvocations;
 
+    /** @var AiConversationTracker The conversation that gen_ai spans belong to. */
+    private $conversations;
+
     public function __construct(Container $container)
     {
         parent::__construct($container);
+
+        $this->conversations = new AiConversationTracker();
 
         $this->invocations = new BoundedOrderedMap(self::MAX_TRACKED_INVOCATIONS, function (AiInvocationData $invocation): void {
             if ($invocation->activeChatSpan !== null) {
@@ -172,6 +178,9 @@ class AiIntegration extends Feature
                 ->setDescription('invoke_agent ' . $model)
         );
 
+        $this->startConversation($event->prompt->agent, $agentSpan);
+        $this->conversations->attach($agentSpan);
+
         $this->invocations->set(
             $event->invocationId,
             new AiInvocationData(
@@ -209,7 +218,7 @@ class AiIntegration extends Feature
         $conversationId = $event->response->conversationId;
 
         $this->enrichChatSpansWithStepData($invocation, $event->response);
-        $invocation->setConversationIdOnSpans($conversationId);
+        $this->setConversationId($invocation, $conversationId);
 
         $data = new AiSpanDataBag($agentSpan->getData());
         $data->set('gen_ai.response.model', $event->response->meta->model);
@@ -238,6 +247,9 @@ class AiIntegration extends Feature
         if ($invocation === null) {
             return;
         }
+
+        // A failed turn of a new conversation that laravel/ai remembered has its conversation ID on the agent by now
+        $this->setConversationId($invocation, $this->resolveConversationId($event->prompt->agent));
 
         try {
             $invocation->finishActiveChatSpan(SpanStatus::internalError());
@@ -292,6 +304,7 @@ class AiIntegration extends Feature
 
         $invocation->activeChatSpan = $chatSpan;
         $invocation->chatSpans[] = $chatSpan;
+        $this->conversations->attach($chatSpan);
 
         SentrySdk::getCurrentHub()->setSpan($chatSpan);
     }
@@ -339,6 +352,8 @@ class AiIntegration extends Feature
         if ($invocation !== null) {
             $invocation->toolSpans[] = $span;
         }
+
+        $this->conversations->attach($span);
 
         SentrySdk::getCurrentHub()->setSpan($span);
     }
@@ -400,6 +415,8 @@ class AiIntegration extends Feature
             'parentSpan' => $parentSpan,
         ]);
 
+        $this->conversations->attach($span);
+
         SentrySdk::getCurrentHub()->setSpan($span);
     }
 
@@ -445,6 +462,45 @@ class AiIntegration extends Feature
         if ($invocation !== null) {
             $invocation->finishActiveChatSpan(SpanStatus::internalError());
         }
+    }
+
+    /**
+     * Method used so that other integrations that produce gen_ai spans can submit their spans
+     * here which will be populated with the conversation ID once it becomes available.
+     */
+    public function attachSpanToConversation(Span $span): void
+    {
+        $this->conversations->attach($span);
+    }
+
+    /**
+     * Start the conversation of an agent that remembers it, replacing the current one. A new conversation gets its ID once the first turn ends.
+     */
+    private function startConversation(Agent $agent, Span $agentSpan): void
+    {
+        if (!method_exists($agent, 'hasConversationParticipant')) {
+            return;
+        }
+
+        $conversationId = $this->resolveConversationId($agent);
+
+        if ($conversationId !== null || $agent->hasConversationParticipant()) {
+            $this->conversations->start($agentSpan, $conversationId);
+        }
+    }
+
+    private function setConversationId(AiInvocationData $invocation, ?string $conversationId): void
+    {
+        $invocation->setConversationIdOnSpans($conversationId);
+
+        if ($conversationId !== null) {
+            $this->conversations->resolve($invocation->span, $conversationId);
+        }
+    }
+
+    private function resolveConversationId(Agent $agent): ?string
+    {
+        return method_exists($agent, 'currentConversation') ? $agent->currentConversation() : null;
     }
 
     private function findMatchingInvocation(string $url): ?AiInvocationData
