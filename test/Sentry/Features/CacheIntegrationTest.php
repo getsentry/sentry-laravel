@@ -3,9 +3,13 @@
 namespace Sentry\Laravel\Tests\Features;
 
 use Illuminate\Cache\Events\RetrievingKey;
+use Illuminate\Redis\Connections\Connection;
+use Illuminate\Redis\Events\CommandExecuted;
+use Illuminate\Session\CacheBasedSessionHandler;
 use Illuminate\Session\NullSessionHandler;
 use Illuminate\Session\Store;
 use Illuminate\Support\Facades\Cache;
+use Mockery;
 use Sentry\Laravel\Tests\TestCase;
 use Sentry\Tracing\Span;
 use Sentry\Laravel\Features\CacheIntegration;
@@ -222,6 +226,100 @@ class CacheIntegrationTest extends TestCase
         $this->assertEquals(['{sessionKey}', 'regular-key', $sessionId . '_another'], $span->getData()['cache.key']);
     }
 
+    public function testCacheBackedSessionReadMissSpanIsRecordedAsSessionGet(): void
+    {
+        $this->markSkippedIfTracingEventsNotAvailable();
+
+        $sessionId = str_repeat('a', 40);
+        $session = $this->createCacheBackedSession($sessionId);
+
+        $span = $this->executeAndReturnMostRecentSpan(static function () use ($session) {
+            $session->start();
+        });
+
+        $this->assertEquals('session.get', $span->getOp());
+        $this->assertEquals('{sessionKey}', $span->getDescription());
+        $this->assertEquals(['{sessionKey}'], $span->getData()['session.key']);
+        $this->assertFalse($span->getData()['session.hit']);
+        $this->assertFalse(isset($span->getData()['cache.hit']));
+    }
+
+    public function testCacheBackedSessionReadHitSpanAndBreadcrumbAreRecordedAsSession(): void
+    {
+        $this->markSkippedIfTracingEventsNotAvailable();
+
+        $sessionId = str_repeat('a', 40);
+        $session = $this->createCacheBackedSession($sessionId);
+
+        Cache::put($sessionId, serialize(['foo' => 'bar']));
+
+        $span = $this->executeAndReturnMostRecentSpan(static function () use ($session) {
+            $session->start();
+        });
+
+        $this->assertEquals('session.get', $span->getOp());
+        $this->assertEquals('{sessionKey}', $span->getDescription());
+        $this->assertEquals(['{sessionKey}'], $span->getData()['session.key']);
+        $this->assertTrue($span->getData()['session.hit']);
+
+        $breadcrumb = $this->getLastSentryBreadcrumb();
+        $this->assertEquals('session', $breadcrumb->getCategory());
+        $this->assertEquals('Read: {sessionKey}', $breadcrumb->getMessage());
+    }
+
+    public function testCacheBackedSessionWriteSpanIsRecordedAsSessionPut(): void
+    {
+        $this->markSkippedIfTracingEventsNotAvailable();
+
+        $sessionId = str_repeat('a', 40);
+        $session = $this->createCacheBackedSession($sessionId);
+
+        $span = $this->executeAndReturnMostRecentSpan(static function () use ($session) {
+            $session->put('foo', 'bar');
+            $session->save();
+        });
+
+        $this->assertEquals('session.put', $span->getOp());
+        $this->assertEquals('{sessionKey}', $span->getDescription());
+        $this->assertEquals(['{sessionKey}'], $span->getData()['session.key']);
+        $this->assertEquals(7200, $span->getData()['session.ttl']);
+        $this->assertTrue($span->getData()['session.success']);
+        $this->assertFalse(isset($span->getData()['cache.success']));
+    }
+
+    public function testCacheBackedSessionDestroySpanIsRecordedAsSessionRemove(): void
+    {
+        $this->markSkippedIfTracingEventsNotAvailable();
+
+        $sessionId = str_repeat('a', 40);
+        $session = $this->createCacheBackedSession($sessionId);
+
+        $span = $this->executeAndReturnMostRecentSpan(static function () use ($session) {
+            $session->migrate(true);
+        });
+
+        $this->assertEquals('session.remove', $span->getOp());
+        $this->assertEquals('{sessionKey}', $span->getDescription());
+        $this->assertEquals(['{sessionKey}'], $span->getData()['session.key']);
+    }
+
+    public function testBatchCacheOperationContainingSessionKeyIsStillRecordedAsCache(): void
+    {
+        $this->markSkippedIfTracingEventsNotAvailable();
+
+        $sessionId = str_repeat('a', 40);
+        $this->createCacheBackedSession($sessionId);
+
+        $span = $this->executeAndReturnMostRecentSpan(static function () use ($sessionId) {
+            Cache::get([$sessionId, 'regular-key']);
+        });
+
+        $this->assertEquals('cache.get', $span->getOp());
+        $this->assertEquals('{sessionKey}, regular-key', $span->getDescription());
+        $this->assertEquals(['{sessionKey}', 'regular-key'], $span->getData()['cache.key']);
+        $this->assertFalse(isset($span->getData()['session.key']));
+    }
+
     public function testCacheBreadcrumbReplacesSessionKeyFromRequestCookieWithoutResolvingSessionStore(): void
     {
         $sessionId = str_repeat('a', 40);
@@ -291,6 +389,68 @@ class CacheIntegrationTest extends TestCase
         $this->assertEquals('some-key', $span->getDescription());
     }
 
+    public function testRedisParametersAreRecordedWhenPIIShouldBeSent(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.redis_commands' => true,
+            'sentry.send_default_pii' => true,
+        ]);
+
+        $span = $this->executeRedisCommandAndReturnSpan();
+
+        $this->assertSame('SET foo', $span->getDescription());
+        $this->assertSame(['foo', 'bar'], $span->getData()['db.redis.parameters']);
+    }
+
+    public function testRedisParametersAreNotRecordedWhenPIIShouldNotBeSent(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.redis_commands' => true,
+            'sentry.send_default_pii' => false,
+        ]);
+
+        $span = $this->executeRedisCommandAndReturnSpan();
+
+        $this->assertArrayNotHasKey('db.redis.parameters', $span->getData());
+    }
+
+    public function testRedisParametersAreRecordedWithDataCollection(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.redis_commands' => true,
+            'sentry.send_default_pii' => false,
+            'sentry.data_collection' => [],
+        ]);
+
+        $span = $this->executeRedisCommandAndReturnSpan();
+
+        $this->assertSame(['foo', 'bar'], $span->getData()['db.redis.parameters']);
+    }
+
+    public function testRedisParametersAreNotRecordedWhenDatabaseQueryDataIsDisabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.tracing.redis_commands' => true,
+            'sentry.send_default_pii' => true,
+            'sentry.data_collection' => [
+                'database_query_data' => false,
+            ],
+        ]);
+
+        $span = $this->executeRedisCommandAndReturnSpan();
+
+        $this->assertArrayNotHasKey('db.redis.parameters', $span->getData());
+    }
+
+    private function executeRedisCommandAndReturnSpan(): Span
+    {
+        return $this->executeAndReturnMostRecentSpan(function () {
+            $this->dispatchLaravelEvent(new CommandExecuted('set', ['foo', 'bar'], 1.0, Mockery::mock(Connection::class, [
+                'getName' => 'default',
+            ])));
+        });
+    }
+
     private function markSkippedIfTracingEventsNotAvailable(): void
     {
         if (class_exists(RetrievingKey::class)) {
@@ -311,6 +471,24 @@ class CacheIntegrationTest extends TestCase
         $this->assertTrue(count($spans) >= 2);
 
         return array_pop($spans);
+    }
+
+    private function createCacheBackedSession(string $sessionId): Store
+    {
+        $sessionDriver = 'cache-backed-test';
+
+        $this->app['session']->extend($sessionDriver, function ($app) {
+            return new CacheBasedSessionHandler($app['cache']->store('array'), 120);
+        });
+
+        $this->app['config']->set('session.driver', $sessionDriver);
+        $this->app['session']->forgetDrivers();
+
+        /** @var Store $session */
+        $session = $this->app['session']->driver();
+        $session->setId($sessionId);
+
+        return $session;
     }
 }
 

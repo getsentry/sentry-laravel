@@ -5,6 +5,11 @@ namespace Sentry\Laravel\Tracing;
 use Closure;
 use Illuminate\Http\Request;
 use Laravel\Lumen\Application as LumenApplication;
+use Sentry\DataCollection\DataCollectionPolicy;
+use Sentry\DataCollection\HttpMessageType;
+use Sentry\DataCollection\HttpSpanDataCollector;
+use Sentry\Laravel\Http\LaravelRequestFetcher;
+use Sentry\Laravel\Http\SensitiveCookieFilter;
 use Sentry\SentrySdk;
 use Sentry\State\HubInterface;
 use Sentry\Tracing\Span;
@@ -104,6 +109,8 @@ class Middleware
             $this->appSpan->finish();
             $this->appSpan = null;
         }
+
+        $this->transaction->setData($this->collectRequestData());
 
         if ($response instanceof SymfonyResponse) {
             $this->hydrateResponseData($response);
@@ -253,12 +260,59 @@ class Middleware
         );
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    private function collectRequestData(): array
+    {
+        $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
+
+        // The legacy options only collected the request data on the event
+        if ($policy->isLegacyMode()) {
+            return [];
+        }
+
+        $request = (new LaravelRequestFetcher)->fetchRequest();
+        if ($request === null) {
+            return [];
+        }
+
+        return HttpSpanDataCollector::collectServerRequest($policy, $request);
+    }
+
     private function hydrateResponseData(SymfonyResponse $response): void
     {
         $this->transaction->setHttpStatus($response->getStatusCode());
         $this->transaction->setData([
             'http.response.status_code' => $response->getStatusCode(),
         ]);
+
+        $this->transaction->setData($this->collectResponseData($response));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function collectResponseData(SymfonyResponse $response): array
+    {
+        $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
+
+        // The legacy options never collected any response data
+        if ($policy->isLegacyMode()) {
+            return [];
+        }
+
+        $type = HttpMessageType::outgoingResponse();
+
+        $cookies = [];
+        foreach ($response->headers->getCookies() as $cookie) {
+            $cookies[] = [$cookie->getName(), SensitiveCookieFilter::filterValue($cookie->getName(), $cookie->getValue())];
+        }
+
+        // Streamed and file responses have no content (`false`), which the collector skips
+        return HttpSpanDataCollector::collectHeaders($policy, $type, $response->headers->all())
+            + HttpSpanDataCollector::collectCookiePairs($policy, $type, $cookies)
+            + HttpSpanDataCollector::collectBody($policy, $type, $response->getContent(), (string) $response->headers->get('Content-Type', ''));
     }
 
     public function finishTransaction(): void

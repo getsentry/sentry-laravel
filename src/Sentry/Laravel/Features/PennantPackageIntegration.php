@@ -26,9 +26,13 @@ class PennantPackageIntegration extends Feature
     public function handleFeatureRetrieved($feature): void
     {
         SentrySdk::getCurrentHub()->configureScope(function (Scope $scope) use ($feature) {
+            // backslashes are not allowed as feature flag names so we replace it with dots to allow class
+            // based feature flags
+            $featureName = str_replace('\\', '.', ltrim($feature->feature, '\\'));
+
             // The value of the feature is not always a bool (Rich Feature Values) but only bools are supported.
             // The feature is considered "active" if its value is not explicitly false following Pennant's logic.
-            $scope->addFeatureFlag($feature->feature, $feature->value !== false);
+            $scope->addFeatureFlag($featureName, $feature->value !== false);
         });
     }
 }

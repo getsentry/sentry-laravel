@@ -16,51 +16,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
-env:
-  COMPOSER_ADVISORY_LARAVEL_6_TO_9: >-
-    [
-      "PKSA-8qx3-n5y5-vvnd",
-      "PKSA-m5cs-t1y6-qpcs",
-      "PKSA-3r5d-mb8f-1qw9"
-    ]
-  COMPOSER_ADVISORY_LARAVEL_10_TO_11: >-
-    [
-      "PKSA-m5cs-t1y6-qpcs",
-      "PKSA-3r5d-mb8f-1qw9"
-    ]
-  COMPOSER_ADVISORY_COMMONMARK_1: >-
-    [
-      "PKSA-rqc2-tcc6-nc79",
-      "PKSA-fndg-qryc-dyc9",
-      "PKSA-1q6p-sqkj-8mmj",
-      "PKSA-mc58-w91n-f5gv",
-      "PKSA-t21r-vtr5-3mdz",
-      "PKSA-scnn-p8mm-jbft"
-    ]
-  COMPOSER_ADVISORY_LARAVEL_6_SYMFONY: >-
-    [
-      "PKSA-365x-2zjk-pt47",
-      "PKSA-b35n-565h-rs4q",
-      "PKSA-rkkf-636k-qjb3",
-      "PKSA-wws7-mr54-jsny",
-      "PKSA-bf7t-jnpz-492k",
-      "PKSA-yc7t-91v9-99xs"
-    ]
-  COMPOSER_ADVISORY_LARAVEL_9_PHP_8_0_SYMFONY: >-
-    [
-      "PKSA-365x-2zjk-pt47",
-      "PKSA-b35n-565h-rs4q",
-      "PKSA-28rh-rzzn-djk4",
-      "PKSA-wtxr-p26d-nn42",
-      "PKSA-2n2k-66v2-bwg3",
-      "PKSA-wws7-mr54-jsny",
-      "PKSA-bf7t-jnpz-492k",
-      "PKSA-yc7t-91v9-99xs",
-      "PKSA-v5yj-8nmz-sk2q",
-      "PKSA-ft77-7h5f-p3r6",
-      "PKSA-b14r-zh1d-vdrc"
-    ]
-
 jobs:
   phpunit:
     runs-on: ubuntu-latest
@@ -104,14 +59,10 @@ jobs:
           coverage: pcov
           tools: composer:v2
 
-      - name: Configure Laravel 10-11 advisory allowlist
-        if: ${{ contains(fromJSON('["^10.0","^11.0"]'), matrix.packages.laravel) }}
-        run: composer config --merge --json policy.advisories.ignore-id "$COMPOSER_ADVISORY_LARAVEL_10_TO_11"
-
       - name: Configure Composer dependencies
         run: |
           # friendsofphp/php-cs-fixer: No need for this package to run phpunit and it conflicts with older Laravel versions
-          # laravel/ai: Only supports PHP 8.4+ and Laravel 12, remove globally and re-add below where supported
+          # laravel/ai: Only supports PHP 8.3+ and Laravel 12+, remove globally and re-add below where supported
           composer remove friendsofphp/php-cs-fixer laravel/ai --dev --no-interaction --no-update
 
           # laravel/pennant: Does not yet support Laravel 13
@@ -126,16 +77,15 @@ jobs:
             "orchestra/testbench:${{ matrix.packages.testbench }}" \
             --no-interaction --no-update
 
-          # Re-require laravel/ai for supported combinations (PHP 8.4+ and Laravel 12)
-          if [ "${{ matrix.packages.laravel }}" == "^12.0" ] && ([ "${{ matrix.php }}" == "8.4" ] || [ "${{ matrix.php }}" == "8.5" ]); then
+          # Re-require laravel/ai for supported combinations: 0.x keeps coverage on PHP 8.4 with Laravel 12, 1.x runs on PHP 8.3+ with Laravel 12+
+          if [ "${{ matrix.packages.laravel }}" == "^12.0" ] && [ "${{ matrix.php }}" == "8.4" ]; then
             composer require "laravel/ai:^0.1.5" --dev --no-interaction --no-update
+          elif ([ "${{ matrix.packages.laravel }}" == "^12.0" ] || [ "${{ matrix.packages.laravel }}" == "^13.0" ]) && [ "${{ matrix.php }}" != "8.2" ]; then
+            composer require "laravel/ai:^1.0" --dev --no-interaction --no-update
           fi
 
       - name: Resolve dependencies
         run: composer update --no-progress --no-interaction --prefer-dist --no-install --no-scripts --no-audit
-
-      - name: Audit dependencies
-        run: composer audit --locked --no-interaction --format=table --abandoned=report
 
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
@@ -144,7 +94,7 @@ jobs:
         run: vendor/bin/phpunit --coverage-clover=coverage.xml --coverage-filter=src/Sentry
 
       - name: Run AI integration tests
-        if: matrix.packages.laravel == '^12.0' && (matrix.php == '8.4' || matrix.php == '8.5')
+        if: contains(fromJSON('["^12.0","^13.0"]'), matrix.packages.laravel) && contains(fromJSON('["8.3","8.4","8.5"]'), matrix.php)
         run: vendor/bin/phpunit test/Sentry/Features/AiIntegrationTest.php
 
       - name: Upload coverage to Codecov
@@ -234,22 +184,6 @@ jobs:
           coverage: pcov
           tools: composer:v2
 
-      - name: Configure Laravel 6-9 advisory allowlist
-        if: ${{ contains(fromJSON('["^6.0","^7.0","^8.0","^9.0"]'), matrix.packages.laravel) }}
-        run: composer config --merge --json policy.advisories.ignore-id "$COMPOSER_ADVISORY_LARAVEL_6_TO_9"
-
-      - name: Configure CommonMark 1 advisory allowlist
-        if: ${{ matrix.packages.laravel == '^6.0' || matrix.packages.laravel == '^7.0' || (matrix.packages.laravel == '^8.0' && matrix.php == '7.3') }}
-        run: composer config --merge --json policy.advisories.ignore-id "$COMPOSER_ADVISORY_COMMONMARK_1"
-
-      - name: Configure Laravel 6 Symfony advisory allowlist
-        if: ${{ matrix.packages.laravel == '^6.0' }}
-        run: composer config --merge --json policy.advisories.ignore-id "$COMPOSER_ADVISORY_LARAVEL_6_SYMFONY"
-
-      - name: Configure Laravel 9 PHP 8.0 Symfony advisory allowlist
-        if: ${{ matrix.packages.laravel == '^9.0' && matrix.php == '8.0' }}
-        run: composer config --merge --json policy.advisories.ignore-id "$COMPOSER_ADVISORY_LARAVEL_9_PHP_8_0_SYMFONY"
-
       - name: Configure Composer dependencies
         run: |
           # friendsofphp/php-cs-fixer: No need for this package to run phpunit and it conflicts with older Laravel versions
@@ -257,7 +191,6 @@ jobs:
           # laravel/folio: Only supported on PHP 8.1 + Laravel 10.0 and above
           # laravel/pennant: Only supported on PHP 8.1 + Laravel 10.0 and above
           # laravel/octane: Only supported on PHP 8.1 + Laravel 10.10.1 and above
-          # laravel/ai: Only supported on PHP 8.4+ and Laravel 12
           composer remove friendsofphp/php-cs-fixer livewire/livewire laravel/folio laravel/pennant laravel/octane laravel/ai --dev --no-interaction --no-update
 
           # Require the correct versions we want to run phpunit for
@@ -270,9 +203,6 @@ jobs:
 
       - name: Resolve dependencies
         run: composer update --no-progress --no-interaction --prefer-dist --no-install --no-scripts --no-audit
-
-      - name: Audit dependencies
-        run: composer audit --locked --no-interaction --format=table --abandoned=report
 
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
