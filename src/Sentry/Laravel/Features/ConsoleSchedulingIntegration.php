@@ -4,10 +4,12 @@ namespace Sentry\Laravel\Features;
 
 use DateTimeZone;
 use Illuminate\Console\Application as ConsoleApplication;
+use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Console\Events\ScheduledTaskFailed;
 use Illuminate\Console\Events\ScheduledTaskFinished;
 use Illuminate\Console\Events\ScheduledTaskStarting;
 use Illuminate\Console\Scheduling\Event as SchedulingEvent;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Cache\Factory as Cache;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Events\Dispatcher;
@@ -21,6 +23,8 @@ use Sentry\Laravel\Features\Concerns\TracksPushedScopesAndSpans;
 use Sentry\MonitorConfig;
 use Sentry\MonitorSchedule;
 use Sentry\SentrySdk;
+use SplObjectStorage;
+use Throwable;
 use Sentry\Tracing\SpanStatus;
 use Sentry\Tracing\TransactionContext;
 use Sentry\Tracing\TransactionSource;
@@ -41,8 +45,16 @@ class ConsoleSchedulingIntegration extends Feature
 
     private $shouldHandleCheckIn = false;
 
+    /**
+     * @var SplObjectStorage<SchedulingEvent, null> The scheduled tasks that `sentryMonitor()` was called on.
+     */
+    private $monitoredTasks;
+
     public function register(): void
     {
+        $this->monitoredTasks = new SplObjectStorage();
+        $monitoredTasks = $this->monitoredTasks;
+
         $startCheckIn = function (
             ?string $slug,
             SchedulingEvent $scheduled,
@@ -76,11 +88,13 @@ class ConsoleSchedulingIntegration extends Feature
             ?int $failureIssueThreshold = null,
             ?int $recoveryThreshold = null,
             ?string $schedule = null
-        ) use ($startCheckIn, $finishCheckIn) {
+        ) use ($startCheckIn, $finishCheckIn, $monitoredTasks) {
             /** @var SchedulingEvent $this */
             if ($monitorSlug === null && empty($this->command) && empty($this->description)) {
                 throw new RuntimeException('The command and description are not set, please set a slug manually for this scheduled command using the `sentryMonitor(\'your-monitor-slug\')` macro.');
             }
+
+            $monitoredTasks->attach($this);
 
             return $this
                 ->before(function () use (
@@ -128,6 +142,26 @@ class ConsoleSchedulingIntegration extends Feature
         $events->listen(ScheduledTaskStarting::class, [$this, 'handleScheduledTaskStarting']);
         $events->listen(ScheduledTaskFinished::class, [$this, 'handleScheduledTaskFinished']);
         $events->listen(ScheduledTaskFailed::class, [$this, 'handleScheduledTaskFailed']);
+
+        if ($this->getUserConfig()['crons']['monitor_scheduled_tasks'] ?? false) {
+            $events->listen(CommandStarting::class, [$this, 'handleCommandStarting']);
+        }
+    }
+
+    /**
+     * Calls `sentryMonitor()` on every scheduled task before the scheduler runs or finishes them.
+     */
+    public function handleCommandStarting(CommandStarting $event): void
+    {
+        if (!\in_array($event->command, ['schedule:run', 'schedule:finish', 'schedule:test'], true)) {
+            return;
+        }
+
+        try {
+            $this->monitorScheduledTasks($this->container()->make(Schedule::class));
+        } catch (Throwable $exception) {
+            SentrySdk::getCurrentHub()->getClient()->getOptions()->getLoggerOrNullLogger()->warning('Failed to set up cron monitoring for scheduled tasks.', ['exception' => $exception]);
+        }
     }
 
     public function onBootInactive(): void
@@ -173,6 +207,85 @@ class ConsoleSchedulingIntegration extends Feature
     {
         $this->maybeFinishSpan(SpanStatus::internalError());
         $this->maybePopScope();
+    }
+
+    private function monitorScheduledTasks(Schedule $schedule): void
+    {
+        $excluded = $this->getUserConfig()['crons']['exclude_scheduled_tasks'] ?? [];
+        $tasksBySlug = [];
+
+        foreach ($schedule->events() as $task) {
+            // Closures without a name have nothing to make a stable slug from
+            if ($this->monitoredTasks->contains($task) || (empty($task->command) && empty($task->description))) {
+                continue;
+            }
+
+            $slug = $this->makeSlugForScheduled($task);
+
+            foreach ([$slug, $this->getCommandNameForScheduled($task), $task->description] as $name) {
+                if ($name !== null && $name !== '' && Str::is($excluded, $name)) {
+                    continue 2;
+                }
+            }
+
+            $tasksBySlug[$slug][] = $task;
+        }
+
+        foreach ($tasksBySlug as $slug => $tasks) {
+            foreach ($tasks as $task) {
+                // Tasks that run the same command on different schedules need their own monitor
+                $taskSlug = \count($tasks) > 1 ? $slug . '_' . hash('crc32b', $task->getExpression()) : $slug;
+                $crontab = $this->getMonitorCrontab($task);
+
+                $task->sentryMonitor($taskSlug, null, null, $crontab !== null, null, null, $crontab);
+            }
+        }
+    }
+
+    /**
+     * Returns null when Sentry would expect runs that the task skips or reads the crontab differently.
+     */
+    private function getMonitorCrontab(SchedulingEvent $task): ?string
+    {
+        $hasConditions = (function (): bool {
+            // `withoutOverlapping()` adds a reject, but an overlap means the previous run is late anyway
+            return \count($this->filters) > 0 || \count($this->rejects) > ($this->withoutOverlapping ? 1 : 0);
+        })->call($task);
+
+        // Without a timezone the check-in is read as UTC, and Sentry needs a timezone name, not an offset
+        $timezone = $task->timezone instanceof DateTimeZone ? $task->timezone : new DateTimeZone($task->timezone ?? 'UTC');
+        $isTimezoneSupported = $timezone->getLocation() !== false && ($task->timezone !== null || date_default_timezone_get() === 'UTC');
+
+        // Sub-minute tasks (`everyTenSeconds()`) can't be expressed as a crontab
+        if ($hasConditions || ($task->repeatSeconds ?? null) !== null || !$isTimezoneSupported) {
+            return null;
+        }
+
+        // cron-expression reads "?" as "*"
+        $fields = preg_split('/\s+/', trim(str_replace('?', '*', $task->getExpression())));
+
+        if ($fields === false || \count($fields) !== 5) {
+            return null;
+        }
+
+        // When both day fields are set, cron-expression runs on either day, but cronsim needs both if one starts with "*"
+        if ($fields[2] !== '*' && $fields[4] !== '*' && ($fields[2][0] === '*' || $fields[4][0] === '*')) {
+            return null;
+        }
+
+        foreach ($fields as $position => $field) {
+            foreach (explode(',', $field) as $item) {
+                $isSupported = preg_match('/^(?:(?:\*|\d+(?:-\d+)?)(?:\/\d+)?|[a-z]{3}(?:-[a-z]{3})?)$/i', $item)
+                    || ($position === 2 && $item === 'L')
+                    || ($position === 4 && preg_match('/^(?:\d(?:L|#[1-5])|[a-z]{3}#[1-5])$/i', $item));
+
+                if (!$isSupported) {
+                    return null;
+                }
+            }
+        }
+
+        return implode(' ', $fields);
     }
 
     private function startCheckIn(
