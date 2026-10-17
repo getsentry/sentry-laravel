@@ -4,6 +4,7 @@ namespace Sentry\Laravel\Tests\Features;
 
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Console\Scheduling\Event;
+use Illuminate\Console\Scheduling\EventMutex;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Sentry\CheckIn;
@@ -128,7 +129,7 @@ class ConsoleSchedulingMonitorAllTasksTest extends TestCase
     public static function monitorConfigDataProvider(): iterable
     {
         yield 'crontab' => [static function (Event $task) { return $task->weekdays()->at('9:30'); }, '30 9 * * 1-5'];
-        yield 'without overlapping' => [static function (Event $task) { return $task->hourly()->withoutOverlapping(); }, '0 * * * *'];
+        yield 'without overlapping' => [static function (Event $task) { return $task->hourly()->preventOverlapsUsing(new InMemoryEventMutex())->withoutOverlapping(); }, '0 * * * *'];
         yield 'last day of month' => [static function (Event $task) { return $task->cron('0 0 L * *'); }, '0 0 L * *'];
         yield 'question mark' => [static function (Event $task) { return $task->cron('0 0 ? * MON'); }, '0 0 * * MON'];
         yield 'named timezone' => [static function (Event $task) { return $task->daily()->timezone('Europe/Vienna'); }, '0 0 * * *'];
@@ -183,5 +184,23 @@ class ConsoleSchedulingMonitorAllTasksTest extends TestCase
     private function getScheduler(): Schedule
     {
         return $this->app->make(Schedule::class);
+    }
+}
+
+// Laravel < 10 removes the cache mutex of callback tasks at shutdown, after the test app is gone
+class InMemoryEventMutex implements EventMutex
+{
+    public function create(Event $event)
+    {
+        return true;
+    }
+
+    public function exists(Event $event)
+    {
+        return false;
+    }
+
+    public function forget(Event $event)
+    {
     }
 }
