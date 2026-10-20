@@ -106,8 +106,33 @@ class ConsoleSchedulingMonitorAllTasksTest extends TestCase
         $daily->run($this->app);
         $dailySlug = $this->getLastCheckIn()->getMonitorSlug();
 
-        $this->assertEquals('scheduled_send-report_' . hash('crc32b', '0 * * * *'), $hourlySlug);
-        $this->assertEquals('scheduled_send-report_' . hash('crc32b', '0 0 * * *'), $dailySlug);
+        $this->assertStringStartsWith('scheduled_send-report_', $hourlySlug);
+        $this->assertStringStartsWith('scheduled_send-report_', $dailySlug);
+        $this->assertNotEquals($hourlySlug, $dailySlug);
+    }
+
+    public function testTaskWithTheSameNameAsAManuallyMonitoredTaskGetsItsOwnMonitor(): void
+    {
+        $this->getScheduler()->call(function () {})->name('send-report')->daily()->sentryMonitor();
+        $hourly = $this->getScheduler()->call(function () {})->name('send-report')->hourly();
+
+        $this->startCommand('schedule:run');
+        $hourly->run($this->app);
+
+        $this->assertStringStartsWith('scheduled_send-report_', $this->getLastCheckIn()->getMonitorSlug());
+    }
+
+    public function testTasksWithTheSameScheduleInDifferentTimezonesGetTheirOwnMonitor(): void
+    {
+        $vienna = $this->getScheduler()->call(function () {})->name('send-report')->daily()->timezone('Europe/Vienna');
+        $tokyo = $this->getScheduler()->call(function () {})->name('send-report')->daily()->timezone('Asia/Tokyo');
+
+        $this->startCommand('schedule:run');
+        $vienna->run($this->app);
+        $viennaSlug = $this->getLastCheckIn()->getMonitorSlug();
+        $tokyo->run($this->app);
+
+        $this->assertNotEquals($viennaSlug, $this->getLastCheckIn()->getMonitorSlug());
     }
 
     /**
@@ -135,6 +160,9 @@ class ConsoleSchedulingMonitorAllTasksTest extends TestCase
         yield 'named timezone' => [static function (Event $task) { return $task->daily()->timezone('Europe/Vienna'); }, '0 0 * * *'];
         yield 'nearest weekday' => [static function (Event $task) { return $task->cron('0 0 15W * *'); }, null];
         yield 'day step and weekday' => [static function (Event $task) { return $task->cron('0 0 */2 * 1'); }, null];
+        yield 'day and weekday' => [static function (Event $task) { return $task->cron('0 0 1 * 1'); }, null];
+        yield 'step from a number' => [static function (Event $task) { return $task->cron('5/15 * * * *'); }, null];
+        yield 'step over a range' => [static function (Event $task) { return $task->cron('0 9-17/2 * * *'); }, '0 9-17/2 * * *'];
         yield 'when' => [static function (Event $task) { return $task->daily()->when(function () { return true; }); }, null];
         yield 'skip' => [static function (Event $task) { return $task->daily()->skip(function () { return false; }); }, null];
         yield 'between' => [static function (Event $task) { return $task->hourly()->between('8:00', '17:00'); }, null];

@@ -216,30 +216,42 @@ class ConsoleSchedulingIntegration extends Feature
 
         foreach ($schedule->events() as $task) {
             // Closures without a name have nothing to make a stable slug from
-            if ($this->monitoredTasks->contains($task) || (empty($task->command) && empty($task->description))) {
+            if (empty($task->command) && empty($task->description)) {
                 continue;
             }
 
-            $slug = $this->makeSlugForScheduled($task);
-
-            foreach ([$slug, $this->getCommandNameForScheduled($task), $task->description] as $name) {
-                if ($name !== null && $name !== '' && Str::is($excluded, $name)) {
-                    continue 2;
-                }
-            }
-
-            $tasksBySlug[$slug][] = $task;
+            $tasksBySlug[$this->makeSlugForScheduled($task)][] = $task;
         }
 
         foreach ($tasksBySlug as $slug => $tasks) {
             foreach ($tasks as $task) {
+                if ($this->monitoredTasks->contains($task) || $this->isExcluded($task, $slug, $excluded)) {
+                    continue;
+                }
+
                 // Tasks that run the same command on different schedules need their own monitor
-                $taskSlug = \count($tasks) > 1 ? $slug . '_' . hash('crc32b', $task->getExpression()) : $slug;
+                $taskSlug = \count($tasks) > 1 ? $slug . '_' . hash('crc32b', $task->getExpression() . $this->getTimezoneName($task)) : $slug;
                 $crontab = $this->getMonitorCrontab($task);
 
                 $task->sentryMonitor($taskSlug, null, null, $crontab !== null, null, null, $crontab);
             }
         }
+    }
+
+    private function isExcluded(SchedulingEvent $task, string $slug, array $excluded): bool
+    {
+        foreach ([$slug, $this->getCommandNameForScheduled($task), $task->description] as $name) {
+            if ($name !== null && $name !== '' && Str::is($excluded, $name)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function getTimezoneName(SchedulingEvent $task): string
+    {
+        return $task->timezone instanceof DateTimeZone ? $task->timezone->getName() : (string) $task->timezone;
     }
 
     /**
@@ -268,14 +280,15 @@ class ConsoleSchedulingIntegration extends Feature
             return null;
         }
 
-        // When both day fields are set, cron-expression runs on either day, but cronsim needs both if one starts with "*"
-        if ($fields[2] !== '*' && $fields[4] !== '*' && ($fields[2][0] === '*' || $fields[4][0] === '*')) {
+        // cron-expression 2.x (Laravel < 8) needs both day fields to match, 3.x either, and cronsim depends on a leading "*"
+        if ($fields[2] !== '*' && $fields[4] !== '*') {
             return null;
         }
 
         foreach ($fields as $position => $field) {
             foreach (explode(',', $field) as $item) {
-                $isSupported = preg_match('/^(?:(?:\*|\d+(?:-\d+)?)(?:\/\d+)?|[a-z]{3}(?:-[a-z]{3})?)$/i', $item)
+                // cron-expression 2.x reads "5/15" differently, 3.x rejects it
+                $isSupported = preg_match('/^(?:(?:\*|\d+-\d+)(?:\/\d+)?|\d+|[a-z]{3}(?:-[a-z]{3})?)$/i', $item)
                     || ($position === 2 && $item === 'L')
                     || ($position === 4 && preg_match('/^(?:\d(?:L|#[1-5])|[a-z]{3}#[1-5])$/i', $item));
 
