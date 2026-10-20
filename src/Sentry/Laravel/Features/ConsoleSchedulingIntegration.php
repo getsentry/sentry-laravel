@@ -229,8 +229,8 @@ class ConsoleSchedulingIntegration extends Feature
                     continue;
                 }
 
-                // Tasks that run the same command on different schedules need their own monitor
-                $taskSlug = \count($tasks) > 1 ? $slug . '_' . hash('crc32b', $task->getExpression() . $this->getTimezoneName($task)) : $slug;
+                // Tasks that run the same command on different schedules need their own monitor, Sentry cuts slugs at 50 characters
+                $taskSlug = \count($tasks) > 1 ? substr($slug, 0, 41) . '_' . hash('crc32b', $task->getExpression() . $this->getTimezoneName($task)) : $slug;
                 $crontab = $this->getMonitorCrontab($task);
 
                 $task->sentryMonitor($taskSlug, null, null, $crontab !== null, null, null, $crontab);

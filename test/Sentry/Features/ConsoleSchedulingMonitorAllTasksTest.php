@@ -111,6 +111,21 @@ class ConsoleSchedulingMonitorAllTasksTest extends TestCase
         $this->assertNotEquals($hourlySlug, $dailySlug);
     }
 
+    public function testLongSlugKeepsTheScheduleHash(): void
+    {
+        $name = str_repeat('send-report-', 10);
+        $hourly = $this->getScheduler()->call(function () {})->name($name)->hourly();
+        $this->getScheduler()->call(function () {})->name($name)->daily();
+
+        $this->startCommand('schedule:run');
+        $hourly->run($this->app);
+
+        $slug = $this->getLastCheckIn()->getMonitorSlug();
+
+        $this->assertSame(50, \strlen($slug));
+        $this->assertSame(1, preg_match('/_[0-9a-f]{8}$/', $slug));
+    }
+
     public function testTaskWithTheSameNameAsAManuallyMonitoredTaskGetsItsOwnMonitor(): void
     {
         $this->getScheduler()->call(function () {})->name('send-report')->daily()->sentryMonitor();
