@@ -130,6 +130,23 @@ class ConsoleSchedulingMonitorAllTasksTest extends TestCase
         $this->assertSame(1, preg_match('/_[0-9a-f]{8}$/', $slug));
     }
 
+    public function testLongUniqueSlugsStayDistinct(): void
+    {
+        $prefix = str_repeat('send-report-', 5);
+        $first = $this->getScheduler()->call(function () {})->name($prefix . 'first')->hourly();
+        $second = $this->getScheduler()->call(function () {})->name($prefix . 'second')->hourly();
+
+        $this->startCommand('schedule:run');
+        $first->run($this->app);
+        $firstSlug = $this->getLastCheckIn()->getMonitorSlug();
+        $second->run($this->app);
+        $secondSlug = $this->getLastCheckIn()->getMonitorSlug();
+
+        $this->assertSame(50, \strlen($firstSlug));
+        $this->assertSame(50, \strlen($secondSlug));
+        $this->assertNotEquals($firstSlug, $secondSlug);
+    }
+
     public function testTaskWithTheSameNameAsAManuallyMonitoredTaskGetsItsOwnMonitor(): void
     {
         $this->getScheduler()->call(function () {})->name('send-report')->daily()->sentryMonitor();
