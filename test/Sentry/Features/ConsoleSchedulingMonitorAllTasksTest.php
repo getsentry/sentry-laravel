@@ -2,6 +2,7 @@
 
 namespace Sentry\Laravel\Tests\Features;
 
+use Carbon\Carbon;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\EventMutex;
@@ -30,6 +31,9 @@ class ConsoleSchedulingMonitorAllTasksTest extends TestCase
 
     public function testScheduledTasksAreMonitoredWhenTheSchedulerRuns(): void
     {
+        // Off the hour, so only the every-minute task is due
+        Carbon::setTestNow('2026-01-01 12:30:00');
+
         $this->getScheduler()->call(function () {})->name('send-report')->hourly();
         $this->getScheduler()->call(function () {})->name('every-minute')->everyMinute();
 
