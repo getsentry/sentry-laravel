@@ -160,7 +160,10 @@ class ConsoleSchedulingIntegration extends Feature
         try {
             $this->monitorScheduledTasks($this->container()->make(Schedule::class));
         } catch (Throwable $exception) {
-            SentrySdk::getCurrentHub()->getClient()->getOptions()->getLoggerOrNullLogger()->warning('Failed to set up cron monitoring for scheduled tasks.', ['exception' => $exception]);
+            $client = SentrySdk::getCurrentHub()->getClient();
+            if ($client !== null) {
+                $client->getOptions()->getLoggerOrNullLogger()->warning('Failed to set up cron monitoring for scheduled tasks.', ['exception' => $exception]);
+            }
         }
     }
 
