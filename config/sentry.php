@@ -96,6 +96,15 @@ return [
         'notifications' => env('SENTRY_BREADCRUMBS_NOTIFICATIONS_ENABLED', true),
     ],
 
+    // Crons monitoring specific configuration
+    'crons' => [
+        // Monitor every scheduled task as if `->sentryMonitor()` was called on it
+        'monitor_scheduled_tasks' => env('SENTRY_CRONS_MONITOR_SCHEDULED_TASKS', false),
+
+        // Commands, job classes, task names or monitor slugs of tasks that are not monitored automatically, `*` is a wildcard
+        'exclude_scheduled_tasks' => [],
+    ],
+
     // Performance monitoring specific configuration
     'tracing' => [
         // Trace queue jobs as their own transactions (this enables tracing for queue jobs)
