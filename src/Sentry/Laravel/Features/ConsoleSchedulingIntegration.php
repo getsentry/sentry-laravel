@@ -46,7 +46,7 @@ class ConsoleSchedulingIntegration extends Feature
     private $shouldHandleCheckIn = false;
 
     /**
-     * @var SplObjectStorage<SchedulingEvent, null> The scheduled tasks that `sentryMonitor()` was called on.
+     * @var SplObjectStorage<SchedulingEvent, string|null> The scheduled tasks that `sentryMonitor()` was called on, with their slug.
      */
     private $monitoredTasks;
 
@@ -94,7 +94,7 @@ class ConsoleSchedulingIntegration extends Feature
                 throw new RuntimeException('The command and description are not set, please set a slug manually for this scheduled command using the `sentryMonitor(\'your-monitor-slug\')` macro.');
             }
 
-            $monitoredTasks->attach($this);
+            $monitoredTasks->attach($this, $monitorSlug);
 
             return $this
                 ->before(function () use (
@@ -215,32 +215,45 @@ class ConsoleSchedulingIntegration extends Feature
     private function monitorScheduledTasks(Schedule $schedule): void
     {
         $excluded = $this->getUserConfig()['crons']['exclude_scheduled_tasks'] ?? [];
+        $monitoredSlugs = [];
         $tasksBySlug = [];
 
         foreach ($schedule->events() as $task) {
+            if ($this->monitoredTasks->contains($task)) {
+                $monitoredSlugs[$this->monitoredTasks[$task] ?? $this->makeSlugForScheduled($task)] = true;
+
+                continue;
+            }
+
             // Closures without a name have nothing to make a stable slug from
             if (empty($task->command) && empty($task->description)) {
                 continue;
             }
 
-            $tasksBySlug[$this->makeSlugForScheduled($task)][] = $task;
+            $slug = $this->makeSlugForScheduled($task);
+
+            if (!$this->isExcluded($task, $slug, $excluded)) {
+                $tasksBySlug[$slug][] = $task;
+            }
         }
 
         foreach ($tasksBySlug as $slug => $tasks) {
-            foreach ($tasks as $task) {
-                if ($this->monitoredTasks->contains($task) || $this->isExcluded($task, $slug, $excluded)) {
-                    continue;
+            // Sentry cuts slugs at 50 characters
+            $taskSlug = \strlen($slug) > 50 ? substr($slug, 0, 41) . '_' . hash('crc32b', $slug) : $slug;
+
+            // Task order isn't stable, so a shared slug can't be given to any one of the tasks
+            if (\count($tasks) > 1 || isset($monitoredSlugs[$slug]) || isset($monitoredSlugs[$taskSlug])) {
+                $client = SentrySdk::getCurrentHub()->getClient();
+                if ($client !== null) {
+                    $client->getOptions()->getLoggerOrNullLogger()->warning(sprintf('Not monitoring scheduled tasks with the slug "%s" because more than one task uses it. Give each task a unique slug with `->sentryMonitor(\'your-monitor-slug\')`.', $slug));
                 }
 
-                // Tasks that run the same command on different schedules need their own monitor, and Sentry cuts slugs at 50 characters
-                $isShared = \count($tasks) > 1;
-                $taskSlug = $isShared || \strlen($slug) > 50
-                    ? substr($slug, 0, 41) . '_' . hash('crc32b', $slug . ($isShared ? $task->getExpression() . $this->getTimezoneName($task) : ''))
-                    : $slug;
-                $crontab = $this->getMonitorCrontab($task);
-
-                $task->sentryMonitor($taskSlug, null, null, $crontab !== null, null, null, $crontab);
+                continue;
             }
+
+            $crontab = $this->getMonitorCrontab($tasks[0]);
+
+            $tasks[0]->sentryMonitor($taskSlug, null, null, $crontab !== null, null, null, $crontab);
         }
     }
 
@@ -253,11 +266,6 @@ class ConsoleSchedulingIntegration extends Feature
         }
 
         return false;
-    }
-
-    private function getTimezoneName(SchedulingEvent $task): string
-    {
-        return $task->timezone instanceof DateTimeZone ? $task->timezone->getName() : (string) $task->timezone;
     }
 
     /**

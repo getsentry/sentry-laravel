@@ -8,6 +8,8 @@ use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\EventMutex;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
+use Monolog\Handler\TestHandler;
+use Monolog\Logger;
 use Sentry\CheckIn;
 use Sentry\Laravel\Tests\TestCase;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -99,30 +101,55 @@ class ConsoleSchedulingMonitorAllTasksTest extends TestCase
         $this->assertEquals('scheduled_report-included', $this->getLastCheckIn()->getMonitorSlug());
     }
 
-    public function testTasksWithTheSameNameAndDifferentSchedulesGetTheirOwnMonitor(): void
+    public function testTasksSharingASlugAreNotMonitored(): void
     {
+        $logs = $this->captureSdkLogs();
         $hourly = $this->getScheduler()->call(function () {})->name('send-report')->hourly();
         $daily = $this->getScheduler()->call(function () {})->name('send-report')->daily();
 
         $this->startCommand('schedule:run');
         $hourly->run($this->app);
-        $hourlySlug = $this->getLastCheckIn()->getMonitorSlug();
         $daily->run($this->app);
-        $dailySlug = $this->getLastCheckIn()->getMonitorSlug();
 
-        $this->assertStringStartsWith('scheduled_send-report_', $hourlySlug);
-        $this->assertStringStartsWith('scheduled_send-report_', $dailySlug);
-        $this->assertNotEquals($hourlySlug, $dailySlug);
+        $this->assertSentryCheckInCount(0);
+        $this->assertTrue($logs->hasWarningThatContains('Not monitoring scheduled tasks with the slug "scheduled_send-report"'));
     }
 
-    public function testLongSlugKeepsTheScheduleHash(): void
+    public function testTaskWithAnExplicitSlugIsMonitoredNextToATaskWithTheSameName(): void
     {
-        $name = str_repeat('send-report-', 10);
-        $hourly = $this->getScheduler()->call(function () {})->name($name)->hourly();
-        $this->getScheduler()->call(function () {})->name($name)->daily();
+        $logs = $this->captureSdkLogs();
+        $hourly = $this->getScheduler()->call(function () {})->name('send-report')->hourly()->sentryMonitor('send-report-hourly');
+        $daily = $this->getScheduler()->call(function () {})->name('send-report')->daily();
 
         $this->startCommand('schedule:run');
         $hourly->run($this->app);
+        $this->assertEquals('send-report-hourly', $this->getLastCheckIn()->getMonitorSlug());
+        $daily->run($this->app);
+        $this->assertEquals('scheduled_send-report', $this->getLastCheckIn()->getMonitorSlug());
+
+        $this->assertFalse($logs->hasWarningRecords());
+    }
+
+    public function testTaskSharingASlugWithAManuallyMonitoredTaskIsNotMonitored(): void
+    {
+        $logs = $this->captureSdkLogs();
+        $this->getScheduler()->call(function () {})->name('send-report')->daily()->sentryMonitor();
+        $hourly = $this->getScheduler()->call(function () {})->name('other-report')->hourly();
+        $this->getScheduler()->call(function () {})->name('send-report')->hourly()->sentryMonitor('scheduled_other-report');
+
+        $this->startCommand('schedule:run');
+        $hourly->run($this->app);
+
+        $this->assertSentryCheckInCount(0);
+        $this->assertTrue($logs->hasWarningThatContains('"scheduled_other-report"'));
+    }
+
+    public function testLongSlugIsHashed(): void
+    {
+        $task = $this->getScheduler()->call(function () {})->name(str_repeat('send-report-', 10))->hourly();
+
+        $this->startCommand('schedule:run');
+        $task->run($this->app);
 
         $slug = $this->getLastCheckIn()->getMonitorSlug();
 
@@ -145,30 +172,6 @@ class ConsoleSchedulingMonitorAllTasksTest extends TestCase
         $this->assertSame(50, \strlen($firstSlug));
         $this->assertSame(50, \strlen($secondSlug));
         $this->assertNotEquals($firstSlug, $secondSlug);
-    }
-
-    public function testTaskWithTheSameNameAsAManuallyMonitoredTaskGetsItsOwnMonitor(): void
-    {
-        $this->getScheduler()->call(function () {})->name('send-report')->daily()->sentryMonitor();
-        $hourly = $this->getScheduler()->call(function () {})->name('send-report')->hourly();
-
-        $this->startCommand('schedule:run');
-        $hourly->run($this->app);
-
-        $this->assertStringStartsWith('scheduled_send-report_', $this->getLastCheckIn()->getMonitorSlug());
-    }
-
-    public function testTasksWithTheSameScheduleInDifferentTimezonesGetTheirOwnMonitor(): void
-    {
-        $vienna = $this->getScheduler()->call(function () {})->name('send-report')->daily()->timezone('Europe/Vienna');
-        $tokyo = $this->getScheduler()->call(function () {})->name('send-report')->daily()->timezone('Asia/Tokyo');
-
-        $this->startCommand('schedule:run');
-        $vienna->run($this->app);
-        $viennaSlug = $this->getLastCheckIn()->getMonitorSlug();
-        $tokyo->run($this->app);
-
-        $this->assertNotEquals($viennaSlug, $this->getLastCheckIn()->getMonitorSlug());
     }
 
     /**
@@ -234,6 +237,15 @@ class ConsoleSchedulingMonitorAllTasksTest extends TestCase
     private function startCommand(string $command): void
     {
         $this->app['events']->dispatch(new CommandStarting($command, new ArrayInput([]), new NullOutput()));
+    }
+
+    private function captureSdkLogs(): TestHandler
+    {
+        $handler = new TestHandler();
+
+        $this->getSentryClientFromContainer()->getOptions()->setLogger(new Logger('sentry', [$handler]));
+
+        return $handler;
     }
 
     private function getLastCheckIn(): CheckIn
