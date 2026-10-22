@@ -10,6 +10,7 @@ use Illuminate\Contracts\Http\Kernel as HttpKernelInterface;
 use Illuminate\Foundation\Application as Laravel;
 use Illuminate\Foundation\Console\AboutCommand;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
+use Illuminate\Http\Client\Response as HttpClientResponse;
 use Illuminate\Http\Request;
 use Laravel\Lumen\Application as Lumen;
 use RuntimeException;
@@ -26,6 +27,7 @@ use Sentry\Laravel\Http\FlushEventsMiddleware;
 use Sentry\Laravel\Http\LaravelRequestFetcher;
 use Sentry\Laravel\Http\SetRequestIpMiddleware;
 use Sentry\Laravel\Http\SetRequestMiddleware;
+use Sentry\Laravel\Serializer\HttpClientResponseSerializer;
 use Sentry\Laravel\Tracing\BacktraceHelper;
 use Sentry\Laravel\Tracing\ServiceProvider as TracingServiceProvider;
 use Sentry\Logger\DebugFileLogger;
@@ -303,6 +305,19 @@ class ServiceProvider extends BaseServiceProvider
             // When we get no environment from the (user) configuration we default to the Laravel environment
             if (empty($options['environment'])) {
                 $options['environment'] = $this->app->environment();
+            }
+
+            // Register a class serializer for HTTP client responses so they are shown with useful information in stack traces,
+            // class serializers configured by the user for the same class take precedence over the ones we provide by default
+            if (class_exists(HttpClientResponse::class)) {
+                $userClassSerializers = $options['class_serializers'] ?? [];
+
+                // The default is appended after the user's serializers so it never shadows a user serializer for a parent class or interface
+                if (\is_array($userClassSerializers) && !isset($userClassSerializers[HttpClientResponse::class])) {
+                    $userClassSerializers[HttpClientResponse::class] = new HttpClientResponseSerializer((bool)($options['send_default_pii'] ?? false));
+
+                    $options['class_serializers'] = $userClassSerializers;
+                }
             }
 
             if ($this->app instanceof Lumen) {
