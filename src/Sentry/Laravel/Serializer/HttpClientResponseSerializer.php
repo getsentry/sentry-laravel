@@ -40,7 +40,8 @@ class HttpClientResponseSerializer
 
         $data = [
             'status' => $response->status(),
-            'reason' => $response->reason(),
+            // `Response::reason()` only exists since Laravel 8.76, the PSR response works on all supported versions
+            'reason' => $response->toPsrResponse()->getReasonPhrase(),
         ];
 
         $uri = $this->getEffectiveUri($response);
