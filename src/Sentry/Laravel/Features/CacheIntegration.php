@@ -158,14 +158,20 @@ class CacheIntegration extends Feature
                 $isSessionOperation = count($keys) === 1 && $this->isCacheEventForActiveSession($keys[0]);
                 $displayKeys = $isSessionOperation ? ['{sessionKey}'] : $this->replaceSessionKeys($keys);
 
+                $data = [
+                    $isSessionOperation ? 'session.key' : 'cache.key' => $displayKeys,
+                ];
+
+                // A `null` TTL means the entry never expires, in which case the TTL is omitted
+                if ($event->seconds !== null) {
+                    $data[$isSessionOperation ? 'session.ttl' : 'cache.ttl'] = $event->seconds;
+                }
+
                 $this->pushSpan(
                     $parentSpan->startChild(
                         SpanContext::make()
                             ->setOp($isSessionOperation ? 'session.put' : 'cache.put')
-                            ->setData([
-                                $isSessionOperation ? 'session.key' : 'cache.key' => $displayKeys,
-                                $isSessionOperation ? 'session.ttl' : 'cache.ttl' => $event->seconds,
-                            ])
+                            ->setData($data)
                             ->setOrigin($isSessionOperation ? 'auto.session' : 'auto.cache')
                             ->setDescription(implode(', ', $displayKeys))
                     )
