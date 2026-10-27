@@ -180,6 +180,19 @@ class CacheIntegrationTest extends TestCase
         $this->assertEquals(99, $span->getData()['cache.ttl']);
     }
 
+    public function testCachePutSpanOmitsTtlWhenEntryNeverExpires(): void
+    {
+        $this->markSkippedIfTracingEventsNotAvailable();
+
+        $span = $this->executeAndReturnMostRecentSpan(function () {
+            Cache::forever('foo', 'bar');
+        });
+
+        $this->assertEquals('cache.put', $span->getOp());
+        $this->assertEquals(['foo'], $span->getData()['cache.key']);
+        $this->assertArrayNotHasKey('cache.ttl', $span->getData());
+    }
+
     public function testCacheRemoveSpanIsRecorded(): void
     {
         $this->markSkippedIfTracingEventsNotAvailable();
