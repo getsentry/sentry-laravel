@@ -14,6 +14,7 @@ use Illuminate\Contracts\Cache\Factory as Cache;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Log\Context\Repository as ContextRepository;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Sentry\CheckIn;
@@ -296,6 +297,11 @@ class ConsoleSchedulingIntegration extends Feature
 
         // cron-expression 2.x (Laravel < 8) needs both day fields to match, 3.x either, and cronsim depends on a leading "*"
         if ($fields[2] !== '*' && $fields[4] !== '*') {
+            return null;
+        }
+
+        // `lastDayOfMonth()` sets this month's last day, so its crontab changes each month. `->cron('0 0 L * *')` stays stable.
+        if ($fields[2] === (string) Carbon::now()->endOfMonth()->day && $fields[3] === '*') {
             return null;
         }
 

@@ -208,6 +208,34 @@ class ConsoleSchedulingMonitorAllTasksTest extends TestCase
         yield 'offset timezone' => [static function (Event $task) { return $task->daily()->timezone('+05:00'); }, null];
     }
 
+    public function testLastDayOfMonthHasNoMonitorConfig(): void
+    {
+        if (!method_exists(Event::class, 'lastDayOfMonth')) {
+            $this->markTestSkipped('`lastDayOfMonth()` requires Laravel 7+.');
+        }
+
+        Carbon::setTestNow('2026-02-10 12:00:00');
+
+        $task = $this->getScheduler()->call(function () {})->name('send-report')->timezone('UTC')->lastDayOfMonth();
+
+        $this->startCommand('schedule:run');
+        $task->run($this->app);
+
+        $this->assertNull($this->getLastCheckIn()->getMonitorConfig());
+    }
+
+    public function testMonthlyOnHasMonitorConfig(): void
+    {
+        Carbon::setTestNow('2026-02-10 12:00:00');
+
+        $task = $this->getScheduler()->call(function () {})->name('send-report')->timezone('UTC')->monthlyOn(15);
+
+        $this->startCommand('schedule:run');
+        $task->run($this->app);
+
+        $this->assertEquals('0 0 15 * *', $this->getLastCheckIn()->getMonitorConfig()->getSchedule()->getValue());
+    }
+
     public function testSubMinuteTaskHasNoMonitorConfig(): void
     {
         if (!method_exists(Event::class, 'everyTenSeconds')) {
