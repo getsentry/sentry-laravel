@@ -257,7 +257,7 @@ class ConsoleSchedulingIntegration extends Feature
             if ($crontab === null) {
                 $client = SentrySdk::getCurrentHub()->getClient();
                 if ($client !== null) {
-                    $client->getOptions()->getLoggerOrNullLogger()->debug(sprintf('Not monitoring the scheduled task "%s" because Sentry can\'t match its schedule. Add `->sentryMonitor()` to monitor it without a schedule.', $slug));
+                    $client->getOptions()->getLoggerOrNullLogger()->debug(sprintf('Not monitoring the scheduled task "%s" because Sentry can\'t match its schedule.', $slug));
                 }
 
                 continue;
