@@ -184,10 +184,14 @@ class ConsoleSchedulingMonitorAllTasksTest extends TestCase
         $this->startCommand('schedule:run');
         $task->run($this->app);
 
-        $monitorConfig = $this->getLastCheckIn()->getMonitorConfig();
+        if ($expectedCrontab === null) {
+            $this->assertSentryCheckInCount(0);
+
+            return;
+        }
 
         $this->assertEquals('scheduled_send-report', $this->getLastCheckIn()->getMonitorSlug());
-        $this->assertEquals($expectedCrontab, $monitorConfig === null ? null : $monitorConfig->getSchedule()->getValue());
+        $this->assertEquals($expectedCrontab, $this->getLastCheckIn()->getMonitorConfig()->getSchedule()->getValue());
     }
 
     public static function monitorConfigDataProvider(): iterable
@@ -208,7 +212,7 @@ class ConsoleSchedulingMonitorAllTasksTest extends TestCase
         yield 'offset timezone' => [static function (Event $task) { return $task->daily()->timezone('+05:00'); }, null];
     }
 
-    public function testLastDayOfMonthHasNoMonitorConfig(): void
+    public function testLastDayOfMonthIsNotMonitored(): void
     {
         if (!method_exists(Event::class, 'lastDayOfMonth')) {
             $this->markTestSkipped('`lastDayOfMonth()` requires Laravel 7+.');
@@ -221,6 +225,29 @@ class ConsoleSchedulingMonitorAllTasksTest extends TestCase
         $this->startCommand('schedule:run');
         $task->run($this->app);
 
+        $this->assertSentryCheckInCount(0);
+    }
+
+    public function testTaskWithAnUnsupportedScheduleIsNotMonitored(): void
+    {
+        $logs = $this->captureSdkLogs();
+        $task = $this->getScheduler()->call(function () {})->name('send-report')->timezone('UTC')->daily()->when(function () { return true; });
+
+        $this->startCommand('schedule:run');
+        $task->run($this->app);
+
+        $this->assertSentryCheckInCount(0);
+        $this->assertTrue($logs->hasDebugThatContains('Not monitoring the scheduled task "scheduled_send-report"'));
+    }
+
+    public function testManuallyMonitoredTaskWithAnUnsupportedScheduleChecksInWithoutAConfig(): void
+    {
+        $task = $this->getScheduler()->call(function () {})->name('send-report')->daily()->when(function () { return true; })->sentryMonitor('custom-slug', null, null, false);
+
+        $this->startCommand('schedule:run');
+        $task->run($this->app);
+
+        $this->assertSentryCheckInCount(2);
         $this->assertNull($this->getLastCheckIn()->getMonitorConfig());
     }
 
@@ -236,7 +263,7 @@ class ConsoleSchedulingMonitorAllTasksTest extends TestCase
         $this->assertEquals('0 0 15 * *', $this->getLastCheckIn()->getMonitorConfig()->getSchedule()->getValue());
     }
 
-    public function testSubMinuteTaskHasNoMonitorConfig(): void
+    public function testSubMinuteTaskIsNotMonitored(): void
     {
         if (!method_exists(Event::class, 'everyTenSeconds')) {
             $this->markTestSkipped('Sub-minute tasks require Laravel 10.15+.');
@@ -247,7 +274,7 @@ class ConsoleSchedulingMonitorAllTasksTest extends TestCase
         $this->startCommand('schedule:run');
         $task->run($this->app);
 
-        $this->assertNull($this->getLastCheckIn()->getMonitorConfig());
+        $this->assertSentryCheckInCount(0);
     }
 
     public function testScheduledTasksAreNotMonitoredByDefault(): void
