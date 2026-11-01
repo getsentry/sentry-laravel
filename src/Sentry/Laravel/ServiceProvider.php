@@ -296,12 +296,17 @@ class ServiceProvider extends BaseServiceProvider
                         "{$basePath}/vendor",
                         "{$basePath}/artisan",
                     ],
-                    'class_serializers' => [
-                        \Illuminate\Http\Client\Response::class => new Http\ResponseSerializer(),
-                    ],
                 ],
                 $userConfig
             );
+
+            $options['class_serializers'] = \array_merge(
+                [
+                    \Illuminate\Http\Client\Response::class => new Http\ResponseSerializer(),
+                ],
+                $options['class_serializers'] ?? []
+            );
+
 
             // When we get no environment from the (user) configuration we default to the Laravel environment
             if (empty($options['environment'])) {
