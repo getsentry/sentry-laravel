@@ -296,6 +296,9 @@ class ServiceProvider extends BaseServiceProvider
                         "{$basePath}/vendor",
                         "{$basePath}/artisan",
                     ],
+                    'class_serializers' => [
+                        \Illuminate\Http\Client\Response::class => new Http\ResponseSerializer(),
+                    ],
                 ],
                 $userConfig
             );
