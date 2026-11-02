@@ -13,15 +13,18 @@ class ResponseSerializerTest extends TestCase
     {
         $psrResponse = new Psr7Response(
             200,
-            ['Content-Type' => 'application/json', 'Authorization' => 'Bearer secret-token'],
-            json_encode(['user' => 'Danial'])
+            ['Content-Type' => ['application/json']],
+            '{"message": "success"}'
         );
         $response = new Response($psrResponse);
 
         $serializer = new ResponseSerializer();
         $result = $serializer($response);
 
+        $this->assertIsArray($result);
         $this->assertArrayHasKey('status', $result);
-        $this->assertSame(200, $result['status']);
+        $this->assertEquals(200, $result['status']);
+        $this->assertArrayHasKey('body', $result);
+        $this->assertEquals('{"message": "success"}', $result['body']);
     }
 }
