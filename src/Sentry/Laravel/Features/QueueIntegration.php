@@ -16,6 +16,7 @@ use Sentry\Breadcrumb;
 use Sentry\DataCollection\DataCollectionPolicy;
 use Sentry\DataCollection\KeyValueCollectionBehavior;
 use Sentry\DataCollection\KeyValueDataFilter;
+use Sentry\Laravel\Features\Concerns\AppliesJobContext;
 use Sentry\Laravel\Features\Concerns\TracksPushedScopesAndSpans;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
@@ -36,6 +37,7 @@ class QueueIntegration extends Feature
     use TracksPushedScopesAndSpans {
         pushScope as private pushScopeTrait;
     }
+    use AppliesJobContext;
 
     private const QUEUE_SPAN_OP_QUEUE_PUBLISH = 'queue.publish';
 
@@ -53,7 +55,8 @@ class QueueIntegration extends Feature
 
         return $this->isBreadcrumbFeatureEnabled('queue_info')
             || $this->isTracingFeatureEnabled('queue_jobs')
-            || $this->isTracingFeatureEnabled('queue_job_transactions');
+            || $this->isTracingFeatureEnabled('queue_job_transactions')
+            || $this->isAnyJobContextFeatureEnabled();
     }
 
     public function onBoot(Dispatcher $events): void
@@ -66,11 +69,19 @@ class QueueIntegration extends Feature
         $events->listen(WorkerStopping::class, [$this, 'handleWorkerStoppingQueueEvent']);
         $events->listen(JobExceptionOccurred::class, [$this, 'handleJobExceptionOccurredQueueEvent']);
 
+        $this->registerJobContextDatabaseListener($events);
+
         if ($this->isTracingFeatureEnabled('queue_jobs') || $this->isTracingFeatureEnabled('queue_job_transactions')) {
             Queue::createPayloadUsing(function (?string $connection, ?string $queue, ?array $payload): ?array {
                 $parentSpan = SentrySdk::getCurrentHub()->getSpan();
 
-                if ($parentSpan !== null && $parentSpan->getSampled()) {
+                // The `sync` driver runs jobs inline and does not fire the
+                // `JobQueueing`/`JobQueued` events that would close a `queue.publish`
+                // span; opening one here would leak on the span stack for the
+                // entire child job's execution and beyond. It is also semantically
+                // wrong: nothing is actually published, the child job runs in the
+                // same process.
+                if ($connection !== 'sync' && $parentSpan !== null && $parentSpan->getSampled()) {
                     $context = (new SpanContext)
                         ->setOp(self::QUEUE_SPAN_OP_QUEUE_PUBLISH)
                         ->setData(array_merge([
@@ -123,6 +134,8 @@ class QueueIntegration extends Feature
 
     public function handleJobProcessedQueueEvent(JobProcessed $event): void
     {
+        $this->finalizeJobContext();
+
         $this->maybeFinishSpan(SpanStatus::ok());
 
         $this->maybePopScope();
@@ -130,9 +143,21 @@ class QueueIntegration extends Feature
 
     public function handleJobProcessingQueueEvent(JobProcessing $event): void
     {
-        $this->maybePopScope();
+        // When a parent job is still in progress (nested inline dispatch via the
+        // `sync` driver or `dispatchSync()`), keep its scope on the hub so its
+        // tags, breadcrumbs, event processor and any active tracing span survive
+        // the child's execution. Otherwise pop any leftover scope from a
+        // previously-failed job that never popped its own.
+        if (!$this->hasParentJobInProgress()) {
+            $this->maybePopScope();
+        }
 
         $this->pushScope();
+
+        // captureJobContext() snapshots the parent job's context (if any) so a
+        // nested inline dispatch (`sync` / `dispatchSync`) does not clobber it,
+        // and finalizeJobContext() restores it once this job finishes.
+        $this->captureJobContext($event);
 
         if ($this->isBreadcrumbFeatureEnabled('queue_info')) {
             $job = [
@@ -228,6 +253,8 @@ class QueueIntegration extends Feature
 
     public function handleJobExceptionOccurredQueueEvent(JobExceptionOccurred $event): void
     {
+        $this->finalizeJobContext();
+
         $this->maybeFinishSpan(SpanStatus::internalError());
 
         Integration::flushEvents();

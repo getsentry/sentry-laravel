@@ -3,8 +3,12 @@
 namespace Sentry\Laravel\Tests\Features;
 
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Queue\Events\JobProcessed;
+use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\Queue as BaseQueue;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Schema;
 use Sentry\Laravel\Tests\TestCase;
 use Sentry\Tracing\Transaction;
 
@@ -69,7 +73,7 @@ class QueueDataCollectionTest extends TestCase
     }
 
     /**
-     * The sync queue creates both the publish and the process span.
+     * Use an asynchronous queue so publishing and processing have separate spans.
      *
      * @param object|string $job
      */
@@ -77,7 +81,25 @@ class QueueDataCollectionTest extends TestCase
     {
         $transaction = $this->startTransaction();
 
-        Queue::connection('sync')->push($job, $data);
+        Schema::create('jobs', static function (Blueprint $table): void {
+            $table->bigIncrements('id');
+            $table->string('queue');
+            $table->longText('payload');
+            $table->unsignedTinyInteger('attempts');
+            $table->unsignedInteger('reserved_at')->nullable();
+            $table->unsignedInteger('available_at');
+            $table->unsignedInteger('created_at');
+        });
+
+        $queue = Queue::connection('database');
+        $queue->push($job, $data);
+        $queuedJob = $queue->pop();
+
+        $this->assertNotNull($queuedJob);
+        $this->dispatchLaravelEvent(new JobProcessing('database', $queuedJob));
+        $queuedJob->fire();
+        $this->dispatchLaravelEvent(new JobProcessed('database', $queuedJob));
+        $queuedJob->delete();
 
         return $transaction;
     }
