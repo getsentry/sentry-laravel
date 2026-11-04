@@ -9,13 +9,17 @@ use Illuminate\Support\Str;
 use Psr\Log\AbstractLogger;
 use Sentry\ClientBuilder;
 use Sentry\Laravel\Version;
-use Sentry\State\Hub;
-use Sentry\State\HubInterface;
+use Sentry\Laravel\SentryManager;
+use Sentry\State\IsolationScope;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\TransactionContext;
 use Sentry\Tracing\TransactionSource;
 use Symfony\Component\Console\Output\OutputInterface;
 use Throwable;
+
+use function Sentry\captureException;
+use function Sentry\startTransaction;
+use function Sentry\withIsolationScope;
 
 class TestCommand extends Command
 {
@@ -49,7 +53,7 @@ class TestCommand extends Command
         $laravelClient = null;
 
         try {
-            $laravelClient = app(HubInterface::class)->getClient();
+            $laravelClient = app(SentryManager::class)->getClient();
         } catch (Throwable $e) {
             // Ignore any errors related to getting the client from the Laravel container
             // These errors will surface later in the process but we should not crash here
@@ -153,14 +157,31 @@ class TestCommand extends Command
             }
         });
 
-        // We create a new Hub and Client to prevent user configuration from affecting the test command
-        $hub = new Hub($clientBuilder->getClient());
+        $client = $clientBuilder->getClient();
 
+        // We use a new client on an empty isolation scope to prevent user configuration from affecting the test command
+        $exitCode = withIsolationScope(function (IsolationScope $scope) use ($client): int {
+            $scope->clear();
+            $scope->setClient($client);
+
+            return $this->sendTestEvents();
+        });
+
+        error_reporting($old_error_reporting);
+
+        return $exitCode;
+    }
+
+    /**
+     * Send the test event and, if requested, the test transaction.
+     */
+    private function sendTestEvents(): int
+    {
         $this->info('Sending test event...');
 
         $exception = $this->generateTestException($this->name, ['foo' => 'bar']);
 
-        $eventId = $hub->captureException($exception);
+        $eventId = captureException($exception);
 
         if (!$eventId) {
             $this->error('There was an error sending the event.');
@@ -175,7 +196,7 @@ class TestCommand extends Command
         if ($this->option('transaction')) {
             $this->clearErrorMessagesFromSDK();
 
-            $transaction = $hub->startTransaction(
+            $transaction = startTransaction(
                 TransactionContext::make()
                     ->setOp('sentry.test')
                     ->setName('Sentry Test Transaction')
@@ -205,8 +226,6 @@ class TestCommand extends Command
 
             $this->info("Transaction sent with ID: {$transactionId}");
         }
-
-        error_reporting($old_error_reporting);
 
         return 0;
     }
