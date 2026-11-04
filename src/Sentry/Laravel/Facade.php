@@ -10,6 +10,8 @@ namespace Sentry\Laravel;
  * @method static \Sentry\State\GlobalScope getGlobalScope()
  * @method static \Sentry\State\IsolationScope getIsolationScope()
  * @method static \Sentry\EventId|null getLastEventId()
+ * @method static \Sentry\State\IsolationScope pushScope()
+ * @method static bool popScope()
  * @method static mixed withScope(callable $callback)
  * @method static mixed withIsolationScope(callable $callback)
  * @method static void configureScope(callable $callback)

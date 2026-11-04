@@ -62,6 +62,24 @@ class SentryManager
     }
 
     /**
+     * Forks the current isolation scope until `popScope()` is called.
+     */
+    public function pushScope(): IsolationScope
+    {
+        return SentrySdk::pushIsolationScope();
+    }
+
+    /**
+     * Restores the isolation scope that was active before the last `pushScope()` call.
+     *
+     * @return bool Whether there was a pushed scope to pop
+     */
+    public function popScope(): bool
+    {
+        return SentrySdk::popIsolationScope();
+    }
+
+    /**
      * Runs the callback with a fork of the current isolation scope.
      *
      * @return mixed The callback's return value

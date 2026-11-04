@@ -6,10 +6,15 @@ use Exception;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Orchestra\Testbench\Attributes\DefineEnvironment;
 use Sentry\Breadcrumb;
+use Sentry\Event;
 use Sentry\EventType;
 use Sentry\Laravel\Tests\TestCase;
+use Sentry\SentrySdk;
+use Sentry\State\IsolationScope;
 use function Sentry\addBreadcrumb;
 use function Sentry\captureException;
+use function Sentry\captureMessage;
+use function Sentry\configureScope;
 
 class QueueIntegrationTest extends TestCase
 {
@@ -33,48 +38,34 @@ class QueueIntegrationTest extends TestCase
         $this->assertCount(2, $event->getBreadcrumbs());
     }
 
-    public function testQueueJobThatThrowsLeavesPushedScopeWithBreadcrumbs(): void
+    public function testQueueJobThatThrowsPopsPushedScope(): void
     {
+        $parentScope = SentrySdk::getIsolationScope();
+
         try {
             dispatch(new QueueEventsTestJobThatThrowsAnUnhandledExceptionWithBreadcrumb);
         } catch (Exception $e) {
             // No action required, expected to throw
         }
 
-        // We still expect to find the breadcrumbs from the job here so they are attached to reported exceptions
-
-        $this->assertCount(2, $this->getCurrentSentryBreadcrumbs());
-
-        $firstBreadcrumb = $this->getCurrentSentryBreadcrumbs()[0];
-        $this->assertEquals('queue.job', $firstBreadcrumb->getCategory());
-
-        $secondBreadcrumb = $this->getCurrentSentryBreadcrumbs()[1];
-        $this->assertEquals('test', $secondBreadcrumb->getCategory());
+        $this->assertSame($parentScope, SentrySdk::getIsolationScope());
+        $this->assertCount(0, $this->getCurrentSentryBreadcrumbs());
     }
 
-    public function testQueueJobsThatThrowPopsAndPushesScopeWithBreadcrumbsBeforeNewJob(): void
+    public function testQueueJobsThatThrowDoNotLeaveScopesBehind(): void
     {
-        try {
-            dispatch(new QueueEventsTestJobThatThrowsAnUnhandledExceptionWithBreadcrumb('test #1'));
-        } catch (Exception $e) {
-            // No action required, expected to throw
+        $parentScope = SentrySdk::getIsolationScope();
+
+        foreach (['test #1', 'test #2'] as $message) {
+            try {
+                dispatch(new QueueEventsTestJobThatThrowsAnUnhandledExceptionWithBreadcrumb($message));
+            } catch (Exception $e) {
+                // No action required, expected to throw
+            }
         }
 
-        try {
-            dispatch(new QueueEventsTestJobThatThrowsAnUnhandledExceptionWithBreadcrumb('test #2'));
-        } catch (Exception $e) {
-            // No action required, expected to throw
-        }
-
-        // We only expect to find the breadcrumbs from the second job here
-
-        $this->assertCount(2, $this->getCurrentSentryBreadcrumbs());
-
-        $firstBreadcrumb = $this->getCurrentSentryBreadcrumbs()[0];
-        $this->assertEquals('queue.job', $firstBreadcrumb->getCategory());
-
-        $secondBreadcrumb = $this->getCurrentSentryBreadcrumbs()[1];
-        $this->assertEquals('test #2', $secondBreadcrumb->getMessage());
+        $this->assertSame($parentScope, SentrySdk::getIsolationScope());
+        $this->assertFalse(SentrySdk::popIsolationScope());
     }
 
     public function testQueueJobsWithBreadcrumbSetInBetweenKeepsNonJobBreadcrumbsOnCurrentScope(): void
@@ -86,6 +77,22 @@ class QueueIntegrationTest extends TestCase
         dispatch(new QueueEventsTestJobWithBreadcrumb);
 
         $this->assertCount(1, $this->getCurrentSentryBreadcrumbs());
+    }
+
+    public function testQueueJobScopeDataDoesNotLeakIntoTheParentScope(): void
+    {
+        configureScope(static function (IsolationScope $scope): void {
+            $scope->setTag('parent', 'yes');
+        });
+
+        $parentScope = SentrySdk::getIsolationScope();
+
+        dispatch(new QueueEventsTestJobThatSetsATagAndReports);
+
+        $this->assertSame(['parent' => 'yes', 'job' => 'yes'], $this->getLastSentryEvent()->getTags());
+
+        $this->assertSame($parentScope, SentrySdk::getIsolationScope());
+        $this->assertSame(['parent' => 'yes'], $this->applyCurrentSentryScopesToEvent(Event::createEvent())->getTags());
     }
 
     protected function withTracingEnabled($app): void
@@ -184,5 +191,17 @@ class QueueEventsTestJobThatThrowsAnUnhandledExceptionWithBreadcrumb implements 
         queueEventsTestAddTestBreadcrumb($this->message);
 
         throw new Exception('This is a test exception');
+    }
+}
+
+class QueueEventsTestJobThatSetsATagAndReports implements ShouldQueue
+{
+    public function handle(): void
+    {
+        configureScope(static function (IsolationScope $scope): void {
+            $scope->setTag('job', 'yes');
+        });
+
+        captureMessage('job message');
     }
 }

@@ -62,6 +62,19 @@ class SentryManagerTest extends TestCase
         $this->assertArrayNotHasKey('forked', $event->getTags());
     }
 
+    public function testPushAndPopScope(): void
+    {
+        $previousScope = SentrySdk::getIsolationScope();
+
+        $pushedScope = SentryFacade::pushScope();
+        $pushedScope->setTag('pushed', 'yes');
+
+        $this->assertSame($pushedScope, SentrySdk::getIsolationScope());
+        $this->assertTrue(SentryFacade::popScope());
+        $this->assertSame($previousScope, SentrySdk::getIsolationScope());
+        $this->assertFalse(SentryFacade::popScope());
+    }
+
     public function testAddBreadcrumb(): void
     {
         SentryFacade::addBreadcrumb(new Breadcrumb(Breadcrumb::LEVEL_INFO, Breadcrumb::TYPE_DEFAULT, 'test', 'facade breadcrumb'));
