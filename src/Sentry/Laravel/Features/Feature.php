@@ -113,13 +113,7 @@ abstract class Feature
      */
     protected function shouldSendDefaultPii(): bool
     {
-        $client = SentrySdk::getCurrentHub()->getClient();
-
-        if ($client === null) {
-            return false;
-        }
-
-        return $client->getOptions()->shouldSendDefaultPii();
+        return SentrySdk::getClient()->getOptions()->shouldSendDefaultPii();
     }
 
     protected function shouldCollectGenAiInputs(): bool
@@ -137,7 +131,7 @@ abstract class Feature
      */
     private function shouldCollectGenAi(string $type): bool
     {
-        $dataCollection = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub())->getDataCollection();
+        $dataCollection = DataCollectionPolicy::fromOptions(SentrySdk::getClient()->getOptions())->getDataCollection();
 
         // The legacy options collect both the inputs and outputs based on `send_default_pii`
         if ($dataCollection === null) {

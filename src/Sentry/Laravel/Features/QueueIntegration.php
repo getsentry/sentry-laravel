@@ -246,7 +246,7 @@ class QueueIntegration extends Feature
             return [];
         }
 
-        $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
+        $policy = DataCollectionPolicy::fromOptions(SentrySdk::getClient()->getOptions());
         $dataCollection = $policy->getDataCollection();
 
         // The legacy options never collected the arguments passed to queued jobs
