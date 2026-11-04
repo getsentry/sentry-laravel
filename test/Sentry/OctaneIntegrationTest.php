@@ -49,7 +49,7 @@ class OctaneIntegrationTest extends TestCase
 
         $this->assertSame('/octane-previous-request', Integration::getTransaction());
 
-        $eventBeforeTermination = $this->getCurrentSentryScope()->applyToEvent(Event::createEvent());
+        $eventBeforeTermination = $this->applyCurrentSentryScopesToEvent(Event::createEvent());
 
         $this->assertNotNull($eventBeforeTermination);
         $this->assertSame('/octane-previous-request', $eventBeforeTermination->getTransaction());
@@ -61,7 +61,7 @@ class OctaneIntegrationTest extends TestCase
             new Response('ok', 200)
         ));
 
-        $eventAfterTermination = $this->getCurrentSentryScope()->applyToEvent(Event::createEvent());
+        $eventAfterTermination = $this->applyCurrentSentryScopesToEvent(Event::createEvent());
 
         $this->assertNotNull($eventAfterTermination);
         $this->assertNull(Integration::getTransaction());

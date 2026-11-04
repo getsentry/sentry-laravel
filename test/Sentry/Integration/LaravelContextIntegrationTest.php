@@ -22,7 +22,7 @@ class LaravelContextIntegrationTest extends TestCase
 
     public function testLaravelContextIntegrationIsRegistered(): void
     {
-        $integration = $this->getSentryHubFromContainer()->getIntegration(LaravelContextIntegration::class);
+        $integration = $this->getSentryFromContainer()->getIntegration(LaravelContextIntegration::class);
 
         $this->assertInstanceOf(LaravelContextIntegration::class, $integration);
     }

@@ -10,15 +10,13 @@ use RuntimeException;
 use Sentry\Event;
 use Sentry\ExceptionMechanism;
 use Sentry\Laravel\Integration;
-use Sentry\State\Scope;
 use Sentry\Tracing\TransactionSource;
-use function Sentry\withScope;
 
 class IntegrationTest extends TestCase
 {
     public function testIntegrationIsRegistered(): void
     {
-        $integration = $this->getSentryHubFromContainer()->getIntegration(Integration::class);
+        $integration = $this->getSentryFromContainer()->getIntegration(Integration::class);
 
         $this->assertInstanceOf(Integration::class, $integration);
     }
@@ -41,54 +39,48 @@ class IntegrationTest extends TestCase
     {
         Integration::setTransaction($transaction = 'some-transaction-name');
 
-        withScope(function (Scope $scope) use ($transaction): void {
-            $event = Event::createEvent();
+        $event = Event::createEvent();
 
-            $this->assertNull($event->getTransaction());
+        $this->assertNull($event->getTransaction());
 
-            $event = $scope->applyToEvent($event);
+        $event = $this->applyCurrentSentryScopesToEvent($event);
 
-            $this->assertNotNull($event);
+        $this->assertNotNull($event);
 
-            $this->assertSame($transaction, $event->getTransaction());
-        });
+        $this->assertSame($transaction, $event->getTransaction());
     }
 
     public function testTransactionIsAppliedToEventWithEmptyTransaction(): void
     {
         Integration::setTransaction($transaction = 'some-transaction-name');
 
-        withScope(function (Scope $scope) use ($transaction): void {
-            $event = Event::createEvent();
-            $event->setTransaction($emptyTransaction = '');
+        $event = Event::createEvent();
+        $event->setTransaction($emptyTransaction = '');
 
-            $this->assertSame($emptyTransaction, $event->getTransaction());
+        $this->assertSame($emptyTransaction, $event->getTransaction());
 
-            $event = $scope->applyToEvent($event);
+        $event = $this->applyCurrentSentryScopesToEvent($event);
 
-            $this->assertNotNull($event);
+        $this->assertNotNull($event);
 
-            $this->assertSame($transaction, $event->getTransaction());
-        });
+        $this->assertSame($transaction, $event->getTransaction());
     }
 
     public function testTransactionIsNotAppliedToEventWhenTransactionIsAlreadySet(): void
     {
         Integration::setTransaction('some-transaction-name');
 
-        withScope(function (Scope $scope): void {
-            $event = Event::createEvent();
+        $event = Event::createEvent();
 
-            $event->setTransaction($eventTransaction = 'some-other-transaction-name');
+        $event->setTransaction($eventTransaction = 'some-other-transaction-name');
 
-            $this->assertSame($eventTransaction, $event->getTransaction());
+        $this->assertSame($eventTransaction, $event->getTransaction());
 
-            $event = $scope->applyToEvent($event);
+        $event = $this->applyCurrentSentryScopesToEvent($event);
 
-            $this->assertNotNull($event);
+        $this->assertNotNull($event);
 
-            $this->assertSame($eventTransaction, $event->getTransaction());
-        });
+        $this->assertSame($eventTransaction, $event->getTransaction());
     }
 
     public function testExtractingNameForRouteWithoutName(): void

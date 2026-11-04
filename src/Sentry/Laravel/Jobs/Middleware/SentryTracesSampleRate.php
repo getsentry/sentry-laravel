@@ -4,8 +4,8 @@ namespace Sentry\Laravel\Jobs\Middleware;
 
 use Closure;
 use InvalidArgumentException;
+use Sentry\Laravel\SentryManager;
 use Sentry\SentrySdk;
-use Sentry\State\HubInterface;
 
 /**
  * Job middleware that overrides the Sentry trace sampling decision for the job's transaction.
@@ -43,7 +43,7 @@ class SentryTracesSampleRate
 
     public function handle(object $job, Closure $next): void
     {
-        if (app()->bound(HubInterface::class)) {
+        if (app()->bound(SentryManager::class)) {
             $transaction = SentrySdk::getCurrentHub()->getTransaction();
 
             if ($transaction !== null && $transaction->getSampled()) {

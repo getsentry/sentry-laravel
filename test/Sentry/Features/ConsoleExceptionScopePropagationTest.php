@@ -14,8 +14,9 @@ use Sentry\Event;
 use Sentry\EventHint;
 use Sentry\Laravel\Integration;
 use Sentry\Laravel\Tests\TestCase;
+use Sentry\NoOpClient;
 use Sentry\SentrySdk;
-use Sentry\State\Scope;
+use Sentry\State\IsolationScope;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 
@@ -41,7 +42,7 @@ class ConsoleExceptionScopePropagationTest extends TestCase
                 ThrowConsoleExceptionCommand::class,
             ])
             ->withExceptions(function (Exceptions $exceptions): void {
-                \Sentry\configureScope(static function (Scope $scope): void {
+                \Sentry\configureScope(static function (IsolationScope $scope): void {
                     $scope->setContext('Context name', [
                         'key' => 'value',
                     ]);
@@ -58,7 +59,7 @@ class ConsoleExceptionScopePropagationTest extends TestCase
     protected function defineEnvironment($app): void
     {
         self::$lastSentryEvents = [];
-        SentrySdk::init();
+        SentrySdk::init(new NoOpClient());
 
         tap($app['config'], function (Repository $config): void {
             // This key has no meaning, it's just a randomly generated one but it's required for the app to boot properly
@@ -74,7 +75,7 @@ class ConsoleExceptionScopePropagationTest extends TestCase
         });
 
         // This simulates the scenario where Laravel first resolves the exception handler, which will execute the
-        // withExceptions(..) callback and creates the real Sentry hub later.
+        // withExceptions(..) callback and creates the real Sentry client later.
         $app->make(ExceptionHandler::class);
     }
 
