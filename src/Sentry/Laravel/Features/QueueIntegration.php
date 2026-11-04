@@ -30,6 +30,7 @@ use Sentry\Tracing\TransactionSource;
 use function Sentry\continueTrace;
 use function Sentry\getBaggage;
 use function Sentry\getTraceparent;
+use function Sentry\startTransaction;
 
 class QueueIntegration extends Feature
 {
@@ -68,7 +69,7 @@ class QueueIntegration extends Feature
 
         if ($this->isTracingFeatureEnabled('queue_jobs') || $this->isTracingFeatureEnabled('queue_job_transactions')) {
             Queue::createPayloadUsing(function (?string $connection, ?string $queue, ?array $payload): ?array {
-                $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+                $parentSpan = SentrySdk::getIsolationScope()->getSpan();
 
                 if ($parentSpan !== null && $parentSpan->getSampled()) {
                     $context = (new SpanContext)
@@ -97,7 +98,7 @@ class QueueIntegration extends Feature
 
     public function handleJobQueueingEvent(JobQueueing $event): void
     {
-        $currentSpan = SentrySdk::getCurrentHub()->getSpan();
+        $currentSpan = SentrySdk::getIsolationScope()->getSpan();
 
         // If there is no tracing span active there is no need to handle the event
         if ($currentSpan === null || $currentSpan->getOp() !== self::QUEUE_SPAN_OP_QUEUE_PUBLISH) {
@@ -156,7 +157,7 @@ class QueueIntegration extends Feature
             ));
         }
 
-        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+        $parentSpan = SentrySdk::getIsolationScope()->getSpan();
 
         // If there is no tracing span active and we don't trace jobs as transactions there is no need to handle the event
         if ($parentSpan === null && !$this->isTracingFeatureEnabled('queue_job_transactions')) {
@@ -213,7 +214,7 @@ class QueueIntegration extends Feature
 
         // When the parent span is null we start a new transaction otherwise we start a child of the current span
         if ($parentSpan === null) {
-            $span = SentrySdk::getCurrentHub()->startTransaction($context);
+            $span = startTransaction($context);
         } else {
             $span = $parentSpan->startChild($context);
         }

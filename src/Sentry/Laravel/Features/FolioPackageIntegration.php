@@ -43,7 +43,7 @@ class FolioPackageIntegration extends Feature
 
         Integration::setTransaction($routeName);
 
-        $transaction = SentrySdk::getCurrentHub()->getTransaction();
+        $transaction = SentrySdk::getIsolationScope()->getTransaction();
 
         if ($transaction === null || !$transaction->getSampled()) {
             return;

@@ -199,7 +199,7 @@ class CacheIntegration extends Feature
 
     public function handleRedisCommands(RedisEvents\CommandExecuted $event): void
     {
-        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+        $parentSpan = SentrySdk::getIsolationScope()->getSpan();
 
         // If there is no sampled span there is no need to handle the event
         if ($parentSpan === null || !$parentSpan->getSampled()) {

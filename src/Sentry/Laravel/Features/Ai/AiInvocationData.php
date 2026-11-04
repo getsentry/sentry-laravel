@@ -86,6 +86,6 @@ class AiInvocationData
         $chatSpan->setStatus($status ?? SpanStatus::ok());
         $chatSpan->finish();
 
-        SentrySdk::getCurrentHub()->setSpan($this->span);
+        SentrySdk::getIsolationScope()->setSpan($this->span);
     }
 }

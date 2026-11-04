@@ -44,7 +44,7 @@ class SentryTracesSampleRate
     public function handle(object $job, Closure $next): void
     {
         if (app()->bound(SentryManager::class)) {
-            $transaction = SentrySdk::getCurrentHub()->getTransaction();
+            $transaction = SentrySdk::getIsolationScope()->getTransaction();
 
             if ($transaction !== null && $transaction->getSampled()) {
                 $transaction->setSampled($this->shouldSample());

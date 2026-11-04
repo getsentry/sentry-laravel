@@ -11,7 +11,7 @@ abstract class TracingRoutingDispatcher
 {
     protected function wrapRouteDispatch(callable $dispatch, Route $route)
     {
-        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+        $parentSpan = SentrySdk::getIsolationScope()->getSpan();
 
         // If there is no sampled span there is no need to wrap the dispatch
         if ($parentSpan === null || !$parentSpan->getSampled()) {
@@ -29,14 +29,14 @@ abstract class TracingRoutingDispatcher
                 ->setDescription($action)
         );
 
-        SentrySdk::getCurrentHub()->setSpan($span);
+        SentrySdk::getIsolationScope()->setSpan($span);
 
         try {
             return $dispatch();
         } finally {
             $span->finish();
 
-            SentrySdk::getCurrentHub()->setSpan($parentSpan);
+            SentrySdk::getIsolationScope()->setSpan($parentSpan);
         }
     }
 }

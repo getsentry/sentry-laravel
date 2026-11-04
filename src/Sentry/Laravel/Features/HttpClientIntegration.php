@@ -85,7 +85,7 @@ class HttpClientIntegration extends Feature
 
     public function handleRequestSendingHandlerForTracing(RequestSending $event): void
     {
-        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+        $parentSpan = SentrySdk::getIsolationScope()->getSpan();
 
         // If there is no sampled span there is no need to handle the event
         if ($parentSpan === null || !$parentSpan->getSampled()) {
