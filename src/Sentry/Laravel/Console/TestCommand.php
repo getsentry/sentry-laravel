@@ -160,22 +160,18 @@ class TestCommand extends Command
         $client = $clientBuilder->getClient();
 
         // We use a new client on an empty isolation scope to prevent user configuration from affecting the test command
-        $exitCode = withIsolationScope(function (IsolationScope $scope) use ($client): int {
+        return withIsolationScope(function (IsolationScope $scope) use ($client, $old_error_reporting): int {
             $scope->clear();
             $scope->setClient($client);
 
-            return $this->sendTestEvents();
+            return $this->sendTestEvents($old_error_reporting);
         });
-
-        error_reporting($old_error_reporting);
-
-        return $exitCode;
     }
 
     /**
      * Send the test event and, if requested, the test transaction.
      */
-    private function sendTestEvents(): int
+    private function sendTestEvents(int $old_error_reporting): int
     {
         $this->info('Sending test event...');
 
@@ -226,6 +222,8 @@ class TestCommand extends Command
 
             $this->info("Transaction sent with ID: {$transactionId}");
         }
+
+        error_reporting($old_error_reporting);
 
         return 0;
     }
