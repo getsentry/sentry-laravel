@@ -22,7 +22,6 @@ use Sentry\DataCollection\DataCollectionPolicy;
 use Sentry\Laravel\Tracing\Middleware;
 use Sentry\SentrySdk;
 use Sentry\State\IsolationScope;
-use Sentry\State\Scope;
 
 class EventHandler
 {
@@ -326,7 +325,7 @@ class EventHandler
             // If there is no request bound we cannot get the IP address from it
         }
 
-        Integration::configureScope(static function (Scope $scope) use ($userData): void {
+        Integration::configureScope(static function (IsolationScope $scope) use ($userData): void {
             $scope->setUser(array_filter($userData));
         });
     }

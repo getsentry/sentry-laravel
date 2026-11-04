@@ -2,12 +2,13 @@
 
 namespace Sentry\Laravel\Features;
 
-use Sentry\State\Scope;
+use Sentry\State\IsolationScope;
 use Illuminate\Contracts\Events\Dispatcher;
-use Sentry\SentrySdk;
 use Laravel\Pennant\Feature as Pennant;
 use Laravel\Pennant\Events\FeatureResolved;
 use Laravel\Pennant\Events\FeatureRetrieved;
+
+use function Sentry\configureScope;
 
 class PennantPackageIntegration extends Feature
 {
@@ -25,7 +26,7 @@ class PennantPackageIntegration extends Feature
 
     public function handleFeatureRetrieved($feature): void
     {
-        SentrySdk::getCurrentHub()->configureScope(function (Scope $scope) use ($feature) {
+        configureScope(function (IsolationScope $scope) use ($feature) {
             // backslashes are not allowed as feature flag names so we replace it with dots to allow class
             // based feature flags
             $featureName = str_replace('\\', '.', ltrim($feature->feature, '\\'));

@@ -17,6 +17,7 @@ use Sentry\Event;
 use Sentry\Integration\IntegrationInterface;
 
 use function Sentry\addBreadcrumb;
+use function Sentry\captureException;
 use function Sentry\configureScope;
 use function Sentry\getBaggage;
 use function Sentry\getTraceparent;
@@ -246,7 +247,7 @@ class Integration implements IntegrationInterface
             'mechanism' => new ExceptionMechanism(ExceptionMechanism::TYPE_GENERIC, $handled),
         ]);
 
-        return SentrySdk::getCurrentHub()->captureException($throwable, $hint);
+        return captureException($throwable, $hint);
     }
 
     /**

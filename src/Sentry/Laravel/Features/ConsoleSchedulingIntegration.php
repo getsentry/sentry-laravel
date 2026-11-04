@@ -30,6 +30,7 @@ use Sentry\Tracing\SpanStatus;
 use Sentry\Tracing\TransactionContext;
 use Sentry\Tracing\TransactionSource;
 
+use function Sentry\captureEvent;
 use function Sentry\startTransaction;
 
 class ConsoleSchedulingIntegration extends Feature
@@ -411,7 +412,7 @@ class ConsoleSchedulingIntegration extends Feature
         $event = SentryEvent::createCheckIn();
         $event->setCheckIn($checkIn);
 
-        SentrySdk::getCurrentHub()->captureEvent($event);
+        captureEvent($event);
     }
 
     private function createCheckIn(string $slug, CheckInStatus $status, ?string $id = null): CheckIn
