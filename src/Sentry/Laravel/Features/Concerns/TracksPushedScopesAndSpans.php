@@ -32,11 +32,11 @@ trait TracksPushedScopesAndSpans
 
     protected function pushSpan(Span $span): void
     {
-        $hub = SentrySdk::getCurrentHub();
+        $scope = SentrySdk::getIsolationScope();
 
-        $this->parentSpanStack[] = $hub->getSpan();
+        $this->parentSpanStack[] = $scope->getSpan();
 
-        $hub->setSpan($span);
+        $scope->setSpan($span);
 
         $this->currentSpanStack[] = $span;
     }
@@ -56,7 +56,7 @@ trait TracksPushedScopesAndSpans
 
         $parent = array_pop($this->parentSpanStack);
 
-        SentrySdk::getCurrentHub()->setSpan($parent);
+        SentrySdk::getIsolationScope()->setSpan($parent);
 
         return array_pop($this->currentSpanStack);
     }

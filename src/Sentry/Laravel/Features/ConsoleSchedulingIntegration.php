@@ -30,6 +30,8 @@ use Sentry\Tracing\SpanStatus;
 use Sentry\Tracing\TransactionContext;
 use Sentry\Tracing\TransactionSource;
 
+use function Sentry\startTransaction;
+
 class ConsoleSchedulingIntegration extends Feature
 {
     use TracksPushedScopesAndSpans;
@@ -193,7 +195,7 @@ class ConsoleSchedulingIntegration extends Feature
             ->setOp('console.command.scheduled')
             ->setStartTimestamp(microtime(true));
 
-        $transaction = SentrySdk::getCurrentHub()->startTransaction($context);
+        $transaction = startTransaction($context);
 
         $this->pushSpan($transaction);
     }

@@ -18,6 +18,7 @@ use Sentry\Tracing\TransactionSource;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 use function Sentry\continueTrace;
+use function Sentry\startTransaction;
 
 /**
  * @internal
@@ -143,11 +144,11 @@ class Middleware
 
     private function startTransaction(Request $request): void
     {
-        $hub = SentrySdk::getCurrentHub();
-        $client = $hub->getClient();
+        $scope = SentrySdk::getIsolationScope();
+        $client = SentrySdk::getClient();
 
         // Prevent starting a new transaction if we are already in a transaction
-        if ($hub->getTransaction() !== null) {
+        if ($scope->getTransaction() !== null) {
             return;
         }
 
@@ -170,7 +171,7 @@ class Middleware
         // OTLP external propagation relies on the scope not already carrying a Sentry span,
         // but continueTrace() still needs to run so incoming distributed trace headers can
         // populate the scope propagation context while tracing is disabled.
-        if ($client === null || !$client->getOptions()->isTracingEnabled()) {
+        if (!$client->getOptions()->isTracingEnabled()) {
             return;
         }
 
@@ -187,9 +188,9 @@ class Middleware
             'http.request.method' => strtoupper($request->method()),
         ]);
 
-        $transaction = $hub->startTransaction($context);
+        $transaction = startTransaction($context);
 
-        $hub->setSpan($transaction);
+        $scope->setSpan($transaction);
 
         // If this transaction is not sampled, we can stop here to prevent doing work for nothing
         if (!$transaction->getSampled()) {
@@ -207,7 +208,7 @@ class Middleware
                 ->setStartTimestamp($bootstrapSpan ? $bootstrapSpan->getEndTimestamp() : microtime(true))
         );
 
-        $hub->setSpan($this->appSpan);
+        $scope->setSpan($this->appSpan);
     }
 
     private function discardTransaction(): void
@@ -217,7 +218,7 @@ class Middleware
         $this->didRouteMatch = false;
         $this->bootedTimestamp = null;
 
-        SentrySdk::getCurrentHub()->setSpan(null);
+        SentrySdk::getIsolationScope()->setSpan(null);
     }
 
     private function addAppBootstrapSpan(): ?Span
@@ -326,7 +327,7 @@ class Middleware
 
         // Make sure we set the transaction and not have a child span in the Sentry SDK
         // If the transaction is not on the scope during finish, the trace.context is wrong
-        SentrySdk::getCurrentHub()->setSpan($this->transaction);
+        SentrySdk::getIsolationScope()->setSpan($this->transaction);
 
         $this->transaction->finish();
         $this->transaction = null;

@@ -55,10 +55,10 @@ class ClassificationInvocationData
 
     public function restoreParentSpan(): void
     {
-        $hub = SentrySdk::getCurrentHub();
+        $scope = SentrySdk::getIsolationScope();
 
-        if ($hub->getSpan() === $this->span) {
-            $hub->setSpan($this->parentSpan);
+        if ($scope->getSpan() === $this->span) {
+            $scope->setSpan($this->parentSpan);
         }
     }
 }

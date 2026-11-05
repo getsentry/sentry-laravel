@@ -9,7 +9,7 @@ trait WorksWithSpans
 {
     protected function getParentSpanIfSampled(): ?Span
     {
-        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+        $parentSpan = SentrySdk::getIsolationScope()->getSpan();
 
         // If the span is not available or not sampled we don't need to do anything
         if ($parentSpan === null || !$parentSpan->getSampled()) {

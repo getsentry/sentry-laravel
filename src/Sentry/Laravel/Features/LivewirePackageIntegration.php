@@ -105,7 +105,7 @@ class LivewirePackageIntegration extends Feature
             $this->updateTransactionName($component->getName());
         }
 
-        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+        $parentSpan = SentrySdk::getIsolationScope()->getSpan();
 
         // If there is no sampled span there is no need to handle the event
         if ($parentSpan === null || !$parentSpan->getSampled()) {
@@ -176,7 +176,7 @@ class LivewirePackageIntegration extends Feature
 
     private function updateTransactionName(string $componentName): void
     {
-        $transaction = SentrySdk::getCurrentHub()->getTransaction();
+        $transaction = SentrySdk::getIsolationScope()->getTransaction();
 
         if ($transaction === null) {
             return;

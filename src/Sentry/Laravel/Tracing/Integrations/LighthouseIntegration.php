@@ -95,7 +95,7 @@ class LighthouseIntegration implements IntegrationInterface
 
     public function handleStartRequest(StartRequest $startRequest): void
     {
-        $this->previousSpan = SentrySdk::getCurrentHub()->getSpan();
+        $this->previousSpan = SentrySdk::getIsolationScope()->getSpan();
 
         // If there is no sampled span there is no need to handle the event
         if ($this->previousSpan === null || !$this->previousSpan->getSampled()) {
@@ -110,7 +110,7 @@ class LighthouseIntegration implements IntegrationInterface
         $this->requestSpan = $this->previousSpan->startChild($context);
         $this->operationSpan = null;
 
-        SentrySdk::getCurrentHub()->setSpan($this->requestSpan);
+        SentrySdk::getIsolationScope()->setSpan($this->requestSpan);
     }
 
     public function handleStartExecution(StartExecution $startExecution): void
@@ -139,7 +139,7 @@ class LighthouseIntegration implements IntegrationInterface
 
         $this->operationSpan = $this->requestSpan->startChild($context);
 
-        SentrySdk::getCurrentHub()->setSpan($this->operationSpan);
+        SentrySdk::getIsolationScope()->setSpan($this->operationSpan);
     }
 
     public function handleEndExecution(EndExecution $endExecution): void
@@ -151,7 +151,7 @@ class LighthouseIntegration implements IntegrationInterface
         $this->operationSpan->finish();
         $this->operationSpan = null;
 
-        SentrySdk::getCurrentHub()->setSpan($this->requestSpan);
+        SentrySdk::getIsolationScope()->setSpan($this->requestSpan);
     }
 
     public function handleEndRequest(EndRequest $endRequest): void
@@ -163,7 +163,7 @@ class LighthouseIntegration implements IntegrationInterface
         $this->requestSpan->finish();
         $this->requestSpan = null;
 
-        SentrySdk::getCurrentHub()->setSpan($this->previousSpan);
+        SentrySdk::getIsolationScope()->setSpan($this->previousSpan);
         $this->previousSpan = null;
 
         $this->operations = [];
@@ -171,7 +171,7 @@ class LighthouseIntegration implements IntegrationInterface
 
     private function updateTransactionName(): void
     {
-        $transaction = SentrySdk::getCurrentHub()->getTransaction();
+        $transaction = SentrySdk::getIsolationScope()->getTransaction();
 
         if ($transaction === null) {
             return;
