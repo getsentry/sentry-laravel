@@ -8,6 +8,7 @@ use Sentry\EventHint;
 use Sentry\EventId;
 use Sentry\ExceptionMechanism;
 use Sentry\Laravel\Features\AiIntegration;
+use Sentry\Laravel\Features\QueueIntegration;
 use Sentry\Laravel\Integration\ModelViolations as ModelViolationReports;
 use Sentry\SentrySdk;
 use Sentry\Tracing\TransactionSource;
@@ -22,6 +23,7 @@ use function Sentry\configureScope;
 use function Sentry\getBaggage;
 use function Sentry\getTraceparent;
 use function Sentry\metrics;
+use function Sentry\withIsolationScope;
 
 class Integration implements IntegrationInterface
 {
@@ -235,7 +237,11 @@ class Integration implements IntegrationInterface
             'mechanism' => new ExceptionMechanism(ExceptionMechanism::TYPE_GENERIC, $handled),
         ]);
 
-        return captureException($throwable, $hint);
+        // The exception of a failed queue job is reported after the scope of the job was popped, so we capture it with
+        // the scope of the job. Any other exception is captured with a fork of the current scope.
+        return withIsolationScope(static function () use ($throwable, $hint): ?EventId {
+            return captureException($throwable, $hint);
+        }, QueueIntegration::pullScopeOfFailedJob($throwable));
     }
 
     /**

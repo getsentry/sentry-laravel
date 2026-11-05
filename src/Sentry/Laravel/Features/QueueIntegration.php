@@ -26,6 +26,7 @@ use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\SpanStatus;
 use Sentry\Tracing\TransactionContext;
 use Sentry\Tracing\TransactionSource;
+use Throwable;
 
 use function Sentry\continueTrace;
 use function Sentry\getBaggage;
@@ -45,6 +46,13 @@ class QueueIntegration extends Feature
     private const QUEUE_PAYLOAD_PUBLISH_TIME = 'sentry_publish_time';
 
     private const QUEUE_SPAN_DATA_ARGUMENTS = 'messaging.message.body.data';
+
+    /**
+     * The exception of the last job that threw and the isolation scope of that job.
+     *
+     * @var array{exception: Throwable, scope: IsolationScope}|null
+     */
+    private static $failedJob;
 
     public function isApplicable(): bool
     {
@@ -229,8 +237,35 @@ class QueueIntegration extends Feature
     {
         $this->maybeFinishSpan(SpanStatus::internalError());
 
+        // Laravel reports the exception after this event, when the scope of the job is popped already. An exception
+        // thrown by a job dispatched from another job fails both jobs, so we keep the scope of the job that threw it.
+        if (self::$failedJob === null || self::$failedJob['exception'] !== $event->exception) {
+            self::$failedJob = [
+                'exception' => $event->exception,
+                'scope' => SentrySdk::getIsolationScope(),
+            ];
+        }
+
         // A job either finishes or throws, so the scope pushed for it is popped here or after it finished
         $this->maybePopScope();
+    }
+
+    /**
+     * Returns the isolation scope of the job that threw the given exception and forgets it.
+     *
+     * @internal
+     */
+    public static function pullScopeOfFailedJob(Throwable $exception): ?IsolationScope
+    {
+        if (self::$failedJob === null || self::$failedJob['exception'] !== $exception) {
+            return null;
+        }
+
+        $scope = self::$failedJob['scope'];
+
+        self::$failedJob = null;
+
+        return $scope;
     }
 
     /**
