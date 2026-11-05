@@ -21,6 +21,7 @@ use Sentry\DataCollection\DatabaseDataCollector;
 use Sentry\DataCollection\DataCollectionPolicy;
 use Sentry\Laravel\Tracing\Middleware;
 use Sentry\SentrySdk;
+use Sentry\State\IsolationScope;
 use Sentry\State\Scope;
 
 class EventHandler
@@ -459,12 +460,8 @@ class EventHandler
      */
     private function prepareScopeForTaskWithinLongRunningProcess(): void
     {
-        SentrySdk::getCurrentHub()->pushScope();
-
         // When a job starts, we want to make sure the scope is cleared of breadcrumbs
-        SentrySdk::getCurrentHub()->configureScope(static function (Scope $scope) {
-            $scope->clearBreadcrumbs();
-        });
+        SentrySdk::pushIsolationScope()->clearBreadcrumbs();
     }
 
     /**
@@ -482,6 +479,6 @@ class EventHandler
 
         $this->afterTaskWithinLongRunningProcess();
 
-        SentrySdk::getCurrentHub()->popScope();
+        SentrySdk::popIsolationScope();
     }
 }

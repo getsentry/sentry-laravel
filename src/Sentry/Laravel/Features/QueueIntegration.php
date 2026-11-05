@@ -20,7 +20,7 @@ use Sentry\Laravel\Features\Concerns\TracksPushedScopesAndSpans;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
 use Sentry\Serializer\Serializer;
-use Sentry\State\Scope;
+use Sentry\State\IsolationScope;
 use Sentry\Tracing\PropagationContext;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\SpanStatus;
@@ -131,8 +131,6 @@ class QueueIntegration extends Feature
 
     public function handleJobProcessingQueueEvent(JobProcessing $event): void
     {
-        $this->maybePopScope();
-
         $this->pushScope();
 
         if ($this->isBreadcrumbFeatureEnabled('queue_info')) {
@@ -231,7 +229,8 @@ class QueueIntegration extends Feature
     {
         $this->maybeFinishSpan(SpanStatus::internalError());
 
-        Integration::flushEvents();
+        // A job either finishes or throws, so the scope pushed for it is popped here or after it finished
+        $this->maybePopScope();
     }
 
     /**
@@ -278,15 +277,15 @@ class QueueIntegration extends Feature
         return Str::after($queue, 'queues:');
     }
 
-    protected function pushScope(): void
+    protected function pushScope(): IsolationScope
     {
-        $this->pushScopeTrait();
+        $scope = $this->pushScopeTrait();
 
         // When a job starts, we want to make sure the scope is cleared of breadcrumbs
         // as well as setting a new propagation context.
-        SentrySdk::getCurrentHub()->configureScope(static function (Scope $scope) {
-            $scope->clearBreadcrumbs();
-            $scope->setPropagationContext(PropagationContext::fromDefaults());
-        });
+        $scope->clearBreadcrumbs();
+        $scope->setPropagationContext(PropagationContext::fromDefaults());
+
+        return $scope;
     }
 }
