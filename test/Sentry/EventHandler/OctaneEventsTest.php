@@ -26,7 +26,7 @@ class OctaneEventsTest extends TestCase
         $this->invokeHandlerMethod($handler, 'prepareScopeForTaskWithinLongRunningProcess');
         $this->invokeHandlerMethod($handler, 'cleanupScopeForTaskWithinLongRunningProcessWhen', true);
 
-        $event = $this->getCurrentSentryScope()->applyToEvent(Event::createEvent());
+        $event = $this->applyCurrentSentryScopesToEvent(Event::createEvent());
 
         $this->assertNotNull($event);
         $this->assertNull($event->getTransaction());

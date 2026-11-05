@@ -8,7 +8,6 @@ use Sentry\EventHint;
 use Sentry\EventType;
 use Sentry\Integration\IntegrationInterface;
 use Sentry\SentrySdk;
-use Sentry\State\Scope;
 
 class LaravelContextIntegration implements IntegrationInterface
 {
@@ -19,8 +18,8 @@ class LaravelContextIntegration implements IntegrationInterface
             return;
         }
 
-        Scope::addGlobalEventProcessor(static function (Event $event, ?EventHint $hint = null): Event {
-            $self = SentrySdk::getCurrentHub()->getIntegration(self::class);
+        SentrySdk::getGlobalScope()->addEventProcessor(static function (Event $event, ?EventHint $hint = null): Event {
+            $self = SentrySdk::getClient()->getIntegration(self::class);
 
             if (!$self instanceof self) {
                 return $event;

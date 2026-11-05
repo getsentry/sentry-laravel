@@ -9,21 +9,18 @@ use Sentry\EventId;
 use Sentry\ExceptionMechanism;
 use Sentry\Laravel\Features\AiIntegration;
 use Sentry\Laravel\Integration\ModelViolations as ModelViolationReports;
-use Sentry\Logs\Logs;
-use Sentry\Metrics\TraceMetrics;
 use Sentry\SentrySdk;
 use Sentry\Tracing\TransactionSource;
 use Throwable;
 use Sentry\Breadcrumb;
 use Sentry\Event;
 use Sentry\Integration\IntegrationInterface;
-use Sentry\State\Scope;
 
 use function Sentry\addBreadcrumb;
+use function Sentry\captureException;
 use function Sentry\configureScope;
 use function Sentry\getBaggage;
 use function Sentry\getTraceparent;
-use function Sentry\getW3CTraceparent;
 use function Sentry\metrics;
 
 class Integration implements IntegrationInterface
@@ -38,8 +35,8 @@ class Integration implements IntegrationInterface
      */
     public function setupOnce(): void
     {
-        Scope::addGlobalEventProcessor(static function (Event $event): Event {
-            $self = SentrySdk::getCurrentHub()->getIntegration(self::class);
+        SentrySdk::getGlobalScope()->addEventProcessor(static function (Event $event): Event {
+            $self = SentrySdk::getClient()->getIntegration(self::class);
 
             if (!$self instanceof self) {
                 return $event;
@@ -70,7 +67,7 @@ class Integration implements IntegrationInterface
      */
     public static function addBreadcrumb(Breadcrumb $breadcrumb): void
     {
-        $self = SentrySdk::getCurrentHub()->getIntegration(self::class);
+        $self = SentrySdk::getClient()->getIntegration(self::class);
 
         if (!$self instanceof self) {
             return;
@@ -86,7 +83,7 @@ class Integration implements IntegrationInterface
      */
     public static function configureScope(callable $callback): void
     {
-        $self = SentrySdk::getCurrentHub()->getIntegration(self::class);
+        $self = SentrySdk::getClient()->getIntegration(self::class);
 
         if (!$self instanceof self) {
             return;
@@ -131,14 +128,7 @@ class Integration implements IntegrationInterface
      */
     public static function flushEvents(): void
     {
-        $client = SentrySdk::getCurrentHub()->getClient();
-
-        if ($client !== null) {
-            $client->flush();
-
-            Logs::getInstance()->flush();
-            TraceMetrics::getInstance()->flush();
-        }
+        SentrySdk::flush();
     }
 
     /**
@@ -196,7 +186,7 @@ class Integration implements IntegrationInterface
      */
     public static function sentryMeta(): string
     {
-        return self::sentryTracingMeta() . self::sentryW3CTracingMeta() . self::sentryBaggageMeta();
+        return self::sentryTracingMeta() . self::sentryBaggageMeta();
     }
 
     /**
@@ -207,17 +197,6 @@ class Integration implements IntegrationInterface
     public static function sentryTracingMeta(): string
     {
         return sprintf('<meta name="sentry-trace" content="%s"/>', self::escapeMetaTagContent(getTraceparent()));
-    }
-
-    /**
-     * Retrieve the `traceparent` meta tag with tracing information to link this request to front-end requests.
-     *
-     * @deprecated since version 4.14. To be removed in version 5.0.
-     * @return string
-     */
-    public static function sentryW3CTracingMeta(): string
-    {
-        return '';
     }
 
     /**
@@ -256,7 +235,7 @@ class Integration implements IntegrationInterface
             'mechanism' => new ExceptionMechanism(ExceptionMechanism::TYPE_GENERIC, $handled),
         ]);
 
-        return SentrySdk::getCurrentHub()->captureException($throwable, $hint);
+        return captureException($throwable, $hint);
     }
 
     /**

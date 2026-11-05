@@ -41,9 +41,7 @@ class PennantPackageIntegrationTest extends TestCase
 
         Feature::active('new-dashboard');
 
-        $scope = $this->getCurrentSentryScope();
-
-        $event = $scope->applyToEvent(Event::createEvent());
+        $event = $this->applyCurrentSentryScopesToEvent(Event::createEvent());
 
         $this->assertArrayHasKey('flags', $event->getContexts());
 
@@ -65,9 +63,7 @@ class PennantPackageIntegrationTest extends TestCase
 
         Feature::active('\\App\\Features\\NewApi');
 
-        $scope = $this->getCurrentSentryScope();
-
-        $event = $scope->applyToEvent(Event::createEvent());
+        $event = $this->applyCurrentSentryScopesToEvent(Event::createEvent());
 
         $this->assertArrayHasKey('flags', $event->getContexts());
 
@@ -85,9 +81,7 @@ class PennantPackageIntegrationTest extends TestCase
     {
         Feature::active(PennantClassBasedFeature::class);
 
-        $scope = $this->getCurrentSentryScope();
-
-        $event = $scope->applyToEvent(Event::createEvent());
+        $event = $this->applyCurrentSentryScopesToEvent(Event::createEvent());
 
         $this->assertArrayHasKey('flags', $event->getContexts());
 
@@ -109,9 +103,7 @@ class PennantPackageIntegrationTest extends TestCase
 
         Feature::value('dashboard-version');
 
-        $scope = $this->getCurrentSentryScope();
-
-        $event = $scope->applyToEvent(Event::createEvent());
+        $event = $this->applyCurrentSentryScopesToEvent(Event::createEvent());
 
         $this->assertArrayHasKey('flags', $event->getContexts());
 
@@ -133,9 +125,7 @@ class PennantPackageIntegrationTest extends TestCase
 
         Feature::value('dashboard-version');
 
-        $scope = $this->getCurrentSentryScope();
-
-        $event = $scope->applyToEvent(Event::createEvent());
+        $event = $this->applyCurrentSentryScopesToEvent(Event::createEvent());
 
         $this->assertArrayHasKey('flags', $event->getContexts());
 

@@ -123,7 +123,7 @@ class AiIntegration extends Feature
             return;
         }
 
-        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+        $parentSpan = SentrySdk::getIsolationScope()->getSpan();
         if ($parentSpan === null || !$parentSpan->getSampled()) {
             return;
         }
@@ -199,7 +199,7 @@ class AiIntegration extends Feature
             )
         );
 
-        SentrySdk::getCurrentHub()->setSpan($agentSpan);
+        SentrySdk::getIsolationScope()->setSpan($agentSpan);
     }
 
     public function handleAgentPromptedForTracing(AgentPrompted $event): void
@@ -237,7 +237,7 @@ class AiIntegration extends Feature
         $this->invocations->pull($invocationId);
 
         if ($parentSpan !== null) {
-            SentrySdk::getCurrentHub()->setSpan($parentSpan);
+            SentrySdk::getIsolationScope()->setSpan($parentSpan);
         }
     }
 
@@ -256,7 +256,7 @@ class AiIntegration extends Feature
             $invocation->span->setStatus(SpanStatus::internalError());
             $invocation->span->finish();
         } finally {
-            SentrySdk::getCurrentHub()->setSpan($invocation->parentSpan);
+            SentrySdk::getIsolationScope()->setSpan($invocation->parentSpan);
         }
     }
 
@@ -267,7 +267,7 @@ class AiIntegration extends Feature
         }
 
         // Requests sent by a classification belong to its `gen_ai.evaluate` span, even if the agent's provider shares the host
-        $currentSpan = SentrySdk::getCurrentHub()->getSpan();
+        $currentSpan = SentrySdk::getIsolationScope()->getSpan();
         if ($currentSpan !== null && $currentSpan->getOp() === 'gen_ai.evaluate') {
             return;
         }
@@ -306,7 +306,7 @@ class AiIntegration extends Feature
         $invocation->chatSpans[] = $chatSpan;
         $this->conversations->attach($chatSpan);
 
-        SentrySdk::getCurrentHub()->setSpan($chatSpan);
+        SentrySdk::getIsolationScope()->setSpan($chatSpan);
     }
 
     public function handleInvokingToolForTracing(InvokingTool $event): void
@@ -315,7 +315,7 @@ class AiIntegration extends Feature
             return;
         }
 
-        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+        $parentSpan = SentrySdk::getIsolationScope()->getSpan();
         if ($parentSpan === null || !$parentSpan->getSampled()) {
             return;
         }
@@ -355,7 +355,7 @@ class AiIntegration extends Feature
 
         $this->conversations->attach($span);
 
-        SentrySdk::getCurrentHub()->setSpan($span);
+        SentrySdk::getIsolationScope()->setSpan($span);
     }
 
     public function handleToolInvokedForTracing(ToolInvoked $event): void
@@ -377,7 +377,7 @@ class AiIntegration extends Feature
         $span->finish();
 
         if ($invocation['parentSpan'] !== null) {
-            SentrySdk::getCurrentHub()->setSpan($invocation['parentSpan']);
+            SentrySdk::getIsolationScope()->setSpan($invocation['parentSpan']);
         }
     }
 
@@ -387,7 +387,7 @@ class AiIntegration extends Feature
             return;
         }
 
-        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+        $parentSpan = SentrySdk::getIsolationScope()->getSpan();
         if ($parentSpan === null || !$parentSpan->getSampled()) {
             return;
         }
@@ -417,7 +417,7 @@ class AiIntegration extends Feature
 
         $this->conversations->attach($span);
 
-        SentrySdk::getCurrentHub()->setSpan($span);
+        SentrySdk::getIsolationScope()->setSpan($span);
     }
 
     public function handleEmbeddingsGeneratedForTracing(EmbeddingsGenerated $event): void
@@ -443,7 +443,7 @@ class AiIntegration extends Feature
         $span->finish();
 
         if ($invocation['parentSpan'] !== null) {
-            SentrySdk::getCurrentHub()->setSpan($invocation['parentSpan']);
+            SentrySdk::getIsolationScope()->setSpan($invocation['parentSpan']);
         }
     }
 
@@ -485,7 +485,7 @@ class AiIntegration extends Feature
             return;
         }
 
-        $span = SentrySdk::getCurrentHub()->getSpan();
+        $span = SentrySdk::getIsolationScope()->getSpan();
 
         // Without a span there is no trace whose gen_ai spans could get the conversation ID
         if ($span !== null) {
@@ -753,7 +753,7 @@ class AiIntegration extends Feature
      */
     private function shouldCollectToolDefinitions(): bool
     {
-        return DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub())->isLegacyMode() || $this->shouldCollectGenAiInputs();
+        return DataCollectionPolicy::fromOptions(SentrySdk::getClient()->getOptions())->isLegacyMode() || $this->shouldCollectGenAiInputs();
     }
 
     private function resolveToolDefinitions(Agent $agent): ?string

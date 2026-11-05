@@ -55,11 +55,11 @@ class AiFailedInvocationTest extends TestCase
             $failure = $event;
         });
         $transaction = $this->startTransaction();
-        $hub = SentrySdk::getCurrentHub();
+        $scope = SentrySdk::getIsolationScope();
         $agent = $this->agent();
 
         $agent->prompt('first', [], 'fixture', 'test-model');
-        $this->assertSame($transaction, $hub->getSpan());
+        $this->assertSame($transaction, $scope->getSpan());
 
         try {
             $agent->prompt('second', [], 'fixture', 'test-model');
@@ -68,7 +68,7 @@ class AiFailedInvocationTest extends TestCase
             $this->assertSame(500, $exception->response->status());
         }
 
-        $this->assertSame($transaction, $hub->getSpan());
+        $this->assertSame($transaction, $scope->getSpan());
         $invocations = $this->spans($transaction, 'gen_ai.invoke_agent');
         $this->assertCount(2, $invocations);
         $this->assertEquals(SpanStatus::internalError(), $invocations[1]->getStatus());
@@ -78,10 +78,10 @@ class AiFailedInvocationTest extends TestCase
         $beforeRepeat = count($transaction->getSpanRecorder()->getSpans());
         $this->dispatchLaravelEvent($failure);
         $this->assertCount($beforeRepeat, $transaction->getSpanRecorder()->getSpans());
-        $this->assertSame($transaction, $hub->getSpan());
+        $this->assertSame($transaction, $scope->getSpan());
 
         $agent->prompt('third', [], 'fixture', 'test-model');
-        $this->assertSame($transaction, $hub->getSpan());
+        $this->assertSame($transaction, $scope->getSpan());
         $this->assertCount(3, $this->spans($transaction, 'gen_ai.chat'));
         foreach ($this->spans($transaction, 'gen_ai.invoke_agent') as $span) {
             $this->assertNotNull($span->getEndTimestamp());

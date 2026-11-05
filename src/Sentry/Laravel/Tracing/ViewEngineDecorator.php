@@ -28,7 +28,7 @@ final class ViewEngineDecorator implements Engine
      */
     public function get($path, array $data = []): string
     {
-        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+        $parentSpan = SentrySdk::getIsolationScope()->getSpan();
 
         // If there is no sampled span there is no need to wrap the engine call
         if ($parentSpan === null || !$parentSpan->getSampled()) {
@@ -42,13 +42,13 @@ final class ViewEngineDecorator implements Engine
                 ->setDescription($this->viewFactory->shared(self::SHARED_KEY, basename($path)))
         );
 
-        SentrySdk::getCurrentHub()->setSpan($span);
+        SentrySdk::getIsolationScope()->setSpan($span);
 
         $result = $this->engine->get($path, $data);
 
         $span->finish();
 
-        SentrySdk::getCurrentHub()->setSpan($parentSpan);
+        SentrySdk::getIsolationScope()->setSpan($parentSpan);
 
         return $result;
     }

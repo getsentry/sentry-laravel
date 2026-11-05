@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Artisan;
 use Orchestra\Testbench\TestCase;
 use Sentry\Laravel\Facade;
 use Sentry\Laravel\ServiceProvider;
-use Sentry\State\HubInterface;
+use Sentry\Laravel\SentryManager;
 
 class ServiceProviderTest extends TestCase
 {
@@ -34,7 +34,7 @@ class ServiceProviderTest extends TestCase
     {
         $this->assertTrue(app()->bound('sentry'));
         $this->assertSame(app('sentry'), Facade::getFacadeRoot());
-        $this->assertInstanceOf(HubInterface::class, app('sentry'));
+        $this->assertInstanceOf(SentryManager::class, app('sentry'));
     }
 
     /**

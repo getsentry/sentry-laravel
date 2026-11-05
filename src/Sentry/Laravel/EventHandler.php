@@ -21,7 +21,7 @@ use Sentry\DataCollection\DatabaseDataCollector;
 use Sentry\DataCollection\DataCollectionPolicy;
 use Sentry\Laravel\Tracing\Middleware;
 use Sentry\SentrySdk;
-use Sentry\State\Scope;
+use Sentry\State\IsolationScope;
 
 class EventHandler
 {
@@ -218,7 +218,7 @@ class EventHandler
             $data['executionTimeMs'] = $query->time;
         }
 
-        $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
+        $policy = DataCollectionPolicy::fromOptions(SentrySdk::getClient()->getOptions());
 
         // The data collection options replace the `sql_bindings` option
         if ($this->recordSqlBindings && $policy->isLegacyMode()) {
@@ -325,7 +325,7 @@ class EventHandler
             // If there is no request bound we cannot get the IP address from it
         }
 
-        Integration::configureScope(static function (Scope $scope) use ($userData): void {
+        Integration::configureScope(static function (IsolationScope $scope) use ($userData): void {
             $scope->setUser(array_filter($userData));
         });
     }
@@ -459,12 +459,8 @@ class EventHandler
      */
     private function prepareScopeForTaskWithinLongRunningProcess(): void
     {
-        SentrySdk::getCurrentHub()->pushScope();
-
         // When a job starts, we want to make sure the scope is cleared of breadcrumbs
-        SentrySdk::getCurrentHub()->configureScope(static function (Scope $scope) {
-            $scope->clearBreadcrumbs();
-        });
+        SentrySdk::pushIsolationScope()->clearBreadcrumbs();
     }
 
     /**
@@ -482,6 +478,6 @@ class EventHandler
 
         $this->afterTaskWithinLongRunningProcess();
 
-        SentrySdk::getCurrentHub()->popScope();
+        SentrySdk::popIsolationScope();
     }
 }

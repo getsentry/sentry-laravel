@@ -30,6 +30,9 @@ use Sentry\Tracing\SpanStatus;
 use Sentry\Tracing\TransactionContext;
 use Sentry\Tracing\TransactionSource;
 
+use function Sentry\captureEvent;
+use function Sentry\startTransaction;
+
 class ConsoleSchedulingIntegration extends Feature
 {
     use TracksPushedScopesAndSpans;
@@ -161,10 +164,7 @@ class ConsoleSchedulingIntegration extends Feature
         try {
             $this->monitorScheduledTasks($this->container()->make(Schedule::class));
         } catch (Throwable $exception) {
-            $client = SentrySdk::getCurrentHub()->getClient();
-            if ($client !== null) {
-                $client->getOptions()->getLoggerOrNullLogger()->warning('Failed to set up cron monitoring for scheduled tasks.', ['exception' => $exception]);
-            }
+            SentrySdk::getClient()->getOptions()->getLoggerOrNullLogger()->warning('Failed to set up cron monitoring for scheduled tasks.', ['exception' => $exception]);
         }
     }
 
@@ -196,7 +196,7 @@ class ConsoleSchedulingIntegration extends Feature
             ->setOp('console.command.scheduled')
             ->setStartTimestamp(microtime(true));
 
-        $transaction = SentrySdk::getCurrentHub()->startTransaction($context);
+        $transaction = startTransaction($context);
 
         $this->pushSpan($transaction);
     }
@@ -244,10 +244,7 @@ class ConsoleSchedulingIntegration extends Feature
 
             // Task order isn't stable, so a shared slug can't be given to any one of the tasks
             if (\count($tasks) > 1 || isset($monitoredSlugs[$slug]) || isset($monitoredSlugs[$taskSlug])) {
-                $client = SentrySdk::getCurrentHub()->getClient();
-                if ($client !== null) {
-                    $client->getOptions()->getLoggerOrNullLogger()->warning(sprintf('Not monitoring scheduled tasks with the slug "%s" because more than one task uses it. Give each task a unique slug with `->sentryMonitor(\'your-monitor-slug\')`.', $slug));
-                }
+                SentrySdk::getClient()->getOptions()->getLoggerOrNullLogger()->warning(sprintf('Not monitoring scheduled tasks with the slug "%s" because more than one task uses it. Give each task a unique slug with `->sentryMonitor(\'your-monitor-slug\')`.', $slug));
 
                 continue;
             }
@@ -255,10 +252,7 @@ class ConsoleSchedulingIntegration extends Feature
             $crontab = $this->getMonitorCrontab($tasks[0]);
 
             if ($crontab === null) {
-                $client = SentrySdk::getCurrentHub()->getClient();
-                if ($client !== null) {
-                    $client->getOptions()->getLoggerOrNullLogger()->debug(sprintf('Not monitoring the scheduled task "%s" because Sentry can\'t match its schedule.', $slug));
-                }
+                SentrySdk::getClient()->getOptions()->getLoggerOrNullLogger()->debug(sprintf('Not monitoring the scheduled task "%s" because Sentry can\'t match its schedule.', $slug));
 
                 continue;
             }
@@ -418,12 +412,12 @@ class ConsoleSchedulingIntegration extends Feature
         $event = SentryEvent::createCheckIn();
         $event->setCheckIn($checkIn);
 
-        SentrySdk::getCurrentHub()->captureEvent($event);
+        captureEvent($event);
     }
 
     private function createCheckIn(string $slug, CheckInStatus $status, ?string $id = null): CheckIn
     {
-        $options = SentrySdk::getCurrentHub()->getClient()->getOptions();
+        $options = SentrySdk::getClient()->getOptions();
 
         return new CheckIn(
             Str::limit($slug, 128, ''),

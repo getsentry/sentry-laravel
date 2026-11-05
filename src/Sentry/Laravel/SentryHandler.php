@@ -13,8 +13,7 @@ use Sentry\Breadcrumb;
 use Sentry\Event;
 use Sentry\Monolog\CompatibilityProcessingHandlerTrait;
 use Sentry\Severity;
-use Sentry\State\HubInterface;
-use Sentry\State\Scope;
+use Sentry\State\IsolationScope;
 use Throwable;
 use TypeError;
 
@@ -34,9 +33,9 @@ class SentryHandler extends AbstractProcessingHandler
     protected $release;
 
     /**
-     * @var HubInterface the hub object that sends the message to the server
+     * @var SentryManager the Sentry instance that sends the message to the server
      */
-    protected $hub;
+    protected $sentry;
 
     /**
      * @var FormatterInterface The formatter to use for the logs generated via handleBatch()
@@ -58,17 +57,17 @@ class SentryHandler extends AbstractProcessingHandler
     private $useFormattedMessage;
 
     /**
-     * @param HubInterface $hub
-     * @param int          $level  The minimum logging level at which this handler will be triggered
-     * @param bool         $bubble Whether the messages that are handled can bubble up the stack or not
-     * @param bool         $reportExceptions
-     * @param bool         $useFormattedMessage
+     * @param SentryManager $sentry
+     * @param int           $level  The minimum logging level at which this handler will be triggered
+     * @param bool          $bubble Whether the messages that are handled can bubble up the stack or not
+     * @param bool          $reportExceptions
+     * @param bool          $useFormattedMessage
      */
-    public function __construct(HubInterface $hub, $level = Logger::DEBUG, bool $bubble = true, bool $reportExceptions = true, bool $useFormattedMessage = false)
+    public function __construct(SentryManager $sentry, $level = Logger::DEBUG, bool $bubble = true, bool $reportExceptions = true, bool $useFormattedMessage = false)
     {
         parent::__construct($level, $bubble);
 
-        $this->hub                 = $hub;
+        $this->sentry              = $sentry;
         $this->reportExceptions    = $reportExceptions;
         $this->useFormattedMessage = $useFormattedMessage;
     }
@@ -169,8 +168,8 @@ class SentryHandler extends AbstractProcessingHandler
             return;
         }
 
-        $this->hub->withScope(
-            function (Scope $scope) use ($record, $isException, $exception) {
+        $this->sentry->withScope(
+            function (IsolationScope $scope) use ($record, $isException, $exception) {
                 $context = !empty($record['context']) && is_array($record['context'])
                     ? $record['context']
                     : [];
@@ -218,9 +217,9 @@ class SentryHandler extends AbstractProcessingHandler
                 );
 
                 if ($isException) {
-                    $this->hub->captureException($exception);
+                    $this->sentry->captureException($exception);
                 } else {
-                    $this->hub->captureMessage(
+                    $this->sentry->captureMessage(
                         $this->useFormattedMessage || empty($record['message'])
                             ? $record['formatted']
                             : $record['message']
@@ -287,7 +286,7 @@ class SentryHandler extends AbstractProcessingHandler
      */
     public function addBreadcrumb(Breadcrumb $crumb): self
     {
-        $this->hub->addBreadcrumb($crumb);
+        $this->sentry->addBreadcrumb($crumb);
 
         return $this;
     }
@@ -295,12 +294,12 @@ class SentryHandler extends AbstractProcessingHandler
     /**
      * Consumes the context and applies it to the scope.
      *
-     * @param \Sentry\State\Scope $scope
+     * @param \Sentry\State\IsolationScope $scope
      * @param array               $context
      *
      * @return void
      */
-    private function consumeContextAndApplyToScope(Scope $scope, array &$context): void
+    private function consumeContextAndApplyToScope(IsolationScope $scope, array &$context): void
     {
         if (!empty($context['extra']) && is_array($context['extra'])) {
             foreach ($context['extra'] as $key => $value) {

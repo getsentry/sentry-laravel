@@ -4,13 +4,16 @@ namespace Sentry\Laravel\Features;
 
 use Closure;
 use Illuminate\Support\Str;
+use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Queue\Events\JobExceptionOccurred;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\Events\JobQueued;
 use Illuminate\Queue\Events\JobQueueing;
+use Illuminate\Queue\Events\Looping;
 use Illuminate\Queue\Events\WorkerStopping;
+use Illuminate\Queue\Jobs\SyncJob;
 use Illuminate\Queue\Queue;
 use Sentry\Breadcrumb;
 use Sentry\DataCollection\DataCollectionPolicy;
@@ -20,7 +23,7 @@ use Sentry\Laravel\Features\Concerns\TracksPushedScopesAndSpans;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
 use Sentry\Serializer\Serializer;
-use Sentry\State\Scope;
+use Sentry\State\IsolationScope;
 use Sentry\Tracing\PropagationContext;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\SpanStatus;
@@ -30,6 +33,7 @@ use Sentry\Tracing\TransactionSource;
 use function Sentry\continueTrace;
 use function Sentry\getBaggage;
 use function Sentry\getTraceparent;
+use function Sentry\startTransaction;
 
 class QueueIntegration extends Feature
 {
@@ -44,6 +48,13 @@ class QueueIntegration extends Feature
     private const QUEUE_PAYLOAD_PUBLISH_TIME = 'sentry_publish_time';
 
     private const QUEUE_SPAN_DATA_ARGUMENTS = 'messaging.message.body.data';
+
+    /**
+     * Whether the scope of the job that threw last is still pushed so the worker can report the exception with it.
+     *
+     * @var bool
+     */
+    private $failedJobScopeIsPushed = false;
 
     public function isApplicable(): bool
     {
@@ -66,9 +77,13 @@ class QueueIntegration extends Feature
         $events->listen(WorkerStopping::class, [$this, 'handleWorkerStoppingQueueEvent']);
         $events->listen(JobExceptionOccurred::class, [$this, 'handleJobExceptionOccurredQueueEvent']);
 
+        // The worker reports the exception of a failed job after `JobExceptionOccurred`, these are the first events after that
+        $events->listen(Looping::class, [$this, 'handleWorkerLoopingQueueEvent']);
+        $events->listen(CommandFinished::class, [$this, 'handleCommandFinishedEvent']);
+
         if ($this->isTracingFeatureEnabled('queue_jobs') || $this->isTracingFeatureEnabled('queue_job_transactions')) {
             Queue::createPayloadUsing(function (?string $connection, ?string $queue, ?array $payload): ?array {
-                $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+                $parentSpan = SentrySdk::getIsolationScope()->getSpan();
 
                 if ($parentSpan !== null && $parentSpan->getSampled()) {
                     $context = (new SpanContext)
@@ -97,7 +112,7 @@ class QueueIntegration extends Feature
 
     public function handleJobQueueingEvent(JobQueueing $event): void
     {
-        $currentSpan = SentrySdk::getCurrentHub()->getSpan();
+        $currentSpan = SentrySdk::getIsolationScope()->getSpan();
 
         // If there is no tracing span active there is no need to handle the event
         if ($currentSpan === null || $currentSpan->getOp() !== self::QUEUE_SPAN_OP_QUEUE_PUBLISH) {
@@ -125,14 +140,21 @@ class QueueIntegration extends Feature
     {
         $this->maybeFinishSpan(SpanStatus::ok());
 
-        $this->maybePopScope();
+        if ($event->job instanceof SyncJob) {
+            Integration::flushEvents();
+        } else {
+            $this->maybePopScope();
+        }
     }
 
     public function handleJobProcessingQueueEvent(JobProcessing $event): void
     {
-        $this->maybePopScope();
+        $this->popScopeOfFailedJob();
 
-        $this->pushScope();
+        // A sync job runs inside the request, command or job that dispatched it, so it shares that scope
+        if (!$event->job instanceof SyncJob) {
+            $this->pushScope();
+        }
 
         if ($this->isBreadcrumbFeatureEnabled('queue_info')) {
             $job = [
@@ -156,7 +178,7 @@ class QueueIntegration extends Feature
             ));
         }
 
-        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+        $parentSpan = SentrySdk::getIsolationScope()->getSpan();
 
         // If there is no tracing span active and we don't trace jobs as transactions there is no need to handle the event
         if ($parentSpan === null && !$this->isTracingFeatureEnabled('queue_job_transactions')) {
@@ -213,7 +235,7 @@ class QueueIntegration extends Feature
 
         // When the parent span is null we start a new transaction otherwise we start a child of the current span
         if ($parentSpan === null) {
-            $span = SentrySdk::getCurrentHub()->startTransaction($context);
+            $span = startTransaction($context);
         } else {
             $span = $parentSpan->startChild($context);
         }
@@ -221,9 +243,21 @@ class QueueIntegration extends Feature
         $this->pushSpan($span);
     }
 
+    public function handleWorkerLoopingQueueEvent(Looping $event): void
+    {
+        $this->popScopeOfFailedJob();
+    }
+
     public function handleWorkerStoppingQueueEvent(WorkerStopping $event): void
     {
+        $this->popScopeOfFailedJob();
+
         Integration::flushEvents();
+    }
+
+    public function handleCommandFinishedEvent(CommandFinished $event): void
+    {
+        $this->popScopeOfFailedJob();
     }
 
     public function handleJobExceptionOccurredQueueEvent(JobExceptionOccurred $event): void
@@ -231,6 +265,22 @@ class QueueIntegration extends Feature
         $this->maybeFinishSpan(SpanStatus::internalError());
 
         Integration::flushEvents();
+
+        // The worker reports the exception after this event, so the scope of the job stays pushed until the worker moves on
+        if (!$event->job instanceof SyncJob && $this->pushedScopeCount > 0) {
+            $this->failedJobScopeIsPushed = true;
+        }
+    }
+
+    private function popScopeOfFailedJob(): void
+    {
+        if (!$this->failedJobScopeIsPushed) {
+            return;
+        }
+
+        $this->failedJobScopeIsPushed = false;
+
+        $this->maybePopScope();
     }
 
     /**
@@ -246,7 +296,7 @@ class QueueIntegration extends Feature
             return [];
         }
 
-        $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
+        $policy = DataCollectionPolicy::fromOptions(SentrySdk::getClient()->getOptions());
         $dataCollection = $policy->getDataCollection();
 
         // The legacy options never collected the arguments passed to queued jobs
@@ -277,15 +327,15 @@ class QueueIntegration extends Feature
         return Str::after($queue, 'queues:');
     }
 
-    protected function pushScope(): void
+    protected function pushScope(): IsolationScope
     {
-        $this->pushScopeTrait();
+        $scope = $this->pushScopeTrait();
 
         // When a job starts, we want to make sure the scope is cleared of breadcrumbs
         // as well as setting a new propagation context.
-        SentrySdk::getCurrentHub()->configureScope(static function (Scope $scope) {
-            $scope->clearBreadcrumbs();
-            $scope->setPropagationContext(PropagationContext::fromDefaults());
-        });
+        $scope->clearBreadcrumbs();
+        $scope->setPropagationContext(PropagationContext::fromDefaults());
+
+        return $scope;
     }
 }

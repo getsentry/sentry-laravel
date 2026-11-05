@@ -38,7 +38,7 @@ class LaravelRequestFetcher implements RequestFetcherInterface
             return null;
         }
 
-        if (DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub())->isLegacyMode()) {
+        if (DataCollectionPolicy::fromOptions(SentrySdk::getClient()->getOptions())->isLegacyMode()) {
             $request = $this->withoutEmptyParsedBody($request);
         } else {
             $request = $this->withoutParsedBodyForNonFormRequests($request);

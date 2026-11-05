@@ -6,8 +6,8 @@ use Closure;
 use Illuminate\Container\Container;
 use Illuminate\Http\Request;
 use Sentry\DataCollection\DataCollectionPolicy;
-use Sentry\State\HubInterface;
-use Sentry\State\Scope;
+use Sentry\Laravel\SentryManager;
+use Sentry\State\IsolationScope;
 
 /**
  * This middleware enriches the Sentry scope with the IP address of the request.
@@ -28,12 +28,12 @@ class SetRequestIpMiddleware
     {
         $container = Container::getInstance();
 
-        if ($container->bound(HubInterface::class)) {
-            /** @var \Sentry\State\HubInterface $sentry */
-            $sentry = $container->make(HubInterface::class);
+        if ($container->bound(SentryManager::class)) {
+            /** @var SentryManager $sentry */
+            $sentry = $container->make(SentryManager::class);
 
-            if (DataCollectionPolicy::fromHub($sentry)->shouldCollectUserInfo()) {
-                $sentry->configureScope(static function (Scope $scope) use ($request): void {
+            if (DataCollectionPolicy::fromOptions($sentry->getClient()->getOptions())->shouldCollectUserInfo()) {
+                $sentry->configureScope(static function (IsolationScope $scope) use ($request): void {
                     $scope->setUser([
                         'ip_address' => $request->ip(),
                     ]);
