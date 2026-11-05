@@ -4,13 +4,16 @@ namespace Sentry\Laravel\Features;
 
 use Closure;
 use Illuminate\Support\Str;
+use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Queue\Events\JobExceptionOccurred;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\Events\JobQueued;
 use Illuminate\Queue\Events\JobQueueing;
+use Illuminate\Queue\Events\Looping;
 use Illuminate\Queue\Events\WorkerStopping;
+use Illuminate\Queue\Jobs\SyncJob;
 use Illuminate\Queue\Queue;
 use Sentry\Breadcrumb;
 use Sentry\DataCollection\DataCollectionPolicy;
@@ -26,7 +29,6 @@ use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\SpanStatus;
 use Sentry\Tracing\TransactionContext;
 use Sentry\Tracing\TransactionSource;
-use Throwable;
 
 use function Sentry\continueTrace;
 use function Sentry\getBaggage;
@@ -48,11 +50,11 @@ class QueueIntegration extends Feature
     private const QUEUE_SPAN_DATA_ARGUMENTS = 'messaging.message.body.data';
 
     /**
-     * The exception of the last job that threw and the isolation scope of that job.
+     * Whether the scope of the job that threw last is still pushed so the worker can report the exception with it.
      *
-     * @var array{exception: Throwable, scope: IsolationScope}|null
+     * @var bool
      */
-    private static $failedJob;
+    private $failedJobScopeIsPushed = false;
 
     public function isApplicable(): bool
     {
@@ -74,6 +76,10 @@ class QueueIntegration extends Feature
         $events->listen(JobProcessing::class, [$this, 'handleJobProcessingQueueEvent']);
         $events->listen(WorkerStopping::class, [$this, 'handleWorkerStoppingQueueEvent']);
         $events->listen(JobExceptionOccurred::class, [$this, 'handleJobExceptionOccurredQueueEvent']);
+
+        // The worker reports the exception of a failed job after `JobExceptionOccurred`, these are the first events after that
+        $events->listen(Looping::class, [$this, 'handleWorkerLoopingQueueEvent']);
+        $events->listen(CommandFinished::class, [$this, 'handleCommandFinishedEvent']);
 
         if ($this->isTracingFeatureEnabled('queue_jobs') || $this->isTracingFeatureEnabled('queue_job_transactions')) {
             Queue::createPayloadUsing(function (?string $connection, ?string $queue, ?array $payload): ?array {
@@ -134,12 +140,21 @@ class QueueIntegration extends Feature
     {
         $this->maybeFinishSpan(SpanStatus::ok());
 
-        $this->maybePopScope();
+        if ($event->job instanceof SyncJob) {
+            Integration::flushEvents();
+        } else {
+            $this->maybePopScope();
+        }
     }
 
     public function handleJobProcessingQueueEvent(JobProcessing $event): void
     {
-        $this->pushScope();
+        $this->popScopeOfFailedJob();
+
+        // A sync job runs inside the request, command or job that dispatched it, so it shares that scope
+        if (!$event->job instanceof SyncJob) {
+            $this->pushScope();
+        }
 
         if ($this->isBreadcrumbFeatureEnabled('queue_info')) {
             $job = [
@@ -228,44 +243,44 @@ class QueueIntegration extends Feature
         $this->pushSpan($span);
     }
 
+    public function handleWorkerLoopingQueueEvent(Looping $event): void
+    {
+        $this->popScopeOfFailedJob();
+    }
+
     public function handleWorkerStoppingQueueEvent(WorkerStopping $event): void
     {
+        $this->popScopeOfFailedJob();
+
         Integration::flushEvents();
+    }
+
+    public function handleCommandFinishedEvent(CommandFinished $event): void
+    {
+        $this->popScopeOfFailedJob();
     }
 
     public function handleJobExceptionOccurredQueueEvent(JobExceptionOccurred $event): void
     {
         $this->maybeFinishSpan(SpanStatus::internalError());
 
-        // Laravel reports the exception after this event, when the scope of the job is popped already. An exception
-        // thrown by a job dispatched from another job fails both jobs, so we keep the scope of the job that threw it.
-        if (self::$failedJob === null || self::$failedJob['exception'] !== $event->exception) {
-            self::$failedJob = [
-                'exception' => $event->exception,
-                'scope' => SentrySdk::getIsolationScope(),
-            ];
-        }
+        Integration::flushEvents();
 
-        // A job either finishes or throws, so the scope pushed for it is popped here or after it finished
-        $this->maybePopScope();
+        // The worker reports the exception after this event, so the scope of the job stays pushed until the worker moves on
+        if (!$event->job instanceof SyncJob && $this->pushedScopeCount > 0) {
+            $this->failedJobScopeIsPushed = true;
+        }
     }
 
-    /**
-     * Returns the isolation scope of the job that threw the given exception and forgets it.
-     *
-     * @internal
-     */
-    public static function pullScopeOfFailedJob(Throwable $exception): ?IsolationScope
+    private function popScopeOfFailedJob(): void
     {
-        if (self::$failedJob === null || self::$failedJob['exception'] !== $exception) {
-            return null;
+        if (!$this->failedJobScopeIsPushed) {
+            return;
         }
 
-        $scope = self::$failedJob['scope'];
+        $this->failedJobScopeIsPushed = false;
 
-        self::$failedJob = null;
-
-        return $scope;
+        $this->maybePopScope();
     }
 
     /**
