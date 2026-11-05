@@ -346,6 +346,11 @@ class QueueIntegrationTest extends TestCase
             return false;
         });
 
+        // WorkCommand sets the name too, avoiding a null array key in older workers on PHP 8.5.
+        if (method_exists($worker, 'setName')) {
+            $worker->setName('default');
+        }
+
         $worker->runNextJob('worker', 'default', new WorkerOptions);
     }
 
