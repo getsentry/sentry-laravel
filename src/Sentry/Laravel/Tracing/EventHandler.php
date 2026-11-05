@@ -186,7 +186,7 @@ class EventHandler
 
         $context->setEndTimestamp($context->getStartTimestamp() + $query->time / 1000);
 
-        $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
+        $policy = DataCollectionPolicy::fromOptions(SentrySdk::getClient()->getOptions());
 
         // The data collection options replace the `sql_bindings` option
         if ($this->traceSqlBindings && $policy->isLegacyMode()) {

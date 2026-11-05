@@ -753,7 +753,7 @@ class AiIntegration extends Feature
      */
     private function shouldCollectToolDefinitions(): bool
     {
-        return DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub())->isLegacyMode() || $this->shouldCollectGenAiInputs();
+        return DataCollectionPolicy::fromOptions(SentrySdk::getClient()->getOptions())->isLegacyMode() || $this->shouldCollectGenAiInputs();
     }
 
     private function resolveToolDefinitions(Agent $agent): ?string

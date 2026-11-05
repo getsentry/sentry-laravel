@@ -265,7 +265,7 @@ class Middleware
      */
     private function collectRequestData(): array
     {
-        $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
+        $policy = DataCollectionPolicy::fromOptions(SentrySdk::getClient()->getOptions());
 
         // The legacy options only collected the request data on the event
         if ($policy->isLegacyMode()) {
@@ -295,7 +295,7 @@ class Middleware
      */
     private function collectResponseData(SymfonyResponse $response): array
     {
-        $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
+        $policy = DataCollectionPolicy::fromOptions(SentrySdk::getClient()->getOptions());
 
         // The legacy options never collected any response data
         if ($policy->isLegacyMode()) {

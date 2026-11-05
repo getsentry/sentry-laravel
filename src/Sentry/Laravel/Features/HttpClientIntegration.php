@@ -18,6 +18,7 @@ use Sentry\DataCollection\HttpUrlCollector;
 use Sentry\Laravel\Features\Concerns\ResolvesEventOrigin;
 use Sentry\Laravel\Features\Concerns\TracksPushedScopesAndSpans;
 use Sentry\Laravel\Integration;
+use Sentry\NoOpClient;
 use Sentry\SentrySdk;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
@@ -91,7 +92,7 @@ class HttpClientIntegration extends Feature
             return;
         }
 
-        $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
+        $policy = DataCollectionPolicy::fromOptions(SentrySdk::getClient()->getOptions());
         $request = $event->request->toPsrRequest();
         $fullUri = $this->getFullUri($event->request->url());
         $partialUri = $this->getPartialUri($fullUri);
@@ -118,7 +119,7 @@ class HttpClientIntegration extends Feature
         $span = $this->maybePopSpan();
 
         if ($span !== null) {
-            $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
+            $policy = DataCollectionPolicy::fromOptions(SentrySdk::getClient()->getOptions());
             $response = $event->response->toPsrResponse();
 
             $span->setData(array_merge($span->getData(), [
@@ -171,7 +172,7 @@ class HttpClientIntegration extends Feature
                 'http.response.status_code' => $event->response->status(),
                 'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
                 'http.response.body.size' => $event->response->toPsrResponse()->getBody()->getSize(),
-            ], $this->collectUrlData(DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub()), $fullUri))
+            ], $this->collectUrlData(DataCollectionPolicy::fromOptions(SentrySdk::getClient()->getOptions()), $fullUri))
         ));
     }
 
@@ -190,7 +191,7 @@ class HttpClientIntegration extends Feature
                 'http.fragment' => $fullUri->getFragment(),
                 'http.request.method' => $event->request->method(),
                 'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
-            ], $this->collectUrlData(DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub()), $fullUri))
+            ], $this->collectUrlData(DataCollectionPolicy::fromOptions(SentrySdk::getClient()->getOptions()), $fullUri))
         ));
     }
 
@@ -250,8 +251,8 @@ class HttpClientIntegration extends Feature
 
     private function shouldAttachTracingHeaders(RequestInterface $request): bool
     {
-        $client = SentrySdk::getCurrentHub()->getClient();
-        if ($client === null) {
+        $client = SentrySdk::getClient();
+        if ($client instanceof NoOpClient) {
             return false;
         }
 

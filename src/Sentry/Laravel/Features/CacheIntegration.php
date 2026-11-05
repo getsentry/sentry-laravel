@@ -226,7 +226,7 @@ class CacheIntegration extends Feature
             'db.redis.connection' => $event->connectionName,
         ];
 
-        $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
+        $policy = DataCollectionPolicy::fromOptions(SentrySdk::getClient()->getOptions());
 
         $shouldCollectParameters = $policy->isLegacyMode()
             ? $this->shouldSendDefaultPii()
