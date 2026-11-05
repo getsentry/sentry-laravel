@@ -157,12 +157,12 @@ class SentryTracesSampleRateTest extends TestCase
      * @define-env envWithoutDsnSet
      */
     #[DefineEnvironment('envWithoutDsnSet')]
-    public function testMiddlewareHandlesHubNotBound(): void
+    public function testMiddlewareHandlesMissingDsn(): void
     {
         $middleware = new SentryTracesSampleRate(0.5);
         $middleware->handle(new \stdClass, $this->nextMiddleware());
 
-        // Should not throw when HubInterface is not bound
+        // Should not throw when no DSN is set
         $this->assertTrue(true);
     }
 

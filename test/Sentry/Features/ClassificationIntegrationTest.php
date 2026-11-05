@@ -110,19 +110,19 @@ class ClassificationIntegrationTest extends TestCase
 
         $this->classifyWithTypeSafe();
 
-        $this->assertSame($transaction, $this->getSentryHubFromContainer()->getSpan());
+        $this->assertSame($transaction, $this->getSentryFromContainer()->getSpan());
     }
 
     public function testEvaluateSpanIsNestedUnderTheCurrentSpan(): void
     {
         $transaction = $this->startTransaction();
         $toolSpan = $transaction->startChild(SpanContext::make()->setOp('gen_ai.execute_tool'));
-        $this->getSentryHubFromContainer()->setSpan($toolSpan);
+        $this->getSentryFromContainer()->setSpan($toolSpan);
 
         $this->classifyWithTypeSafe();
 
         $this->assertSame($toolSpan->getSpanId(), $this->findEvaluateSpan($transaction)->getParentSpanId());
-        $this->assertSame($toolSpan, $this->getSentryHubFromContainer()->getSpan());
+        $this->assertSame($toolSpan, $this->getSentryFromContainer()->getSpan());
     }
 
     public function testHttpClientSpanIsNestedUnderEvaluateSpan(): void
@@ -165,7 +165,7 @@ class ClassificationIntegrationTest extends TestCase
 
         $this->classify();
 
-        $this->assertNull($this->getSentryHubFromContainer()->getSpan());
+        $this->assertNull($this->getSentryFromContainer()->getSpan());
     }
 
     public function testEvaluateSpanCanBeDisabled(): void
@@ -206,7 +206,7 @@ class ClassificationIntegrationTest extends TestCase
 
         $this->assertEquals(SpanStatus::unauthenticated(), $span->getStatus());
         $this->assertNotNull($span->getEndTimestamp());
-        $this->assertSame($transaction, $this->getSentryHubFromContainer()->getSpan());
+        $this->assertSame($transaction, $this->getSentryFromContainer()->getSpan());
     }
 
     public function testServerErrorFinishesSpanAfterHttpClientSpan(): void
@@ -228,7 +228,7 @@ class ClassificationIntegrationTest extends TestCase
         $this->assertNotNull($evaluateSpan->getEndTimestamp());
         $this->assertSame($evaluateSpan->getSpanId(), $httpSpan->getParentSpanId());
         $this->assertNotNull($httpSpan->getEndTimestamp());
-        $this->assertSame($transaction, $this->getSentryHubFromContainer()->getSpan());
+        $this->assertSame($transaction, $this->getSentryFromContainer()->getSpan());
     }
 
     public function testConnectionFailureFinishesSpan(): void
@@ -252,7 +252,7 @@ class ClassificationIntegrationTest extends TestCase
 
         $this->assertEquals(SpanStatus::internalError(), $span->getStatus());
         $this->assertNotNull($span->getEndTimestamp());
-        $this->assertSame($transaction, $this->getSentryHubFromContainer()->getSpan());
+        $this->assertSame($transaction, $this->getSentryFromContainer()->getSpan());
     }
 
     public function testConnectionFailureForMisconfiguredProviderUrlFinishesSpan(): void
@@ -276,7 +276,7 @@ class ClassificationIntegrationTest extends TestCase
 
         $this->assertEquals(SpanStatus::internalError(), $span->getStatus());
         $this->assertNotNull($span->getEndTimestamp());
-        $this->assertSame($transaction, $this->getSentryHubFromContainer()->getSpan());
+        $this->assertSame($transaction, $this->getSentryFromContainer()->getSpan());
     }
 
     public function testFailoverRecordsASpanPerProvider(): void
@@ -306,7 +306,7 @@ class ClassificationIntegrationTest extends TestCase
         $this->assertEquals(SpanStatus::ok(), $spans[1]->getStatus());
         $this->assertSame($transaction->getSpanId(), $spans[0]->getParentSpanId());
         $this->assertSame($transaction->getSpanId(), $spans[1]->getParentSpanId());
-        $this->assertSame($transaction, $this->getSentryHubFromContainer()->getSpan());
+        $this->assertSame($transaction, $this->getSentryFromContainer()->getSpan());
     }
 
     public function testFailoverWithoutHttpResponseFinishesSpan(): void
@@ -331,7 +331,7 @@ class ClassificationIntegrationTest extends TestCase
         $this->assertNotNull($spans[0]->getEndTimestamp());
         $this->assertEquals(SpanStatus::ok(), $spans[1]->getStatus());
         $this->assertSame($transaction->getSpanId(), $spans[1]->getParentSpanId());
-        $this->assertSame($transaction, $this->getSentryHubFromContainer()->getSpan());
+        $this->assertSame($transaction, $this->getSentryFromContainer()->getSpan());
     }
 
     public function testOpenRouterErrorResponseIsMatched(): void
@@ -349,7 +349,7 @@ class ClassificationIntegrationTest extends TestCase
         $this->assertSame('openrouter', $span->getData()['gen_ai.provider.name']);
         $this->assertEquals(SpanStatus::invalidArgument(), $span->getStatus());
         $this->assertNotNull($span->getEndTimestamp());
-        $this->assertSame($transaction, $this->getSentryHubFromContainer()->getSpan());
+        $this->assertSame($transaction, $this->getSentryFromContainer()->getSpan());
     }
 
     public function testConfiguredProviderUrlIsMatched(): void
@@ -371,7 +371,7 @@ class ClassificationIntegrationTest extends TestCase
 
         $this->assertEquals(SpanStatus::invalidArgument(), $span->getStatus());
         $this->assertNotNull($span->getEndTimestamp());
-        $this->assertSame($transaction, $this->getSentryHubFromContainer()->getSpan());
+        $this->assertSame($transaction, $this->getSentryFromContainer()->getSpan());
     }
 
     public function testCustomProviderErrorResponseIsMatched(): void
@@ -392,7 +392,7 @@ class ClassificationIntegrationTest extends TestCase
 
         $this->assertEquals(SpanStatus::invalidArgument(), $span->getStatus());
         $this->assertNotNull($span->getEndTimestamp());
-        $this->assertSame($transaction, $this->getSentryHubFromContainer()->getSpan());
+        $this->assertSame($transaction, $this->getSentryFromContainer()->getSpan());
     }
 
     public function testRequestToAnotherHostIsNotClaimed(): void
@@ -415,7 +415,7 @@ class ClassificationIntegrationTest extends TestCase
 
         $this->assertEquals(SpanStatus::ok(), $span->getStatus());
         $this->assertSame('jev-1.13.0', $span->getData()['gen_ai.response.model']);
-        $this->assertSame($transaction, $this->getSentryHubFromContainer()->getSpan());
+        $this->assertSame($transaction, $this->getSentryFromContainer()->getSpan());
     }
 
     public function testErrorResponseIsOnlyClaimedWhileTheEvaluateSpanIsCurrent(): void
@@ -429,7 +429,7 @@ class ClassificationIntegrationTest extends TestCase
         $this->dispatchLaravelEvent(new Classifying('invocation', $provider, 'jev-latest', $prompt));
 
         // Another span takes over while the classification is still open
-        $this->getSentryHubFromContainer()->setSpan($transaction);
+        $this->getSentryFromContainer()->setSpan($transaction);
 
         Http::post(self::TYPESAFE_URL);
 
@@ -462,13 +462,13 @@ class ClassificationIntegrationTest extends TestCase
 
         $agentSpan = $this->findSpanByOp($transaction, 'gen_ai.invoke_agent');
         $toolSpan = $agentSpan->startChild(SpanContext::make()->setOp('gen_ai.execute_tool'));
-        $this->getSentryHubFromContainer()->setSpan($toolSpan);
+        $this->getSentryFromContainer()->setSpan($toolSpan);
 
         $this->classify(null, 'openrouter');
 
         $this->assertNull($this->findSpanByOp($transaction, 'gen_ai.chat'));
         $this->assertSame($toolSpan->getSpanId(), $this->findEvaluateSpan($transaction)->getParentSpanId());
-        $this->assertSame($toolSpan, $this->getSentryHubFromContainer()->getSpan());
+        $this->assertSame($toolSpan, $this->getSentryFromContainer()->getSpan());
     }
 
     public function testEvaluateSpanInsideAnAgentGetsTheNewConversationId(): void

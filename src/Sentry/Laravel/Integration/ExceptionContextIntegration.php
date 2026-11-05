@@ -5,15 +5,14 @@ namespace Sentry\Laravel\Integration;
 use Sentry\Event;
 use Sentry\EventHint;
 use Sentry\SentrySdk;
-use Sentry\State\Scope;
 use Sentry\Integration\IntegrationInterface;
 
 class ExceptionContextIntegration implements IntegrationInterface
 {
     public function setupOnce(): void
     {
-        Scope::addGlobalEventProcessor(static function (Event $event, ?EventHint $hint = null): Event {
-            $self = SentrySdk::getCurrentHub()->getIntegration(self::class);
+        SentrySdk::getGlobalScope()->addEventProcessor(static function (Event $event, ?EventHint $hint = null): Event {
+            $self = SentrySdk::getClient()->getIntegration(self::class);
 
             if (!$self instanceof self) {
                 return $event;

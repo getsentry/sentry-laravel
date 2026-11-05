@@ -15,7 +15,6 @@ use Sentry\Integration\IntegrationInterface;
 use Sentry\Laravel\Integration;
 use Sentry\Options;
 use Sentry\SentrySdk;
-use Sentry\State\Scope;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\TransactionSource;
 
@@ -60,14 +59,11 @@ class LighthouseIntegration implements IntegrationInterface
         $this->eventDispatcher->listen(EndExecution::class, [$this, 'handleEndExecution']);
         $this->eventDispatcher->listen(EndRequest::class, [$this, 'handleEndRequest']);
 
-        Scope::addGlobalEventProcessor(function (Event $event): Event {
-            $currentHub = SentrySdk::getCurrentHub();
-            $integration = $currentHub->getIntegration(self::class);
-            $client = $currentHub->getClient();
+        SentrySdk::getGlobalScope()->addEventProcessor(function (Event $event): Event {
+            $client = SentrySdk::getClient();
 
-            // The client bound to the current hub, if any, could not have this
-            // integration enabled. If this is the case, bail out
-            if (null === $integration || null === $client) {
+            // The current client could not have this integration enabled. If this is the case, bail out
+            if ($client->getIntegration(self::class) === null) {
                 return $event;
             }
 

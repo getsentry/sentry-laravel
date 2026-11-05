@@ -17,7 +17,6 @@ use Throwable;
 use Sentry\Breadcrumb;
 use Sentry\Event;
 use Sentry\Integration\IntegrationInterface;
-use Sentry\State\Scope;
 
 use function Sentry\addBreadcrumb;
 use function Sentry\configureScope;
@@ -38,8 +37,8 @@ class Integration implements IntegrationInterface
      */
     public function setupOnce(): void
     {
-        Scope::addGlobalEventProcessor(static function (Event $event): Event {
-            $self = SentrySdk::getCurrentHub()->getIntegration(self::class);
+        SentrySdk::getGlobalScope()->addEventProcessor(static function (Event $event): Event {
+            $self = SentrySdk::getClient()->getIntegration(self::class);
 
             if (!$self instanceof self) {
                 return $event;
@@ -70,7 +69,7 @@ class Integration implements IntegrationInterface
      */
     public static function addBreadcrumb(Breadcrumb $breadcrumb): void
     {
-        $self = SentrySdk::getCurrentHub()->getIntegration(self::class);
+        $self = SentrySdk::getClient()->getIntegration(self::class);
 
         if (!$self instanceof self) {
             return;
@@ -86,7 +85,7 @@ class Integration implements IntegrationInterface
      */
     public static function configureScope(callable $callback): void
     {
-        $self = SentrySdk::getCurrentHub()->getIntegration(self::class);
+        $self = SentrySdk::getClient()->getIntegration(self::class);
 
         if (!$self instanceof self) {
             return;

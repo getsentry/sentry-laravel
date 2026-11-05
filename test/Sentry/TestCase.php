@@ -7,23 +7,23 @@ use Illuminate\Config\Repository;
 use Sentry\Tracing\TransactionContext;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Foundation\Application;
-use ReflectionMethod;
 use Sentry\Breadcrumb;
 use Sentry\ClientInterface;
 use Sentry\Event;
 use Sentry\EventHint;
 use Sentry\EventType;
-use Sentry\State\Scope;
-use ReflectionProperty;
+use Sentry\SentrySdk;
+use Sentry\State\IsolationScope;
 use Sentry\Laravel\Tracing;
-use Sentry\State\HubInterface;
+use Sentry\Laravel\SentryManager;
 use Sentry\Laravel\ServiceProvider;
+use Sentry\Transport\Result;
+use Sentry\Transport\ResultStatus;
+use Sentry\Transport\TransportInterface;
 use Orchestra\Testbench\TestCase as LaravelTestCase;
 
 abstract class TestCase extends LaravelTestCase
 {
-    private static $hasSetupGlobalEventProcessor = false;
-
     protected $loadEnvironmentVariables = false;
 
     protected $setupConfig = [
@@ -41,8 +41,6 @@ abstract class TestCase extends LaravelTestCase
     {
         self::$lastSentryEvents = [];
 
-        $this->setupGlobalEventProcessor();
-
         tap($app['config'], function (Repository $config) {
             // This key has no meaning, it's just a randomly generated one but it's required for the app to boot properly
             $config->set('app.key', 'base64:JfXL2QpYC1+szaw+CdT6SHXG8zjdTkKM/ctPWoTWbXU=');
@@ -57,6 +55,34 @@ abstract class TestCase extends LaravelTestCase
                 self::$lastSentryEvents[] = [$event, $hint];
 
                 return null;
+            });
+
+            // Regular events and transactions are handled by the `before_send` and `before_send_transaction` callbacks,
+            // the transport records everything else that is sent, like check-ins and logs
+            $config->set('sentry.transport', new class(static function (Event $event): void {
+                if (!in_array($event->getType(), [EventType::event(), EventType::transaction()], true)) {
+                    self::$lastSentryEvents[] = [$event, null];
+                }
+            }) implements TransportInterface {
+                /** @var callable */
+                private $recorder;
+
+                public function __construct(callable $recorder)
+                {
+                    $this->recorder = $recorder;
+                }
+
+                public function send(Event $event): Result
+                {
+                    ($this->recorder)($event);
+
+                    return new Result(ResultStatus::success(), $event);
+                }
+
+                public function close(?int $timeout = null): Result
+                {
+                    return new Result(ResultStatus::success());
+                }
             });
 
             if ($config->get('sentry_test.override_dsn') !== true) {
@@ -110,43 +136,32 @@ abstract class TestCase extends LaravelTestCase
         $this->app['events']->dispatch($event, $payload);
     }
 
-    protected function getSentryHubFromContainer(): HubInterface
+    protected function getSentryFromContainer(): SentryManager
     {
         return $this->app->make('sentry');
     }
 
     protected function getSentryClientFromContainer(): ClientInterface
     {
-        return $this->getSentryHubFromContainer()->getClient();
+        return $this->getSentryFromContainer()->getClient();
     }
 
-    protected function getCurrentSentryScope(): Scope
+    protected function getCurrentSentryScope(): IsolationScope
     {
-        $hub = $this->getSentryHubFromContainer();
+        return SentrySdk::getIsolationScope();
+    }
 
-        $method = new ReflectionMethod($hub, 'getScope');
-        if (\PHP_VERSION_ID < 80100)
-        {
-            // This method is no-op starting from PHP 8.1; see also https://wiki.php.net/rfc/deprecations_php_8_5#deprecate_reflectionsetaccessible
-            $method->setAccessible(true);
-        }
-
-        return $method->invoke($hub);
+    protected function applyCurrentSentryScopesToEvent(Event $event, ?EventHint $hint = null): ?Event
+    {
+        return SentrySdk::getGlobalScope()
+            ->merge($this->getCurrentSentryScope())
+            ->applyToEvent($event, $hint, $this->getSentryClientFromContainer()->getOptions());
     }
 
     /** @return array<array-key, \Sentry\Breadcrumb> */
     protected function getCurrentSentryBreadcrumbs(): array
     {
-        $scope = $this->getCurrentSentryScope();
-
-        $property = new ReflectionProperty($scope, 'breadcrumbs');
-        if (\PHP_VERSION_ID < 80100)
-        {
-            // This method is no-op starting from PHP 8.1; see also https://wiki.php.net/rfc/deprecations_php_8_5#deprecate_reflectionsetaccessible
-            $property->setAccessible(true);
-        }
-
-        return $property->getValue($scope);
+        return $this->getCurrentSentryScope()->getBreadcrumbs();
     }
 
     protected function getLastSentryBreadcrumb(): ?Breadcrumb
@@ -207,34 +222,12 @@ abstract class TestCase extends LaravelTestCase
 
     protected function startTransaction(): Transaction
     {
-        $hub = $this->getSentryHubFromContainer();
-
-        $transaction = $hub->startTransaction(new TransactionContext);
+        $transaction = $this->getSentryFromContainer()->startTransaction(new TransactionContext);
         $transaction->initSpanRecorder();
         $transaction->setSampled(true);
 
         $this->getCurrentSentryScope()->setSpan($transaction);
 
         return $transaction;
-    }
-
-    private function setupGlobalEventProcessor(): void
-    {
-        if (self::$hasSetupGlobalEventProcessor) {
-            return;
-        }
-
-        Scope::addGlobalEventProcessor(static function (Event $event, ?EventHint $hint) {
-            // Regular events and transactions are handled by the `before_send` and `before_send_transaction` callbacks
-            if (in_array($event->getType(), [EventType::event(), EventType::transaction()], true)) {
-                return $event;
-            }
-
-            self::$lastSentryEvents[] = [$event, $hint];
-
-            return null;
-        });
-
-        self::$hasSetupGlobalEventProcessor = true;
     }
 }
