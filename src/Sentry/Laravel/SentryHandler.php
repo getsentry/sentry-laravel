@@ -13,7 +13,7 @@ use Sentry\Breadcrumb;
 use Sentry\Event;
 use Sentry\Monolog\CompatibilityProcessingHandlerTrait;
 use Sentry\Severity;
-use Sentry\State\Scope;
+use Sentry\State\IsolationScope;
 use Throwable;
 use TypeError;
 
@@ -169,7 +169,7 @@ class SentryHandler extends AbstractProcessingHandler
         }
 
         $this->sentry->withScope(
-            function (Scope $scope) use ($record, $isException, $exception) {
+            function (IsolationScope $scope) use ($record, $isException, $exception) {
                 $context = !empty($record['context']) && is_array($record['context'])
                     ? $record['context']
                     : [];
@@ -294,12 +294,12 @@ class SentryHandler extends AbstractProcessingHandler
     /**
      * Consumes the context and applies it to the scope.
      *
-     * @param \Sentry\State\Scope $scope
+     * @param \Sentry\State\IsolationScope $scope
      * @param array               $context
      *
      * @return void
      */
-    private function consumeContextAndApplyToScope(Scope $scope, array &$context): void
+    private function consumeContextAndApplyToScope(IsolationScope $scope, array &$context): void
     {
         if (!empty($context['extra']) && is_array($context['extra'])) {
             foreach ($context['extra'] as $key => $value) {
