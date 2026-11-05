@@ -21,7 +21,6 @@ use function Sentry\captureException;
 use function Sentry\configureScope;
 use function Sentry\getBaggage;
 use function Sentry\getTraceparent;
-use function Sentry\getW3CTraceparent;
 use function Sentry\metrics;
 
 class Integration implements IntegrationInterface
@@ -187,7 +186,7 @@ class Integration implements IntegrationInterface
      */
     public static function sentryMeta(): string
     {
-        return self::sentryTracingMeta() . self::sentryW3CTracingMeta() . self::sentryBaggageMeta();
+        return self::sentryTracingMeta() . self::sentryBaggageMeta();
     }
 
     /**
@@ -198,17 +197,6 @@ class Integration implements IntegrationInterface
     public static function sentryTracingMeta(): string
     {
         return sprintf('<meta name="sentry-trace" content="%s"/>', self::escapeMetaTagContent(getTraceparent()));
-    }
-
-    /**
-     * Retrieve the `traceparent` meta tag with tracing information to link this request to front-end requests.
-     *
-     * @deprecated since version 4.14. To be removed in version 5.0.
-     * @return string
-     */
-    public static function sentryW3CTracingMeta(): string
-    {
-        return '';
     }
 
     /**
