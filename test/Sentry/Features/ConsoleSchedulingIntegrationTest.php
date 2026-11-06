@@ -4,6 +4,8 @@ namespace Sentry\Laravel\Tests\Features;
 
 use DateTimeZone;
 use Illuminate\Bus\Queueable;
+use Illuminate\Console\Events\ScheduledTaskFailed;
+use Illuminate\Console\Events\ScheduledTaskFinished;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -369,6 +371,139 @@ class ConsoleSchedulingIntegrationTest extends TestCase
 
         // Task B's finish should use Task B's check-in ID
         $this->assertEquals($taskBCheckInId, $taskBFinishEvent->getCheckIn()->getId());
+    }
+
+    public function testBackgroundScheduledTaskCheckInIdIsRemovedAfterLaunch(): void
+    {
+        if (!class_exists(ContextRepository::class) || version_compare(app()->version(), '12.40.2', '<')) {
+            $this->markTestSkipped('Laravel Context with hidden context passing to child processes requires Laravel 12.40.2+.');
+        }
+
+        /** @var Event $scheduledEvent */
+        $scheduledEvent = $this->getScheduler()
+            ->command('inspire')
+            ->runInBackground()
+            ->sentryMonitor('test-background-monitor');
+
+        // Get the integration and context instances
+        $integration = $this->app->make(ConsoleSchedulingIntegration::class);
+        $context = $this->app->make(ContextRepository::class);
+
+        // Use reflection to access protected callback arrays on the Event
+        $eventReflection = new ReflectionClass($scheduledEvent);
+        $beforeCallbacksProperty = $eventReflection->getProperty('beforeCallbacks');
+
+        // Run the before callbacks (this triggers startCheckIn)
+        foreach ($beforeCallbacksProperty->getValue($scheduledEvent) as $callback) {
+            $this->app->call($callback->bindTo($scheduledEvent));
+        }
+
+        $checkInId = $this->getLastSentryEvent()->getCheckIn()->getId();
+
+        // The check-in ID should remain in the context before the background process is launched
+        $this->assertContains($checkInId, $context->allHidden());
+
+        // Simulate the background process being successfully launched
+        $integration->handleScheduledTaskFinished(new ScheduledTaskFinished($scheduledEvent, 0));
+
+        // The check-in ID should have been removed from the context
+        $this->assertNotContains($checkInId, $context->allHidden());
+    }
+
+    public function testBackgroundScheduledTaskCheckInIdIsRemovedWhenLaunchFails(): void
+    {
+        if (!class_exists(ContextRepository::class) || version_compare(app()->version(), '12.40.2', '<')) {
+            $this->markTestSkipped('Laravel Context with hidden context passing to child processes requires Laravel 12.40.2+.');
+        }
+
+        /** @var Event $scheduledEvent */
+        $scheduledEvent = $this->getScheduler()
+            ->command('inspire')
+            ->runInBackground()
+            ->sentryMonitor('test-failing-monitor');
+
+        // Get the integration and context instances
+        $integration = $this->app->make(ConsoleSchedulingIntegration::class);
+        $context = $this->app->make(ContextRepository::class);
+
+        // Use reflection to access protected callback arrays on the Event
+        $eventReflection = new ReflectionClass($scheduledEvent);
+        $beforeCallbacksProperty = $eventReflection->getProperty('beforeCallbacks');
+
+        // Run the before callbacks (this triggers startCheckIn)
+        foreach ($beforeCallbacksProperty->getValue($scheduledEvent) as $callback) {
+            $this->app->call($callback->bindTo($scheduledEvent));
+        }
+
+        $checkInId = $this->getLastSentryEvent()->getCheckIn()->getId();
+
+        // The check-in ID should remain in the context before the background process is launched
+        $this->assertContains($checkInId, $context->allHidden());
+
+        // Simulate the background process failing to launch
+        $integration->handleScheduledTaskFailed(new ScheduledTaskFailed($scheduledEvent, new RuntimeException));
+
+        // The check-in ID should have been removed from the context
+        $this->assertNotContains($checkInId, $context->allHidden());
+    }
+
+    public function testBackgroundScheduledTaskCheckInIdIsRetainedInCacheForOlderLaravelVersions(): void
+    {
+        if (class_exists(ContextRepository::class) && version_compare(app()->version(), '12.40.2', '>=')) {
+            $this->markTestSkipped('Laravel 12.40.2+ stores background check-in IDs in Context.');
+        }
+
+        /** @var Event $scheduledEvent */
+        $scheduledEvent = $this->getScheduler()
+            ->command('inspire')
+            ->runInBackground()
+            ->sentryMonitor('test-background-monitor');
+
+        // Get the integration instance
+        $integration = $this->app->make(ConsoleSchedulingIntegration::class);
+
+        // Use reflection to access private properties
+        $integrationReflection = new ReflectionClass($integration);
+        $checkInStoreProperty = $integrationReflection->getProperty('checkInStore');
+
+        // Use reflection to access protected callback arrays on the Event
+        $eventReflection = new ReflectionClass($scheduledEvent);
+        $beforeCallbacksProperty = $eventReflection->getProperty('beforeCallbacks');
+        $afterCallbacksProperty = $eventReflection->getProperty('afterCallbacks');
+
+        if (\PHP_VERSION_ID < 80100) {
+            $checkInStoreProperty->setAccessible(true);
+
+            $beforeCallbacksProperty->setAccessible(true);
+            $afterCallbacksProperty->setAccessible(true);
+        }
+
+        foreach ($beforeCallbacksProperty->getValue($scheduledEvent) as $callback) {
+            $this->app->call($callback->bindTo($scheduledEvent));
+        }
+
+        $this->assertSentryCheckInCount(1);
+        $checkInId = $this->getLastSentryEvent()->getCheckIn()->getId();
+
+        $integration->handleScheduledTaskFinished(new ScheduledTaskFinished($scheduledEvent, 0));
+
+        // Clear the in-memory store to simulate being in a different process
+        $checkInStoreProperty->setValue($integration, []);
+
+        // Set exitCode to 0 to simulate successful execution
+        $scheduledEvent->exitCode = 0;
+
+        foreach ($afterCallbacksProperty->getValue($scheduledEvent) as $callback) {
+            $this->app->call($callback->bindTo($scheduledEvent));
+        }
+
+        $this->assertSentryCheckInCount(2);
+        $finishCheckInEvent = $this->getLastSentryEvent();
+
+        // The finish check-in should have the same ID as the start check-in
+        // This verifies that the ID was not removed from the cache.
+        $this->assertSame($checkInId, $finishCheckInEvent->getCheckIn()->getId());
+        $this->assertEquals(CheckInStatus::ok(), $finishCheckInEvent->getCheckIn()->getStatus());
     }
 
     private function getScheduler(): Schedule
