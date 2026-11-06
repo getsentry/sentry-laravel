@@ -153,6 +153,9 @@ return [
         // Capture send notifications as spans
         'notifications' => env('SENTRY_TRACE_NOTIFICATIONS_ENABLED', true),
 
+        // Capture gate and policy authorization checks as spans
+        'gates' => env('SENTRY_TRACE_GATES_ENABLED', false),
+
         // Enable tracing for requests without a matching route (404's)
         'missing_routes' => env('SENTRY_TRACE_MISSING_ROUTES_ENABLED', false),
 

@@ -78,6 +78,7 @@ class ServiceProvider extends BaseServiceProvider
         Features\HttpClientIntegration::class,
         Features\FolioPackageIntegration::class,
         Features\NotificationsIntegration::class,
+        Features\GateIntegration::class,
         Features\PennantPackageIntegration::class,
         Features\LivewirePackageIntegration::class,
         Features\ConsoleSchedulingIntegration::class,
