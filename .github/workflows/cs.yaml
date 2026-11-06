@@ -26,9 +26,6 @@ jobs:
       - name: Resolve dependencies
         run: composer update --no-progress --no-interaction --prefer-dist --no-install --no-scripts --no-audit
 
-      - name: Audit dependencies
-        run: composer audit --locked --no-interaction --format=table --abandoned=report
-
       - name: Install dependencies
         run: composer install --no-progress --no-interaction --prefer-dist --no-scripts
 
@@ -49,9 +46,6 @@ jobs:
 
       - name: Resolve dependencies
         run: composer update --no-progress --no-interaction --prefer-dist --no-install --no-scripts --no-audit
-
-      - name: Audit dependencies
-        run: composer audit --locked --no-interaction --format=table --abandoned=report
 
       - name: Install dependencies
         run: composer install --no-progress --no-interaction --prefer-dist --no-scripts

@@ -7,6 +7,7 @@ use Illuminate\Routing\Route;
 use Sentry\EventHint;
 use Sentry\EventId;
 use Sentry\ExceptionMechanism;
+use Sentry\Laravel\Features\AiIntegration;
 use Sentry\Laravel\Integration\ModelViolations as ModelViolationReports;
 use Sentry\Logs\Logs;
 use Sentry\Metrics\TraceMetrics;
@@ -108,6 +109,18 @@ class Integration implements IntegrationInterface
     public static function setTransaction(?string $transaction): void
     {
         self::$transaction = $transaction;
+    }
+
+    /**
+     * Set the conversation ID here if using integrations that do not provide it automatically,
+     * such as the ClassificationIntegration.
+     *
+     * This can also be useful if AI calls are proxied so the conversation ID has to persist
+     * multiple requests.
+     */
+    public static function setConversationId(?string $conversationId): void
+    {
+        app(AiIntegration::class)->setCurrentConversationId($conversationId);
     }
 
     /**

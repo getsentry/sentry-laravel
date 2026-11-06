@@ -7,6 +7,8 @@ use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Events as DatabaseEvents;
 use Illuminate\Routing\Events as RoutingEvents;
 use RuntimeException;
+use Sentry\DataCollection\DatabaseDataCollector;
+use Sentry\DataCollection\DataCollectionPolicy;
 use Sentry\Laravel\Features\Concerns\ResolvesEventOrigin;
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
@@ -184,11 +186,16 @@ class EventHandler
 
         $context->setEndTimestamp($context->getStartTimestamp() + $query->time / 1000);
 
-        if ($this->traceSqlBindings) {
+        $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
+
+        // The data collection options replace the `sql_bindings` option
+        if ($this->traceSqlBindings && $policy->isLegacyMode()) {
             $context->setData(array_merge($context->getData(), [
                 'db.sql.bindings' => $query->bindings
             ]));
         }
+
+        $context->setData(array_merge($context->getData(), DatabaseDataCollector::collectQueryData($policy, $query->bindings)));
 
         if ($this->traceSqlQueryOrigin && $query->time >= $this->traceSqlQueryOriginTreshHoldMs) {
             $queryOrigin = $this->resolveEventOrigin();

@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Laravel\Lumen\Application as Lumen;
 use RuntimeException;
 use Sentry\ClientBuilder;
+use Sentry\DataCollection\DataCollectionPolicy;
 use Sentry\Event;
 use Sentry\EventHint;
 use Sentry\Integration as SdkIntegration;
@@ -45,6 +46,7 @@ class ServiceProvider extends BaseServiceProvider
         // We do not want these settings to hit the PHP SDK because they are Laravel specific and the PHP SDK will throw errors
         'tracing',
         'breadcrumbs',
+        'crons',
         // We resolve the integrations through the container later, so we initially do not pass it to the SDK yet
         'integrations',
         // We have this setting to allow us to capture the .env LOG_LEVEL for the sentry_logs channel
@@ -80,6 +82,7 @@ class ServiceProvider extends BaseServiceProvider
         Features\LivewirePackageIntegration::class,
         Features\ConsoleSchedulingIntegration::class,
         Features\AiIntegration::class,
+        Features\ClassificationIntegration::class,
     ];
 
     /**
@@ -165,7 +168,7 @@ class ServiceProvider extends BaseServiceProvider
                 $handler->subscribeOctaneEvents($dispatcher);
             }
 
-            if (isset($userConfig['send_default_pii']) && $userConfig['send_default_pii'] !== false) {
+            if (DataCollectionPolicy::fromHub($this->app->make(HubInterface::class))->shouldCollectUserInfo()) {
                 $handler->subscribeAuthEvents($dispatcher);
             }
 

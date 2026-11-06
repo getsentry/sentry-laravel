@@ -1,5 +1,44 @@
 # Changelog
 
+## 4.29.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.29.0.
+
+### Features
+
+- Add the `data_collection` config option to control which data is collected automatically. [(#1179)](https://github.com/getsentry/sentry-laravel/pull/1179)
+
+  When `data_collection` is `null` (the default), data collection keeps following `send_default_pii`.
+
+  ```php
+  // config/sentry.php
+  'data_collection' => [
+      'user_info' => false,
+      'http_bodies' => ['incomingRequest', 'outgoingRequest'],
+      'database_query_data' => false,
+      'gen_ai' => [
+          'inputs' => false,
+          'outputs' => true,
+      ],
+  ],
+  ```
+
+  When `data_collection` is set, the `breadcrumbs.sql_bindings` and `tracing.sql_bindings` options are ignored.
+
+- Show the data collection status in `php artisan about`. [(#1198)](https://github.com/getsentry/sentry-laravel/pull/1198)
+- Add the origin of slow HTTP client requests to their spans. Configure this with the `tracing.http_client_requests_origin` and `tracing.http_client_requests_origin_threshold_ms` options (default: `250`). [(#1066)](https://github.com/getsentry/sentry-laravel/pull/1066)
+- Add `gen_ai.evaluate` spans for `laravel/ai` 1.0 classifications. Configure this with the `tracing.gen_ai_evaluate` option. [(#1181)](https://github.com/getsentry/sentry-laravel/pull/1181), [(#1182)](https://github.com/getsentry/sentry-laravel/pull/1182), [(#1199)](https://github.com/getsentry/sentry-laravel/pull/1199)
+- Add `Integration::setConversationId()` to set the gen AI conversation ID for integrations that do not provide it, such as classifications, or for AI calls proxied across multiple requests. [(#1193)](https://github.com/getsentry/sentry-laravel/pull/1193)
+
+### Bug Fixes
+
+- Report cache operations from the session driver as `session.*` spans and breadcrumbs instead of `cache.*`. [(#1129)](https://github.com/getsentry/sentry-laravel/pull/1129)
+- Finish the agent and chat spans of failed `laravel/ai` agent invocations so later requests do not inherit them. [(#1160)](https://github.com/getsentry/sentry-laravel/pull/1160)
+
+### Misc
+
+- Bump the PHP SDK to version `4.34.0`
+
 ## 4.28.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.28.0.
