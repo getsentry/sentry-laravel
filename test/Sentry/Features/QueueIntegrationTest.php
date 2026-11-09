@@ -4,6 +4,7 @@ namespace Sentry\Laravel\Tests\Features;
 
 use Exception;
 use Illuminate\Console\Events\CommandFinished;
+use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Container\Container;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Contracts\Queue\Job as JobContract;
@@ -209,6 +210,52 @@ class QueueIntegrationTest extends TestCase
         yield '\Sentry\captureException()' => [static function (Throwable $exception): void {
             captureException($exception);
         }];
+    }
+
+    public function testScopeOfFailedWorkerJobIsKeptWhenASyncJobRunsWhileTheExceptionIsReported(): void
+    {
+        configureScope(static function (IsolationScope $scope): void {
+            $scope->setTag('parent', 'yes');
+        });
+
+        $scope = SentrySdk::getIsolationScope();
+
+        $this->runWorkerJob(new QueueEventsTestJobThatSetsATagAndThrows, static function (Throwable $exception): void {
+            dispatch(new QueueEventsTestJob);
+
+            captureException($exception);
+        });
+
+        $this->assertSame(['parent' => 'yes', 'job' => 'yes'], $this->getLastSentryEvent()->getTags());
+
+        $this->app['events']->dispatch(new Looping('worker', 'default'));
+
+        $this->assertSame($scope, SentrySdk::getIsolationScope());
+        $this->assertFalse(SentrySdk::popIsolationScope());
+    }
+
+    public function testScopeOfFailedWorkerJobIsKeptWhenACommandRunsWhileTheExceptionIsReported(): void
+    {
+        configureScope(static function (IsolationScope $scope): void {
+            $scope->setTag('parent', 'yes');
+        });
+
+        $scope = SentrySdk::getIsolationScope();
+
+        $this->runWorkerJob(new QueueEventsTestJobThatSetsATagAndThrows, function (Throwable $exception): void {
+            // Laravel dispatches these events for a command called with `Artisan::call()` outside of unit tests
+            $this->app['events']->dispatch(new CommandStarting('inspire', new ArrayInput([]), new NullOutput));
+            $this->app['events']->dispatch(new CommandFinished('inspire', new ArrayInput([]), new NullOutput, 0));
+
+            captureException($exception);
+        });
+
+        $this->assertSame(['parent' => 'yes', 'job' => 'yes'], $this->getLastSentryEvent()->getTags());
+
+        $this->app['events']->dispatch(new CommandFinished('queue:work', new ArrayInput([]), new NullOutput, 0));
+
+        $this->assertSame($scope, SentrySdk::getIsolationScope());
+        $this->assertFalse(SentrySdk::popIsolationScope());
     }
 
     public function testScopeOfFailedWorkerJobIsPoppedWhenTheWorkerStops(): void

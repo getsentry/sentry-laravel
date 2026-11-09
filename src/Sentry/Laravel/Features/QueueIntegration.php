@@ -5,6 +5,7 @@ namespace Sentry\Laravel\Features;
 use Closure;
 use Illuminate\Support\Str;
 use Illuminate\Console\Events\CommandFinished;
+use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Queue\Events\JobExceptionOccurred;
 use Illuminate\Queue\Events\JobProcessed;
@@ -56,6 +57,13 @@ class QueueIntegration extends Feature
      */
     private $failedJobScopeIsPushed = false;
 
+    /**
+     * The number of commands that were started while the scope of the failed job is pushed and did not finish yet.
+     *
+     * @var int
+     */
+    private $commandsStartedAfterJobFailed = 0;
+
     public function isApplicable(): bool
     {
         if (!$this->container()->bound('queue')) {
@@ -79,6 +87,7 @@ class QueueIntegration extends Feature
 
         // The worker reports the exception of a failed job after `JobExceptionOccurred`, these are the first events after that
         $events->listen(Looping::class, [$this, 'handleWorkerLoopingQueueEvent']);
+        $events->listen(CommandStarting::class, [$this, 'handleCommandStartingEvent']);
         $events->listen(CommandFinished::class, [$this, 'handleCommandFinishedEvent']);
 
         if ($this->isTracingFeatureEnabled('queue_jobs') || $this->isTracingFeatureEnabled('queue_job_transactions')) {
@@ -149,10 +158,10 @@ class QueueIntegration extends Feature
 
     public function handleJobProcessingQueueEvent(JobProcessing $event): void
     {
-        $this->popScopeOfFailedJob();
-
-        // A sync job runs inside the request, command or job that dispatched it, so it shares that scope
+        // A sync job runs inside the request, command or job that dispatched it, so it shares that scope. It can also
+        // run while the worker reports the exception of a failed job, so only the next worker job pops that scope.
         if (!$event->job instanceof SyncJob) {
+            $this->popScopeOfFailedJob();
             $this->pushScope();
         }
 
@@ -255,8 +264,22 @@ class QueueIntegration extends Feature
         Integration::flushEvents();
     }
 
+    public function handleCommandStartingEvent(CommandStarting $event): void
+    {
+        // A command called while the worker reports the exception of a failed job finishes before the worker moves on
+        if ($this->failedJobScopeIsPushed) {
+            ++$this->commandsStartedAfterJobFailed;
+        }
+    }
+
     public function handleCommandFinishedEvent(CommandFinished $event): void
     {
+        if ($this->commandsStartedAfterJobFailed > 0) {
+            --$this->commandsStartedAfterJobFailed;
+
+            return;
+        }
+
         $this->popScopeOfFailedJob();
     }
 
@@ -279,6 +302,7 @@ class QueueIntegration extends Feature
         }
 
         $this->failedJobScopeIsPushed = false;
+        $this->commandsStartedAfterJobFailed = 0;
 
         $this->maybePopScope();
     }
