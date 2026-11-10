@@ -21,6 +21,14 @@ class RouteIntegrationTest extends TestCase
         });
     }
 
+    /** @param \Illuminate\Foundation\Application $app */
+    protected function envSamplingAllTransactionsWithoutIgnoredStatusCodes($app): void
+    {
+        $this->envSamplingAllTransactions($app);
+
+        $app['config']->set('sentry.trace_ignore_status_codes', []);
+    }
+
     /** @define-env envSamplingAllTransactions */
     #[DefineEnvironment('envSamplingAllTransactions')]
     public function testTransactionIsRecordedForRoute(): void
@@ -32,11 +40,29 @@ class RouteIntegrationTest extends TestCase
 
     /** @define-env envSamplingAllTransactions */
     #[DefineEnvironment('envSamplingAllTransactions')]
-    public function testTransactionIsRecordedForNotFound(): void
+    public function testTransactionIsDroppedForNotFoundByDefault(): void
+    {
+        $this->get('/sentry/abort/404')->assertNotFound();
+
+        $this->assertSentryTransactionCount(0);
+    }
+
+    /** @define-env envSamplingAllTransactionsWithoutIgnoredStatusCodes */
+    #[DefineEnvironment('envSamplingAllTransactionsWithoutIgnoredStatusCodes')]
+    public function testTransactionIsRecordedForNotFoundWhenStatusCodeIsNotIgnored(): void
     {
         $this->get('/sentry/abort/404')->assertNotFound();
 
         $this->assertSentryTransactionCount(1);
+    }
+
+    /** @define-env envSamplingAllTransactionsWithoutIgnoredStatusCodes */
+    #[DefineEnvironment('envSamplingAllTransactionsWithoutIgnoredStatusCodes')]
+    public function testTransactionIsDroppedForUndefinedRouteWhenStatusCodeIsNotIgnored(): void
+    {
+        $this->get('/sentry/non-existent-route')->assertNotFound();
+
+        $this->assertSentryTransactionCount(0);
     }
 
     /** @define-env envSamplingAllTransactions */
