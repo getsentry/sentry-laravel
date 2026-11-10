@@ -397,6 +397,13 @@ class ServiceProvider extends BaseServiceProvider
                             return false;
                         }
 
+                        // We also remove the default transaction integration so it can be readded
+                        // after our own integration. This way the route name set by Laravel takes
+                        // precedence over the fallbacks of the SDK
+                        if ($integration instanceof SdkIntegration\TransactionIntegration) {
+                            return false;
+                        }
+
                         return true;
                     });
 
@@ -414,6 +421,10 @@ class ServiceProvider extends BaseServiceProvider
                     ],
                     $userIntegrations
                 );
+
+                if ($options->hasDefaultIntegrations()) {
+                    $integrations[] = new SdkIntegration\TransactionIntegration;
+                }
 
                 if (\is_callable($userIntegrationOption)) {
                     return $userIntegrationOption($integrations);
