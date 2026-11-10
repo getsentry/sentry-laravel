@@ -62,7 +62,7 @@
         "tests": "vendor/bin/phpunit",
         "cs-check": "vendor/bin/php-cs-fixer fix --verbose --diff --dry-run",
         "cs-fix": "vendor/bin/php-cs-fixer fix --verbose --diff",
-        "phpstan": "@php -d memory_limit=512M vendor/bin/phpstan analyse"
+        "phpstan": "@php vendor/bin/phpstan analyse --memory-limit=512M"
     },
     "extra": {
         "laravel": {

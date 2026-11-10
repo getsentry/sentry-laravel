@@ -88,7 +88,7 @@
 
 ## Tools And Commands
 
-- `phpstan.neon` only analyzes `src` and uses a baseline at level `1`. Static
+- `phpstan.neon` only analyzes `src` and uses a baseline at level `9`. Static
   analysis is helpful but not a substitute for targeted PHPUnit coverage.
 - `phpunit.xml` is strict about unexpected output, so noisy debug output will
   fail tests.

@@ -1,5 +1,8 @@
-minVersion: 0.23.1
-changelogPolicy: simple
+minVersion: 3.9.0
+changelog:
+  policy: simple
+versioning:
+  policy: manual
 preReleaseCommand: bash scripts/craft-pre-release.sh
 artifactProvider:
   name: none

@@ -19,6 +19,33 @@ class RouteIntegrationTest extends TestCase
                 abort($code);
             });
         });
+
+        foreach (['/horizon/api/stats', '/telescope/{view?}', '/_debugbar/open', '/horizontal'] as $uri) {
+            $router->get($uri, function () {
+                return 'ok';
+            });
+        }
+    }
+
+    /**
+     * @define-env envSamplingAllTransactions
+     *
+     * @dataProvider developmentToolRouteDataProvider
+     */
+    #[DefineEnvironment('envSamplingAllTransactions')]
+    public function testTransactionIsDroppedForDevelopmentToolRoutesByDefault(string $uri, int $expectedTransactionCount): void
+    {
+        $this->get($uri)->assertOk();
+
+        $this->assertSentryTransactionCount($expectedTransactionCount);
+    }
+
+    public static function developmentToolRouteDataProvider(): iterable
+    {
+        yield 'horizon' => ['/horizon/api/stats', 0];
+        yield 'telescope' => ['/telescope', 0];
+        yield 'debugbar' => ['/_debugbar/open', 0];
+        yield 'route only sharing the start of its name' => ['/horizontal', 1];
     }
 
     /** @param \Illuminate\Foundation\Application $app */

@@ -227,19 +227,27 @@ class Middleware
             return null;
         }
 
+        $bootedTimestamp = $this->bootedTimestamp;
+
+        // Consume the booted timestamp, because we don't want to report the boot(strap) spans more than once
+        $this->bootedTimestamp = null;
+
+        // In long-running workers (e.g. Octane) the application boots before the request starts, so there is no
+        // bootstrap time to report. The span would end before it starts, which makes Sentry drop the transaction.
+        if ($bootedTimestamp < $this->transaction->getStartTimestamp()) {
+            return null;
+        }
+
         $span = $this->transaction->startChild(
             SpanContext::make()
                 ->setOp('app.bootstrap')
                 ->setOrigin('auto.http.server')
                 ->setStartTimestamp($this->transaction->getStartTimestamp())
-                ->setEndTimestamp($this->bootedTimestamp)
+                ->setEndTimestamp($bootedTimestamp)
         );
 
         // Add more information about the bootstrap section if possible
         $this->addBootDetailTimeSpans($span);
-
-        // Consume the booted timestamp, because we don't want to report the boot(strap) spans more than once
-        $this->bootedTimestamp = null;
 
         return $span;
     }

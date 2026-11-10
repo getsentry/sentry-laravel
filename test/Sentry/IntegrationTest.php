@@ -83,6 +83,45 @@ class IntegrationTest extends TestCase
         $this->assertSame($eventTransaction, $event->getTransaction());
     }
 
+    public function testTransactionTakesPrecedenceOverRequestPath(): void
+    {
+        Integration::setTransaction($transaction = '/users/{id}');
+
+        $_SERVER['PATH_INFO'] = '/users/123';
+
+        try {
+            withScope(function (Scope $scope) use ($transaction): void {
+                $event = $scope->applyToEvent(Event::createEvent());
+
+                $this->assertNotNull($event);
+
+                $this->assertSame($transaction, $event->getTransaction());
+            });
+        } finally {
+            unset($_SERVER['PATH_INFO']);
+        }
+    }
+
+    public function testRequestPathIsAppliedToEventWithoutTransaction(): void
+    {
+        Integration::setTransaction(null);
+
+        $requestPath = '/users/123';
+        $_SERVER['PATH_INFO'] = $requestPath;
+
+        try {
+            withScope(function (Scope $scope) use ($requestPath): void {
+                $event = $scope->applyToEvent(Event::createEvent());
+
+                $this->assertNotNull($event);
+
+                $this->assertSame($requestPath, $event->getTransaction());
+            });
+        } finally {
+            unset($_SERVER['PATH_INFO']);
+        }
+    }
+
     public function testExtractingNameForRouteWithoutName(): void
     {
         $route = new Route('GET', $url = '/foo', []);
