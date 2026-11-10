@@ -63,6 +63,9 @@ return [
     'ignore_transactions' => [
         // Ignore Laravel's default health URL
         '/up',
+
+        // Ignore the Laravel Horizon, Laravel Telescope and Laravel Debugbar routes
+        '/^\/(horizon|telescope|_debugbar)(\/|$)/',
     ],
 
     // Breadcrumb specific configuration
