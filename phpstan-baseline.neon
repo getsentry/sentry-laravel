@@ -1,96 +1,2275 @@
 parameters:
 	ignoreErrors:
 		-
-			message: "#^Class Laravel\\\\Sanctum\\\\Events\\\\TokenAuthenticated not found\\.$#"
+			message: '#^Cannot access offset ''config'' on Illuminate\\Contracts\\Foundation\\Application\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Sentry/Laravel/BaseServiceProvider.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\BaseServiceProvider\:\:getUserConfig\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/BaseServiceProvider.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Console\\AboutCommandIntegration\:\:__invoke\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Console/AboutCommandIntegration.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Console\\PublishCommand\:\:setEnvValues\(\) has parameter \$values with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Console/PublishCommand.php
+
+		-
+			message: '#^Parameter \#1 \$string of function substr expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Console/PublishCommand.php
+
+		-
+			message: '#^Parameter \#1 \$subject of static method Illuminate\\Support\\Str\:\:after\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Console/PublishCommand.php
+
+		-
+			message: '#^Parameter \#2 \$subject of function preg_match expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Console/PublishCommand.php
+
+		-
+			message: '#^Parameter \#3 \$subject of function preg_replace expects array\<float\|int\|string\>\|string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Console/PublishCommand.php
+
+		-
+			message: '#^Anonymous function never returns null so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: src/Sentry/Laravel/Console/TestCommand.php
+
+		-
+			message: '#^Method Psr\\Log\\AbstractLogger@anonymous/Sentry/Laravel/Console/TestCommand\.php\:133\:\:log\(\) has parameter \$message with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Sentry/Laravel/Console/TestCommand.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Console\\TestCommand\:\:generateTestException\(\) has parameter \$arg with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Console/TestCommand.php
+
+		-
+			message: '#^Parameter \#1 \$haystack of function str_starts_with expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Console/TestCommand.php
+
+		-
+			message: '#^Part \$level \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: src/Sentry/Laravel/Console/TestCommand.php
+
+		-
+			message: '#^Property Psr\\Log\\AbstractLogger@anonymous/Sentry/Laravel/Console/TestCommand\.php\:133\:\:\$command has no type specified\.$#'
+			identifier: missingType.property
+			count: 1
+			path: src/Sentry/Laravel/Console/TestCommand.php
+
+		-
+			message: '#^Property Sentry\\Laravel\\Console\\TestCommand\:\:\$errorMessages type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Console/TestCommand.php
+
+		-
+			message: '#^Access to property \$token on an unknown class Laravel\\Sanctum\\Events\\TokenAuthenticated\.$#'
+			identifier: class.notFound
 			count: 1
 			path: src/Sentry/Laravel/EventHandler.php
 
 		-
-			message: "#^Parameter \\$event of method Sentry\\\\Laravel\\\\EventHandler\\:\\:sanctumTokenAuthenticatedHandler\\(\\) has invalid type Laravel\\\\Sanctum\\\\Events\\\\TokenAuthenticated\\.$#"
+			message: '#^Call to function method_exists\(\) with Illuminate\\Database\\Eloquent\\Model and ''hasAttributeMutator'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
 			count: 1
 			path: src/Sentry/Laravel/EventHandler.php
 
 		-
-			message: "#^Parameter \\$request of method Sentry\\\\Laravel\\\\Features\\\\LivewirePackageIntegration\\:\\:handleComponentBooted\\(\\) has invalid type Livewire\\\\Request\\.$#"
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 3
+			path: src/Sentry/Laravel/EventHandler.php
+
+		-
+			message: '#^Class Laravel\\Sanctum\\Events\\TokenAuthenticated not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Sentry/Laravel/EventHandler.php
+
+		-
+			message: '#^Instanceof between Illuminate\\Http\\Request and Illuminate\\Http\\Request will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: src/Sentry/Laravel/EventHandler.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\EventHandler\:\:__call\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: src/Sentry/Laravel/EventHandler.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\EventHandler\:\:__call\(\) has parameter \$arguments with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/EventHandler.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\EventHandler\:\:__construct\(\) has parameter \$config with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/EventHandler.php
+
+		-
+			message: '#^Parameter \$event of method Sentry\\Laravel\\EventHandler\:\:sanctumTokenAuthenticatedHandler\(\) has invalid type Laravel\\Sanctum\\Events\\TokenAuthenticated\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Sentry/Laravel/EventHandler.php
+
+		-
+			message: '#^Property Sentry\\Laravel\\EventHandler\:\:\$authEventHandlerMap type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/EventHandler.php
+
+		-
+			message: '#^Property Sentry\\Laravel\\EventHandler\:\:\$eventHandlerMap type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/EventHandler.php
+
+		-
+			message: '#^Property Sentry\\Laravel\\EventHandler\:\:\$octaneEventHandlerMap type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/EventHandler.php
+
+		-
+			message: '#^Class Sentry\\Laravel\\Facade has PHPDoc tag @method for method startTransaction\(\) parameter \#2 \$customSamplingContext with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Facade.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Ai\\AiInvocationMeta\:\:__construct\(\) has parameter \$attachments with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Ai/AiInvocationMeta.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Ai\\AiMessagePart\:\:toArray\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Ai/AiMessagePart.php
+
+		-
+			message: '#^Property Sentry\\Laravel\\Features\\Ai\\AiMessagePart\:\:\$arguments \(string\) does not accept string\|null\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Sentry/Laravel/Features/Ai/AiMessagePart.php
+
+		-
+			message: '#^Property Sentry\\Laravel\\Features\\Ai\\AiMessagePart\:\:\$content \(string\) does not accept string\|null\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Sentry/Laravel/Features/Ai/AiMessagePart.php
+
+		-
+			message: '#^Property Sentry\\Laravel\\Features\\Ai\\AiMessagePart\:\:\$id \(string\) does not accept string\|null\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Sentry/Laravel/Features/Ai/AiMessagePart.php
+
+		-
+			message: '#^Property Sentry\\Laravel\\Features\\Ai\\AiMessagePart\:\:\$mimeType \(string\) does not accept string\|null\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Sentry/Laravel/Features/Ai/AiMessagePart.php
+
+		-
+			message: '#^Property Sentry\\Laravel\\Features\\Ai\\AiMessagePart\:\:\$modality \(string\) does not accept string\|null\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Sentry/Laravel/Features/Ai/AiMessagePart.php
+
+		-
+			message: '#^Property Sentry\\Laravel\\Features\\Ai\\AiMessagePart\:\:\$name \(string\) does not accept string\|null\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Sentry/Laravel/Features/Ai/AiMessagePart.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Ai\\AiSpanDataBag\:\:__construct\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Ai/AiSpanDataBag.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Ai\\AiSpanDataBag\:\:get\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: src/Sentry/Laravel/Features/Ai/AiSpanDataBag.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Ai\\AiSpanDataBag\:\:set\(\) has parameter \$value with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Sentry/Laravel/Features/Ai/AiSpanDataBag.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Ai\\AiSpanDataBag\:\:setIfNotExists\(\) has parameter \$value with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Sentry/Laravel/Features/Ai/AiSpanDataBag.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Ai\\AiSpanDataBag\:\:toArray\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Ai/AiSpanDataBag.php
+
+		-
+			message: '#^Property Laravel\\Ai\\Responses\\Data\\Usage\:\:\$inputTokens \(int\) on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.property
+			count: 1
+			path: src/Sentry/Laravel/Features/Ai/AiSpanDataBag.php
+
+		-
+			message: '#^Property Laravel\\Ai\\Responses\\Data\\Usage\:\:\$outputTokens \(int\) on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.property
+			count: 1
+			path: src/Sentry/Laravel/Features/Ai/AiSpanDataBag.php
+
+		-
+			message: '#^Property Sentry\\Laravel\\Features\\Ai\\AiSpanDataBag\:\:\$data type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Ai/AiSpanDataBag.php
+
+		-
+			message: '#^Binary operation "\." between ''execute_tool '' and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: '#^Call to function is_a\(\) with Laravel\\Ai\\Responses\\Data\\ToolCall and ''Laravel\\\\Ai\\\\Responses\\\\Data\\\\ToolCall'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: '#^Call to function is_a\(\) with Laravel\\Ai\\Responses\\Data\\ToolResult and ''Laravel\\\\Ai\\\\Responses\\\\Data\\\\ToolResult'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\AiIntegration\:\:truncateEmbeddingInputs\(\) should return string but returns string\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\AiIntegration\:\:truncateMessages\(\) should return string but returns string\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: '#^PHPDoc tag @var has invalid value \(\$steps Step\[\]\)\: Unexpected token "\$steps", expected type at offset 20 on line 2$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Sentry/Laravel/Features/AiIntegration.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Sentry/Laravel/Features/CacheIntegration.php
+
+		-
+			message: '#^Call to function method_exists\(\) with Illuminate\\Contracts\\Session\\Session and ''getHandler'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Sentry/Laravel/Features/CacheIntegration.php
+
+		-
+			message: '#^Cannot access property \$cookies on mixed\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: src/Sentry/Laravel/Features/CacheIntegration.php
+
+		-
+			message: '#^Cannot call method get\(\) on class\-string\|object\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: src/Sentry/Laravel/Features/CacheIntegration.php
+
+		-
+			message: '#^Cannot call method get\(\) on mixed\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: src/Sentry/Laravel/Features/CacheIntegration.php
+
+		-
+			message: '#^Cannot call method getDefaultDriver\(\) on class\-string\|object\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: src/Sentry/Laravel/Features/CacheIntegration.php
+
+		-
+			message: '#^Cannot call method getDrivers\(\) on class\-string\|object\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: src/Sentry/Laravel/Features/CacheIntegration.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\CacheIntegration\:\:resolveEventOrigin\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/CacheIntegration.php
+
+		-
+			message: '#^Parameter \#1 \$keyOrKeys of method Sentry\\Laravel\\Features\\CacheIntegration\:\:normalizeKeyOrKeys\(\) expects array\<string\>\|string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Features/CacheIntegration.php
+
+		-
+			message: '#^Parameter \#1 \$object_or_class of function method_exists expects object\|string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Features/CacheIntegration.php
+
+		-
+			message: '#^Parameter \#1 \$value of function count expects array\|Countable, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: src/Sentry/Laravel/Features/CacheIntegration.php
+
+		-
+			message: '#^Parameter \#2 \$array of function implode expects array\<string\>, array\<mixed\> given\.$#'
+			identifier: argument.type
+			count: 2
+			path: src/Sentry/Laravel/Features/CacheIntegration.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Classification\\ClassificationMessageFormatter\:\:encode\(\) has parameter \$message with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Classification/ClassificationMessageFormatter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Classification\\ClassificationMessageFormatter\:\:formatAnswer\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Classification/ClassificationMessageFormatter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Classification\\ClassificationMessageFormatter\:\:formatQuestion\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Classification/ClassificationMessageFormatter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Classification\\ClassificationMessageFormatter\:\:withConfidence\(\) has parameter \$formatted with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Classification/ClassificationMessageFormatter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Classification\\ClassificationMessageFormatter\:\:withConfidence\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Classification/ClassificationMessageFormatter.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Console\\Scheduling\\Event\:\:sentryMonitor\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Sentry/Laravel/Features/ConsoleSchedulingIntegration.php
+
+		-
+			message: '#^Cannot call method getOptions\(\) on Sentry\\ClientInterface\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: src/Sentry/Laravel/Features/ConsoleSchedulingIntegration.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\ConsoleSchedulingIntegration\:\:getCheckInIdFromCache\(\) should return string\|null but returns mixed\.$#'
+			identifier: return.type
+			count: 2
+			path: src/Sentry/Laravel/Features/ConsoleSchedulingIntegration.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\ConsoleSchedulingIntegration\:\:isExcluded\(\) has parameter \$excluded with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/ConsoleSchedulingIntegration.php
+
+		-
+			message: '#^Negated boolean expression is always false\.$#'
+			identifier: booleanNot.alwaysFalse
+			count: 1
+			path: src/Sentry/Laravel/Features/ConsoleSchedulingIntegration.php
+
+		-
+			message: '#^Parameter \#1 \$title of static method Illuminate\\Support\\Str\:\:slug\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Features/ConsoleSchedulingIntegration.php
+
+		-
+			message: '#^Property Sentry\\Laravel\\Features\\ConsoleSchedulingIntegration\:\:\$shouldHandleCheckIn has no type specified\.$#'
+			identifier: missingType.property
+			count: 1
+			path: src/Sentry/Laravel/Features/ConsoleSchedulingIntegration.php
+
+		-
+			message: '#^Cannot access offset ''config'' on Illuminate\\Contracts\\Container\\Container\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Sentry/Laravel/Features/Feature.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Feature\:\:getUserConfig\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Feature.php
+
+		-
+			message: '#^Constant Sentry\\Laravel\\Features\\FolioPackageIntegration\:\:FEATURE_KEY is unused\.$#'
+			identifier: classConstant.unused
+			count: 1
+			path: src/Sentry/Laravel/Features/FolioPackageIntegration.php
+
+		-
+			message: '#^Call to function method_exists\(\) with Illuminate\\Http\\Client\\Factory and ''globalRequestMiddle…'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Sentry/Laravel/Features/HttpClientIntegration.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\HttpClientIntegration\:\:attachTracingHeadersToRequest\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: src/Sentry/Laravel/Features/HttpClientIntegration.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\HttpClientIntegration\:\:resolveEventOrigin\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/HttpClientIntegration.php
+
+		-
+			message: '#^Access to property \$updates on an unknown class Livewire\\Request\.$#'
+			identifier: class.notFound
 			count: 1
 			path: src/Sentry/Laravel/Features/LivewirePackageIntegration.php
 
 		-
-			message: "#^Class Laravel\\\\Lumen\\\\Application not found\\.$#"
+			message: '#^Method Sentry\\Laravel\\Features\\LivewirePackageIntegration\:\:handleComponentCall\(\) has parameter \$arguments with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/LivewirePackageIntegration.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\LivewirePackageIntegration\:\:handleComponentMount\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/LivewirePackageIntegration.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\LivewirePackageIntegration\:\:mapCallArgumentsToMethodParameters\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/LivewirePackageIntegration.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\LivewirePackageIntegration\:\:mapCallArgumentsToMethodParameters\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/LivewirePackageIntegration.php
+
+		-
+			message: '#^Parameter \$request of method Sentry\\Laravel\\Features\\LivewirePackageIntegration\:\:handleComponentBooted\(\) has invalid type Livewire\\Request\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Sentry/Laravel/Features/LivewirePackageIntegration.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between Illuminate\\Http\\Request and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: src/Sentry/Laravel/Features/LivewirePackageIntegration.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\NotificationsIntegration\:\:formatNotifiable\(\) has parameter \$notifiable with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Sentry/Laravel/Features/NotificationsIntegration.php
+
+		-
+			message: '#^Part \$notifiable\-\>getKey\(\) \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: src/Sentry/Laravel/Features/NotificationsIntegration.php
+
+		-
+			message: '#^Constant Sentry\\Laravel\\Features\\PennantPackageIntegration\:\:FEATURE_KEY is unused\.$#'
+			identifier: classConstant.unused
+			count: 1
+			path: src/Sentry/Laravel/Features/PennantPackageIntegration.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\PennantPackageIntegration\:\:handleFeatureRetrieved\(\) has parameter \$feature with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Sentry/Laravel/Features/PennantPackageIntegration.php
+
+		-
+			message: '#^Call to function method_exists\(\) with Illuminate\\Contracts\\Queue\\Job and ''resolveName'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Sentry/Laravel/Features/QueueIntegration.php
+
+		-
+			message: '#^Parameter \#1 \$options of class Sentry\\Serializer\\Serializer constructor expects Sentry\\Options, Sentry\\Options\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Features/QueueIntegration.php
+
+		-
+			message: '#^Parameter \#1 \$string of function strlen expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Features/QueueIntegration.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 2
+			path: src/Sentry/Laravel/Features/Storage/FilesystemDecorator.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:__call\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:__call\(\) has parameter \$arguments with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:__call\(\) has parameter \$name with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:__construct\(\) has parameter \$defaultData with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:allDirectories\(\) should return array\<string\> but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:allFiles\(\) should return array\<string\> but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:append\(\) has parameter \$separator with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:append\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:copy\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:delete\(\) has parameter \$paths with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:delete\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:deleteDirectory\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:directories\(\) should return array\<string\> but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:exists\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:files\(\) should return array\<string\> but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:get\(\) should return string\|null but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:getDescriptionAndDataForPathOrPaths\(\) has parameter \$pathOrPaths with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:getDescriptionAndDataForPathOrPaths\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:getVisibility\(\) should return string but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:lastModified\(\) should return int but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:makeDirectory\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:move\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:path\(\) should return string but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:prepend\(\) has parameter \$separator with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:prepend\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:put\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:putFile\(\) has parameter \$file with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:putFile\(\) should return string\|false but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:putFileAs\(\) has parameter \$file with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:putFileAs\(\) has parameter \$name with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:putFileAs\(\) should return string\|false but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:readStream\(\) should return resource\|null but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:setVisibility\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:size\(\) should return int but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:url\(\) should return string but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:writeStream\(\) has parameter \$options with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:writeStream\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Property Sentry\\Laravel\\Features\\Storage\\SentryCloudFilesystem\:\:\$defaultData type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryCloudFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:__call\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:__call\(\) has parameter \$arguments with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:__call\(\) has parameter \$name with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:__construct\(\) has parameter \$defaultData with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:allDirectories\(\) should return array\<string\> but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:allFiles\(\) should return array\<string\> but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:append\(\) has parameter \$separator with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:append\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:copy\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:delete\(\) has parameter \$paths with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:delete\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:deleteDirectory\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:directories\(\) should return array\<string\> but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:exists\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:files\(\) should return array\<string\> but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:get\(\) should return string\|null but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:getDescriptionAndDataForPathOrPaths\(\) has parameter \$pathOrPaths with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:getDescriptionAndDataForPathOrPaths\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:getVisibility\(\) should return string but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:lastModified\(\) should return int but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:makeDirectory\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:move\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:path\(\) should return string but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:prepend\(\) has parameter \$separator with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:prepend\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:put\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:putFile\(\) has parameter \$file with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:putFile\(\) should return string\|false but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:putFileAs\(\) has parameter \$file with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:putFileAs\(\) has parameter \$name with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:putFileAs\(\) should return string\|false but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:readStream\(\) should return resource\|null but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:setVisibility\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:size\(\) should return int but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:writeStream\(\) has parameter \$options with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:writeStream\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Property Sentry\\Laravel\\Features\\Storage\\SentryFilesystem\:\:\$defaultData type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystem.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:__call\(\) has parameter \$arguments with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:__construct\(\) has parameter \$defaultData with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:allDirectories\(\) should return array\<string\> but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:allFiles\(\) should return array\<string\> but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:append\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:assertDirectoryEmpty\(\) should return \$this\(Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\) but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:assertExists\(\) has parameter \$path with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:assertExists\(\) should return \$this\(Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\) but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:assertMissing\(\) has parameter \$path with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:assertMissing\(\) should return \$this\(Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\) but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:copy\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:delete\(\) has parameter \$paths with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:delete\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:deleteDirectory\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:directories\(\) should return array\<string\> but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:exists\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:files\(\) should return array\<string\> but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:get\(\) should return string\|null but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:getDescriptionAndDataForPathOrPaths\(\) has parameter \$pathOrPaths with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:getDescriptionAndDataForPathOrPaths\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:getVisibility\(\) should return string but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:lastModified\(\) should return int but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:makeDirectory\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:move\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:path\(\) should return string but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:prepend\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:put\(\) should return bool\|string but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:putFile\(\) has parameter \$file with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:putFile\(\) should return string\|false but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:putFileAs\(\) has parameter \$file with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:putFileAs\(\) has parameter \$name with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:putFileAs\(\) should return string\|false but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:readStream\(\) should return resource\|null but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:setVisibility\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:size\(\) should return int but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:temporaryUploadUrl\(\) has parameter \$options with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:temporaryUploadUrl\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:temporaryUploadUrl\(\) should return array but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:temporaryUrl\(\) has parameter \$options with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:temporaryUrl\(\) should return string but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:url\(\) should return string but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:writeStream\(\) has parameter \$options with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:writeStream\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Property Sentry\\Laravel\\Features\\Storage\\SentryFilesystemAdapter\:\:\$defaultData type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryFilesystemAdapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:__call\(\) has parameter \$arguments with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:__construct\(\) has parameter \$defaultData with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:allDirectories\(\) should return array\<string\> but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:allFiles\(\) should return array\<string\> but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:append\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:assertDirectoryEmpty\(\) should return \$this\(Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\) but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:assertExists\(\) has parameter \$path with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:assertExists\(\) should return \$this\(Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\) but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:assertMissing\(\) has parameter \$path with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:assertMissing\(\) should return \$this\(Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\) but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:copy\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:delete\(\) has parameter \$paths with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:delete\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:deleteDirectory\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:directories\(\) should return array\<string\> but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:exists\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:files\(\) should return array\<string\> but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:get\(\) should return string\|null but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:getDescriptionAndDataForPathOrPaths\(\) has parameter \$pathOrPaths with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:getDescriptionAndDataForPathOrPaths\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:getVisibility\(\) should return string but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:lastModified\(\) should return int but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:makeDirectory\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:move\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:path\(\) should return string but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:prepend\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:put\(\) should return bool\|string but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:putFile\(\) has parameter \$file with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:putFile\(\) should return string\|false but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:putFileAs\(\) has parameter \$file with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:putFileAs\(\) has parameter \$name with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:putFileAs\(\) should return string\|false but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:readStream\(\) should return resource\|null but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:setVisibility\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:size\(\) should return int but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:temporaryUploadUrl\(\) has parameter \$options with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:temporaryUploadUrl\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:temporaryUploadUrl\(\) should return array but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:temporaryUrl\(\) has parameter \$options with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:temporaryUrl\(\) should return string but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:url\(\) should return string but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:writeStream\(\) has parameter \$options with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:writeStream\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Property Sentry\\Laravel\\Features\\Storage\\SentryS3V3Adapter\:\:\$defaultData type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Http\\FlushEventsMiddleware\:\:handle\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: src/Sentry/Laravel/Http/FlushEventsMiddleware.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Http\\FlushEventsMiddleware\:\:terminate\(\) has parameter \$response with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Sentry/Laravel/Http/FlushEventsMiddleware.php
+
+		-
+			message: '#^Parameter \#1 \$request of method Sentry\\Laravel\\Http\\LaravelRequestFetcher\:\:withoutEmptyParsedBody\(\) expects Psr\\Http\\Message\\ServerRequestInterface, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Http/LaravelRequestFetcher.php
+
+		-
+			message: '#^Parameter \#1 \$request of method Sentry\\Laravel\\Http\\LaravelRequestFetcher\:\:withoutParsedBodyForNonFormRequests\(\) expects Psr\\Http\\Message\\ServerRequestInterface, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Http/LaravelRequestFetcher.php
+
+		-
+			message: '#^Parameter \#1 \$pattern of static method Illuminate\\Support\\Str\:\:is\(\) expects iterable\<string\>\|string, array\<int, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Http/SensitiveCookieFilter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Http\\SetRequestMiddleware\:\:handle\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: src/Sentry/Laravel/Http/SetRequestMiddleware.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Integration\:\:extractNameAndSourceForLumenRoute\(\) has parameter \$routeData with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Integration.php
+
+		-
+			message: '#^Offset ''function'' on array\{function\: string, line\?\: int, file\?\: string, class\?\: class\-string, type\?\: ''\-\>''\|''\:\:'', args\?\: list\<mixed\>, object\?\: object\} in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 1
+			path: src/Sentry/Laravel/Integration.php
+
+		-
+			message: '#^Offset ''function'' on array\{function\: string, line\?\: int, file\?\: string, type\?\: ''\-\>''\|''\:\:'', args\?\: list\<mixed\>, object\?\: object\} in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 1
+			path: src/Sentry/Laravel/Integration.php
+
+		-
+			message: '#^Offset ''type'' might not exist on array\{function\: string, line\?\: int, file\?\: string, class\: class\-string, type\?\: ''\-\>''\|''\:\:'', args\?\: list\<mixed\>, object\?\: object\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: src/Sentry/Laravel/Integration.php
+
+		-
+			message: '#^Parameter \#1 \$string of function ltrim expects string, array\<string\>\|string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Integration.php
+
+		-
+			message: '#^Parameter \#3 \$subject of function preg_replace expects array\<float\|int\|string\>\|string, array\<string\>\|string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Integration.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Integration\\ModelViolations\\DiscardedAttributeViolationReporter\:\:getViolationContext\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Integration/ModelViolations/DiscardedAttributeViolationReporter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Integration\\ModelViolations\\LazyLoadingModelViolationReporter\:\:getViolationContext\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Integration/ModelViolations/LazyLoadingModelViolationReporter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Integration\\ModelViolations\\MissingAttributeModelViolationReporter\:\:getViolationContext\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Integration/ModelViolations/MissingAttributeModelViolationReporter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Integration\\ModelViolations\\ModelViolationReporter\:\:getViolationContext\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Integration/ModelViolations/ModelViolationReporter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Integration\\ModelViolations\\ModelViolationReporter\:\:report\(\) has parameter \$origin with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Sentry/Laravel/Integration/ModelViolations/ModelViolationReporter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Integration\\ModelViolations\\ModelViolationReporter\:\:resolveEventOrigin\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Integration/ModelViolations/ModelViolationReporter.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\LogChannel\:\:__invoke\(\) has parameter \$config with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/LogChannel.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Logs\\LogChannel\:\:__invoke\(\) has parameter \$config with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Logs/LogChannel.php
+
+		-
+			message: '#^Cannot access offset ''exception'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Sentry/Laravel/Logs/LogsHandler.php
+
+		-
+			message: '#^Cannot access offset ''level'' on \(TIn of mixed\)\|TReturn of mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Sentry/Laravel/Logs/LogsHandler.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: src/Sentry/Laravel/Logs/LogsHandler.php
+
+		-
+			message: '#^Comparison operation "\>\=" between array\<mixed\>\|DateTimeImmutable\|int\|string\|null and Monolog\\Level results in an error\.$#'
+			identifier: greaterOrEqual.invalid
+			count: 1
+			path: src/Sentry/Laravel/Logs/LogsHandler.php
+
+		-
+			message: '#^If condition is always true\.$#'
+			identifier: if.alwaysTrue
+			count: 1
+			path: src/Sentry/Laravel/Logs/LogsHandler.php
+
+		-
+			message: '#^Negated boolean expression is always false\.$#'
+			identifier: booleanNot.alwaysFalse
+			count: 1
+			path: src/Sentry/Laravel/Logs/LogsHandler.php
+
+		-
+			message: '#^PHPDoc tag @return with type Sentry\\Laravel\\SentryHandler is incompatible with native type Sentry\\Laravel\\Logs\\LogsHandler\.$#'
+			identifier: return.phpDocType
+			count: 1
+			path: src/Sentry/Laravel/Logs/LogsHandler.php
+
+		-
+			message: '#^Parameter \#1 \$level of static method Sentry\\Laravel\\Logs\\LogsHandler\:\:getSeverityFromLevel\(\) expects int, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Logs/LogsHandler.php
+
+		-
+			message: '#^Parameter \#1 \$record of method Monolog\\Handler\\AbstractProcessingHandler\:\:handle\(\) expects Monolog\\LogRecord, array\|ArrayAccess\|Monolog\\LogRecord given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Logs/LogsHandler.php
+
+		-
+			message: '#^Parameter \#1 \.\.\.\$arrays of function array_merge expects array, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Logs/LogsHandler.php
+
+		-
+			message: '#^Parameter \#2 \$message of method Sentry\\Logs\\LogsAggregator\:\:add\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Logs/LogsHandler.php
+
+		-
+			message: '#^Parameter \#2 \.\.\.\$arrays of function array_merge expects array, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Logs/LogsHandler.php
+
+		-
+			message: '#^Parameter \#4 \$attributes of method Sentry\\Logs\\LogsAggregator\:\:add\(\) expects array\<string, mixed\>, array\<mixed, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Logs/LogsHandler.php
+
+		-
+			message: '#^Cannot access offset ''exception'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: src/Sentry/Laravel/SentryHandler.php
+
+		-
+			message: '#^Cannot access offset ''level'' on \(TIn of mixed\)\|TReturn of mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Sentry/Laravel/SentryHandler.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 2
+			path: src/Sentry/Laravel/SentryHandler.php
+
+		-
+			message: '#^Comparison operation "\>\=" between array\<mixed\>\|DateTimeImmutable\|int\|string\|null and Monolog\\Level results in an error\.$#'
+			identifier: greaterOrEqual.invalid
+			count: 1
+			path: src/Sentry/Laravel/SentryHandler.php
+
+		-
+			message: '#^If condition is always true\.$#'
+			identifier: if.alwaysTrue
+			count: 1
+			path: src/Sentry/Laravel/SentryHandler.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\SentryHandler\:\:consumeContextAndApplyToScope\(\) has parameter \$context with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/SentryHandler.php
+
+		-
+			message: '#^Negated boolean expression is always false\.$#'
+			identifier: booleanNot.alwaysFalse
+			count: 1
+			path: src/Sentry/Laravel/SentryHandler.php
+
+		-
+			message: '#^Parameter \#1 \$fingerprint of method Sentry\\State\\Scope\:\:setFingerprint\(\) expects array\<string\>, array\<mixed, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/SentryHandler.php
+
+		-
+			message: '#^Parameter \#1 \$level of method Monolog\\Handler\\AbstractHandler\:\:__construct\(\) expects 100\|200\|250\|300\|400\|500\|550\|600\|''ALERT''\|''alert''\|''CRITICAL''\|''critical''\|''DEBUG''\|''debug''\|''EMERGENCY''\|''emergency''\|''ERROR''\|''error''\|''INFO''\|''info''\|''NOTICE''\|''notice''\|''WARNING''\|''warning''\|Monolog\\Level, int given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/SentryHandler.php
+
+		-
+			message: '#^Parameter \#1 \$logLevel of method Sentry\\Laravel\\SentryHandler\:\:getLogLevel\(\) expects int, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/SentryHandler.php
+
+		-
+			message: '#^Parameter \#1 \$logger of method Sentry\\Event\:\:setLogger\(\) expects string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/SentryHandler.php
+
+		-
+			message: '#^Parameter \#1 \$message of method Sentry\\State\\HubInterface\:\:captureMessage\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/SentryHandler.php
+
+		-
+			message: '#^Parameter \#1 \$record of method Monolog\\Handler\\AbstractProcessingHandler\:\:handle\(\) expects Monolog\\LogRecord, array\|ArrayAccess\|Monolog\\LogRecord given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/SentryHandler.php
+
+		-
+			message: '#^Parameter \#1 \$user of method Sentry\\State\\Scope\:\:setUser\(\) expects array\<string, mixed\>\|Sentry\\UserDataBag, array\<mixed, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/SentryHandler.php
+
+		-
+			message: '#^Call to function method_exists\(\) with Illuminate\\Contracts\\Foundation\\Application and ''terminating'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Sentry/Laravel/ServiceProvider.php
+
+		-
+			message: '#^Call to method configure\(\) on an unknown class Laravel\\Lumen\\Application\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Sentry/Laravel/ServiceProvider.php
+
+		-
+			message: '#^Call to method middleware\(\) on an unknown class Laravel\\Lumen\\Application\.$#'
+			identifier: class.notFound
 			count: 3
 			path: src/Sentry/Laravel/ServiceProvider.php
 
 		-
-			message: "#^Class GraphQL\\\\Language\\\\AST\\\\DocumentNode not found\\.$#"
+			message: '#^Cannot access offset ''integrations'' on array\<class\-string\>\|\(callable\(\)\: mixed\)\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Sentry/Laravel/ServiceProvider.php
+
+		-
+			message: '#^Cannot access offset ''tracing'' on array\<class\-string\>\|\(callable\(\)\: mixed\)\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Sentry/Laravel/ServiceProvider.php
+
+		-
+			message: '#^Cannot call method getOptions\(\) on Sentry\\ClientInterface\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: src/Sentry/Laravel/ServiceProvider.php
+
+		-
+			message: '#^Class Laravel\\Lumen\\Application not found\.$#'
+			identifier: class.notFound
+			count: 3
+			path: src/Sentry/Laravel/ServiceProvider.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\ServiceProvider\:\:provides\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/ServiceProvider.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\ServiceProvider\:\:resolveIntegrationsFromUserConfig\(\) has parameter \$userIntegrations with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/ServiceProvider.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\ServiceProvider\:\:resolveIntegrationsFromUserConfig\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/ServiceProvider.php
+
+		-
+			message: '#^PHPDoc tag @var with type array\<class\-string\>\|\(callable\) is not subtype of native type array\.$#'
+			identifier: varTag.nativeType
+			count: 1
+			path: src/Sentry/Laravel/ServiceProvider.php
+
+		-
+			message: '#^Parameter \#1 \$object of function get_class expects object, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/ServiceProvider.php
+
+		-
+			message: '#^Parameter \#1 \$routeData of static method Sentry\\Laravel\\Integration\:\:extractNameAndSourceForLumenRoute\(\) expects array, Illuminate\\Routing\\Route\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/ServiceProvider.php
+
+		-
+			message: '#^Parameter \#2 \$array of function array_key_exists expects array, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: src/Sentry/Laravel/ServiceProvider.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between Illuminate\\Http\\Request and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: src/Sentry/Laravel/ServiceProvider.php
+
+		-
+			message: '#^Parameter \#1 \$filename of function file_exists expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Tracing/BacktraceHelper.php
+
+		-
+			message: '#^Parameter \#1 \$filename of function file_get_contents expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Tracing/BacktraceHelper.php
+
+		-
+			message: '#^Parameter \#2 \$subject of function preg_match expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Tracing/BacktraceHelper.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Tracing\\EventHandler\:\:__call\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: src/Sentry/Laravel/Tracing/EventHandler.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Tracing\\EventHandler\:\:__call\(\) has parameter \$arguments with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Tracing/EventHandler.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Tracing\\EventHandler\:\:__construct\(\) has parameter \$config with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Tracing/EventHandler.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Tracing\\EventHandler\:\:resolveEventOrigin\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Tracing/EventHandler.php
+
+		-
+			message: '#^Property Sentry\\Laravel\\Tracing\\EventHandler\:\:\$eventHandlerMap type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Tracing/EventHandler.php
+
+		-
+			message: '#^Property Sentry\\Laravel\\Tracing\\EventHandler\:\:\$traceQueueJobs is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: src/Sentry/Laravel/Tracing/EventHandler.php
+
+		-
+			message: '#^Property Sentry\\Laravel\\Tracing\\EventHandler\:\:\$traceQueueJobsAsTransactions is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: src/Sentry/Laravel/Tracing/EventHandler.php
+
+		-
+			message: '#^Access to property \$definitions on an unknown class GraphQL\\Language\\AST\\DocumentNode\.$#'
+			identifier: class.notFound
 			count: 1
 			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
 
 		-
-			message: "#^Class GraphQL\\\\Language\\\\AST\\\\OperationDefinitionNode not found\\.$#"
+			message: '#^Access to property \$name on an unknown class GraphQL\\Language\\AST\\FieldNode\.$#'
+			identifier: class.notFound
 			count: 1
 			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
 
 		-
-			message: "#^Class Nuwave\\\\Lighthouse\\\\Events\\\\EndExecution not found\\.$#"
+			message: '#^Access to property \$name on an unknown class GraphQL\\Language\\AST\\OperationDefinitionNode\.$#'
+			identifier: class.notFound
+			count: 2
+			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
+
+		-
+			message: '#^Access to property \$operation on an unknown class GraphQL\\Language\\AST\\OperationDefinitionNode\.$#'
+			identifier: class.notFound
+			count: 6
+			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
+
+		-
+			message: '#^Access to property \$operationName on an unknown class Nuwave\\Lighthouse\\Events\\StartExecution\.$#'
+			identifier: class.notFound
 			count: 1
 			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
 
 		-
-			message: "#^Class Nuwave\\\\Lighthouse\\\\Events\\\\EndRequest not found\\.$#"
+			message: '#^Access to property \$query on an unknown class Nuwave\\Lighthouse\\Events\\StartExecution\.$#'
+			identifier: class.notFound
+			count: 2
+			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
+
+		-
+			message: '#^Access to property \$selectionSet on an unknown class GraphQL\\Language\\AST\\OperationDefinitionNode\.$#'
+			identifier: class.notFound
 			count: 1
 			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
 
 		-
-			message: "#^Class Nuwave\\\\Lighthouse\\\\Events\\\\StartExecution not found\\.$#"
+			message: '#^Cannot access offset ''query'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
 			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
 
 		-
-			message: "#^Class Nuwave\\\\Lighthouse\\\\Events\\\\StartRequest not found\\.$#"
+			message: '#^Cannot call method startChild\(\) on Sentry\\Tracing\\Span\|null\.$#'
+			identifier: method.nonObject
 			count: 1
 			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
 
 		-
-			message: "#^Method Sentry\\\\Laravel\\\\Tracing\\\\Integrations\\\\LighthouseIntegration\\:\\:extractOperationDefinitionNode\\(\\) has invalid return type GraphQL\\\\Language\\\\AST\\\\OperationDefinitionNode\\.$#"
+			message: '#^Class GraphQL\\Language\\AST\\DocumentNode not found\.$#'
+			identifier: class.notFound
 			count: 1
 			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
 
 		-
-			message: "#^Parameter \\$endExecution of method Sentry\\\\Laravel\\\\Tracing\\\\Integrations\\\\LighthouseIntegration\\:\\:handleEndExecution\\(\\) has invalid type Nuwave\\\\Lighthouse\\\\Events\\\\EndExecution\\.$#"
+			message: '#^Class GraphQL\\Language\\AST\\OperationDefinitionNode not found\.$#'
+			identifier: class.notFound
 			count: 1
 			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
 
 		-
-			message: "#^Parameter \\$endRequest of method Sentry\\\\Laravel\\\\Tracing\\\\Integrations\\\\LighthouseIntegration\\:\\:handleEndRequest\\(\\) has invalid type Nuwave\\\\Lighthouse\\\\Events\\\\EndRequest\\.$#"
+			message: '#^Class Nuwave\\Lighthouse\\Events\\EndExecution not found\.$#'
+			identifier: class.notFound
 			count: 1
 			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
 
 		-
-			message: "#^Parameter \\$operation of method Sentry\\\\Laravel\\\\Tracing\\\\Integrations\\\\LighthouseIntegration\\:\\:extractOperationNames\\(\\) has invalid type GraphQL\\\\Language\\\\AST\\\\OperationDefinitionNode\\.$#"
+			message: '#^Class Nuwave\\Lighthouse\\Events\\EndRequest not found\.$#'
+			identifier: class.notFound
 			count: 1
 			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
 
 		-
-			message: "#^Parameter \\$query of method Sentry\\\\Laravel\\\\Tracing\\\\Integrations\\\\LighthouseIntegration\\:\\:extractOperationDefinitionNode\\(\\) has invalid type GraphQL\\\\Language\\\\AST\\\\DocumentNode\\.$#"
+			message: '#^Class Nuwave\\Lighthouse\\Events\\StartExecution not found\.$#'
+			identifier: class.notFound
 			count: 1
 			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
 
 		-
-			message: "#^Parameter \\$startExecution of method Sentry\\\\Laravel\\\\Tracing\\\\Integrations\\\\LighthouseIntegration\\:\\:handleStartExecution\\(\\) has invalid type Nuwave\\\\Lighthouse\\\\Events\\\\StartExecution\\.$#"
+			message: '#^Class Nuwave\\Lighthouse\\Events\\StartRequest not found\.$#'
+			identifier: class.notFound
 			count: 1
 			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
 
 		-
-			message: "#^Parameter \\$startRequest of method Sentry\\\\Laravel\\\\Tracing\\\\Integrations\\\\LighthouseIntegration\\:\\:handleStartRequest\\(\\) has invalid type Nuwave\\\\Lighthouse\\\\Events\\\\StartRequest\\.$#"
+			message: '#^Method Sentry\\Laravel\\Tracing\\Integrations\\LighthouseIntegration\:\:extractOperationDefinitionNode\(\) has invalid return type GraphQL\\Language\\AST\\OperationDefinitionNode\.$#'
+			identifier: class.notFound
 			count: 1
 			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
 
 		-
-			message: "#^Class Laravel\\\\Lumen\\\\Application not found\\.$#"
+			message: '#^PHPDoc tag @var for variable \$selection contains unknown class GraphQL\\Language\\AST\\FieldNode\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
+
+		-
+			message: '#^Parameter \$endExecution of method Sentry\\Laravel\\Tracing\\Integrations\\LighthouseIntegration\:\:handleEndExecution\(\) has invalid type Nuwave\\Lighthouse\\Events\\EndExecution\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
+
+		-
+			message: '#^Parameter \$endRequest of method Sentry\\Laravel\\Tracing\\Integrations\\LighthouseIntegration\:\:handleEndRequest\(\) has invalid type Nuwave\\Lighthouse\\Events\\EndRequest\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
+
+		-
+			message: '#^Parameter \$operation of method Sentry\\Laravel\\Tracing\\Integrations\\LighthouseIntegration\:\:extractOperationNames\(\) has invalid type GraphQL\\Language\\AST\\OperationDefinitionNode\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
+
+		-
+			message: '#^Parameter \$query of method Sentry\\Laravel\\Tracing\\Integrations\\LighthouseIntegration\:\:extractOperationDefinitionNode\(\) has invalid type GraphQL\\Language\\AST\\DocumentNode\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
+
+		-
+			message: '#^Parameter \$startExecution of method Sentry\\Laravel\\Tracing\\Integrations\\LighthouseIntegration\:\:handleStartExecution\(\) has invalid type Nuwave\\Lighthouse\\Events\\StartExecution\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
+
+		-
+			message: '#^Parameter \$startRequest of method Sentry\\Laravel\\Tracing\\Integrations\\LighthouseIntegration\:\:handleStartRequest\(\) has invalid type Nuwave\\Lighthouse\\Events\\StartRequest\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
+
+		-
+			message: '#^Property Sentry\\Laravel\\Tracing\\Integrations\\LighthouseIntegration\:\:\$operations has unknown class GraphQL\\Language\\AST\\OperationDefinitionNode as its type\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Sentry/Laravel/Tracing/Integrations/LighthouseIntegration.php
+
+		-
+			message: '#^Cannot call method getStartTimestamp\(\) on Sentry\\Tracing\\Transaction\|null\.$#'
+			identifier: method.nonObject
+			count: 3
+			path: src/Sentry/Laravel/Tracing/Middleware.php
+
+		-
+			message: '#^Cannot call method setData\(\) on Sentry\\Tracing\\Transaction\|null\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: src/Sentry/Laravel/Tracing/Middleware.php
+
+		-
+			message: '#^Cannot call method setHttpStatus\(\) on Sentry\\Tracing\\Transaction\|null\.$#'
+			identifier: method.nonObject
 			count: 1
 			path: src/Sentry/Laravel/Tracing/Middleware.php
 
 		-
-			message: "#^Class Laravel\\\\Lumen\\\\Application not found\\.$#"
+			message: '#^Cannot call method startChild\(\) on Sentry\\Tracing\\Transaction\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: src/Sentry/Laravel/Tracing/Middleware.php
+
+		-
+			message: '#^Class Laravel\\Lumen\\Application not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Sentry/Laravel/Tracing/Middleware.php
+
+		-
+			message: '#^Parameter \#1 \$sentryTrace of function Sentry\\continueTrace expects string, array\|string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Tracing/Middleware.php
+
+		-
+			message: '#^Parameter \#1 \$startTimestamp of method Sentry\\Tracing\\SpanContext\:\:setStartTimestamp\(\) expects float\|null, array\|string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Tracing/Middleware.php
+
+		-
+			message: '#^Parameter \#2 \$baggage of function Sentry\\continueTrace expects string, array\|string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Tracing/Middleware.php
+
+		-
+			message: '#^Parameter \#3 \$headers of static method Sentry\\DataCollection\\HttpSpanDataCollector\:\:collectHeaders\(\) expects array\<array\<string\>\>, array\<string, list\<string\|null\>\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Tracing/Middleware.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Tracing\\Routing\\TracingControllerDispatcherTracing\:\:getMiddleware\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Tracing/Routing/TracingControllerDispatcherTracing.php
+
+		-
+			message: '#^Instanceof between string and Closure will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: src/Sentry/Laravel/Tracing/Routing/TracingRoutingDispatcher.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Tracing\\Routing\\TracingRoutingDispatcher\:\:wrapRouteDispatch\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: src/Sentry/Laravel/Tracing/Routing/TracingRoutingDispatcher.php
+
+		-
+			message: '#^Call to function method_exists\(\) with Illuminate\\Contracts\\Foundation\\Application and ''terminating'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Sentry/Laravel/Tracing/ServiceProvider.php
+
+		-
+			message: '#^Call to method middleware\(\) on an unknown class Laravel\\Lumen\\Application\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Sentry/Laravel/Tracing/ServiceProvider.php
+
+		-
+			message: '#^Class Laravel\\Lumen\\Application not found\.$#'
+			identifier: class.notFound
 			count: 2
 			path: src/Sentry/Laravel/Tracing/ServiceProvider.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Tracing\\ServiceProvider\:\:bindEvents\(\) has parameter \$tracingConfig with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Tracing/ServiceProvider.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Tracing\\ServiceProvider\:\:bindViewEngine\(\) has parameter \$tracingConfig with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Sentry/Laravel/Tracing/ServiceProvider.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Tracing\\ServiceProvider\:\:getTracingConfig\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Tracing/ServiceProvider.php
+
+		-
+			message: '#^Parameter \#1 \$engineResolver of closure expects Illuminate\\View\\Engines\\EngineResolver, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Tracing/ServiceProvider.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Tracing\\ViewEngineDecorator\:\:__call\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: src/Sentry/Laravel/Tracing/ViewEngineDecorator.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Tracing\\ViewEngineDecorator\:\:__call\(\) has parameter \$arguments with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Sentry/Laravel/Tracing/ViewEngineDecorator.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Tracing\\ViewEngineDecorator\:\:__call\(\) has parameter \$name with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: src/Sentry/Laravel/Tracing/ViewEngineDecorator.php
+
+		-
+			message: '#^Method Sentry\\Laravel\\Tracing\\ViewEngineDecorator\:\:get\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Sentry/Laravel/Tracing/ViewEngineDecorator.php
+
+		-
+			message: '#^Parameter \#1 \$description of method Sentry\\Tracing\\SpanContext\:\:setDescription\(\) expects string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Tracing/ViewEngineDecorator.php
+
+		-
+			message: '#^Parameter \#1 \$string of function strlen expects string, int given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Sentry/Laravel/Util/Filesize.php
