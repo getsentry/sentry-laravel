@@ -11,6 +11,7 @@ use Illuminate\Foundation\Http\Kernel as HttpKernel;
 use Illuminate\Routing\Contracts\CallableDispatcher;
 use Illuminate\Routing\Contracts\ControllerDispatcher;
 use Illuminate\View\Engines\EngineResolver;
+use Illuminate\Support\Str;
 use Illuminate\View\Factory as ViewFactory;
 use InvalidArgumentException;
 use Laravel\Lumen\Application as Lumen;
@@ -128,7 +129,15 @@ class ServiceProvider extends BaseServiceProvider
         $viewFactory = $this->app->make('view');
 
         $viewFactory->composer('*', static function (View $view) use ($viewFactory): void {
-            $viewFactory->share(ViewEngineDecorator::SHARED_KEY, $view->name());
+            $viewName = $view->name();
+            $basePath = base_path();
+
+            // Views rendered from a file (like Laravel Folio pages) are named after their full path, strip the base path to keep the name short
+            if (Str::startsWith($viewName, $basePath . \DIRECTORY_SEPARATOR)) {
+                $viewName = substr($viewName, \strlen($basePath));
+            }
+
+            $viewFactory->share(ViewEngineDecorator::SHARED_KEY, $viewName);
         });
 
         return new ViewEngineDecorator($realEngine, $viewFactory);
