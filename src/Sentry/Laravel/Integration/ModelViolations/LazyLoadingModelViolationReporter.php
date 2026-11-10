@@ -19,6 +19,9 @@ class LazyLoadingModelViolationReporter extends ModelViolationReporter
         return parent::shouldReport($model, $property);
     }
 
+    /**
+     * @return array<string, string>
+     */
     protected function getViolationContext(Model $model, string $property): array
     {
         return [
