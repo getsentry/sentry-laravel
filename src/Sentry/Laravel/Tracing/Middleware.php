@@ -10,7 +10,7 @@ use Sentry\DataCollection\HttpMessageType;
 use Sentry\DataCollection\HttpSpanDataCollector;
 use Sentry\Laravel\Http\LaravelRequestFetcher;
 use Sentry\Laravel\Http\SensitiveCookieFilter;
-use Sentry\Laravel\SentryManager;
+use Sentry\Laravel\Sentry;
 use Sentry\SentrySdk;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanContext;
@@ -78,7 +78,7 @@ class Middleware
      */
     public function handle(Request $request, Closure $next)
     {
-        if (app()->bound(SentryManager::class)) {
+        if (app()->bound(Sentry::class)) {
             $this->startTransaction($request);
         }
 

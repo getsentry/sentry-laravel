@@ -6,17 +6,17 @@ use Exception;
 use Sentry\Breadcrumb;
 use Sentry\Event;
 use Sentry\Laravel\Facade as SentryFacade;
-use Sentry\Laravel\SentryManager;
+use Sentry\Laravel\Sentry;
 use Sentry\NoOpClient;
 use Sentry\SentrySdk;
 use Sentry\State\IsolationScope;
 use Sentry\Tracing\SpanContext;
 
-class SentryManagerTest extends TestCase
+class SentryTest extends TestCase
 {
     public function testContainerBindingsResolveTheSameInstance(): void
     {
-        $sentry = $this->app->make(SentryManager::class);
+        $sentry = $this->app->make(Sentry::class);
 
         $this->assertSame($sentry, $this->app->make('sentry'));
         $this->assertSame($sentry, SentryFacade::getFacadeRoot());

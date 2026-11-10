@@ -11,7 +11,7 @@ class LogChannel extends LogManager
     public function __invoke(array $config = []): Logger
     {
         $handler = new SentryHandler(
-            $this->app->make(SentryManager::class),
+            $this->app->make(Sentry::class),
             $config['level'] ?? Logger::DEBUG,
             $config['bubble'] ?? true,
             $config['report_exceptions'] ?? true,

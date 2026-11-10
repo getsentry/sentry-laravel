@@ -5,7 +5,7 @@ namespace Sentry\Laravel\Tests;
 use Orchestra\Testbench\TestCase;
 use Sentry\Laravel\Facade;
 use Sentry\Laravel\ServiceProvider;
-use Sentry\Laravel\SentryManager;
+use Sentry\Laravel\Sentry;
 
 class ServiceProviderWithCustomAliasTest extends TestCase
 {
@@ -32,7 +32,7 @@ class ServiceProviderWithCustomAliasTest extends TestCase
     public function testIsBound(): void
     {
         $this->assertTrue(app()->bound('custom-sentry'));
-        $this->assertInstanceOf(SentryManager::class, app('custom-sentry'));
+        $this->assertInstanceOf(Sentry::class, app('custom-sentry'));
         $this->assertSame(app('custom-sentry'), CustomSentryFacade::getFacadeRoot());
     }
 

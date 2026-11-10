@@ -3,7 +3,7 @@
 namespace Sentry\Laravel;
 
 /**
- * @see \Sentry\Laravel\SentryManager
+ * @see \Sentry\Laravel\Sentry
  *
  * @method static \Sentry\ClientInterface getClient()
  * @method static void bindClient(\Sentry\ClientInterface $client)
@@ -25,12 +25,12 @@ namespace Sentry\Laravel;
  * @method static \Sentry\Tracing\Transaction startTransaction(\Sentry\Tracing\TransactionContext $context, array $customSamplingContext = [])
  * @method static \Sentry\Tracing\Transaction|null getTransaction()
  * @method static \Sentry\Tracing\Span|null getSpan()
- * @method static \Sentry\Laravel\SentryManager setSpan(\Sentry\Tracing\Span|null $span)
+ * @method static \Sentry\Laravel\Sentry setSpan(\Sentry\Tracing\Span|null $span)
  */
 class Facade extends \Illuminate\Support\Facades\Facade
 {
     protected static function getFacadeAccessor()
     {
-        return SentryManager::class;
+        return Sentry::class;
     }
 }

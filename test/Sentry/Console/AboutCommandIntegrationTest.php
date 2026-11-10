@@ -6,7 +6,7 @@ use Illuminate\Foundation\Console\AboutCommand;
 use Illuminate\Support\Facades\Artisan;
 use Mockery\MockInterface;
 use Sentry\Client;
-use Sentry\Laravel\SentryManager;
+use Sentry\Laravel\Sentry;
 use Sentry\Laravel\Tests\TestCase;
 use Sentry\Laravel\Version;
 use Sentry\NoOpClient;
@@ -65,7 +65,7 @@ class AboutCommandIntegrationTest extends TestCase
 
     public function testAboutCommandContainsExpectedDataWithoutClient(): void
     {
-        $this->mock(SentryManager::class, static function (MockInterface $sentry): void {
+        $this->mock(Sentry::class, static function (MockInterface $sentry): void {
             $sentry->shouldReceive('getClient')->andReturn(new NoOpClient());
         });
 

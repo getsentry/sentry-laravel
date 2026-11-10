@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 use Psr\Log\AbstractLogger;
 use Sentry\ClientBuilder;
 use Sentry\Laravel\Version;
-use Sentry\Laravel\SentryManager;
+use Sentry\Laravel\Sentry;
 use Sentry\State\IsolationScope;
 use Sentry\Tracing\SpanContext;
 use Sentry\Tracing\TransactionContext;
@@ -53,7 +53,7 @@ class TestCommand extends Command
         $laravelClient = null;
 
         try {
-            $laravelClient = app(SentryManager::class)->getClient();
+            $laravelClient = app(Sentry::class)->getClient();
         } catch (Throwable $e) {
             // Ignore any errors related to getting the client from the Laravel container
             // These errors will surface later in the process but we should not crash here

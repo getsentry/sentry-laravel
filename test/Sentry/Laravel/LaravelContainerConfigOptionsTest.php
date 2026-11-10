@@ -4,13 +4,13 @@ namespace Sentry\Laravel\Tests\Laravel;
 
 use Sentry\Laravel\Tests\TestCase;
 use Sentry\Logger\DebugFileLogger;
-use Sentry\Laravel\SentryManager;
+use Sentry\Laravel\Sentry;
 
 class LaravelContainerConfigOptionsTest extends TestCase
 {
     public function testOrgIdIsNullByDefault(): void
     {
-        $orgId = app(SentryManager::class)->getClient()->getOptions()->getOrgId();
+        $orgId = app(Sentry::class)->getClient()->getOptions()->getOrgId();
 
         $this->assertNull($orgId);
     }
@@ -21,14 +21,14 @@ class LaravelContainerConfigOptionsTest extends TestCase
             'sentry.org_id' => 42,
         ]);
 
-        $orgId = app(SentryManager::class)->getClient()->getOptions()->getOrgId();
+        $orgId = app(Sentry::class)->getClient()->getOptions()->getOrgId();
 
         $this->assertSame(42, $orgId);
     }
 
     public function testStrictTraceContinuationIsDisabledByDefault(): void
     {
-        $enabled = app(SentryManager::class)->getClient()->getOptions()->isStrictTraceContinuationEnabled();
+        $enabled = app(Sentry::class)->getClient()->getOptions()->isStrictTraceContinuationEnabled();
 
         $this->assertFalse($enabled);
     }
@@ -39,14 +39,14 @@ class LaravelContainerConfigOptionsTest extends TestCase
             'sentry.strict_trace_continuation' => true,
         ]);
 
-        $enabled = app(SentryManager::class)->getClient()->getOptions()->isStrictTraceContinuationEnabled();
+        $enabled = app(Sentry::class)->getClient()->getOptions()->isStrictTraceContinuationEnabled();
 
         $this->assertTrue($enabled);
     }
 
     public function testLogFlushThresholdIsNullByDefault(): void
     {
-        $logFlushThreshold = app(SentryManager::class)->getClient()->getOptions()->getLogFlushThreshold();
+        $logFlushThreshold = app(Sentry::class)->getClient()->getOptions()->getLogFlushThreshold();
 
         $this->assertNull($logFlushThreshold);
     }
@@ -57,14 +57,14 @@ class LaravelContainerConfigOptionsTest extends TestCase
             'sentry.log_flush_threshold' => 2,
         ]);
 
-        $logFlushThreshold = app(SentryManager::class)->getClient()->getOptions()->getLogFlushThreshold();
+        $logFlushThreshold = app(Sentry::class)->getClient()->getOptions()->getLogFlushThreshold();
 
         $this->assertSame(2, $logFlushThreshold);
     }
 
     public function testLoggerIsNullByDefault(): void
     {
-        $logger = app(SentryManager::class)->getClient()->getOptions()->getLogger();
+        $logger = app(Sentry::class)->getClient()->getOptions()->getLogger();
 
         $this->assertNull($logger);
     }
@@ -75,7 +75,7 @@ class LaravelContainerConfigOptionsTest extends TestCase
             'sentry.logger' => DebugFileLogger::class,
         ]);
 
-        $logger = app(SentryManager::class)->getClient()->getOptions()->getLogger();
+        $logger = app(Sentry::class)->getClient()->getOptions()->getLogger();
 
         $this->assertInstanceOf(DebugFileLogger::class, $logger);
     }

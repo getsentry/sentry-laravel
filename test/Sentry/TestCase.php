@@ -15,7 +15,7 @@ use Sentry\EventType;
 use Sentry\SentrySdk;
 use Sentry\State\IsolationScope;
 use Sentry\Laravel\Tracing;
-use Sentry\Laravel\SentryManager;
+use Sentry\Laravel\Sentry;
 use Sentry\Laravel\ServiceProvider;
 use Sentry\Transport\Result;
 use Sentry\Transport\ResultStatus;
@@ -136,7 +136,7 @@ abstract class TestCase extends LaravelTestCase
         $this->app['events']->dispatch($event, $payload);
     }
 
-    protected function getSentryFromContainer(): SentryManager
+    protected function getSentryFromContainer(): Sentry
     {
         return $this->app->make('sentry');
     }

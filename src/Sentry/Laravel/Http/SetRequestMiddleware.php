@@ -7,7 +7,7 @@ use Illuminate\Container\Container;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Http\Request;
 use Psr\Http\Message\ServerRequestInterface;
-use Sentry\Laravel\SentryManager;
+use Sentry\Laravel\Sentry;
 use Throwable;
 
 /**
@@ -20,7 +20,7 @@ class SetRequestMiddleware
     {
         $container = Container::getInstance();
 
-        if ($container->bound(SentryManager::class)) {
+        if ($container->bound(Sentry::class)) {
             $psrRequest = $this->resolvePsrRequest($container);
 
             if ($psrRequest !== null) {

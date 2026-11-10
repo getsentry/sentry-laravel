@@ -3,14 +3,14 @@
 namespace Sentry\Laravel\Console;
 
 use Sentry\Client;
-use Sentry\Laravel\SentryManager;
+use Sentry\Laravel\Sentry;
 use Sentry\Laravel\Version;
 use Sentry\NoOpClient;
 use Sentry\Options;
 
 class AboutCommandIntegration
 {
-    public function __invoke(SentryManager $sentry): array
+    public function __invoke(Sentry $sentry): array
     {
         $client = $sentry->getClient();
 

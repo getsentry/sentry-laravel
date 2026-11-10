@@ -6,7 +6,7 @@ use Sentry\DataCollection\DataCollectionOptions;
 use Sentry\DataCollection\HttpMessageType;
 use Sentry\DataCollection\KeyValueCollectionBehavior;
 use Sentry\Laravel\Tests\TestCase;
-use Sentry\Laravel\SentryManager;
+use Sentry\Laravel\Sentry;
 
 class LaravelDataCollectionConfigOptionTest extends TestCase
 {
@@ -125,6 +125,6 @@ class LaravelDataCollectionConfigOptionTest extends TestCase
 
     private function getDataCollectionOptions(): ?DataCollectionOptions
     {
-        return app(SentryManager::class)->getClient()->getOptions()->getDataCollection();
+        return app(Sentry::class)->getClient()->getOptions()->getDataCollection();
     }
 }

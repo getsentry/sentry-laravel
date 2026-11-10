@@ -88,7 +88,7 @@ class ServiceProvider extends BaseServiceProvider
      */
     public function boot(): void
     {
-        $this->app->make(SentryManager::class);
+        $this->app->make(Sentry::class);
 
         $this->bootFeatures();
 
@@ -166,7 +166,7 @@ class ServiceProvider extends BaseServiceProvider
                 $handler->subscribeOctaneEvents($dispatcher);
             }
 
-            if (DataCollectionPolicy::fromOptions($this->app->make(SentryManager::class)->getClient()->getOptions())->shouldCollectUserInfo()) {
+            if (DataCollectionPolicy::fromOptions($this->app->make(Sentry::class)->getClient()->getOptions())->shouldCollectUserInfo()) {
                 $handler->subscribeAuthEvents($dispatcher);
             }
 
@@ -352,7 +352,7 @@ class ServiceProvider extends BaseServiceProvider
             return $clientBuilder;
         });
 
-        $this->app->singleton(SentryManager::class, function () {
+        $this->app->singleton(Sentry::class, function () {
             /** @var \Sentry\ClientBuilder $clientBuilder */
             $clientBuilder = $this->app->make(ClientBuilder::class);
 
@@ -429,13 +429,13 @@ class ServiceProvider extends BaseServiceProvider
                 SentrySdk::init($clientBuilder->getClient());
             }
 
-            return new SentryManager;
+            return new Sentry;
         });
 
-        $this->app->alias(SentryManager::class, static::$abstract);
+        $this->app->alias(Sentry::class, static::$abstract);
 
         $this->app->singleton(BacktraceHelper::class, function () {
-            $sentry = $this->app->make(SentryManager::class);
+            $sentry = $this->app->make(Sentry::class);
 
             $options = $sentry->getClient()->getOptions();
 

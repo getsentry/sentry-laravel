@@ -34,7 +34,7 @@ use function Sentry\withIsolationScope;
  * Every method forwards to the SDK state in `SentrySdk`, so `app('sentry')`, the facade
  * and the global `\Sentry\*` functions all work on the same scopes.
  */
-class SentryManager
+class Sentry
 {
     public function getClient(): ClientInterface
     {

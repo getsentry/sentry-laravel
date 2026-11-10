@@ -4,7 +4,7 @@ namespace Sentry\Laravel\Jobs\Middleware;
 
 use Closure;
 use InvalidArgumentException;
-use Sentry\Laravel\SentryManager;
+use Sentry\Laravel\Sentry;
 use Sentry\SentrySdk;
 
 /**
@@ -43,7 +43,7 @@ class SentryTracesSampleRate
 
     public function handle(object $job, Closure $next): void
     {
-        if (app()->bound(SentryManager::class)) {
+        if (app()->bound(Sentry::class)) {
             $transaction = SentrySdk::getIsolationScope()->getTransaction();
 
             if ($transaction !== null && $transaction->getSampled()) {

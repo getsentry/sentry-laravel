@@ -33,7 +33,7 @@ class SentryHandler extends AbstractProcessingHandler
     protected $release;
 
     /**
-     * @var SentryManager the Sentry instance that sends the message to the server
+     * @var Sentry the Sentry instance that sends the message to the server
      */
     protected $sentry;
 
@@ -57,13 +57,13 @@ class SentryHandler extends AbstractProcessingHandler
     private $useFormattedMessage;
 
     /**
-     * @param SentryManager $sentry
+     * @param Sentry $sentry
      * @param int           $level  The minimum logging level at which this handler will be triggered
      * @param bool          $bubble Whether the messages that are handled can bubble up the stack or not
      * @param bool          $reportExceptions
      * @param bool          $useFormattedMessage
      */
-    public function __construct(SentryManager $sentry, $level = Logger::DEBUG, bool $bubble = true, bool $reportExceptions = true, bool $useFormattedMessage = false)
+    public function __construct(Sentry $sentry, $level = Logger::DEBUG, bool $bubble = true, bool $reportExceptions = true, bool $useFormattedMessage = false)
     {
         parent::__construct($level, $bubble);
 

@@ -6,7 +6,7 @@ use Closure;
 use Illuminate\Container\Container;
 use Illuminate\Http\Request;
 use Sentry\DataCollection\DataCollectionPolicy;
-use Sentry\Laravel\SentryManager;
+use Sentry\Laravel\Sentry;
 use Sentry\State\IsolationScope;
 
 /**
@@ -28,9 +28,9 @@ class SetRequestIpMiddleware
     {
         $container = Container::getInstance();
 
-        if ($container->bound(SentryManager::class)) {
-            /** @var SentryManager $sentry */
-            $sentry = $container->make(SentryManager::class);
+        if ($container->bound(Sentry::class)) {
+            /** @var Sentry $sentry */
+            $sentry = $container->make(Sentry::class);
 
             if (DataCollectionPolicy::fromOptions($sentry->getClient()->getOptions())->shouldCollectUserInfo()) {
                 $sentry->configureScope(static function (IsolationScope $scope) use ($request): void {
