@@ -201,16 +201,20 @@ class ConsoleSchedulingIntegration extends Feature
         $this->pushSpan($transaction);
     }
 
-    public function handleScheduledTaskFinished(): void
+    public function handleScheduledTaskFinished(ScheduledTaskFinished $event): void
     {
         $this->maybeFinishSpan(SpanStatus::ok());
         $this->maybePopScope();
+
+        $this->forgetBackgroundTaskCheckInIdFromContext($event->task);
     }
 
-    public function handleScheduledTaskFailed(): void
+    public function handleScheduledTaskFailed(ScheduledTaskFailed $event): void
     {
         $this->maybeFinishSpan(SpanStatus::internalError());
         $this->maybePopScope();
+
+        $this->forgetBackgroundTaskCheckInIdFromContext($event->task);
     }
 
     private function monitorScheduledTasks(Schedule $schedule): void
@@ -524,5 +528,23 @@ class ConsoleSchedulingIntegration extends Feature
         } else {
             $cache->forgetHidden($cacheKey);
         }
+    }
+
+    private function forgetBackgroundTaskCheckInIdFromContext(SchedulingEvent $scheduled): void
+    {
+        if (!$scheduled->runInBackground || !$this->monitoredTasks->contains($scheduled)) {
+            return;
+        }
+
+        $cache = $this->resolveCache();
+
+        if (!$cache instanceof ContextRepository) {
+            return;
+        }
+
+        $cache->forgetHidden($this->buildCacheKey(
+            $scheduled->mutexName(),
+            $this->monitoredTasks[$scheduled] ?? $this->makeSlugForScheduled($scheduled)
+        ));
     }
 }
