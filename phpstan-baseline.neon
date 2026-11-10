@@ -2267,9 +2267,3 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: src/Sentry/Laravel/Tracing/ViewEngineDecorator.php
-
-		-
-			message: '#^Parameter \#1 \$string of function strlen expects string, int given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Sentry/Laravel/Util/Filesize.php
