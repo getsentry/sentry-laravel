@@ -90,13 +90,11 @@ class IntegrationTest extends TestCase
         $_SERVER['PATH_INFO'] = '/users/123';
 
         try {
-            withScope(function (Scope $scope) use ($transaction): void {
-                $event = $scope->applyToEvent(Event::createEvent());
+            $event = $this->applyCurrentSentryScopesToEvent(Event::createEvent());
 
-                $this->assertNotNull($event);
+            $this->assertNotNull($event);
 
-                $this->assertSame($transaction, $event->getTransaction());
-            });
+            $this->assertSame($transaction, $event->getTransaction());
         } finally {
             unset($_SERVER['PATH_INFO']);
         }
@@ -110,13 +108,11 @@ class IntegrationTest extends TestCase
         $_SERVER['PATH_INFO'] = $requestPath;
 
         try {
-            withScope(function (Scope $scope) use ($requestPath): void {
-                $event = $scope->applyToEvent(Event::createEvent());
+            $event = $this->applyCurrentSentryScopesToEvent(Event::createEvent());
 
-                $this->assertNotNull($event);
+            $this->assertNotNull($event);
 
-                $this->assertSame($requestPath, $event->getTransaction());
-            });
+            $this->assertSame($requestPath, $event->getTransaction());
         } finally {
             unset($_SERVER['PATH_INFO']);
         }
