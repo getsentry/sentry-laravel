@@ -96,6 +96,9 @@ class AiMessagePart implements \JsonSerializable
         return $this;
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function toArray(): array
     {
         $data = ['type' => $this->type];
