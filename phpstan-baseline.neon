@@ -373,12 +373,6 @@ parameters:
 			path: src/Sentry/Laravel/Features/CacheIntegration.php
 
 		-
-			message: '#^Method Sentry\\Laravel\\Features\\Classification\\ClassificationMessageFormatter\:\:encode\(\) has parameter \$message with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Sentry/Laravel/Features/Classification/ClassificationMessageFormatter.php
-
-		-
 			message: '#^Method Sentry\\Laravel\\Features\\Classification\\ClassificationMessageFormatter\:\:formatAnswer\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1

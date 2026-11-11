@@ -114,6 +114,9 @@ class ClassificationMessageFormatter
         return $formatted;
     }
 
+    /**
+     * @param array<string, mixed> $message
+     */
     private static function encode(array $message): ?string
     {
         $encoded = json_encode([$message]);
