@@ -54,6 +54,9 @@ class ClassificationMessageFormatter
         ]);
     }
 
+    /**
+     * @return array<mixed>
+     */
     private static function formatQuestion(Question $question): array
     {
         if ($question instanceof Boolean) {
