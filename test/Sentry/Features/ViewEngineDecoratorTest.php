@@ -44,6 +44,33 @@ class ViewEngineDecoratorTest extends TestCase
         }
     }
 
+    public function testViewComposerIsRegisteredOnlyOnceWhenEnginesAreRecreated(): void
+    {
+        /** @var EngineResolver $engineResolver */
+        $engineResolver = $this->app->make('view.engine.resolver');
+
+        $engineResolver->resolve('blade');
+
+        $before = $this->countWildcardComposers();
+
+        for ($i = 0; $i < 10; $i++) {
+            $engineResolver->forget('blade');
+            $engineResolver->resolve('blade');
+        }
+
+        $this->assertSame($before, $this->countWildcardComposers());
+    }
+
+    private function countWildcardComposers(): int
+    {
+        $events = $this->app->make('view')->getDispatcher();
+
+        $property = new ReflectionProperty($events, 'wildcards');
+        $property->setAccessible(true);
+
+        return count($property->getValue($events)['composing: *'] ?? []);
+    }
+
     public function testNamedViewUsesViewNameAsSpanDescription(): void
     {
         $this->app->make('view')->addLocation(self::STUBS_PATH . '/views');
