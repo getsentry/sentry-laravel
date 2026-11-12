@@ -22,6 +22,9 @@ class TracingControllerDispatcherTracing extends TracingRoutingDispatcher implem
         }, $route);
     }
 
+    /**
+     * @return array<mixed>
+     */
     public function getMiddleware($controller, $method)
     {
         return $this->dispatcher->getMiddleware($controller, $method);

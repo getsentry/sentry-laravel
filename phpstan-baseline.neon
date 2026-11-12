@@ -2161,12 +2161,6 @@ parameters:
 			path: src/Sentry/Laravel/Tracing/Middleware.php
 
 		-
-			message: '#^Method Sentry\\Laravel\\Tracing\\Routing\\TracingControllerDispatcherTracing\:\:getMiddleware\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Sentry/Laravel/Tracing/Routing/TracingControllerDispatcherTracing.php
-
-		-
 			message: '#^Instanceof between string and Closure will always evaluate to false\.$#'
 			identifier: instanceof.alwaysFalse
 			count: 1
