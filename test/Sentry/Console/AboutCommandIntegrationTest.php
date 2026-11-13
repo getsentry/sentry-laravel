@@ -31,13 +31,11 @@ class AboutCommandIntegrationTest extends TestCase
         ]);
 
         $expectedData = [
-            'data_collection' => 'NOT SET',
             'environment' => 'testing',
             'release' => '1.2.3',
             'sample_rate_errors' => '100%',
             'sample_rate_profiling' => 'NOT SET',
             'sample_rate_performance_monitoring' => '95%',
-            'send_default_pii' => 'DISABLED',
             'php_sdk_version' => Client::SDK_VERSION,
             'laravel_sdk_version' => Version::SDK_VERSION,
         ];
@@ -48,19 +46,6 @@ class AboutCommandIntegrationTest extends TestCase
             $this->assertArrayHasKey($key, $actualData);
             $this->assertEquals($value, $actualData[$key]);
         }
-    }
-
-    public function testAboutCommandShowsThatDataCollectionReplacesSendDefaultPii(): void
-    {
-        $this->resetApplicationWithConfig([
-            'sentry.send_default_pii' => true,
-            'sentry.data_collection' => [],
-        ]);
-
-        $actualData = $this->runArtisanAboutAndReturnSentryData();
-
-        $this->assertEquals('ENABLED', $actualData['data_collection'] ?? null);
-        $this->assertEquals('IGNORED', $actualData['send_default_pii'] ?? null);
     }
 
     public function testAboutCommandContainsExpectedDataWithoutClient(): void

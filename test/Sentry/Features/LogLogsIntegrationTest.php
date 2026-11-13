@@ -17,8 +17,6 @@ class LogLogsIntegrationTest extends TestCase
         parent::defineEnvironment($app);
 
         tap($app['config'], static function (Repository $config) {
-            $config->set('sentry.enable_logs', true);
-
             $config->set('logging.channels.sentry_logs', [
                 'driver' => 'sentry_logs',
             ]);
@@ -142,6 +140,24 @@ class LogLogsIntegrationTest extends TestCase
         $this->assertCount(0, $logEvents);
 
         logger()->aggregator()->flush();
+    }
+
+    public function testLogsAreFlushedWhenTheApplicationTerminates(): void
+    {
+        Log::channel('sentry_logs')->warning('Sentry Laravel warning log message');
+
+        $this->assertCount(1, logger()->aggregator()->all());
+
+        $this->app->terminate();
+
+        $this->assertCount(0, logger()->aggregator()->all());
+
+        $logEvents = array_values(array_filter($this->getCapturedSentryEvents(), static function (array $event): bool {
+            return $event[0]->getType() === EventType::logs();
+        }));
+
+        $this->assertCount(1, $logEvents);
+        $this->assertEquals('Sentry Laravel warning log message', $logEvents[0][0]->getLogs()[0]->getBody());
     }
 
     public function testLogChannelAddsContextAsAttributes(): void

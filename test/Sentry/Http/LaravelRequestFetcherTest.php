@@ -40,52 +40,26 @@ class LaravelRequestFetcherTest extends TestCase
         $this->assertSame([], $this->fetchRequest($request)->getParsedBody());
     }
 
-    public function testParsedBodyIsKept(): void
+    public function testParsedBodyIsDroppedForRequestsThatAreNotForms(): void
     {
-        $request = (new ServerRequest('POST', 'http://localhost/', ['Content-Type' => 'application/json']))->withParsedBody(['foo' => 'bar']);
-
-        $this->assertSame(['foo' => 'bar'], $this->fetchRequest($request)->getParsedBody());
-    }
-
-    public function testParsedBodyIsDroppedForRequestsThatAreNotFormsWithDataCollection(): void
-    {
-        $this->resetApplicationWithConfig([
-            'sentry.data_collection' => [],
-        ]);
-
         // Laravel 8 and older use the query parameters as the parsed body of GET requests
         $request = (new ServerRequest('GET', 'http://localhost/?token=secret'))->withParsedBody(['token' => 'secret']);
 
         $this->assertNull($this->fetchRequest($request)->getParsedBody());
     }
 
-    public function testParsedBodyIsKeptForFormsWithDataCollection(): void
+    public function testParsedBodyIsKeptForForms(): void
     {
-        $this->resetApplicationWithConfig([
-            'sentry.data_collection' => [],
-        ]);
-
         $request = (new ServerRequest('POST', 'http://localhost/', ['Content-Type' => 'application/x-www-form-urlencoded']))->withParsedBody(['foo' => 'bar']);
 
         $this->assertSame(['foo' => 'bar'], $this->fetchRequest($request)->getParsedBody());
     }
 
-    public function testRawQueryStringIsUsedWithDataCollection(): void
+    public function testRawQueryStringIsUsed(): void
     {
-        $this->resetApplicationWithConfig([
-            'sentry.data_collection' => [],
-        ]);
-
         $request = new ServerRequest('GET', 'http://localhost/?page=5&q=a%20b', [], null, '1.1', ['QUERY_STRING' => 'q=a+b&page=5']);
 
         $this->assertSame('q=a+b&page=5', $this->fetchRequest($request)->getUri()->getQuery());
-    }
-
-    public function testQueryStringIsNotChangedWithoutDataCollection(): void
-    {
-        $request = new ServerRequest('GET', 'http://localhost/?page=5&q=a%20b', [], null, '1.1', ['QUERY_STRING' => 'q=a+b&page=5']);
-
-        $this->assertSame('page=5&q=a%20b', $this->fetchRequest($request)->getUri()->getQuery());
     }
 
     private function fetchRequest(ServerRequest $request): ServerRequestInterface

@@ -154,10 +154,10 @@ class AiIntegrationTest extends TestCase
         $this->assertEquals(4096, $data['gen_ai.request.max_tokens']);
     }
 
-    public function testPiiControlsMessageCapture(): void
+    public function testDataCollectionControlsMessageCapture(): void
     {
-        // PII enabled: messages captured
-        $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'prism.providers.openai.url' => self::PROVIDER_URL]);
+        // Inputs and outputs enabled: messages captured
+        $this->resetApplicationWithConfig(['prism.providers.openai.url' => self::PROVIDER_URL]);
         $spans = $this->runAgentFlow($this->makePromptAndResponse());
         $data = $spans[1]->getData();
         $input = json_decode($data['gen_ai.input.messages'], true);
@@ -166,8 +166,8 @@ class AiIntegrationTest extends TestCase
         $this->assertEquals('You are a helpful assistant.', $data['gen_ai.system_instructions']);
         $output = json_decode($data['gen_ai.output.messages'], true);
         $this->assertEquals('assistant', $output[0]['role']);
-        // PII disabled: messages omitted
-        $this->resetApplicationWithConfig(['sentry.send_default_pii' => false, 'prism.providers.openai.url' => self::PROVIDER_URL]);
+        // Inputs and outputs disabled: messages omitted
+        $this->resetApplicationWithConfig(['sentry.data_collection' => ['gen_ai' => ['inputs' => false, 'outputs' => false]], 'prism.providers.openai.url' => self::PROVIDER_URL]);
         $spans = $this->runAgentFlow($this->makePromptAndResponse());
         $data = $spans[1]->getData();
         $this->assertArrayNotHasKey('gen_ai.input.messages', $data);
@@ -244,10 +244,10 @@ class AiIntegrationTest extends TestCase
         $this->assertEquals('stop', $chatSpans[1]->getData()['gen_ai.response.finish_reasons']);
     }
 
-    public function testToolSpanCapturesMetadataAndPiiControl(): void
+    public function testToolSpanCapturesMetadataAndDataCollectionControl(): void
     {
-        // With PII: arguments and result captured
-        $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'prism.providers.openai.url' => self::PROVIDER_URL]);
+        // Inputs and outputs enabled: arguments and result captured
+        $this->resetApplicationWithConfig(['prism.providers.openai.url' => self::PROVIDER_URL]);
         $transaction = $this->startTransaction();
         [$prompt, $response] = $this->makePromptAndResponse();
         $agent = new TestAgent();
@@ -266,8 +266,8 @@ class AiIntegrationTest extends TestCase
         $this->assertEquals('TestAgent', $data['gen_ai.agent.name']);
         $this->assertEquals('{"query":"weather in Paris"}', $data['gen_ai.tool.call.arguments']);
         $this->assertEquals('Sunny, 22C', $data['gen_ai.tool.call.result']);
-        // Without PII: arguments and result omitted
-        $this->resetApplicationWithConfig(['sentry.send_default_pii' => false, 'prism.providers.openai.url' => self::PROVIDER_URL]);
+        // Inputs and outputs disabled: arguments and result omitted
+        $this->resetApplicationWithConfig(['sentry.data_collection' => ['gen_ai' => ['inputs' => false, 'outputs' => false]], 'prism.providers.openai.url' => self::PROVIDER_URL]);
         $transaction = $this->startTransaction();
         [$prompt, $response] = $this->makePromptAndResponse();
         $this->dispatchLaravelEvent(new PromptingAgent('inv-t2', $prompt));
@@ -317,10 +317,10 @@ class AiIntegrationTest extends TestCase
         $this->assertEquals('conv-abc-123', $this->findSpanByOp($transaction, 'gen_ai.embeddings')->getData()['gen_ai.conversation.id']);
     }
 
-    public function testEmbeddingsPiiControl(): void
+    public function testEmbeddingsDataCollectionControl(): void
     {
-        // With PII: inputs captured
-        $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'sentry.tracing.http_client_requests' => false, 'prism.providers.openai.url' => self::PROVIDER_URL]);
+        // Inputs enabled: inputs captured
+        $this->resetApplicationWithConfig(['sentry.tracing.http_client_requests' => false, 'prism.providers.openai.url' => self::PROVIDER_URL]);
         $transaction = $this->startTransaction();
         [$provider, $prompt, $response] = $this->makeEmbeddingsPromptAndResponse();
         $this->dispatchLaravelEvent(new GeneratingEmbeddings('emb-2', $provider, 'text-embedding-3-small', $prompt));
@@ -328,8 +328,8 @@ class AiIntegrationTest extends TestCase
         $inputs = json_decode($transaction->getSpanRecorder()->getSpans()[1]->getData()['gen_ai.embeddings.input'], true);
         $this->assertCount(2, $inputs);
         $this->assertEquals('Napa Valley has great wine.', $inputs[0]);
-        // Without PII: inputs omitted
-        $this->resetApplicationWithConfig(['sentry.send_default_pii' => false, 'sentry.tracing.http_client_requests' => false, 'prism.providers.openai.url' => self::PROVIDER_URL]);
+        // Inputs disabled: inputs omitted
+        $this->resetApplicationWithConfig(['sentry.data_collection' => ['gen_ai' => ['inputs' => false]], 'sentry.tracing.http_client_requests' => false, 'prism.providers.openai.url' => self::PROVIDER_URL]);
         $transaction = $this->startTransaction();
         [$provider, $prompt, $response] = $this->makeEmbeddingsPromptAndResponse();
         $this->dispatchLaravelEvent(new GeneratingEmbeddings('emb-3', $provider, 'text-embedding-3-small', $prompt));
@@ -339,7 +339,7 @@ class AiIntegrationTest extends TestCase
 
     public function testBinaryContentIsRedacted(): void
     {
-        $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'prism.providers.openai.url' => self::PROVIDER_URL]);
+        $this->resetApplicationWithConfig(['prism.providers.openai.url' => self::PROVIDER_URL]);
         $dataUri = 'data:image/png;base64,' . str_repeat('iVBORw0KGgoAAAANSUhEUgAA', 100);
         $spans = $this->runAgentFlow($this->makePromptAndResponse(60, 130, 0, 0, TestAgent::class, $dataUri));
         $input = json_decode($this->findSpanByOpInSpans($spans, 'gen_ai.invoke_agent')->getData()['gen_ai.input.messages'], true);
@@ -348,7 +348,7 @@ class AiIntegrationTest extends TestCase
 
     public function testAttachmentHandling(): void
     {
-        $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'prism.providers.openai.url' => self::PROVIDER_URL]);
+        $this->resetApplicationWithConfig(['prism.providers.openai.url' => self::PROVIDER_URL]);
         $transaction = $this->startTransaction();
         $agent = new TestAgent();
         $provider = $this->makeProvider();
@@ -427,28 +427,20 @@ class AiIntegrationTest extends TestCase
 
     public function testDataCollectionCollectsInputsAndOutputsByDefault(): void
     {
-        $this->resetApplicationWithConfig(['sentry.send_default_pii' => false, 'sentry.data_collection' => [], 'prism.providers.openai.url' => self::PROVIDER_URL]);
+        $this->resetApplicationWithConfig(['prism.providers.openai.url' => self::PROVIDER_URL]);
         $this->assertGenAiContent($this->runToolFlow('inv-dc1'), true, true);
     }
 
     public function testDataCollectionGenAiInputsCanBeDisabled(): void
     {
-        $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'sentry.data_collection' => ['gen_ai' => ['inputs' => false]], 'prism.providers.openai.url' => self::PROVIDER_URL]);
+        $this->resetApplicationWithConfig(['sentry.data_collection' => ['gen_ai' => ['inputs' => false]], 'prism.providers.openai.url' => self::PROVIDER_URL]);
         $this->assertGenAiContent($this->runToolFlow('inv-dc2'), false, true);
     }
 
     public function testDataCollectionGenAiOutputsCanBeDisabled(): void
     {
-        $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'sentry.data_collection' => ['gen_ai' => ['outputs' => false]], 'prism.providers.openai.url' => self::PROVIDER_URL]);
+        $this->resetApplicationWithConfig(['sentry.data_collection' => ['gen_ai' => ['outputs' => false]], 'prism.providers.openai.url' => self::PROVIDER_URL]);
         $this->assertGenAiContent($this->runToolFlow('inv-dc3'), true, false);
-    }
-
-    public function testDataCollectionGenAiInputsControlEmbeddings(): void
-    {
-        $this->resetApplicationWithConfig(['sentry.send_default_pii' => false, 'sentry.data_collection' => [], 'prism.providers.openai.url' => self::PROVIDER_URL]);
-        $this->assertArrayHasKey('gen_ai.embeddings.input', $this->runEmbeddingsFlow('emb-dc1')->getData());
-        $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'sentry.data_collection' => ['gen_ai' => ['inputs' => false]], 'prism.providers.openai.url' => self::PROVIDER_URL]);
-        $this->assertArrayNotHasKey('gen_ai.embeddings.input', $this->runEmbeddingsFlow('emb-dc2')->getData());
     }
 
     // ---- Helpers ----

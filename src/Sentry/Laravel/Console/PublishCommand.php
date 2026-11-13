@@ -14,7 +14,7 @@ class PublishCommand extends Command
 sentry:publish 
     { --dsn= : The DSN to configure }
     { --without-test : Do not send a test event }
-    { --with-send-default-pii : Include information such as request headers, IP address and the authenticated user to events collected by the SDK }
+    { --with-send-default-pii : Include default PII in the events collected by the SDK (deprecated; option unused) }
     { --without-performance-monitoring : Do not enable performance monitoring }
     { --without-javascript-sdk : Do not enable the JavaScript SDK (deprecated; option unused) }
 COMMAND;
@@ -43,17 +43,6 @@ COMMAND;
 
             $env['SENTRY_LARAVEL_DSN'] = $dsn;
             $arg['--dsn']              = $dsn;
-        }
-
-        $sendDefaultPii = $this->confirm(
-            "Do you want to include information such as request headers, IP address and the authenticated user to events collected by the SDK?\n You can read more about this on https://docs.sentry.io/platforms/php/guides/laravel/data-management/data-collected/",
-            $this->option('with-send-default-pii') === true
-        );
-
-        if ($sendDefaultPii) {
-            $env['SENTRY_SEND_DEFAULT_PII'] = 'true';
-        } elseif ($this->isEnvKeySet('SENTRY_SEND_DEFAULT_PII')) {
-            $env['SENTRY_SEND_DEFAULT_PII'] = 'false';
         }
 
         $testCommandPrompt = 'Do you want to send a test event to Sentry?';

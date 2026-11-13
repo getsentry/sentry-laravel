@@ -10,10 +10,21 @@ use Sentry\Laravel\Sentry;
 
 class LaravelDataCollectionConfigOptionTest extends TestCase
 {
-    public function testDataCollectionIsNullByDefault(): void
+    public function testDataCollectionIsEmptyByDefault(): void
     {
-        $this->assertNull(config('sentry.data_collection'));
-        $this->assertNull($this->getDataCollectionOptions());
+        $this->assertSame([], config('sentry.data_collection'));
+    }
+
+    public function testNullDataCollectionAppliesTheDefaults(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.data_collection' => null,
+        ]);
+
+        $dataCollection = $this->getDataCollectionOptions();
+
+        $this->assertTrue($dataCollection->shouldCollectUserInfo());
+        $this->assertSame(['inputs' => true, 'outputs' => true], $dataCollection->getGenAi());
     }
 
     public function testEmptyDataCollectionAppliesTheDefaults(): void
@@ -24,7 +35,6 @@ class LaravelDataCollectionConfigOptionTest extends TestCase
 
         $dataCollection = $this->getDataCollectionOptions();
 
-        $this->assertNotNull($dataCollection);
         $this->assertTrue($dataCollection->shouldCollectUserInfo());
         $this->assertEquals(KeyValueCollectionBehavior::denyList(), $dataCollection->getCookies());
         $this->assertEquals([
@@ -83,7 +93,6 @@ class LaravelDataCollectionConfigOptionTest extends TestCase
 
         $dataCollection = $this->getDataCollectionOptions();
 
-        $this->assertNotNull($dataCollection);
         $this->assertFalse($dataCollection->shouldCollectUserInfo());
         $this->assertEquals(KeyValueCollectionBehavior::allowList(['theme']), $dataCollection->getCookies());
         $this->assertEquals([
@@ -114,7 +123,6 @@ class LaravelDataCollectionConfigOptionTest extends TestCase
 
         $dataCollection = $this->getDataCollectionOptions();
 
-        $this->assertNotNull($dataCollection);
         $this->assertEquals([
             'request' => KeyValueCollectionBehavior::allowList(['x-request-id']),
             'response' => KeyValueCollectionBehavior::allowList(['x-request-id']),
@@ -123,7 +131,7 @@ class LaravelDataCollectionConfigOptionTest extends TestCase
         $this->assertEquals(KeyValueCollectionBehavior::off(), $dataCollection->getStackFrameVariables());
     }
 
-    private function getDataCollectionOptions(): ?DataCollectionOptions
+    private function getDataCollectionOptions(): DataCollectionOptions
     {
         return app(Sentry::class)->getClient()->getOptions()->getDataCollection();
     }
