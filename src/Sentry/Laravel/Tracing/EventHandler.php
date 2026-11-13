@@ -120,6 +120,11 @@ class EventHandler
     public function subscribe(Dispatcher $dispatcher): void
     {
         foreach (static::$eventHandlerMap as $eventName => $handler) {
+            // Some database drivers only do extra work when there is a listener for this event
+            if ($eventName === DatabaseEvents\QueryExecuted::class && !$this->traceSqlQueries) {
+                continue;
+            }
+
             $dispatcher->listen($eventName, [$this, $handler]);
         }
     }
