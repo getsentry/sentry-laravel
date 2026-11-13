@@ -66,7 +66,10 @@ class ViewEngineDecoratorTest extends TestCase
         $events = $this->app->make('view')->getDispatcher();
 
         $property = new ReflectionProperty($events, 'wildcards');
-        $property->setAccessible(true);
+
+        if (\PHP_VERSION_ID < 80100) {
+            $property->setAccessible(true);
+        }
 
         return count($property->getValue($events)['composing: *'] ?? []);
     }
