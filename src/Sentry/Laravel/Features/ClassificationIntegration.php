@@ -65,7 +65,7 @@ class ClassificationIntegration extends Feature
             return;
         }
 
-        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+        $parentSpan = SentrySdk::getIsolationScope()->getSpan();
         if ($parentSpan === null || !$parentSpan->getSampled()) {
             return;
         }
@@ -98,7 +98,7 @@ class ClassificationIntegration extends Feature
             AiProviderUrlResolver::host($event->provider)
         ));
 
-        SentrySdk::getCurrentHub()->setSpan($span);
+        SentrySdk::getIsolationScope()->setSpan($span);
     }
 
     public function handleClassifiedForTracing(Classified $event): void
@@ -171,7 +171,7 @@ class ClassificationIntegration extends Feature
 
     private function findClassificationForRequest(string $url): ?string
     {
-        $currentSpan = SentrySdk::getCurrentHub()->getSpan();
+        $currentSpan = SentrySdk::getIsolationScope()->getSpan();
         if ($currentSpan === null) {
             return null;
         }

@@ -94,7 +94,7 @@ class StrictTraceContinuationIntegrationTest extends TestCase
     public function testIncomingTraceHeadersPopulatePropagationContextWhenTracingIsDisabled(): void
     {
         $this->resetApplicationWithConfig([
-            'sentry.enable_tracing' => false,
+            'sentry.traces_sample_rate' => null,
         ]);
         $this->registerRoutes();
 

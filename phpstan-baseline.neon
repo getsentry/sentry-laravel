@@ -55,7 +55,7 @@ parameters:
 			path: src/Sentry/Laravel/Console/TestCommand.php
 
 		-
-			message: '#^Method Psr\\Log\\AbstractLogger@anonymous/Sentry/Laravel/Console/TestCommand\.php\:133\:\:log\(\) has parameter \$message with no type specified\.$#'
+			message: '#^Method Psr\\Log\\AbstractLogger@anonymous/Sentry/Laravel/Console/TestCommand\.php\:137\:\:log\(\) has parameter \$message with no type specified\.$#'
 			identifier: missingType.parameter
 			count: 1
 			path: src/Sentry/Laravel/Console/TestCommand.php
@@ -79,7 +79,7 @@ parameters:
 			path: src/Sentry/Laravel/Console/TestCommand.php
 
 		-
-			message: '#^Property Psr\\Log\\AbstractLogger@anonymous/Sentry/Laravel/Console/TestCommand\.php\:133\:\:\$command has no type specified\.$#'
+			message: '#^Property Psr\\Log\\AbstractLogger@anonymous/Sentry/Laravel/Console/TestCommand\.php\:137\:\:\$command has no type specified\.$#'
 			identifier: missingType.property
 			count: 1
 			path: src/Sentry/Laravel/Console/TestCommand.php
@@ -405,12 +405,6 @@ parameters:
 		-
 			message: '#^Call to an undefined method Illuminate\\Console\\Scheduling\\Event\:\:sentryMonitor\(\)\.$#'
 			identifier: method.notFound
-			count: 1
-			path: src/Sentry/Laravel/Features/ConsoleSchedulingIntegration.php
-
-		-
-			message: '#^Cannot call method getOptions\(\) on Sentry\\ClientInterface\|null\.$#'
-			identifier: method.nonObject
 			count: 1
 			path: src/Sentry/Laravel/Features/ConsoleSchedulingIntegration.php
 
@@ -1789,7 +1783,7 @@ parameters:
 			path: src/Sentry/Laravel/SentryHandler.php
 
 		-
-			message: '#^Parameter \#1 \$fingerprint of method Sentry\\State\\Scope\:\:setFingerprint\(\) expects array\<string\>, array\<mixed, mixed\> given\.$#'
+			message: '#^Parameter \#1 \$fingerprint of method Sentry\\State\\MutableScope\:\:setFingerprint\(\) expects array\<string\>, array\<mixed, mixed\> given\.$#'
 			identifier: argument.type
 			count: 1
 			path: src/Sentry/Laravel/SentryHandler.php
@@ -1813,7 +1807,7 @@ parameters:
 			path: src/Sentry/Laravel/SentryHandler.php
 
 		-
-			message: '#^Parameter \#1 \$message of method Sentry\\State\\HubInterface\:\:captureMessage\(\) expects string, mixed given\.$#'
+			message: '#^Parameter \#1 \$message of method Sentry\\Laravel\\Sentry\:\:captureMessage\(\) expects string, mixed given\.$#'
 			identifier: argument.type
 			count: 1
 			path: src/Sentry/Laravel/SentryHandler.php
@@ -1825,7 +1819,7 @@ parameters:
 			path: src/Sentry/Laravel/SentryHandler.php
 
 		-
-			message: '#^Parameter \#1 \$user of method Sentry\\State\\Scope\:\:setUser\(\) expects array\<string, mixed\>\|Sentry\\UserDataBag, array\<mixed, mixed\> given\.$#'
+			message: '#^Parameter \#1 \$user of method Sentry\\State\\MutableScope\:\:setUser\(\) expects array\<string, mixed\>\|Sentry\\UserDataBag, array\<mixed, mixed\> given\.$#'
 			identifier: argument.type
 			count: 1
 			path: src/Sentry/Laravel/SentryHandler.php
@@ -1857,12 +1851,6 @@ parameters:
 		-
 			message: '#^Cannot access offset ''tracing'' on array\<class\-string\>\|\(callable\(\)\: mixed\)\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: src/Sentry/Laravel/ServiceProvider.php
-
-		-
-			message: '#^Cannot call method getOptions\(\) on Sentry\\ClientInterface\|null\.$#'
-			identifier: method.nonObject
 			count: 1
 			path: src/Sentry/Laravel/ServiceProvider.php
 

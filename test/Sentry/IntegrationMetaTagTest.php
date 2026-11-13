@@ -4,7 +4,7 @@ namespace Sentry\Laravel\Tests;
 
 use Mockery;
 use Sentry\Laravel\Integration;
-use Sentry\State\Scope;
+use Sentry\State\IsolationScope;
 use Sentry\Tracing\Span;
 
 class IntegrationMetaTagTest extends TestCase
@@ -13,7 +13,7 @@ class IntegrationMetaTagTest extends TestCase
 
     protected function tearDown(): void
     {
-        \Sentry\configureScope(static function (Scope $scope): void {
+        \Sentry\configureScope(static function (IsolationScope $scope): void {
             $scope->setSpan(null);
         });
 
@@ -84,7 +84,7 @@ class IntegrationMetaTagTest extends TestCase
         $span->shouldReceive('toTraceparent')->andReturn($traceparent)->zeroOrMoreTimes();
         $span->shouldReceive('toBaggage')->andReturn($baggage)->zeroOrMoreTimes();
 
-        \Sentry\configureScope(static function (Scope $scope) use ($span): void {
+        \Sentry\configureScope(static function (IsolationScope $scope) use ($span): void {
             $scope->setSpan($span);
         });
     }

@@ -8,9 +8,11 @@ use Sentry\Event;
 use Sentry\EventHint;
 use Sentry\ExceptionMechanism;
 use Sentry\Laravel\Features\Concerns\ResolvesEventOrigin;
-use Sentry\SentrySdk;
 use Sentry\Severity;
-use Sentry\State\Scope;
+use Sentry\State\IsolationScope;
+
+use function Sentry\captureEvent;
+use function Sentry\withIsolationScope;
 
 abstract class ModelViolationReporter
 {
@@ -83,13 +85,13 @@ abstract class ModelViolationReporter
 
     private function report(Model $model, string $property, $origin): void
     {
-        SentrySdk::getCurrentHub()->withScope(function (Scope $scope) use ($model, $property, $origin) {
+        withIsolationScope(function (IsolationScope $scope) use ($model, $property, $origin) {
             $scope->setContext('violation', array_merge([
                 'model' => get_class($model),
                 'origin' => $origin,
             ], $this->getViolationContext($model, $property)));
 
-            SentrySdk::getCurrentHub()->captureEvent(
+            captureEvent(
                 tap(Event::createEvent(), static function (Event $event) {
                     $event->setLevel(Severity::warning());
                 }),

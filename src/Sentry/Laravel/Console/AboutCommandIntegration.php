@@ -3,17 +3,18 @@
 namespace Sentry\Laravel\Console;
 
 use Sentry\Client;
+use Sentry\Laravel\Sentry;
 use Sentry\Laravel\Version;
+use Sentry\NoOpClient;
 use Sentry\Options;
-use Sentry\State\HubInterface;
 
 class AboutCommandIntegration
 {
-    public function __invoke(HubInterface $hub): array
+    public function __invoke(Sentry $sentry): array
     {
-        $client = $hub->getClient();
+        $client = $sentry->getClient();
 
-        if ($client === null) {
+        if ($client instanceof NoOpClient) {
             return [
                 'Enabled' => '<fg=red;options=bold>NOT CONFIGURED</>',
                 'Laravel SDK Version' => Version::SDK_VERSION,

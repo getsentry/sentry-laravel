@@ -147,7 +147,7 @@ class EventHandler
 
     protected function routeMatchedHandler(RoutingEvents\RouteMatched $match): void
     {
-        $transaction = SentrySdk::getCurrentHub()->getTransaction();
+        $transaction = SentrySdk::getIsolationScope()->getTransaction();
 
         if ($transaction === null) {
             return;
@@ -165,7 +165,7 @@ class EventHandler
             return;
         }
 
-        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+        $parentSpan = SentrySdk::getIsolationScope()->getSpan();
 
         // If there is no sampled span there is no need to handle the event
         if ($parentSpan === null || !$parentSpan->getSampled()) {
@@ -186,7 +186,7 @@ class EventHandler
 
         $context->setEndTimestamp($context->getStartTimestamp() + $query->time / 1000);
 
-        $policy = DataCollectionPolicy::fromHub(SentrySdk::getCurrentHub());
+        $policy = DataCollectionPolicy::fromOptions(SentrySdk::getClient()->getOptions());
 
         // The data collection options replace the `sql_bindings` option
         if ($this->traceSqlBindings && $policy->isLegacyMode()) {
@@ -226,7 +226,7 @@ class EventHandler
             return;
         }
 
-        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+        $parentSpan = SentrySdk::getIsolationScope()->getSpan();
 
         // If there is no sampled span there is no need to handle the event
         if ($parentSpan === null || !$parentSpan->getSampled()) {
@@ -244,7 +244,7 @@ class EventHandler
 
     protected function transactionBeginningHandler(DatabaseEvents\TransactionBeginning $event): void
     {
-        $parentSpan = SentrySdk::getCurrentHub()->getSpan();
+        $parentSpan = SentrySdk::getIsolationScope()->getSpan();
 
         // If there is no sampled span there is no need to handle the event
         if ($parentSpan === null || !$parentSpan->getSampled()) {
@@ -282,11 +282,11 @@ class EventHandler
 
     private function pushSpan(Span $span): void
     {
-        $hub = SentrySdk::getCurrentHub();
+        $scope = SentrySdk::getIsolationScope();
 
-        $this->parentSpanStack[] = $hub->getSpan();
+        $this->parentSpanStack[] = $scope->getSpan();
 
-        $hub->setSpan($span);
+        $scope->setSpan($span);
 
         $this->currentSpanStack[] = $span;
     }
@@ -299,7 +299,7 @@ class EventHandler
 
         $parent = array_pop($this->parentSpanStack);
 
-        SentrySdk::getCurrentHub()->setSpan($parent);
+        SentrySdk::getIsolationScope()->setSpan($parent);
 
         return array_pop($this->currentSpanStack);
     }

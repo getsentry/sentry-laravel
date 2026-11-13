@@ -178,7 +178,7 @@ class HttpClientDataCollectionTest extends TestCase
     public function testSpanRequestBodyRespectsMaxRequestBodySize(): void
     {
         $this->resetApplicationWithConfig([
-            'sentry.max_request_body_size' => 'none',
+            'sentry.max_request_body_size' => 'never',
             'sentry.data_collection' => [],
         ]);
 

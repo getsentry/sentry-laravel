@@ -214,7 +214,7 @@ class AiIntegrationTest extends TestCase
         $this->assertEquals($chatSpan->getSpanId(), $httpSpan->getParentSpanId());
 
         $this->dispatchLlmResponseReceived();
-        $this->assertSame($agentSpan, $this->getSentryHubFromContainer()->getSpan());
+        $this->assertSame($agentSpan, $this->getSentryFromContainer()->getSpan());
 
         $this->dispatchLaravelEvent(new AgentPrompted('inv-hierarchy', $prompt, $this->wrapResponse($response)));
     }
@@ -422,7 +422,7 @@ class AiIntegrationTest extends TestCase
 
         $agentSpan = $this->findSpanByOp($transaction, 'gen_ai.invoke_agent');
 
-        $this->assertSame($agentSpan, $this->getSentryHubFromContainer()->getSpan());
+        $this->assertSame($agentSpan, $this->getSentryFromContainer()->getSpan());
     }
 
     public function testDataCollectionCollectsInputsAndOutputsByDefault(): void

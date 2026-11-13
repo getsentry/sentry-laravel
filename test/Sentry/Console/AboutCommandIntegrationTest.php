@@ -4,11 +4,12 @@ namespace Sentry\Laravel\Tests\Console;
 
 use Illuminate\Foundation\Console\AboutCommand;
 use Illuminate\Support\Facades\Artisan;
+use Mockery\MockInterface;
 use Sentry\Client;
+use Sentry\Laravel\Sentry;
 use Sentry\Laravel\Tests\TestCase;
 use Sentry\Laravel\Version;
-use Sentry\State\Hub;
-use Sentry\State\HubInterface;
+use Sentry\NoOpClient;
 
 class AboutCommandIntegrationTest extends TestCase
 {
@@ -62,10 +63,10 @@ class AboutCommandIntegrationTest extends TestCase
         $this->assertEquals('IGNORED', $actualData['send_default_pii'] ?? null);
     }
 
-    public function testAboutCommandContainsExpectedDataWithoutHubClient(): void
+    public function testAboutCommandContainsExpectedDataWithoutClient(): void
     {
-        $this->app->bind(HubInterface::class, static function () {
-            return new Hub(null);
+        $this->mock(Sentry::class, static function (MockInterface $sentry): void {
+            $sentry->shouldReceive('getClient')->andReturn(new NoOpClient());
         });
 
         $expectedData = [

@@ -4,6 +4,7 @@ namespace Sentry\Laravel\Features\Concerns;
 
 use Sentry\Laravel\Integration;
 use Sentry\SentrySdk;
+use Sentry\State\IsolationScope;
 use Sentry\Tracing\Span;
 use Sentry\Tracing\SpanStatus;
 
@@ -32,20 +33,20 @@ trait TracksPushedScopesAndSpans
 
     protected function pushSpan(Span $span): void
     {
-        $hub = SentrySdk::getCurrentHub();
+        $scope = SentrySdk::getIsolationScope();
 
-        $this->parentSpanStack[] = $hub->getSpan();
+        $this->parentSpanStack[] = $scope->getSpan();
 
-        $hub->setSpan($span);
+        $scope->setSpan($span);
 
         $this->currentSpanStack[] = $span;
     }
 
-    protected function pushScope(): void
+    protected function pushScope(): IsolationScope
     {
-        SentrySdk::getCurrentHub()->pushScope();
-
         ++$this->pushedScopeCount;
+
+        return SentrySdk::pushIsolationScope();
     }
 
     protected function maybePopSpan(): ?Span
@@ -56,7 +57,7 @@ trait TracksPushedScopesAndSpans
 
         $parent = array_pop($this->parentSpanStack);
 
-        SentrySdk::getCurrentHub()->setSpan($parent);
+        SentrySdk::getIsolationScope()->setSpan($parent);
 
         return array_pop($this->currentSpanStack);
     }
@@ -69,7 +70,7 @@ trait TracksPushedScopesAndSpans
             return;
         }
 
-        SentrySdk::getCurrentHub()->popScope();
+        SentrySdk::popIsolationScope();
 
         --$this->pushedScopeCount;
     }

@@ -29,11 +29,9 @@ use Sentry\Laravel\Http\SetRequestMiddleware;
 use Sentry\Laravel\Tracing\BacktraceHelper;
 use Sentry\Laravel\Tracing\ServiceProvider as TracingServiceProvider;
 use Sentry\Logger\DebugFileLogger;
+use Sentry\NoOpClient;
 use Sentry\SentrySdk;
 use Sentry\Serializer\RepresentationSerializer;
-use Sentry\State\Hub;
-use Sentry\State\HubInterface;
-use Sentry\State\Scope;
 use Sentry\Tracing\TransactionMetadata;
 use Throwable;
 
@@ -90,7 +88,7 @@ class ServiceProvider extends BaseServiceProvider
      */
     public function boot(): void
     {
-        $this->app->make(HubInterface::class);
+        $this->app->make(Sentry::class);
 
         $this->bootFeatures();
 
@@ -168,7 +166,7 @@ class ServiceProvider extends BaseServiceProvider
                 $handler->subscribeOctaneEvents($dispatcher);
             }
 
-            if (DataCollectionPolicy::fromHub($this->app->make(HubInterface::class))->shouldCollectUserInfo()) {
+            if (DataCollectionPolicy::fromOptions($this->app->make(Sentry::class)->getClient()->getOptions())->shouldCollectUserInfo()) {
                 $handler->subscribeAuthEvents($dispatcher);
             }
 
@@ -354,7 +352,7 @@ class ServiceProvider extends BaseServiceProvider
             return $clientBuilder;
         });
 
-        $this->app->singleton(HubInterface::class, function () {
+        $this->app->singleton(Sentry::class, function () {
             /** @var \Sentry\ClientBuilder $clientBuilder */
             $clientBuilder = $this->app->make(ClientBuilder::class);
 
@@ -433,42 +431,27 @@ class ServiceProvider extends BaseServiceProvider
                 return $integrations;
             });
 
-            // Some Laravel versions might run withExceptions(..) before the real Sentry hub is instantiated.
-            // By copying the scope here we can preserve data that was set on the Scope before this
-            // function was executed.
-            $hub = new Hub($clientBuilder->getClient(), $this->cloneCurrentHubScope());
+            // Some Laravel versions might run withExceptions(..) before the Sentry client is created.
+            // Binding the first client without resetting the SDK preserves data that was set on the
+            // isolation scope before this function was executed.
+            if (SentrySdk::getClient() instanceof NoOpClient) {
+                SentrySdk::getGlobalScope()->setClient($clientBuilder->getClient());
+            } else {
+                SentrySdk::init($clientBuilder->getClient());
+            }
 
-            SentrySdk::setCurrentHub($hub);
-
-            return $hub;
+            return new Sentry;
         });
 
-        $this->app->alias(HubInterface::class, static::$abstract);
+        $this->app->alias(Sentry::class, static::$abstract);
 
         $this->app->singleton(BacktraceHelper::class, function () {
-            $sentry = $this->app->make(HubInterface::class);
+            $sentry = $this->app->make(Sentry::class);
 
             $options = $sentry->getClient()->getOptions();
 
             return new BacktraceHelper($options, new RepresentationSerializer($options));
         });
-    }
-
-    private function cloneCurrentHubScope(): ?Scope
-    {
-        $currentHub = SentrySdk::getCurrentHub();
-
-        if ($currentHub->getClient() !== null) {
-            return null;
-        }
-
-        $clonedScope = null;
-
-        $currentHub->configureScope(static function (Scope $scope) use (&$clonedScope): void {
-            $clonedScope = clone $scope;
-        });
-
-        return $clonedScope;
     }
 
     /**
