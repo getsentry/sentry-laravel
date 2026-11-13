@@ -26,8 +26,6 @@ class ServiceProvider extends BaseServiceProvider
     ];
 
     /**
-     * The view factory the view name composer was registered on, used to register it only once per factory.
-     *
      * @var ViewFactory|null
      */
     private $viewComposerFactory;
@@ -135,8 +133,9 @@ class ServiceProvider extends BaseServiceProvider
         /** @var ViewFactory $viewFactory */
         $viewFactory = $this->app->make('view');
 
-        // The engines can be resolved many times (e.g. when the engine resolver is reset by Octane), but the view factory
-        // is retained, so only register the composer once per factory to prevent them from piling up on every resolve
+        // Engines can be resolved many times (e.g. when Octane resets the engine resolver) while the view factory is
+        // retained. This remembers only the last factory, so the composer is registered once per change of factory
+        // (if `view` went A -> B -> A, A would get a second composer) rather than on every resolve.
         if ($this->viewComposerFactory !== $viewFactory) {
             $this->viewComposerFactory = $viewFactory;
 
