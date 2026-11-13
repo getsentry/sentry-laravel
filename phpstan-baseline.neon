@@ -169,12 +169,6 @@ parameters:
 			path: src/Sentry/Laravel/Facade.php
 
 		-
-			message: '#^Method Sentry\\Laravel\\Features\\Ai\\AiInvocationMeta\:\:__construct\(\) has parameter \$attachments with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Sentry/Laravel/Features/Ai/AiInvocationMeta.php
-
-		-
 			message: '#^Property Sentry\\Laravel\\Features\\Ai\\AiMessagePart\:\:\$arguments \(string\) does not accept string\|null\.$#'
 			identifier: assign.propertyType
 			count: 1

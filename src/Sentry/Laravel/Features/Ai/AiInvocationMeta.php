@@ -25,6 +25,9 @@ class AiInvocationMeta
     /** @var string|null */
     public $toolDefinitions;
 
+    /**
+     * @param AiMessagePart[] $attachments
+     */
     public function __construct(string $agentName, ?string $providerName, ?string $model, string $prompt, array $attachments, ?string $toolDefinitions)
     {
         $this->agentName = $agentName;
