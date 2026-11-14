@@ -10,9 +10,9 @@ use Sentry\Laravel\Sentry;
 
 class LaravelDataCollectionConfigOptionTest extends TestCase
 {
-    public function testDataCollectionIsEmptyByDefault(): void
+    public function testDataCollectionOnlySetsDatabaseQueryDataByDefault(): void
     {
-        $this->assertSame([], config('sentry.data_collection'));
+        $this->assertSame(['database_query_data' => true], config('sentry.data_collection'));
     }
 
     public function testNullDataCollectionAppliesTheDefaults(): void

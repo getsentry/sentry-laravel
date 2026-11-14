@@ -44,8 +44,11 @@ return [
     // The minimum log level that will be sent to Sentry as logs using the `sentry_logs` logging channel
     'logs_channel_level' => env('SENTRY_LOG_LEVEL', env('SENTRY_LOGS_LEVEL', env('LOG_LEVEL', 'debug'))),
 
-    // Configures which data is collected automatically, an empty array applies the default of every option
-    'data_collection' => [],
+    // Configures which data is collected automatically, options that are not set use their default
+    'data_collection' => [
+        // Collect the bindings of SQL queries and the parameters of Redis commands
+        'database_query_data' => env('SENTRY_TRACE_SQL_BINDINGS_ENABLED', true),
+    ],
 
     // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#ignore_exceptions
     // 'ignore_exceptions' => [],

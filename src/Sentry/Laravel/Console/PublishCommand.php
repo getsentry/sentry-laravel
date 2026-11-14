@@ -14,7 +14,6 @@ class PublishCommand extends Command
 sentry:publish 
     { --dsn= : The DSN to configure }
     { --without-test : Do not send a test event }
-    { --with-send-default-pii : Include default PII in the events collected by the SDK (deprecated; option unused) }
     { --without-performance-monitoring : Do not enable performance monitoring }
     { --without-javascript-sdk : Do not enable the JavaScript SDK (deprecated; option unused) }
 COMMAND;
