@@ -5,7 +5,6 @@ namespace Sentry\Laravel\Http;
 use Closure;
 use Illuminate\Container\Container;
 use Illuminate\Http\Request;
-use Sentry\DataCollection\DataCollectionPolicy;
 use Sentry\Laravel\Sentry;
 use Sentry\State\IsolationScope;
 
@@ -32,7 +31,7 @@ class SetRequestIpMiddleware
             /** @var Sentry $sentry */
             $sentry = $container->make(Sentry::class);
 
-            if (DataCollectionPolicy::fromOptions($sentry->getClient()->getOptions())->shouldCollectUserInfo()) {
+            if ($sentry->getClient()->getOptions()->getDataCollection()->shouldCollectUserInfo()) {
                 $sentry->configureScope(static function (IsolationScope $scope) use ($request): void {
                     $scope->setUser([
                         'ip_address' => $request->ip(),

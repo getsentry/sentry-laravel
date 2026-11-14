@@ -11,7 +11,6 @@ use Illuminate\Http\Client\Factory;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\UriInterface;
 use Sentry\Breadcrumb;
-use Sentry\DataCollection\DataCollectionPolicy;
 use Sentry\DataCollection\HttpMessageType;
 use Sentry\DataCollection\HttpSpanDataCollector;
 use Sentry\DataCollection\HttpUrlCollector;
@@ -92,7 +91,7 @@ class HttpClientIntegration extends Feature
             return;
         }
 
-        $policy = DataCollectionPolicy::fromOptions(SentrySdk::getClient()->getOptions());
+        $options = SentrySdk::getClient()->getOptions();
         $request = $event->request->toPsrRequest();
         $fullUri = $this->getFullUri($event->request->url());
         $partialUri = $this->getPartialUri($fullUri);
@@ -107,7 +106,7 @@ class HttpClientIntegration extends Feature
                         'http.fragment' => $fullUri->getFragment(),
                         'http.request.method' => $event->request->method(),
                         'http.request.body.size' => $request->getBody()->getSize(),
-                    ], $this->collectUrlData($policy, $fullUri), HttpSpanDataCollector::collectPsr7Request($policy, HttpMessageType::outgoingRequest(), $request)))
+                    ], $this->collectUrlData($fullUri), HttpSpanDataCollector::collectPsr7Request($options, HttpMessageType::outgoingRequest(), $request)))
                     ->setOrigin('auto.http.client')
                     ->setDescription($event->request->method() . ' ' . $partialUri)
             )
@@ -119,14 +118,13 @@ class HttpClientIntegration extends Feature
         $span = $this->maybePopSpan();
 
         if ($span !== null) {
-            $policy = DataCollectionPolicy::fromOptions(SentrySdk::getClient()->getOptions());
             $response = $event->response->toPsrResponse();
 
             $span->setData(array_merge($span->getData(), [
                 // See: https://develop.sentry.dev/sdk/performance/span-data-conventions/#http
                 'http.response.status_code' => $event->response->status(),
                 'http.response.body.size' => $response->getBody()->getSize(),
-            ], HttpSpanDataCollector::collectPsr7Response($policy, HttpMessageType::incomingResponse(), $response)));
+            ], HttpSpanDataCollector::collectPsr7Response(SentrySdk::getClient()->getOptions(), HttpMessageType::incomingResponse(), $response)));
 
             $this->maybeAddRequestOriginToSpan($span);
 
@@ -172,7 +170,7 @@ class HttpClientIntegration extends Feature
                 'http.response.status_code' => $event->response->status(),
                 'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
                 'http.response.body.size' => $event->response->toPsrResponse()->getBody()->getSize(),
-            ], $this->collectUrlData(DataCollectionPolicy::fromOptions(SentrySdk::getClient()->getOptions()), $fullUri))
+            ], $this->collectUrlData($fullUri))
         ));
     }
 
@@ -191,28 +189,24 @@ class HttpClientIntegration extends Feature
                 'http.fragment' => $fullUri->getFragment(),
                 'http.request.method' => $event->request->method(),
                 'http.request.body.size' => $event->request->toPsrRequest()->getBody()->getSize(),
-            ], $this->collectUrlData(DataCollectionPolicy::fromOptions(SentrySdk::getClient()->getOptions()), $fullUri))
+            ], $this->collectUrlData($fullUri))
         ));
     }
 
     /**
      * @return array<string, string>
      */
-    private function collectUrlData(DataCollectionPolicy $policy, UriInterface $uri): array
+    private function collectUrlData(UriInterface $uri): array
     {
-        // The legacy options always collected the query string, even when it is empty
-        if ($policy->isLegacyMode()) {
-            return ['http.query' => $uri->getQuery()];
-        }
-
+        $options = SentrySdk::getClient()->getOptions();
         $data = [];
 
-        $queryString = HttpUrlCollector::collectQueryString($policy, $uri->getQuery());
+        $queryString = HttpUrlCollector::collectQueryString($options, $uri->getQuery());
         if ($queryString !== null) {
             $data['http.query'] = $queryString;
         }
 
-        $fullUrl = HttpUrlCollector::collect($policy, HttpMessageType::outgoingRequest(), $uri);
+        $fullUrl = HttpUrlCollector::collect($options, $uri);
         if ($fullUrl !== null) {
             $data['url.full'] = $fullUrl;
         }

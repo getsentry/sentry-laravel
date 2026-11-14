@@ -547,12 +547,6 @@ parameters:
 			path: src/Sentry/Laravel/Features/QueueIntegration.php
 
 		-
-			message: '#^Parameter \#1 \$options of class Sentry\\Serializer\\Serializer constructor expects Sentry\\Options, Sentry\\Options\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Sentry/Laravel/Features/QueueIntegration.php
-
-		-
 			message: '#^Parameter \#1 \$string of function strlen expects string, string\|false given\.$#'
 			identifier: argument.type
 			count: 1
@@ -1553,12 +1547,6 @@ parameters:
 			identifier: missingType.parameter
 			count: 1
 			path: src/Sentry/Laravel/Http/FlushEventsMiddleware.php
-
-		-
-			message: '#^Parameter \#1 \$request of method Sentry\\Laravel\\Http\\LaravelRequestFetcher\:\:withoutEmptyParsedBody\(\) expects Psr\\Http\\Message\\ServerRequestInterface, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Sentry/Laravel/Http/LaravelRequestFetcher.php
 
 		-
 			message: '#^Parameter \#1 \$request of method Sentry\\Laravel\\Http\\LaravelRequestFetcher\:\:withoutParsedBodyForNonFormRequests\(\) expects Psr\\Http\\Message\\ServerRequestInterface, mixed given\.$#'

@@ -10,10 +10,6 @@ class RequestDataCollectionTest extends TestCase
 {
     public function testUrlHeadersAndCookiesAreFiltered(): void
     {
-        $this->resetApplicationWithConfig([
-            'sentry.data_collection' => [],
-        ]);
-
         $request = $this->captureRequestData('GET', '/data-collection?token=secret&page=5', [], [
             'laravel_session' => 'foo',
             'remember_web_59ba36addc2b2f9401580f014c7f58ea4e30989d' => 'bar',
@@ -41,10 +37,6 @@ class RequestDataCollectionTest extends TestCase
 
     public function testJsonBodyIsFiltered(): void
     {
-        $this->resetApplicationWithConfig([
-            'sentry.data_collection' => [],
-        ]);
-
         $request = $this->captureRequestData('POST', '/data-collection', [], [], [
             'CONTENT_TYPE' => 'application/json',
         ], '{"username":"jane","password":"secret"}');
@@ -54,10 +46,6 @@ class RequestDataCollectionTest extends TestCase
 
     public function testFormBodyIsFiltered(): void
     {
-        $this->resetApplicationWithConfig([
-            'sentry.data_collection' => [],
-        ]);
-
         $request = $this->captureRequestData('POST', '/data-collection', [
             'username' => 'jane',
             'password' => 'secret',
@@ -68,10 +56,6 @@ class RequestDataCollectionTest extends TestCase
 
     public function testRawBodyIsReplaced(): void
     {
-        $this->resetApplicationWithConfig([
-            'sentry.data_collection' => [],
-        ]);
-
         $request = $this->captureRequestData('POST', '/data-collection', [], [], [
             'CONTENT_TYPE' => 'text/plain',
             'CONTENT_LENGTH' => '11',
@@ -106,29 +90,6 @@ class RequestDataCollectionTest extends TestCase
         $this->assertArrayNotHasKey('headers', $request);
         $this->assertArrayNotHasKey('data', $request);
         $this->assertNull($this->getLastSentryEvent()->getUser());
-    }
-
-    public function testLegacyRequestDataIsNotChanged(): void
-    {
-        $this->resetApplicationWithConfig([
-            'sentry.send_default_pii' => false,
-        ]);
-
-        $request = $this->captureRequestData('POST', '/data-collection?token=secret', [], [
-            'theme' => 'dark',
-        ], [
-            'REMOTE_ADDR' => '1.2.3.4',
-            'CONTENT_TYPE' => 'text/plain',
-            'CONTENT_LENGTH' => '11',
-            'HTTP_AUTHORIZATION' => 'Bearer foo',
-        ], 'Hello World');
-
-        $this->assertSame('http://localhost/data-collection?token=secret', $request['url']);
-        $this->assertSame('token=secret', $request['query_string']);
-        $this->assertArrayNotHasKey('env', $request);
-        $this->assertArrayNotHasKey('cookies', $request);
-        $this->assertSame(['[Filtered]'], $request['headers']['authorization']);
-        $this->assertSame('Hello World', $request['data']);
     }
 
     private function captureRequestData(string $method, string $uri, array $parameters = [], array $cookies = [], array $server = [], ?string $content = null): array

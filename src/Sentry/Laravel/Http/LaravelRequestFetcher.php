@@ -5,10 +5,8 @@ namespace Sentry\Laravel\Http;
 use Illuminate\Container\Container;
 use Illuminate\Support\Collection;
 use Psr\Http\Message\ServerRequestInterface;
-use Sentry\DataCollection\DataCollectionPolicy;
 use Sentry\Integration\RequestFetcher;
 use Sentry\Integration\RequestFetcherInterface;
-use Sentry\SentrySdk;
 
 class LaravelRequestFetcher implements RequestFetcherInterface
 {
@@ -38,12 +36,8 @@ class LaravelRequestFetcher implements RequestFetcherInterface
             return null;
         }
 
-        if (DataCollectionPolicy::fromOptions(SentrySdk::getClient()->getOptions())->isLegacyMode()) {
-            $request = $this->withoutEmptyParsedBody($request);
-        } else {
-            $request = $this->withoutParsedBodyForNonFormRequests($request);
-            $request = $this->withRawQueryString($request);
-        }
+        $request = $this->withoutParsedBodyForNonFormRequests($request);
+        $request = $this->withRawQueryString($request);
 
         $cookies = new Collection($request->getCookieParams());
 
@@ -52,19 +46,6 @@ class LaravelRequestFetcher implements RequestFetcherInterface
                 return SensitiveCookieFilter::filterValue($key, $value);
             })->all()
         );
-    }
-
-    /**
-     * The PSR-7 request has an empty parsed body for all requests that are not forms, which would
-     * hide the raw body from being read.
-     */
-    private function withoutEmptyParsedBody(ServerRequestInterface $request): ServerRequestInterface
-    {
-        if ($request->getParsedBody() !== [] || $this->isFormRequest($request)) {
-            return $request;
-        }
-
-        return $request->withParsedBody(null);
     }
 
     /**

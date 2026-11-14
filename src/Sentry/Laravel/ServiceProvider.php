@@ -14,7 +14,6 @@ use Illuminate\Http\Request;
 use Laravel\Lumen\Application as Lumen;
 use RuntimeException;
 use Sentry\ClientBuilder;
-use Sentry\DataCollection\DataCollectionPolicy;
 use Sentry\Event;
 use Sentry\EventHint;
 use Sentry\Integration as SdkIntegration;
@@ -49,9 +48,6 @@ class ServiceProvider extends BaseServiceProvider
         'integrations',
         // We have this setting to allow us to capture the .env LOG_LEVEL for the sentry_logs channel
         'logs_channel_level',
-        // This is kept for backwards compatibility and can be dropped in a future breaking release
-        'breadcrumbs.sql_bindings',
-
         // This config option is no longer in use but to prevent errors when upgrading we leave it here to be discarded
         'controllers_base_namespace',
     ];
@@ -166,11 +162,11 @@ class ServiceProvider extends BaseServiceProvider
                 $handler->subscribeOctaneEvents($dispatcher);
             }
 
-            if (DataCollectionPolicy::fromOptions($this->app->make(Sentry::class)->getClient()->getOptions())->shouldCollectUserInfo()) {
+            if ($this->app->make(Sentry::class)->getClient()->getOptions()->getDataCollection()->shouldCollectUserInfo()) {
                 $handler->subscribeAuthEvents($dispatcher);
             }
 
-            if (isset($userConfig['enable_logs']) && $userConfig['enable_logs'] === true && method_exists($this->app, 'terminating')) {
+            if (method_exists($this->app, 'terminating')) {
                 // Listen to the terminating event to flush the logs before the application ends
                 // This ensures that all logs are sent to Sentry even if the application ends unexpectedly
                 // We need to check for method existence here for Lumen since this method was only introduced in Lumen 9.1.4
@@ -286,6 +282,11 @@ class ServiceProvider extends BaseServiceProvider
 
             foreach (static::LARAVEL_SPECIFIC_OPTIONS as $laravelSpecificOptionName) {
                 unset($userConfig[$laravelSpecificOptionName]);
+            }
+
+            // A `null` value applies the default of every data collection option
+            if (($userConfig['data_collection'] ?? null) === null) {
+                unset($userConfig['data_collection']);
             }
 
             $options = \array_merge(

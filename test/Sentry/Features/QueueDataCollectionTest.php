@@ -20,10 +20,6 @@ class QueueDataCollectionTest extends TestCase
 
     public function testArrayPayloadIsCollected(): void
     {
-        $this->resetApplicationWithConfig([
-            'sentry.data_collection' => [],
-        ]);
-
         $transaction = $this->pushJob(QueueDataCollectionTestHandler::class, ['user_id' => 1, 'password' => 'secret']);
 
         $this->assertSame('{"user_id":1,"password":"[Filtered]"}', $this->getSpanData($transaction, 'queue.publish')['messaging.message.body.data']);
@@ -32,10 +28,6 @@ class QueueDataCollectionTest extends TestCase
 
     public function testSerializedJobIsNotCollected(): void
     {
-        $this->resetApplicationWithConfig([
-            'sentry.data_collection' => [],
-        ]);
-
         $transaction = $this->pushJob(new QueueDataCollectionTestJob('secret'));
 
         $this->assertArrayNotHasKey('messaging.message.body.data', $this->getSpanData($transaction, 'queue.publish'));
@@ -48,18 +40,6 @@ class QueueDataCollectionTest extends TestCase
             'sentry.data_collection' => [
                 'queues' => false,
             ],
-        ]);
-
-        $transaction = $this->pushJob(QueueDataCollectionTestHandler::class, ['user_id' => 1]);
-
-        $this->assertArrayNotHasKey('messaging.message.body.data', $this->getSpanData($transaction, 'queue.publish'));
-        $this->assertArrayNotHasKey('messaging.message.body.data', $this->getSpanData($transaction, 'queue.process'));
-    }
-
-    public function testArrayPayloadIsNotCollectedWithoutDataCollection(): void
-    {
-        $this->resetApplicationWithConfig([
-            'sentry.send_default_pii' => true,
         ]);
 
         $transaction = $this->pushJob(QueueDataCollectionTestHandler::class, ['user_id' => 1]);

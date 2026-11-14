@@ -9,10 +9,6 @@ use Sentry\Laravel\Tests\TestCase;
 
 class AuthEventsTest extends TestCase
 {
-    protected $setupConfig = [
-        'sentry.send_default_pii' => true,
-    ];
-
     public function testAuthenticatedEventFillsUserOnScope(): void
     {
         $user = new AuthEventsTestUserModel;
@@ -125,57 +121,9 @@ class AuthEventsTest extends TestCase
         $this->assertNull($scope->getUser()->getEmail());
     }
 
-    public function testAuthenticatedEventDoesNotFillUserOnScopeWhenPIIShouldNotBeSent(): void
-    {
-        $this->resetApplicationWithConfig([
-            'sentry.send_default_pii' => false,
-        ]);
-
-        $user = new AuthEventsTestUserModel();
-
-        $user->id = 123;
-
-        $scope = $this->getCurrentSentryScope();
-
-        $this->assertNull($scope->getUser());
-
-        $this->dispatchLaravelEvent(new Authenticated('test', $user));
-
-        $this->assertNull($scope->getUser());
-    }
-
-    public function testAuthenticatedEventFillsUserOnScopeWithDataCollectionDefaults(): void
-    {
-        $this->resetApplicationWithConfig([
-            'sentry.send_default_pii' => false,
-            'sentry.data_collection' => [],
-        ]);
-
-        $user = new AuthEventsTestUserModel();
-
-        $user->forceFill([
-            'id' => 123,
-            'username' => 'username',
-            'email' => 'foo@example.com',
-        ]);
-
-        $scope = $this->getCurrentSentryScope();
-
-        $this->assertNull($scope->getUser());
-
-        $this->dispatchLaravelEvent(new Authenticated('test', $user));
-
-        $this->assertNotNull($scope->getUser());
-
-        $this->assertEquals(123, $scope->getUser()->getId());
-        $this->assertEquals('username', $scope->getUser()->getUsername());
-        $this->assertEquals('foo@example.com', $scope->getUser()->getEmail());
-    }
-
     public function testAuthenticatedEventDoesNotFillUserOnScopeWhenUserInfoIsDisabled(): void
     {
         $this->resetApplicationWithConfig([
-            'sentry.send_default_pii' => true,
             'sentry.data_collection' => [
                 'user_info' => false,
             ],

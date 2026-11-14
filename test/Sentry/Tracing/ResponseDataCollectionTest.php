@@ -15,7 +15,6 @@ class ResponseDataCollectionTest extends TestCase
     {
         $this->resetApplicationWithConfig([
             'sentry.traces_sample_rate' => 1.0,
-            'sentry.data_collection' => [],
         ]);
 
         $data = $this->getTransactionDataForResponse(static function () {
@@ -48,7 +47,6 @@ class ResponseDataCollectionTest extends TestCase
     {
         $this->resetApplicationWithConfig([
             'sentry.traces_sample_rate' => 1.0,
-            'sentry.data_collection' => [],
         ]);
 
         $data = $this->getTransactionDataForResponse(static function () {
@@ -62,7 +60,6 @@ class ResponseDataCollectionTest extends TestCase
     {
         $this->resetApplicationWithConfig([
             'sentry.traces_sample_rate' => 1.0,
-            'sentry.data_collection' => [],
         ]);
 
         $data = $this->getTransactionDataForResponse(static function () {
@@ -84,24 +81,6 @@ class ResponseDataCollectionTest extends TestCase
                 ],
                 'http_bodies' => ['incomingRequest', 'outgoingRequest', 'incomingResponse'],
             ],
-        ]);
-
-        $data = $this->getTransactionDataForResponse(static function () {
-            $response = new JsonResponse(['username' => 'jane']);
-
-            $response->headers->setCookie(Cookie::create('theme', 'dark'));
-
-            return $response;
-        });
-
-        $this->assertSame([], $this->getResponseDataKeys($data));
-    }
-
-    public function testResponseDataIsNotCollectedWithoutDataCollection(): void
-    {
-        $this->resetApplicationWithConfig([
-            'sentry.traces_sample_rate' => 1.0,
-            'sentry.send_default_pii' => true,
         ]);
 
         $data = $this->getTransactionDataForResponse(static function () {
