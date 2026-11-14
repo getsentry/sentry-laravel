@@ -20,7 +20,7 @@ use Sentry\State\HubInterface;
  * @method static \Sentry\EventId|null captureLastError(\Sentry\EventHint|null $hint = null)
  * @method static bool addBreadcrumb(\Sentry\Breadcrumb $breadcrumb)
  * @method static \Sentry\Integration\IntegrationInterface|null getIntegration(string $className)
- * @method static \Sentry\Tracing\Transaction startTransaction(\Sentry\Tracing\TransactionContext $context, array $customSamplingContext = [])
+ * @method static \Sentry\Tracing\Transaction startTransaction(\Sentry\Tracing\TransactionContext $context, array<string, mixed> $customSamplingContext = [])
  * @method static \Sentry\Tracing\Transaction|null getTransaction()
  * @method static \Sentry\Tracing\Span|null getSpan()
  * @method static \Sentry\State\HubInterface setSpan(\Sentry\Tracing\Span|null $span)
