@@ -1,0 +1,39 @@
+# Deprecated APIs that are still used on purpose.
+# This file is maintained by hand, `--generate-baseline` only rewrites phpstan-baseline.neon.
+parameters:
+	ignoreErrors:
+		-
+			message: '''
+				#^Call to deprecated method sentryW3CTracingMeta\(\) of class Sentry\\Laravel\\Integration\:
+				since version 4\.14\. To be removed in version 5\.0\.$#
+			'''
+			identifier: staticMethod.deprecated
+			count: 1
+			path: src/Sentry/Laravel/Integration.php
+
+		-
+			message: '''
+				#^Fetching deprecated class constant DEBUG of class Monolog\\Logger\:
+				Use \\Monolog\\Level\:\:Debug$#
+			'''
+			identifier: classConstant.deprecated
+			count: 1
+			path: src/Sentry/Laravel/LogChannel.php
+
+		-
+			message: '''
+				#^Fetching deprecated class constant DEBUG of class Monolog\\Logger\:
+				Use \\Monolog\\Level\:\:Debug$#
+			'''
+			identifier: classConstant.deprecated
+			count: 1
+			path: src/Sentry/Laravel/Logs/LogChannel.php
+
+		-
+			message: '''
+				#^Fetching deprecated class constant DEBUG of class Monolog\\Logger\:
+				Use \\Monolog\\Level\:\:Debug$#
+			'''
+			identifier: classConstant.deprecated
+			count: 1
+			path: src/Sentry/Laravel/SentryHandler.php

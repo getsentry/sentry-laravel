@@ -1,7 +1,11 @@
 includes:
     - phpstan-baseline.neon
+    - phpstan-baseline-deprecations.neon
+    - vendor/phpstan/phpstan-deprecation-rules/rules.neon
 
 parameters:
     level: 9
+    # Analyse as the newest PHP version in the CI matrix so calls deprecated there are reported
+    phpVersion: 80600
     paths:
         - src
