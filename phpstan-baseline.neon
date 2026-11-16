@@ -85,12 +85,6 @@ parameters:
 			path: src/Sentry/Laravel/Console/TestCommand.php
 
 		-
-			message: '#^Property Sentry\\Laravel\\Console\\TestCommand\:\:\$errorMessages type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Sentry/Laravel/Console/TestCommand.php
-
-		-
 			message: '#^Access to property \$token on an unknown class Laravel\\Sanctum\\Events\\TokenAuthenticated\.$#'
 			identifier: class.notFound
 			count: 1
