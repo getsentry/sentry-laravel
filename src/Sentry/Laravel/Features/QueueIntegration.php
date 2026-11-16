@@ -17,7 +17,6 @@ use Illuminate\Queue\Events\WorkerStopping;
 use Illuminate\Queue\Jobs\SyncJob;
 use Illuminate\Queue\Queue;
 use Sentry\Breadcrumb;
-use Sentry\DataCollection\DataCollectionPolicy;
 use Sentry\DataCollection\KeyValueCollectionBehavior;
 use Sentry\DataCollection\KeyValueDataFilter;
 use Sentry\Laravel\Features\Concerns\TracksPushedScopesAndSpans;
@@ -320,16 +319,14 @@ class QueueIntegration extends Feature
             return [];
         }
 
-        $policy = DataCollectionPolicy::fromOptions(SentrySdk::getClient()->getOptions());
-        $dataCollection = $policy->getDataCollection();
+        $options = SentrySdk::getClient()->getOptions();
 
-        // The legacy options never collected the arguments passed to queued jobs
-        if ($dataCollection === null || !$dataCollection->shouldCollectQueues()) {
+        if (!$options->getDataCollection()->shouldCollectQueues()) {
             return [];
         }
 
         $filter = new KeyValueDataFilter(KeyValueCollectionBehavior::denyList());
-        $filtered = $filter->filterKeyValueData($data, [new Serializer($policy->getOptions()), 'serialize']);
+        $filtered = $filter->filterKeyValueData($data, [new Serializer($options), 'serialize']);
 
         return [
             self::QUEUE_SPAN_DATA_ARGUMENTS => json_encode($filtered) ?: KeyValueDataFilter::FILTERED_VALUE,

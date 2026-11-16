@@ -11,7 +11,6 @@ class RequestDataCollectionTest extends TestCase
     {
         $this->resetApplicationWithConfig([
             'sentry.traces_sample_rate' => 1.0,
-            'sentry.data_collection' => [],
         ]);
 
         $data = $this->getTransactionDataForRequest('POST', [], [
@@ -40,7 +39,6 @@ class RequestDataCollectionTest extends TestCase
     {
         $this->resetApplicationWithConfig([
             'sentry.traces_sample_rate' => 1.0,
-            'sentry.data_collection' => [],
         ]);
 
         $data = $this->getTransactionDataForRequest('POST', [
@@ -55,7 +53,6 @@ class RequestDataCollectionTest extends TestCase
     {
         $this->resetApplicationWithConfig([
             'sentry.traces_sample_rate' => 1.0,
-            'sentry.data_collection' => [],
         ]);
 
         $data = $this->getTransactionDataForRequest('POST', [], [], [
@@ -71,7 +68,6 @@ class RequestDataCollectionTest extends TestCase
         $this->resetApplicationWithConfig([
             'sentry.traces_sample_rate' => 1.0,
             'sentry.max_request_body_size' => 'small',
-            'sentry.data_collection' => [],
         ]);
 
         $content = json_encode(['data' => str_repeat('a', 1000)]);
@@ -96,23 +92,6 @@ class RequestDataCollectionTest extends TestCase
                 ],
                 'http_bodies' => ['outgoingRequest', 'incomingResponse', 'outgoingResponse'],
             ],
-        ]);
-
-        $data = $this->getTransactionDataForRequest('POST', [], [
-            'theme' => 'dark',
-        ], [
-            'CONTENT_TYPE' => 'application/json',
-            'HTTP_X_REQUEST_ID' => 'bar',
-        ], '{"username":"jane"}');
-
-        $this->assertSame([], $this->getRequestDataKeys($data));
-    }
-
-    public function testRequestDataIsNotCollectedWithoutDataCollection(): void
-    {
-        $this->resetApplicationWithConfig([
-            'sentry.traces_sample_rate' => 1.0,
-            'sentry.send_default_pii' => true,
         ]);
 
         $data = $this->getTransactionDataForRequest('POST', [], [

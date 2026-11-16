@@ -402,11 +402,10 @@ class CacheIntegrationTest extends TestCase
         $this->assertEquals('some-key', $span->getDescription());
     }
 
-    public function testRedisParametersAreRecordedWhenPIIShouldBeSent(): void
+    public function testRedisParametersAreRecordedByDefault(): void
     {
         $this->resetApplicationWithConfig([
             'sentry.tracing.redis_commands' => true,
-            'sentry.send_default_pii' => true,
         ]);
 
         $span = $this->executeRedisCommandAndReturnSpan();
@@ -415,36 +414,10 @@ class CacheIntegrationTest extends TestCase
         $this->assertSame(['foo', 'bar'], $span->getData()['db.redis.parameters']);
     }
 
-    public function testRedisParametersAreNotRecordedWhenPIIShouldNotBeSent(): void
-    {
-        $this->resetApplicationWithConfig([
-            'sentry.tracing.redis_commands' => true,
-            'sentry.send_default_pii' => false,
-        ]);
-
-        $span = $this->executeRedisCommandAndReturnSpan();
-
-        $this->assertArrayNotHasKey('db.redis.parameters', $span->getData());
-    }
-
-    public function testRedisParametersAreRecordedWithDataCollection(): void
-    {
-        $this->resetApplicationWithConfig([
-            'sentry.tracing.redis_commands' => true,
-            'sentry.send_default_pii' => false,
-            'sentry.data_collection' => [],
-        ]);
-
-        $span = $this->executeRedisCommandAndReturnSpan();
-
-        $this->assertSame(['foo', 'bar'], $span->getData()['db.redis.parameters']);
-    }
-
     public function testRedisParametersAreNotRecordedWhenDatabaseQueryDataIsDisabled(): void
     {
         $this->resetApplicationWithConfig([
             'sentry.tracing.redis_commands' => true,
-            'sentry.send_default_pii' => true,
             'sentry.data_collection' => [
                 'database_query_data' => false,
             ],

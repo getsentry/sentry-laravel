@@ -5,7 +5,6 @@ namespace Sentry\Laravel\Tracing;
 use Closure;
 use Illuminate\Http\Request;
 use Laravel\Lumen\Application as LumenApplication;
-use Sentry\DataCollection\DataCollectionPolicy;
 use Sentry\DataCollection\HttpMessageType;
 use Sentry\DataCollection\HttpSpanDataCollector;
 use Sentry\Laravel\Http\LaravelRequestFetcher;
@@ -274,19 +273,12 @@ class Middleware
      */
     private function collectRequestData(): array
     {
-        $policy = DataCollectionPolicy::fromOptions(SentrySdk::getClient()->getOptions());
-
-        // The legacy options only collected the request data on the event
-        if ($policy->isLegacyMode()) {
-            return [];
-        }
-
         $request = (new LaravelRequestFetcher)->fetchRequest();
         if ($request === null) {
             return [];
         }
 
-        return HttpSpanDataCollector::collectServerRequest($policy, $request);
+        return HttpSpanDataCollector::collectServerRequest(SentrySdk::getClient()->getOptions(), $request);
     }
 
     private function hydrateResponseData(SymfonyResponse $response): void
@@ -304,13 +296,7 @@ class Middleware
      */
     private function collectResponseData(SymfonyResponse $response): array
     {
-        $policy = DataCollectionPolicy::fromOptions(SentrySdk::getClient()->getOptions());
-
-        // The legacy options never collected any response data
-        if ($policy->isLegacyMode()) {
-            return [];
-        }
-
+        $options = SentrySdk::getClient()->getOptions();
         $type = HttpMessageType::outgoingResponse();
 
         $cookies = [];
@@ -319,9 +305,9 @@ class Middleware
         }
 
         // Streamed and file responses have no content (`false`), which the collector skips
-        return HttpSpanDataCollector::collectHeaders($policy, $type, $response->headers->all())
-            + HttpSpanDataCollector::collectCookiePairs($policy, $type, $cookies)
-            + HttpSpanDataCollector::collectBody($policy, $type, $response->getContent(), (string) $response->headers->get('Content-Type', ''));
+        return HttpSpanDataCollector::collectHeaders($options, $type, $response->headers->all())
+            + HttpSpanDataCollector::collectCookiePairs($options, $type, $cookies)
+            + HttpSpanDataCollector::collectBody($options, $type, $response->getContent(), (string) $response->headers->get('Content-Type', ''));
     }
 
     public function finishTransaction(): void

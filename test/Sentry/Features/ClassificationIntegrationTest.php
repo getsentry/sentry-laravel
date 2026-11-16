@@ -542,8 +542,6 @@ class ClassificationIntegrationTest extends TestCase
 
     public function testMessagesAreRecordedInTheTypeSafeFormat(): void
     {
-        $this->resetApplicationWithConfig(['sentry.send_default_pii' => true]);
-
         $transaction = $this->startTransaction();
 
         $this->classifyWithTypeSafe();
@@ -595,8 +593,6 @@ class ClassificationIntegrationTest extends TestCase
 
     public function testZeroValuesAreKeptAndMissingConfidenceIsLeftOut(): void
     {
-        $this->resetApplicationWithConfig(['sentry.send_default_pii' => true]);
-
         Http::fake([self::TYPESAFE_URL => Http::response([
             'model' => 'jev-1.13.0',
             'answers' => [
@@ -631,8 +627,6 @@ class ClassificationIntegrationTest extends TestCase
 
     public function testFailedClassificationOnlyRecordsInputMessages(): void
     {
-        $this->resetApplicationWithConfig(['sentry.send_default_pii' => true]);
-
         Http::fake([self::TYPESAFE_URL => Http::response(['error' => 'invalid API key'], 401)]);
 
         $transaction = $this->startTransaction();
@@ -645,8 +639,10 @@ class ClassificationIntegrationTest extends TestCase
         $this->assertArrayNotHasKey('gen_ai.output.messages', $data);
     }
 
-    public function testNoMessagesAreRecordedWithoutPii(): void
+    public function testNoMessagesAreRecordedWhenGenAiDataCollectionIsDisabled(): void
     {
+        $this->resetApplicationWithConfig(['sentry.data_collection' => ['gen_ai' => ['inputs' => false, 'outputs' => false]]]);
+
         $transaction = $this->startTransaction();
 
         $this->classifyWithTypeSafe();
@@ -654,8 +650,10 @@ class ClassificationIntegrationTest extends TestCase
         $this->assertSpanDataContainsNoClassificationContent($this->findEvaluateSpan($transaction)->getData());
     }
 
-    public function testNoMessagesAreRecordedOnFailedSpansWithoutPii(): void
+    public function testNoMessagesAreRecordedOnFailedSpansWhenGenAiDataCollectionIsDisabled(): void
     {
+        $this->resetApplicationWithConfig(['sentry.data_collection' => ['gen_ai' => ['inputs' => false, 'outputs' => false]]]);
+
         Http::fake([self::TYPESAFE_URL => Http::response(['error' => 'invalid API key'], 401)]);
 
         $transaction = $this->startTransaction();
@@ -667,8 +665,6 @@ class ClassificationIntegrationTest extends TestCase
 
     public function testDataCollectionRecordsMessagesByDefault(): void
     {
-        $this->resetApplicationWithConfig(['sentry.send_default_pii' => false, 'sentry.data_collection' => []]);
-
         $transaction = $this->startTransaction();
 
         $this->classifyWithTypeSafe();
@@ -681,7 +677,7 @@ class ClassificationIntegrationTest extends TestCase
 
     public function testDataCollectionGenAiInputsCanBeDisabled(): void
     {
-        $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'sentry.data_collection' => ['gen_ai' => ['inputs' => false]]]);
+        $this->resetApplicationWithConfig(['sentry.data_collection' => ['gen_ai' => ['inputs' => false]]]);
 
         $transaction = $this->startTransaction();
 
@@ -695,7 +691,7 @@ class ClassificationIntegrationTest extends TestCase
 
     public function testDataCollectionGenAiOutputsCanBeDisabled(): void
     {
-        $this->resetApplicationWithConfig(['sentry.send_default_pii' => true, 'sentry.data_collection' => ['gen_ai' => ['outputs' => false]]]);
+        $this->resetApplicationWithConfig(['sentry.data_collection' => ['gen_ai' => ['outputs' => false]]]);
 
         $transaction = $this->startTransaction();
 
@@ -709,8 +705,6 @@ class ClassificationIntegrationTest extends TestCase
 
     public function testLongStateIsTruncated(): void
     {
-        $this->resetApplicationWithConfig(['sentry.send_default_pii' => true]);
-
         $this->fakeTypeSafe();
 
         $transaction = $this->startTransaction();
@@ -727,8 +721,6 @@ class ClassificationIntegrationTest extends TestCase
 
     public function testCustomQuestionIsRecordedAsItsArray(): void
     {
-        $this->resetApplicationWithConfig(['sentry.send_default_pii' => true]);
-
         $this->fakeTypeSafe();
 
         $transaction = $this->startTransaction();

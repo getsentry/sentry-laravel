@@ -29,7 +29,6 @@ use Laravel\Ai\Responses\Data\Step;
 use Laravel\Ai\Responses\Data\ToolCall;
 use Laravel\Ai\Responses\Data\ToolResult;
 use Laravel\Ai\Responses\TextResponse;
-use Sentry\DataCollection\DataCollectionPolicy;
 use Sentry\Laravel\Features\Ai\AiConversationTracker;
 use Sentry\Laravel\Features\Ai\AiDataSanitizer;
 use Sentry\Laravel\Features\Ai\AiInvocationData;
@@ -152,7 +151,7 @@ class AiIntegration extends Feature
         $maxTokens = $this->resolveAgentAttribute($event->prompt->agent, MaxTokens::class);
         $data->set('gen_ai.request.max_tokens', $maxTokens);
 
-        $toolDefinitions = $this->shouldCollectToolDefinitions()
+        $toolDefinitions = $this->shouldCollectGenAiInputs()
             ? $this->resolveToolDefinitions($event->prompt->agent)
             : null;
         $data->set('gen_ai.tool.definitions', $toolDefinitions);
@@ -746,14 +745,6 @@ class AiIntegration extends Feature
         }
         
         return $messages;
-    }
-
-    /**
-     * The legacy options always collected the tool definitions, the data collection options treat them as inputs.
-     */
-    private function shouldCollectToolDefinitions(): bool
-    {
-        return DataCollectionPolicy::fromOptions(SentrySdk::getClient()->getOptions())->isLegacyMode() || $this->shouldCollectGenAiInputs();
     }
 
     private function resolveToolDefinitions(Agent $agent): ?string

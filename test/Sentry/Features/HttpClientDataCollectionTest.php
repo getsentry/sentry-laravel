@@ -25,10 +25,6 @@ class HttpClientDataCollectionTest extends TestCase
 
     public function testSpanUrlHeadersAndCookiesAreFiltered(): void
     {
-        $this->resetApplicationWithConfig([
-            'sentry.data_collection' => [],
-        ]);
-
         $data = $this->executeRequestAndReturnSpan()->getData();
 
         $this->assertSame('https://example.com/path', $data['url']);
@@ -47,10 +43,6 @@ class HttpClientDataCollectionTest extends TestCase
 
     public function testBreadcrumbUrlIsFiltered(): void
     {
-        $this->resetApplicationWithConfig([
-            'sentry.data_collection' => [],
-        ]);
-
         $this->executeRequest();
 
         $metadata = $this->getLastSentryBreadcrumb()->getMetadata();
@@ -78,44 +70,8 @@ class HttpClientDataCollectionTest extends TestCase
         $this->assertSame([], $this->getHeaderKeys($data));
     }
 
-    public function testLegacySpanAndBreadcrumbDataIsNotChanged(): void
-    {
-        $this->resetApplicationWithConfig([
-            'sentry.send_default_pii' => true,
-        ]);
-
-        $data = $this->executeRequestAndReturnSpan()->getData();
-
-        $this->assertSame('https://example.com/path', $data['url']);
-        $this->assertSame('token=secret&page=5', $data['http.query']);
-        $this->assertArrayNotHasKey('url.full', $data);
-        $this->assertSame([], $this->getHeaderKeys($data));
-
-        $metadata = $this->getLastSentryBreadcrumb()->getMetadata();
-
-        $this->assertSame('token=secret&page=5', $metadata['http.query']);
-        $this->assertArrayNotHasKey('url.full', $metadata);
-    }
-
-    public function testLegacyDataKeepsAnEmptyQueryString(): void
-    {
-        $transaction = $this->startTransaction();
-
-        Http::fake()->get('https://example.com/path');
-
-        /** @var Span $span */
-        $span = last($transaction->getSpanRecorder()->getSpans());
-
-        $this->assertSame('', $span->getData()['http.query']);
-        $this->assertSame('', $this->getLastSentryBreadcrumb()->getMetadata()['http.query']);
-    }
-
     public function testSpanJsonBodiesAreFiltered(): void
     {
-        $this->resetApplicationWithConfig([
-            'sentry.data_collection' => [],
-        ]);
-
         $data = $this->executeCallbackAndReturnSpan(static function () {
             Http::fake([
                 'example.com/*' => Http::response(['token' => 'secret', 'id' => 1]),
@@ -128,10 +84,6 @@ class HttpClientDataCollectionTest extends TestCase
 
     public function testSpanFormBodyIsFiltered(): void
     {
-        $this->resetApplicationWithConfig([
-            'sentry.data_collection' => [],
-        ]);
-
         $data = $this->executeCallbackAndReturnSpan(static function () {
             Http::fake()->asForm()->post('https://example.com/login', ['username' => 'jane', 'password' => 'secret']);
         })->getData();
@@ -141,10 +93,6 @@ class HttpClientDataCollectionTest extends TestCase
 
     public function testSpanRawBodiesAreReplaced(): void
     {
-        $this->resetApplicationWithConfig([
-            'sentry.data_collection' => [],
-        ]);
-
         $data = $this->executeCallbackAndReturnSpan(static function () {
             Http::fake([
                 'example.com/*' => Http::response('Hello World', 200, ['Content-Type' => 'text/plain']),
@@ -157,10 +105,6 @@ class HttpClientDataCollectionTest extends TestCase
 
     public function testSpanBodiesAreNotConsumed(): void
     {
-        $this->resetApplicationWithConfig([
-            'sentry.data_collection' => [],
-        ]);
-
         $request = new PsrRequest('POST', 'https://example.com/', ['Content-Type' => 'application/json'], '{"username":"jane"}');
         $response = new PsrResponse(200, ['Content-Type' => 'application/json'], '{"id":1}');
 
@@ -179,7 +123,6 @@ class HttpClientDataCollectionTest extends TestCase
     {
         $this->resetApplicationWithConfig([
             'sentry.max_request_body_size' => 'never',
-            'sentry.data_collection' => [],
         ]);
 
         $data = $this->executeCallbackAndReturnSpan(static function () {
@@ -198,22 +141,6 @@ class HttpClientDataCollectionTest extends TestCase
             'sentry.data_collection' => [
                 'http_bodies' => ['incomingRequest', 'outgoingResponse'],
             ],
-        ]);
-
-        $data = $this->executeCallbackAndReturnSpan(static function () {
-            Http::fake([
-                'example.com/*' => Http::response(['id' => 1]),
-            ])->post('https://example.com/', ['username' => 'jane']);
-        })->getData();
-
-        $this->assertArrayNotHasKey('http.request.body.data', $data);
-        $this->assertArrayNotHasKey('http.response.body.data', $data);
-    }
-
-    public function testLegacySpanHasNoBodies(): void
-    {
-        $this->resetApplicationWithConfig([
-            'sentry.send_default_pii' => true,
         ]);
 
         $data = $this->executeCallbackAndReturnSpan(static function () {

@@ -18,7 +18,6 @@ use Laravel\Sanctum\Events as Sanctum;
 use RuntimeException;
 use Sentry\Breadcrumb;
 use Sentry\DataCollection\DatabaseDataCollector;
-use Sentry\DataCollection\DataCollectionPolicy;
 use Sentry\Laravel\Tracing\Middleware;
 use Sentry\SentrySdk;
 use Sentry\State\IsolationScope;
@@ -80,13 +79,6 @@ class EventHandler
     private $recordSqlQueries;
 
     /**
-     * Indicates if we should add query bindings to the breadcrumbs.
-     *
-     * @var bool
-     */
-    private $recordSqlBindings;
-
-    /**
      * Indicates if we should add Laravel logs to the breadcrumbs.
      *
      * @var bool
@@ -125,7 +117,6 @@ class EventHandler
         $this->container = $container;
 
         $this->recordSqlQueries = ($config['breadcrumbs.sql_queries'] ?? $config['breadcrumbs']['sql_queries'] ?? true) === true;
-        $this->recordSqlBindings = ($config['breadcrumbs.sql_bindings'] ?? $config['breadcrumbs']['sql_bindings'] ?? false) === true;
         $this->recordLaravelLogs = ($config['breadcrumbs.logs'] ?? $config['breadcrumbs']['logs'] ?? true) === true;
         $this->recordOctaneTickInfo = ($config['breadcrumbs.octane_tick_info'] ?? $config['breadcrumbs']['octane_tick_info'] ?? true) === true;
         $this->recordOctaneTaskInfo = ($config['breadcrumbs.octane_task_info'] ?? $config['breadcrumbs']['octane_task_info'] ?? true) === true;
@@ -218,14 +209,7 @@ class EventHandler
             $data['executionTimeMs'] = $query->time;
         }
 
-        $policy = DataCollectionPolicy::fromOptions(SentrySdk::getClient()->getOptions());
-
-        // The data collection options replace the `sql_bindings` option
-        if ($this->recordSqlBindings && $policy->isLegacyMode()) {
-            $data['bindings'] = $query->bindings;
-        }
-
-        $data += DatabaseDataCollector::collectQueryData($policy, $query->bindings);
+        $data += DatabaseDataCollector::collectQueryData(SentrySdk::getClient()->getOptions(), $query->bindings);
 
         Integration::addBreadcrumb(new Breadcrumb(
             Breadcrumb::LEVEL_INFO,

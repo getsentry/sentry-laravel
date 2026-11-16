@@ -89,60 +89,8 @@ class DatabaseIntegrationTest extends TestCase
         $this->assertNull($span->getData()['server.port']);
     }
 
-    public function testSqlBindingsAreRecordedWhenEnabled(): void
+    public function testSqlQueryDataIsRecorded(): void
     {
-        $this->resetApplicationWithConfig([
-            'sentry.tracing.sql_bindings' => true,
-        ]);
-
-        $span = $this->executeQueryAndRetrieveSpan(
-            $query = 'SELECT %',
-            $bindings = ['1']
-        );
-
-        $this->assertEquals($query, $span->getDescription());
-        $this->assertEquals($bindings, $span->getData()['db.sql.bindings']);
-    }
-
-    public function testSqlBindingsAreRecordedWhenDisabled(): void
-    {
-        $this->resetApplicationWithConfig([
-            'sentry.tracing.sql_bindings' => false,
-        ]);
-
-        $span = $this->executeQueryAndRetrieveSpan(
-            $query = 'SELECT %',
-            ['1']
-        );
-
-        $this->assertEquals($query, $span->getDescription());
-        $this->assertFalse(isset($span->getData()['db.sql.bindings']));
-    }
-
-    public function testSqlBindingsAreNotRecordedWhenConfigKeyIsMissing(): void
-    {
-        $this->resetApplicationWithConfig([
-            'sentry.tracing' => [
-                'sql_queries' => true,
-            ],
-        ]);
-
-        $span = $this->executeQueryAndRetrieveSpan(
-            $query = 'SELECT %',
-            ['1']
-        );
-
-        $this->assertEquals($query, $span->getDescription());
-        $this->assertFalse(isset($span->getData()['db.sql.bindings']));
-    }
-
-    public function testSqlQueryDataIsRecordedWithDataCollection(): void
-    {
-        $this->resetApplicationWithConfig([
-            'sentry.tracing.sql_bindings' => false,
-            'sentry.data_collection' => [],
-        ]);
-
         $span = $this->executeQueryAndRetrieveSpan(
             'SELECT %',
             [1, 'foo']
@@ -150,15 +98,10 @@ class DatabaseIntegrationTest extends TestCase
 
         $this->assertSame(1, $span->getData()['db.query.parameter.0']);
         $this->assertSame('foo', $span->getData()['db.query.parameter.1']);
-        $this->assertArrayNotHasKey('db.sql.bindings', $span->getData());
     }
 
     public function testSensitiveSqlQueryDataIsFiltered(): void
     {
-        $this->resetApplicationWithConfig([
-            'sentry.data_collection' => [],
-        ]);
-
         $span = $this->executeQueryAndRetrieveSpan(
             'SELECT %',
             ['email' => 'foo@example.com', 'api_token' => 'secret']
@@ -171,7 +114,6 @@ class DatabaseIntegrationTest extends TestCase
     public function testSqlQueryDataIsNotRecordedWhenDisabled(): void
     {
         $this->resetApplicationWithConfig([
-            'sentry.tracing.sql_bindings' => true,
             'sentry.data_collection' => [
                 'database_query_data' => false,
             ],
@@ -183,7 +125,6 @@ class DatabaseIntegrationTest extends TestCase
         );
 
         $this->assertArrayNotHasKey('db.query.parameter.0', $span->getData());
-        $this->assertArrayNotHasKey('db.sql.bindings', $span->getData());
     }
 
     public function testSqlOriginIsResolvedWhenEnabledAndOverTreshold(): void
