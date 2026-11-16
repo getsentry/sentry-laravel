@@ -5,7 +5,5 @@ includes:
 
 parameters:
     level: 9
-    # Analyse as the newest PHP version in the CI matrix so calls deprecated there are reported
-    phpVersion: 80600
     paths:
         - src
