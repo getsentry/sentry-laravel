@@ -163,12 +163,6 @@ parameters:
 			path: src/Sentry/Laravel/EventHandler.php
 
 		-
-			message: '#^Class Sentry\\Laravel\\Facade has PHPDoc tag @method for method startTransaction\(\) parameter \#2 \$customSamplingContext with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Sentry/Laravel/Facade.php
-
-		-
 			message: '#^Property Sentry\\Laravel\\Features\\Ai\\AiMessagePart\:\:\$arguments \(string\) does not accept string\|null\.$#'
 			identifier: assign.propertyType
 			count: 1
