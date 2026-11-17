@@ -271,12 +271,6 @@ parameters:
 			path: src/Sentry/Laravel/Features/AiIntegration.php
 
 		-
-			message: '#^PHPDoc tag @var has invalid value \(\$steps Step\[\]\)\: Unexpected token "\$steps", expected type at offset 20 on line 2$#'
-			identifier: phpDoc.parseError
-			count: 1
-			path: src/Sentry/Laravel/Features/AiIntegration.php
-
-		-
 			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1
