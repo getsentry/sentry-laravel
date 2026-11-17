@@ -13,3 +13,4 @@
 /AGENTS.md export-ignore
 /CLAUDE.md export-ignore
 /codecov.yml export-ignore
+/warden.toml export-ignore
