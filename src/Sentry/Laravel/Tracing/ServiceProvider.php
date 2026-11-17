@@ -25,6 +25,11 @@ class ServiceProvider extends BaseServiceProvider
         Integrations\LighthouseIntegration::class,
     ];
 
+    /**
+     * @var ViewFactory|null
+     */
+    private $viewComposerFactory;
+
     public function boot(): void
     {
         // Only register if a DSN is set or Spotlight is enabled
@@ -128,17 +133,24 @@ class ServiceProvider extends BaseServiceProvider
         /** @var ViewFactory $viewFactory */
         $viewFactory = $this->app->make('view');
 
-        $viewFactory->composer('*', static function (View $view) use ($viewFactory): void {
-            $viewName = $view->name();
-            $basePath = base_path();
+        // Engines can be resolved many times (e.g. when Octane resets the engine resolver) while the view factory is
+        // retained. This remembers only the last factory, so the composer is registered once per change of factory
+        // (if `view` went A -> B -> A, A would get a second composer) rather than on every resolve.
+        if ($this->viewComposerFactory !== $viewFactory) {
+            $this->viewComposerFactory = $viewFactory;
 
-            // Views rendered from a file (like Laravel Folio pages) are named after their full path, strip the base path to keep the name short
-            if (Str::startsWith($viewName, $basePath . \DIRECTORY_SEPARATOR)) {
-                $viewName = substr($viewName, \strlen($basePath));
-            }
+            $viewFactory->composer('*', static function (View $view) use ($viewFactory): void {
+                $viewName = $view->name();
+                $basePath = base_path();
 
-            $viewFactory->share(ViewEngineDecorator::SHARED_KEY, $viewName);
-        });
+                // Views rendered from a file (like Laravel Folio pages) are named after their full path, strip the base path to keep the name short
+                if (Str::startsWith($viewName, $basePath . \DIRECTORY_SEPARATOR)) {
+                    $viewName = substr($viewName, \strlen($basePath));
+                }
+
+                $viewFactory->share(ViewEngineDecorator::SHARED_KEY, $viewName);
+            });
+        }
 
         return new ViewEngineDecorator($realEngine, $viewFactory);
     }
