@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class DiscardedAttributeViolationReporter extends ModelViolationReporter
 {
+    /**
+     * @return array<string, string>
+     */
     protected function getViolationContext(Model $model, string $property): array
     {
         return [

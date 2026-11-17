@@ -95,7 +95,7 @@ class ConsoleSchedulingIntegration extends Feature
                 throw new RuntimeException('The command and description are not set, please set a slug manually for this scheduled command using the `sentryMonitor(\'your-monitor-slug\')` macro.');
             }
 
-            $monitoredTasks->attach($this, $monitorSlug);
+            $monitoredTasks->offsetSet($this, $monitorSlug);
 
             return $this
                 ->before(function () use (
@@ -224,7 +224,7 @@ class ConsoleSchedulingIntegration extends Feature
         $tasksBySlug = [];
 
         foreach ($schedule->events() as $task) {
-            if ($this->monitoredTasks->contains($task)) {
+            if ($this->monitoredTasks->offsetExists($task)) {
                 $monitoredSlugs[$this->monitoredTasks[$task] ?? $this->makeSlugForScheduled($task)] = true;
 
                 continue;
@@ -532,7 +532,7 @@ class ConsoleSchedulingIntegration extends Feature
 
     private function forgetBackgroundTaskCheckInIdFromContext(SchedulingEvent $scheduled): void
     {
-        if (!$scheduled->runInBackground || !$this->monitoredTasks->contains($scheduled)) {
+        if (!$scheduled->runInBackground || !$this->monitoredTasks->offsetExists($scheduled)) {
             return;
         }
 

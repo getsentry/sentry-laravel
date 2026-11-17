@@ -85,12 +85,6 @@ parameters:
 			path: src/Sentry/Laravel/Console/TestCommand.php
 
 		-
-			message: '#^Property Sentry\\Laravel\\Console\\TestCommand\:\:\$errorMessages type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Sentry/Laravel/Console/TestCommand.php
-
-		-
 			message: '#^Access to property \$token on an unknown class Laravel\\Sanctum\\Events\\TokenAuthenticated\.$#'
 			identifier: class.notFound
 			count: 1
@@ -161,18 +155,6 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: src/Sentry/Laravel/EventHandler.php
-
-		-
-			message: '#^Class Sentry\\Laravel\\Facade has PHPDoc tag @method for method startTransaction\(\) parameter \#2 \$customSamplingContext with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Sentry/Laravel/Facade.php
-
-		-
-			message: '#^Method Sentry\\Laravel\\Features\\Ai\\AiInvocationMeta\:\:__construct\(\) has parameter \$attachments with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Sentry/Laravel/Features/Ai/AiInvocationMeta.php
 
 		-
 			message: '#^Property Sentry\\Laravel\\Features\\Ai\\AiMessagePart\:\:\$arguments \(string\) does not accept string\|null\.$#'
@@ -289,12 +271,6 @@ parameters:
 			path: src/Sentry/Laravel/Features/AiIntegration.php
 
 		-
-			message: '#^PHPDoc tag @var has invalid value \(\$steps Step\[\]\)\: Unexpected token "\$steps", expected type at offset 20 on line 2$#'
-			identifier: phpDoc.parseError
-			count: 1
-			path: src/Sentry/Laravel/Features/AiIntegration.php
-
-		-
 			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1
@@ -365,12 +341,6 @@ parameters:
 			identifier: argument.type
 			count: 2
 			path: src/Sentry/Laravel/Features/CacheIntegration.php
-
-		-
-			message: '#^Method Sentry\\Laravel\\Features\\Classification\\ClassificationMessageFormatter\:\:formatAnswer\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Sentry/Laravel/Features/Classification/ClassificationMessageFormatter.php
 
 		-
 			message: '#^Method Sentry\\Laravel\\Features\\Classification\\ClassificationMessageFormatter\:\:withConfidence\(\) has parameter \$formatted with no value type specified in iterable type array\.$#'
@@ -1603,12 +1573,6 @@ parameters:
 			path: src/Sentry/Laravel/Integration.php
 
 		-
-			message: '#^Method Sentry\\Laravel\\Integration\\ModelViolations\\DiscardedAttributeViolationReporter\:\:getViolationContext\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Sentry/Laravel/Integration/ModelViolations/DiscardedAttributeViolationReporter.php
-
-		-
 			message: '#^Method Sentry\\Laravel\\Integration\\ModelViolations\\MissingAttributeModelViolationReporter\:\:getViolationContext\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -2161,12 +2125,6 @@ parameters:
 			path: src/Sentry/Laravel/Tracing/Routing/TracingRoutingDispatcher.php
 
 		-
-			message: '#^Method Sentry\\Laravel\\Tracing\\Routing\\TracingRoutingDispatcher\:\:wrapRouteDispatch\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: src/Sentry/Laravel/Tracing/Routing/TracingRoutingDispatcher.php
-
-		-
 			message: '#^Call to function method_exists\(\) with Illuminate\\Contracts\\Foundation\\Application and ''terminating'' will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1
@@ -2223,12 +2181,6 @@ parameters:
 		-
 			message: '#^Method Sentry\\Laravel\\Tracing\\ViewEngineDecorator\:\:__call\(\) has parameter \$name with no type specified\.$#'
 			identifier: missingType.parameter
-			count: 1
-			path: src/Sentry/Laravel/Tracing/ViewEngineDecorator.php
-
-		-
-			message: '#^Method Sentry\\Laravel\\Tracing\\ViewEngineDecorator\:\:get\(\) has parameter \$data with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
 			count: 1
 			path: src/Sentry/Laravel/Tracing/ViewEngineDecorator.php
 

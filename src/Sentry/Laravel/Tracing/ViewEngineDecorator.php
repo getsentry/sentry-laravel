@@ -25,6 +25,8 @@ final class ViewEngineDecorator implements Engine
 
     /**
      * {@inheritdoc}
+     *
+     * @param array<string, mixed> $data
      */
     public function get($path, array $data = []): string
     {

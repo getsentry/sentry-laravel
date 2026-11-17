@@ -51,6 +51,39 @@ class ConsoleSchedulingIntegrationTest extends TestCase
     }
 
     /**
+     * `SplObjectStorage::attach()` and `contains()` are deprecated since PHP 8.5,
+     * and `sentryMonitor()` runs every time the schedule is defined.
+     */
+    public function testScheduleMacroDoesNotTriggerDeprecations(): void
+    {
+        $sourceDirectory = realpath(__DIR__ . '/../../../src');
+        $deprecations = [];
+
+        set_error_handler(static function (int $level, string $message, string $file) use ($sourceDirectory, &$deprecations): bool {
+            if (strpos($file, $sourceDirectory) !== 0) {
+                return false;
+            }
+
+            $deprecations[] = $message;
+
+            return true;
+        }, \E_DEPRECATED | \E_USER_DEPRECATED);
+
+        try {
+            /** @var Event $scheduledEvent */
+            $scheduledEvent = $this->getScheduler()
+                ->call(function () {})
+                ->sentryMonitor('test-monitor');
+
+            $scheduledEvent->run($this->app);
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertSame([], $deprecations);
+    }
+
+    /**
      * When a timezone was defined on a command this would fail with:
      * Sentry\MonitorConfig::__construct(): Argument #4 ($timezone) must be of type ?string, DateTimeZone given
      * This test ensures that the timezone is properly converted to a string as expected.
