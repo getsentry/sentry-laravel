@@ -82,6 +82,9 @@ class ClassificationMessageFormatter
         return $question->toArray();
     }
 
+    /**
+     * @return array<mixed>
+     */
     private static function formatAnswer(Answer $answer): array
     {
         if ($answer instanceof BooleanAnswer) {

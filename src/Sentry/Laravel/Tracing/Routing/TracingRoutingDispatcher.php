@@ -9,6 +9,9 @@ use Sentry\Tracing\SpanContext;
 
 abstract class TracingRoutingDispatcher
 {
+    /**
+     * @return mixed
+     */
     protected function wrapRouteDispatch(callable $dispatch, Route $route)
     {
         $parentSpan = SentrySdk::getCurrentHub()->getSpan();
