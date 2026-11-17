@@ -29,6 +29,36 @@ class DatabaseEventsTest extends TestCase
         $this->assertEquals($query, $lastBreadcrumb->getMessage());
     }
 
+    public function testQueryExecutedListenerIsNotRegisteredWhenBreadcrumbsAndTracingAreDisabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.breadcrumbs.sql_queries' => false,
+            'sentry.tracing.sql_queries' => false,
+        ]);
+
+        $this->assertFalse($this->app['events']->hasListeners(QueryExecuted::class));
+    }
+
+    public function testQueryExecutedListenerIsRegisteredWhenOnlyBreadcrumbsAreEnabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.breadcrumbs.sql_queries' => true,
+            'sentry.tracing.sql_queries' => false,
+        ]);
+
+        $this->assertTrue($this->app['events']->hasListeners(QueryExecuted::class));
+    }
+
+    public function testQueryExecutedListenerIsRegisteredWhenOnlyTracingIsEnabled(): void
+    {
+        $this->resetApplicationWithConfig([
+            'sentry.breadcrumbs.sql_queries' => false,
+            'sentry.tracing.sql_queries' => true,
+        ]);
+
+        $this->assertTrue($this->app['events']->hasListeners(QueryExecuted::class));
+    }
+
     public function testSqlBindingsAreRecordedWhenEnabled(): void
     {
         $this->resetApplicationWithConfig([
