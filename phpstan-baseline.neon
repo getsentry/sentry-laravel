@@ -469,12 +469,6 @@ parameters:
 			path: src/Sentry/Laravel/Features/LivewirePackageIntegration.php
 
 		-
-			message: '#^Method Sentry\\Laravel\\Features\\NotificationsIntegration\:\:formatNotifiable\(\) has parameter \$notifiable with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: src/Sentry/Laravel/Features/NotificationsIntegration.php
-
-		-
 			message: '#^Part \$notifiable\-\>getKey\(\) \(mixed\) of encapsed string cannot be cast to string\.$#'
 			identifier: encapsedStringPart.nonString
 			count: 1
