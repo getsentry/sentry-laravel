@@ -1,5 +1,140 @@
 # Changelog
 
+## 5.0.0-beta1
+
+The Sentry SDK team is happy to announce the first beta release of Sentry Laravel SDK v5.0.0.
+
+This is a pre-release of the next major version. The API can still change before the stable release, so we do not recommend it for production yet. To try it out, install the beta explicitly. The PHP SDK has to be listed as well, because Composer does not install pre-releases of a dependency on its own:
+
+```bash
+composer require "sentry/sentry-laravel:^5.0@beta" "sentry/sentry:^5.0@beta"
+```
+
+### Breaking Changes
+
+Please refer to the [UPGRADE-5.0.md](UPGRADE-5.0.md) guide for a complete list of breaking changes and how to migrate.
+
+<details>
+<summary>Upgrading with an AI coding agent? Use this prompt.</summary>
+
+```text
+Upgrade this project from version 4 to version 5 of the Sentry Laravel SDK (sentry/sentry-laravel).
+
+1. Run `composer require "sentry/sentry-laravel:^5.0@beta" "sentry/sentry:^5.0@beta"`.
+2. Read vendor/sentry/sentry-laravel/UPGRADE-5.0.md completely. It is the source of truth for every
+   breaking change. If the project also uses the PHP SDK directly (the Sentry\ namespace or the
+   \Sentry\...() helper functions), read vendor/sentry/sentry/UPGRADE-5.0.md as well. Version 5 is
+   newer than what you know about these SDKs, so do not rely on your memory of their API. When the
+   guides do not cover something, read the code in vendor/sentry/sentry-laravel/src and
+   vendor/sentry/sentry/src instead of guessing.
+3. Search the whole project for usages of the SDK: config/sentry.php, the SENTRY_* variables in the
+   .env files, bootstrap/app.php and the exception handler, the `sentry` and `sentry_logs` log
+   channels in config/logging.php, the Sentry facade, app('sentry'), type-hints on
+   Sentry\State\HubInterface, everything from the Sentry\ namespace, and classes that extend SDK
+   types such as the SentryHandler.
+4. Apply the changes from the guides to every usage you found.
+5. Run the static analysis and the tests of the project, if it has them, and fix what the upgrade
+   broke.
+
+Some changes do not cause an error, so nothing will point you to them. Check each of these explicitly:
+
+- Removed options are ignored silently. Compare every option in config/sentry.php with the guide. If
+  the project has no published config file, check the SENTRY_* environment variables instead.
+- The send_default_pii option is gone, and the defaults of the data_collection option collect more
+  data than before, whichever value send_default_pii had. What gets collected is a privacy decision
+  that is mine to make: apply the restrictive configuration from the guide, which is the closest to
+  the old behavior, and list what I could enable on top of it. This only applies if data_collection
+  is missing from config/sentry.php or set to null, which is what a config file published with
+  version 4 contains. If the project already configures data_collection, send_default_pii was
+  already ignored and the existing data_collection configuration keeps applying, so only remove
+  send_default_pii.
+- The breadcrumbs.sql_bindings and tracing.sql_bindings options are gone. A config file that was
+  published before no longer reads SENTRY_TRACE_SQL_BINDINGS_ENABLED until data_collection is added
+  to it. If the project already configures data_collection, these options were already ignored, so
+  only remove them.
+- The client is never null anymore. Remove the null checks, and tell me where one of them was used
+  to detect that the SDK is not configured.
+- Jobs that run synchronously no longer get a scope of their own. Tell me where a job sets tags, the
+  user or other scope data and can run with the sync driver or dispatchSync().
+- The enable_logs option is gone, so the sentry_logs log channel sends logs whenever it is used.
+  Tell me if the project relied on SENTRY_ENABLE_LOGS to turn it off in some environments.
+
+When you are done, give me a summary of what you changed and a separate list of what I have to
+decide or check myself. Include the changes that affect what shows up in Sentry: transactions with
+a 404 status are no longer sent, and the events of failed queue jobs and of sync jobs carry
+different scope data.
+```
+
+</details>
+
+- Require version 5 of the PHP SDK. Its Hub has been removed, so `Sentry\State\HubInterface` is no longer bound in the container. `app('sentry')`, the `Sentry` facade and type-hints now resolve the new `Sentry\Laravel\Sentry` class, which keeps the methods of the Hub. [(#1219)](https://github.com/getsentry/sentry-laravel/pull/1219)
+
+  ```php
+  // Before
+  public function __construct(\Sentry\State\HubInterface $sentry) {}
+
+  // After
+  public function __construct(\Sentry\Laravel\Sentry $sentry) {}
+  ```
+
+- `getClient()` never returns `null`. When Sentry is not configured it returns a `Sentry\NoOpClient`. [(#1219)](https://github.com/getsentry/sentry-laravel/pull/1219)
+
+- The callbacks of `configureScope()`, `withScope()` and `Integration::configureScope()` receive a `Sentry\State\IsolationScope` instead of a `Sentry\State\Scope`. [(#1219)](https://github.com/getsentry/sentry-laravel/pull/1219)
+
+- The `SentryHandler` constructor takes a `Sentry\Laravel\Sentry` instead of a `HubInterface`, and its `$hub` property has been renamed to `$sentry`. [(#1219)](https://github.com/getsentry/sentry-laravel/pull/1219)
+
+- The scope of a queue job that threw is popped once the worker has reported the exception, instead of when the next job starts. Jobs that run synchronously no longer get a scope of their own and run in the scope that dispatched them. [(#1219)](https://github.com/getsentry/sentry-laravel/pull/1219)
+
+- The `send_default_pii` option has been removed. The `data_collection` option now always decides which data the SDK collects, and its defaults collect more data than `send_default_pii` did. [(#1241)](https://github.com/getsentry/sentry-laravel/pull/1241)
+
+  If you already configure `data_collection`, it keeps applying as before and you only have to remove `send_default_pii` from your config. Otherwise, including when `data_collection` is `null`, restrict the collection to roughly what `send_default_pii => false` collected before with:
+
+  ```php
+  // config/sentry.php
+  'data_collection' => [
+      'user_info' => false,
+      'cookies' => ['mode' => 'off'],
+      'http_bodies' => ['incomingRequest'],
+      'gen_ai' => ['inputs' => false, 'outputs' => false],
+      'database_query_data' => false,
+      'queues' => false,
+  ],
+  ```
+
+- The `breadcrumbs.sql_bindings` and `tracing.sql_bindings` options have been removed. Use `data_collection.database_query_data` instead, which also covers the parameters of Redis commands. They were already ignored when `data_collection` was configured. [(#1241)](https://github.com/getsentry/sentry-laravel/pull/1241)
+
+- `sentry:publish` no longer asks whether to send default PII, and its `--with-send-default-pii` option has been removed. [(#1241)](https://github.com/getsentry/sentry-laravel/pull/1241)
+
+- The `trace_ignore_status_codes` option now defaults to `[404]`, so transactions of requests that end in a `404` response are no longer sent, including those of matched routes.
+
+- The options that the PHP SDK removed are no longer available in `config/sentry.php`, such as `enable_tracing`, `spotlight_url`, `enable_logs`, `enable_metrics`, `context_lines`, `max_value_length` and `strict_trace_propagation`. Logs and metrics are always sent when their APIs or the `sentry_logs` log channel are used.
+
+- The deprecated `Integration::sentryW3CTracingMeta()`, `BaseServiceProvider::couldHavePerformanceTracingEnabled()` and `Feature::shouldSendDefaultPii()` methods have been removed. [(#1219)](https://github.com/getsentry/sentry-laravel/pull/1219), [(#1241)](https://github.com/getsentry/sentry-laravel/pull/1241)
+
+### Features
+
+- Add `getGlobalScope()`, `getIsolationScope()` and `withIsolationScope()` to the `Sentry` facade and `app('sentry')`. Data on the global scope is applied to every event of the process and survives across requests and jobs in long-running workers, while the isolation scope holds the data of the current request, command or job. [(#1219)](https://github.com/getsentry/sentry-laravel/pull/1219)
+
+  ```php
+  use Sentry\Laravel\Facade as Sentry;
+
+  // Applied to every event of this worker process
+  Sentry::getGlobalScope()->setTag('worker', 'queue-1');
+
+  // Applied to the events of the current request, command or job
+  Sentry::getIsolationScope()->setTag('feature', 'checkout');
+  ```
+
+### Bug Fixes
+
+- Stop registering the `QueryExecuted` listener when the `breadcrumbs.sql_queries` and `tracing.sql_queries` options are both disabled. [(#1240)](https://github.com/getsentry/sentry-laravel/pull/1240)
+- Register the view name composer once per view factory instead of every time a view engine is resolved, which added a new composer for each request under Laravel Octane. [(#1236)](https://github.com/getsentry/sentry-laravel/pull/1236)
+- Avoid the `SplObjectStorage` deprecation warnings on PHP 8.5 when scheduled tasks are monitored. [(#1242)](https://github.com/getsentry/sentry-laravel/pull/1242)
+
+### Misc
+
+- Bump the PHP SDK to version `5.0.0-beta1`. See its [changelog](https://github.com/getsentry/sentry-php/blob/5.x/CHANGELOG.md#500-beta1) for the features and fixes of the PHP SDK that are part of this release.
+
 ## 4.30.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.30.0.
