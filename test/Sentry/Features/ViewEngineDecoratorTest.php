@@ -2,6 +2,7 @@
 
 namespace Sentry\Laravel\Tests\Features;
 
+use Illuminate\Contracts\View\View;
 use Illuminate\View\Engines\EngineResolver;
 use ReflectionProperty;
 use Sentry\Laravel\Tests\TestCase;
@@ -10,6 +11,8 @@ use Sentry\Laravel\Tracing\ViewEngineDecorator;
 
 class ViewEngineDecoratorTest extends TestCase
 {
+    private const STUBS_PATH = __DIR__ . '/../../stubs';
+
     public function testViewEngineIsDecorated(): void
     {
         /** @var EngineResolver $engineResolver */
@@ -39,6 +42,85 @@ class ViewEngineDecoratorTest extends TestCase
 
             $this->assertNotInstanceOf(ViewEngineDecorator::class, $innerEngine, "Engine `{$engineName}` should not be double wrapped in a ViewEngineDecorator.");
         }
+    }
+
+    public function testViewComposerIsRegisteredOnlyOnceWhenEnginesAreRecreated(): void
+    {
+        /** @var EngineResolver $engineResolver */
+        $engineResolver = $this->app->make('view.engine.resolver');
+
+        $engineResolver->resolve('blade');
+
+        $before = $this->countWildcardComposers();
+
+        // `EngineResolver::forget()` does not exist on older Laravel versions, so clear the resolved engine cache directly
+        $resolved = new ReflectionProperty($engineResolver, 'resolved');
+        if (\PHP_VERSION_ID < 80100) {
+            $resolved->setAccessible(true);
+        }
+
+        for ($i = 0; $i < 10; $i++) {
+            $cache = $resolved->getValue($engineResolver);
+            unset($cache['blade']);
+            $resolved->setValue($engineResolver, $cache);
+            $engineResolver->resolve('blade');
+        }
+
+        $this->assertSame($before, $this->countWildcardComposers());
+    }
+
+    private function countWildcardComposers(): int
+    {
+        $events = $this->app->make('view')->getDispatcher();
+
+        $property = new ReflectionProperty($events, 'wildcards');
+
+        if (\PHP_VERSION_ID < 80100) {
+            $property->setAccessible(true);
+        }
+
+        return count($property->getValue($events)['composing: *'] ?? []);
+    }
+
+    public function testNamedViewUsesViewNameAsSpanDescription(): void
+    {
+        $this->app->make('view')->addLocation(self::STUBS_PATH . '/views');
+
+        $view = $this->app->make('view')->make('hello');
+
+        $this->assertSame('hello', $this->renderAndGetSpanDescription($view));
+    }
+
+    public function testFileViewInsideBasePathHasBasePathStrippedFromSpanDescription(): void
+    {
+        // Use the stubs directory as the application base path so the view file is located inside of it
+        $this->app->setBasePath(self::STUBS_PATH);
+
+        $view = $this->app->make('view')->file(self::STUBS_PATH . '/views/hello.blade.php');
+
+        $this->assertSame('/views/hello.blade.php', $this->renderAndGetSpanDescription($view));
+    }
+
+    public function testFileViewOutsideBasePathKeepsFullPathAsSpanDescription(): void
+    {
+        $view = $this->app->make('view')->file(self::STUBS_PATH . '/views/hello.blade.php');
+
+        $this->assertSame(self::STUBS_PATH . '/views/hello.blade.php', $this->renderAndGetSpanDescription($view));
+    }
+
+    private function renderAndGetSpanDescription(View $view): ?string
+    {
+        $transaction = $this->startTransaction();
+
+        $view->render();
+
+        // The first recorded span is the transaction itself, the second is the span for the rendered view
+        $spans = $transaction->getSpanRecorder()->getSpans();
+
+        $this->assertCount(2, $spans);
+        $this->assertSame('view.render', $spans[1]->getOp());
+
+        return $spans[1]->getDescription();
     }
 
     private function getInnerEngine(ViewEngineDecorator $decorator): object

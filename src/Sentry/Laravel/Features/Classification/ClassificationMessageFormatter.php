@@ -54,6 +54,9 @@ class ClassificationMessageFormatter
         ]);
     }
 
+    /**
+     * @return array<mixed>
+     */
     private static function formatQuestion(Question $question): array
     {
         if ($question instanceof Boolean) {
@@ -79,6 +82,9 @@ class ClassificationMessageFormatter
         return $question->toArray();
     }
 
+    /**
+     * @return array<mixed>
+     */
     private static function formatAnswer(Answer $answer): array
     {
         if ($answer instanceof BooleanAnswer) {
@@ -114,6 +120,9 @@ class ClassificationMessageFormatter
         return $formatted;
     }
 
+    /**
+     * @param array<string, mixed> $message
+     */
     private static function encode(array $message): ?string
     {
         $encoded = json_encode([$message]);

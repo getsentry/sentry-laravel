@@ -98,7 +98,7 @@ class ConsoleSchedulingIntegration extends Feature
                 throw new RuntimeException('The command and description are not set, please set a slug manually for this scheduled command using the `sentryMonitor(\'your-monitor-slug\')` macro.');
             }
 
-            $monitoredTasks->attach($this, $monitorSlug);
+            $monitoredTasks->offsetSet($this, $monitorSlug);
 
             return $this
                 ->before(function () use (
@@ -201,16 +201,20 @@ class ConsoleSchedulingIntegration extends Feature
         $this->pushSpan($transaction);
     }
 
-    public function handleScheduledTaskFinished(): void
+    public function handleScheduledTaskFinished(ScheduledTaskFinished $event): void
     {
         $this->maybeFinishSpan(SpanStatus::ok());
         $this->maybePopScope();
+
+        $this->forgetBackgroundTaskCheckInIdFromContext($event->task);
     }
 
-    public function handleScheduledTaskFailed(): void
+    public function handleScheduledTaskFailed(ScheduledTaskFailed $event): void
     {
         $this->maybeFinishSpan(SpanStatus::internalError());
         $this->maybePopScope();
+
+        $this->forgetBackgroundTaskCheckInIdFromContext($event->task);
     }
 
     private function monitorScheduledTasks(Schedule $schedule): void
@@ -220,7 +224,7 @@ class ConsoleSchedulingIntegration extends Feature
         $tasksBySlug = [];
 
         foreach ($schedule->events() as $task) {
-            if ($this->monitoredTasks->contains($task)) {
+            if ($this->monitoredTasks->offsetExists($task)) {
                 $monitoredSlugs[$this->monitoredTasks[$task] ?? $this->makeSlugForScheduled($task)] = true;
 
                 continue;
@@ -518,5 +522,23 @@ class ConsoleSchedulingIntegration extends Feature
         } else {
             $cache->forgetHidden($cacheKey);
         }
+    }
+
+    private function forgetBackgroundTaskCheckInIdFromContext(SchedulingEvent $scheduled): void
+    {
+        if (!$scheduled->runInBackground || !$this->monitoredTasks->offsetExists($scheduled)) {
+            return;
+        }
+
+        $cache = $this->resolveCache();
+
+        if (!$cache instanceof ContextRepository) {
+            return;
+        }
+
+        $cache->forgetHidden($this->buildCacheKey(
+            $scheduled->mutexName(),
+            $this->monitoredTasks[$scheduled] ?? $this->makeSlugForScheduled($scheduled)
+        ));
     }
 }

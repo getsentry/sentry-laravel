@@ -545,7 +545,7 @@ class AiIntegration extends Feature
         }
 
         /**
-         * @var $steps Step[]
+         * @var Collection<int, Step> $steps
          */
         $steps = $response->steps;
 
