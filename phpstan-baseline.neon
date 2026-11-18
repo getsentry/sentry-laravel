@@ -13,12 +13,6 @@ parameters:
 			path: src/Sentry/Laravel/BaseServiceProvider.php
 
 		-
-			message: '#^Method Sentry\\Laravel\\Console\\AboutCommandIntegration\:\:__invoke\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Sentry/Laravel/Console/AboutCommandIntegration.php
-
-		-
 			message: '#^Method Sentry\\Laravel\\Console\\PublishCommand\:\:setEnvValues\(\) has parameter \$values with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1

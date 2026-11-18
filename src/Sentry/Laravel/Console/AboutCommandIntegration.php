@@ -9,6 +9,9 @@ use Sentry\State\HubInterface;
 
 class AboutCommandIntegration
 {
+    /**
+     * @return array<string, string>
+     */
     public function __invoke(HubInterface $hub): array
     {
         $client = $hub->getClient();
