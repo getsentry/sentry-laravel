@@ -11,6 +11,7 @@ use Illuminate\Foundation\Http\Kernel as HttpKernel;
 use Illuminate\Routing\Contracts\CallableDispatcher;
 use Illuminate\Routing\Contracts\ControllerDispatcher;
 use Illuminate\View\Engines\EngineResolver;
+use Illuminate\Support\Str;
 use Illuminate\View\Factory as ViewFactory;
 use InvalidArgumentException;
 use Laravel\Lumen\Application as Lumen;
@@ -23,6 +24,11 @@ class ServiceProvider extends BaseServiceProvider
     public const DEFAULT_INTEGRATIONS = [
         Integrations\LighthouseIntegration::class,
     ];
+
+    /**
+     * @var ViewFactory|null
+     */
+    private $viewComposerFactory;
 
     public function boot(): void
     {
@@ -127,9 +133,24 @@ class ServiceProvider extends BaseServiceProvider
         /** @var ViewFactory $viewFactory */
         $viewFactory = $this->app->make('view');
 
-        $viewFactory->composer('*', static function (View $view) use ($viewFactory): void {
-            $viewFactory->share(ViewEngineDecorator::SHARED_KEY, $view->name());
-        });
+        // Engines can be resolved many times (e.g. when Octane resets the engine resolver) while the view factory is
+        // retained. This remembers only the last factory, so the composer is registered once per change of factory
+        // (if `view` went A -> B -> A, A would get a second composer) rather than on every resolve.
+        if ($this->viewComposerFactory !== $viewFactory) {
+            $this->viewComposerFactory = $viewFactory;
+
+            $viewFactory->composer('*', static function (View $view) use ($viewFactory): void {
+                $viewName = $view->name();
+                $basePath = base_path();
+
+                // Views rendered from a file (like Laravel Folio pages) are named after their full path, strip the base path to keep the name short
+                if (Str::startsWith($viewName, $basePath . \DIRECTORY_SEPARATOR)) {
+                    $viewName = substr($viewName, \strlen($basePath));
+                }
+
+                $viewFactory->share(ViewEngineDecorator::SHARED_KEY, $viewName);
+            });
+        }
 
         return new ViewEngineDecorator($realEngine, $viewFactory);
     }

@@ -22,7 +22,7 @@ namespace Sentry\Laravel;
  * @method static string|null captureCheckIn(string $slug, \Sentry\CheckInStatus $status, int|float|null $duration = null, \Sentry\MonitorConfig|null $monitorConfig = null, string|null $checkInId = null)
  * @method static void addBreadcrumb(\Sentry\Breadcrumb $breadcrumb)
  * @method static \Sentry\Integration\IntegrationInterface|null getIntegration(string $className)
- * @method static \Sentry\Tracing\Transaction startTransaction(\Sentry\Tracing\TransactionContext $context, array $customSamplingContext = [])
+ * @method static \Sentry\Tracing\Transaction startTransaction(\Sentry\Tracing\TransactionContext $context, array<string, mixed> $customSamplingContext = [])
  * @method static \Sentry\Tracing\Transaction|null getTransaction()
  * @method static \Sentry\Tracing\Span|null getSpan()
  * @method static \Sentry\Laravel\Sentry setSpan(\Sentry\Tracing\Span|null $span)

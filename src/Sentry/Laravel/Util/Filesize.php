@@ -20,7 +20,7 @@ class Filesize
     public static function toHuman(int $bytes, int $decimals = 2): string
     {
         $size   = ['B', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-        $factor = (int)floor((strlen($bytes) - 1) / 3);
+        $factor = (int)floor((strlen((string)$bytes) - 1) / 3);
 
         if ($factor === 0) {
             $decimals = 0;

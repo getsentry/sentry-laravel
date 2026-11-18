@@ -76,6 +76,9 @@ class NotificationsIntegration extends Feature
         }
     }
 
+    /**
+     * @param mixed $notifiable
+     */
     private function formatNotifiable($notifiable): string
     {
         if (is_string($notifiable) || is_numeric($notifiable)) {

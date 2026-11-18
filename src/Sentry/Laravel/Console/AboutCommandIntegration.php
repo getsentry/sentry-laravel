@@ -9,6 +9,9 @@ use Sentry\NoOpClient;
 
 class AboutCommandIntegration
 {
+    /**
+     * @return array<string, string>
+     */
     public function __invoke(Sentry $sentry): array
     {
         $client = $sentry->getClient();
