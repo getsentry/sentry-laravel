@@ -52,6 +52,8 @@ Some changes do not cause an error, so nothing will point you to them. Check eac
   published before no longer reads SENTRY_TRACE_SQL_BINDINGS_ENABLED until data_collection is added
   to it. If the project already configures data_collection, these options were already ignored, so
   only remove them.
+- The max_request_body_size value none is no longer valid and falls back to medium, which collects
+  request bodies. Replace it with never.
 - The client is never null anymore. Remove the null checks, and tell me where one of them was used
   to detect that the SDK is not configured.
 - Jobs that run synchronously no longer get a scope of their own. Tell me where a job sets tags, the
@@ -61,8 +63,9 @@ Some changes do not cause an error, so nothing will point you to them. Check eac
 
 When you are done, give me a summary of what you changed and a separate list of what I have to
 decide or check myself. Include the changes that affect what shows up in Sentry: transactions with
-a 404 status are no longer sent, and the events of failed queue jobs and of sync jobs carry
-different scope data.
+a 404 status are no longer sent, error events can get a different transaction name, logs carry a
+span_id instead of the sentry.trace.parent_span_id attribute, and the events of failed queue jobs
+and of sync jobs carry different scope data.
 ```
 
 </details>
@@ -79,7 +82,7 @@ different scope data.
 
 - `getClient()` never returns `null`. When Sentry is not configured it returns a `Sentry\NoOpClient`. [(#1219)](https://github.com/getsentry/sentry-laravel/pull/1219)
 
-- The callbacks of `configureScope()`, `withScope()` and `Integration::configureScope()` receive a `Sentry\State\IsolationScope` instead of a `Sentry\State\Scope`. [(#1219)](https://github.com/getsentry/sentry-laravel/pull/1219)
+- The callbacks of `configureScope()`, `withScope()` and `Integration::configureScope()` receive a `Sentry\State\IsolationScope` instead of a `Sentry\State\Scope`. The `\Sentry\withScope()` function has been removed from the PHP SDK, use `\Sentry\withIsolationScope()` or `withScope()` on the `Sentry` facade instead. [(#1219)](https://github.com/getsentry/sentry-laravel/pull/1219)
 
 - The `SentryHandler` constructor takes a `Sentry\Laravel\Sentry` instead of a `HubInterface`, and its `$hub` property has been renamed to `$sentry`. [(#1219)](https://github.com/getsentry/sentry-laravel/pull/1219)
 
@@ -130,10 +133,6 @@ different scope data.
 - Stop registering the `QueryExecuted` listener when the `breadcrumbs.sql_queries` and `tracing.sql_queries` options are both disabled. [(#1240)](https://github.com/getsentry/sentry-laravel/pull/1240)
 - Register the view name composer once per view factory instead of every time a view engine is resolved, which added a new composer for each request under Laravel Octane. [(#1236)](https://github.com/getsentry/sentry-laravel/pull/1236)
 - Avoid the `SplObjectStorage` deprecation warnings on PHP 8.5 when scheduled tasks are monitored. [(#1242)](https://github.com/getsentry/sentry-laravel/pull/1242)
-
-### Misc
-
-- Bump the PHP SDK to version `5.0.0-beta1`. See its [changelog](https://github.com/getsentry/sentry-php/blob/5.x/CHANGELOG.md#500-beta1) for the features and fixes of the PHP SDK that are part of this release.
 
 ## 4.30.0
 
