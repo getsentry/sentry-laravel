@@ -1,5 +1,19 @@
 # Changelog
 
+## 4.31.0
+
+The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.31.0.
+
+### Bug Fixes
+
+- Avoid PHP 8.5 deprecation warnings for `SplObjectStorage::attach()` and `SplObjectStorage::contains()` when monitoring scheduled tasks. [(#1242)](https://github.com/getsentry/sentry-laravel/pull/1242)
+- Don't listen for `QueryExecuted` events when `breadcrumbs.sql_queries` or `tracing.sql_queries` is disabled, so database drivers that only do extra work when the event has a listener, such as `mongodb/laravel-mongodb`, no longer pay for it. [(#1240)](https://github.com/getsentry/sentry-laravel/pull/1240)
+- Register the view composer that tracks view names for `view.render` spans only once per view factory, so composers no longer pile up and run on every render when view engines are resolved again, for example on Laravel Octane. [(#1236)](https://github.com/getsentry/sentry-laravel/pull/1236)
+
+### Misc
+
+- Bump the PHP SDK to version `4.38.0`
+
 ## 4.30.0
 
 The Sentry SDK team is happy to announce the immediate availability of Sentry Laravel SDK v4.30.0.
