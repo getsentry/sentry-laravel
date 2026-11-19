@@ -16,6 +16,9 @@ use Throwable;
  */
 class SetRequestMiddleware
 {
+    /**
+     * @return mixed
+     */
     public function handle(Request $request, Closure $next)
     {
         $container = Container::getInstance();
