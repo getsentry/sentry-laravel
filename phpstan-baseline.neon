@@ -1501,12 +1501,6 @@ parameters:
 			path: src/Sentry/Laravel/Http/SensitiveCookieFilter.php
 
 		-
-			message: '#^Method Sentry\\Laravel\\Http\\SetRequestMiddleware\:\:handle\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: src/Sentry/Laravel/Http/SetRequestMiddleware.php
-
-		-
 			message: '#^Method Sentry\\Laravel\\Integration\:\:extractNameAndSourceForLumenRoute\(\) has parameter \$routeData with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
