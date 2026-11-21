@@ -55,6 +55,9 @@ final class ViewEngineDecorator implements Engine
         return $result;
     }
 
+    /**
+     * @return mixed
+     */
     public function __call($name, $arguments)
     {
         return $this->engine->{$name}(...$arguments);
