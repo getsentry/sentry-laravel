@@ -2149,12 +2149,6 @@ parameters:
 			path: src/Sentry/Laravel/Tracing/ServiceProvider.php
 
 		-
-			message: '#^Method Sentry\\Laravel\\Tracing\\ViewEngineDecorator\:\:__call\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: src/Sentry/Laravel/Tracing/ViewEngineDecorator.php
-
-		-
 			message: '#^Method Sentry\\Laravel\\Tracing\\ViewEngineDecorator\:\:__call\(\) has parameter \$arguments with no type specified\.$#'
 			identifier: missingType.parameter
 			count: 1
