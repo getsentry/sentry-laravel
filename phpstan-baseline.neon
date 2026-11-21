@@ -1489,12 +1489,6 @@ parameters:
 			path: src/Sentry/Laravel/Features/Storage/SentryS3V3Adapter.php
 
 		-
-			message: '#^Method Sentry\\Laravel\\Http\\FlushEventsMiddleware\:\:handle\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: src/Sentry/Laravel/Http/FlushEventsMiddleware.php
-
-		-
 			message: '#^Method Sentry\\Laravel\\Http\\FlushEventsMiddleware\:\:terminate\(\) has parameter \$response with no type specified\.$#'
 			identifier: missingType.parameter
 			count: 1
