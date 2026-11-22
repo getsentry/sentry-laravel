@@ -271,6 +271,9 @@ class ConsoleSchedulingIntegration extends Feature
         }
     }
 
+    /**
+     * @param array<string> $excluded
+     */
     private function isExcluded(SchedulingEvent $task, string $slug, array $excluded): bool
     {
         foreach ([$slug, $this->getCommandNameForScheduled($task), $task->description] as $name) {
