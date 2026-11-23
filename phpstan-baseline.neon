@@ -367,12 +367,6 @@ parameters:
 			path: src/Sentry/Laravel/Features/ConsoleSchedulingIntegration.php
 
 		-
-			message: '#^Method Sentry\\Laravel\\Features\\ConsoleSchedulingIntegration\:\:isExcluded\(\) has parameter \$excluded with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Sentry/Laravel/Features/ConsoleSchedulingIntegration.php
-
-		-
 			message: '#^Negated boolean expression is always false\.$#'
 			identifier: booleanNot.alwaysFalse
 			count: 1
