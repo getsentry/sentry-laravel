@@ -213,6 +213,8 @@ class TestCommand extends Command
 
     /**
      * Generate an example exception to send to Sentry.
+     *
+     * @param array<string, mixed> $arg
      */
     protected function generateTestException(string $command, array $arg): Exception
     {
