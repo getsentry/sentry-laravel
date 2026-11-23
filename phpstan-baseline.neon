@@ -1555,12 +1555,6 @@ parameters:
 			path: src/Sentry/Laravel/Integration.php
 
 		-
-			message: '#^Method Sentry\\Laravel\\Integration\\ModelViolations\\MissingAttributeModelViolationReporter\:\:getViolationContext\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Sentry/Laravel/Integration/ModelViolations/MissingAttributeModelViolationReporter.php
-
-		-
 			message: '#^Method Sentry\\Laravel\\Integration\\ModelViolations\\ModelViolationReporter\:\:getViolationContext\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
