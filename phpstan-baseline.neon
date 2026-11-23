@@ -475,12 +475,6 @@ parameters:
 			path: src/Sentry/Laravel/Features/NotificationsIntegration.php
 
 		-
-			message: '#^Constant Sentry\\Laravel\\Features\\PennantPackageIntegration\:\:FEATURE_KEY is unused\.$#'
-			identifier: classConstant.unused
-			count: 1
-			path: src/Sentry/Laravel/Features/PennantPackageIntegration.php
-
-		-
 			message: '#^Method Sentry\\Laravel\\Features\\PennantPackageIntegration\:\:handleFeatureRetrieved\(\) has parameter \$feature with no type specified\.$#'
 			identifier: missingType.parameter
 			count: 1
