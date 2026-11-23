@@ -391,12 +391,6 @@ parameters:
 			path: src/Sentry/Laravel/Features/Feature.php
 
 		-
-			message: '#^Constant Sentry\\Laravel\\Features\\FolioPackageIntegration\:\:FEATURE_KEY is unused\.$#'
-			identifier: classConstant.unused
-			count: 1
-			path: src/Sentry/Laravel/Features/FolioPackageIntegration.php
-
-		-
 			message: '#^Call to function method_exists\(\) with Illuminate\\Http\\Client\\Factory and ''globalRequestMiddle…'' will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1
