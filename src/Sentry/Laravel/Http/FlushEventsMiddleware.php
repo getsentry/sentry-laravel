@@ -8,6 +8,9 @@ use Sentry\Laravel\Integration;
 
 class FlushEventsMiddleware
 {
+    /**
+     * @return mixed
+     */
     public function handle(Request $request, Closure $next)
     {
         return $next($request);
