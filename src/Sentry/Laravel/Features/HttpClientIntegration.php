@@ -71,6 +71,9 @@ class HttpClientIntegration extends Feature
         }
     }
 
+    /**
+     * @return RequestInterface
+     */
     public function attachTracingHeadersToRequest(RequestInterface $request)
     {
         if ($this->shouldAttachTracingHeaders($request)) {
