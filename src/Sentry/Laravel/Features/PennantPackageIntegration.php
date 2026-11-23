@@ -11,8 +11,6 @@ use Laravel\Pennant\Events\FeatureRetrieved;
 
 class PennantPackageIntegration extends Feature
 {
-    private const FEATURE_KEY = 'pennant';
-
     public function isApplicable(): bool
     {
         return class_exists(Pennant::class);
