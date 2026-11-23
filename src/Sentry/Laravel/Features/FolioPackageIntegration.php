@@ -16,8 +16,6 @@ use Sentry\Tracing\TransactionSource;
 
 class FolioPackageIntegration extends Feature
 {
-    private const FEATURE_KEY = 'folio';
-
     public function isApplicable(): bool
     {
         return class_exists(Folio::class);
