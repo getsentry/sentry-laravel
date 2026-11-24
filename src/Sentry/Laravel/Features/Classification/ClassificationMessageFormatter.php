@@ -111,6 +111,9 @@ class ClassificationMessageFormatter
         return $answer->toArray();
     }
 
+    /**
+     * @param array<string, mixed> $formatted
+     */
     private static function withConfidence(array $formatted, ?float $confidence): array
     {
         if ($confidence !== null) {
