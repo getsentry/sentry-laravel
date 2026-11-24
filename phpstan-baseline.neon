@@ -2107,12 +2107,6 @@ parameters:
 			path: src/Sentry/Laravel/Tracing/ViewEngineDecorator.php
 
 		-
-			message: '#^Method Sentry\\Laravel\\Tracing\\ViewEngineDecorator\:\:__call\(\) has parameter \$name with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: src/Sentry/Laravel/Tracing/ViewEngineDecorator.php
-
-		-
 			message: '#^Parameter \#1 \$description of method Sentry\\Tracing\\SpanContext\:\:setDescription\(\) expects string\|null, mixed given\.$#'
 			identifier: argument.type
 			count: 1

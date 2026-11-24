@@ -56,6 +56,8 @@ final class ViewEngineDecorator implements Engine
     }
 
     /**
+     * @param string $name
+     *
      * @return mixed
      */
     public function __call($name, $arguments)
