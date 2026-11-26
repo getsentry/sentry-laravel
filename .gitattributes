@@ -8,6 +8,7 @@
 /phpunit.xml export-ignore
 /phpstan.neon export-ignore
 /phpstan-baseline.neon export-ignore
+/phpstan-baseline-deprecations.neon export-ignore
 /.php-cs-fixer.php export-ignore
 /CONTRIBUTING.md export-ignore
 /AGENTS.md export-ignore
