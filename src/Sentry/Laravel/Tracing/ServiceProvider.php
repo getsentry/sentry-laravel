@@ -94,6 +94,9 @@ class ServiceProvider extends BaseServiceProvider
         }
     }
 
+    /**
+     * @param array<string, mixed> $tracingConfig
+     */
     private function bindViewEngine($tracingConfig): void
     {
         if (($tracingConfig['views'] ?? true) !== true) {

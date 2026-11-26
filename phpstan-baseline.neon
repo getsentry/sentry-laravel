@@ -2083,12 +2083,6 @@ parameters:
 			path: src/Sentry/Laravel/Tracing/ServiceProvider.php
 
 		-
-			message: '#^Method Sentry\\Laravel\\Tracing\\ServiceProvider\:\:bindViewEngine\(\) has parameter \$tracingConfig with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
-			path: src/Sentry/Laravel/Tracing/ServiceProvider.php
-
-		-
 			message: '#^Method Sentry\\Laravel\\Tracing\\ServiceProvider\:\:getTracingConfig\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
