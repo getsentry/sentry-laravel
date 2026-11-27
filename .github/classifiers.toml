@@ -1,0 +1,29 @@
+# getsentry/sentry-laravel 6f1e23432d040f02d98a4eccf93ea23d822e2990
+
+rubric = "sdk"
+
+[[area]]
+paths = ["src/**", "config/**"]
+families = ["server"]
+
+[[area]]
+paths = ["src/Sentry/Laravel/Console/**"]
+families = ["server", "tooling"]
+
+# composer.json declares the sentry/sentry range and PHP and Laravel versions every customer inherits.
+[[area]]
+paths = ["composer.json"]
+families = ["server"]
+shared_core = true
+
+[[kind]]
+paths = ["test/**", "phpunit.xml"]
+kind = "tests"
+
+[[kind]]
+paths = ["scripts/**"]
+kind = "build-release"
+
+[[kind]]
+paths = [".php-cs-fixer.php", "phpstan.neon", "phpstan-baseline.neon", "codecov.yml"]
+kind = "dev-tooling"
