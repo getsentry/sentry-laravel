@@ -4,6 +4,7 @@ namespace Sentry\Laravel\Features;
 
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Notifications\Events\NotificationFailed;
 use Illuminate\Notifications\Events\NotificationSending;
 use Illuminate\Notifications\Events\NotificationSent;
 use Sentry\Breadcrumb;
@@ -29,6 +30,7 @@ class NotificationsIntegration extends Feature
     {
         if ($this->isTracingFeatureEnabled(self::FEATURE_KEY)) {
             $events->listen(NotificationSending::class, [$this, 'handleNotificationSending']);
+            $events->listen(NotificationFailed::class, [$this, 'handleNotificationFailed']);
         }
 
         $events->listen(NotificationSent::class, [$this, 'handleNotificationSent']);
@@ -59,7 +61,7 @@ class NotificationsIntegration extends Feature
 
     public function handleNotificationSent(NotificationSent $event): void
     {
-        $this->maybeFinishSpan(SpanStatus::ok());
+        $this->maybeFinishNotificationSpan($event, SpanStatus::ok());
 
         if ($this->isBreadcrumbFeatureEnabled(self::FEATURE_KEY)) {
             Integration::addBreadcrumb(new Breadcrumb(
@@ -74,6 +76,31 @@ class NotificationsIntegration extends Feature
                 ]
             ));
         }
+    }
+
+    public function handleNotificationFailed(NotificationFailed $event): void
+    {
+        $this->maybeFinishNotificationSpan($event, SpanStatus::internalError());
+    }
+
+    /**
+     * A channel can dispatch `NotificationFailed` and still return normally (followed by `NotificationSent`),
+     * or dispatch it more than once, so only finish the span if it belongs to this notification and channel.
+     *
+     * @param NotificationSent|NotificationFailed $event
+     */
+    private function maybeFinishNotificationSpan($event, SpanStatus $status): void
+    {
+        $span = end($this->currentSpanStack);
+
+        if (!$span
+            || $span->getData()['id'] !== $event->notification->id
+            || $span->getData()['channel'] !== $event->channel
+        ) {
+            return;
+        }
+
+        $this->maybeFinishSpan($status);
     }
 
     /**
